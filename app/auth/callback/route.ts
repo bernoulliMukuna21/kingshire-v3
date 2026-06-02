@@ -3,7 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams, origin: requestOrigin } = new URL(request.url);
+  // Behind Railway's reverse proxy, request.url may contain the internal
+  // hostname. Use the configured public URL when available.
+  const origin =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || requestOrigin;
   const code = searchParams.get("code");
   const next = searchParams.get("next"); // password-reset flow
   const signupRole = searchParams.get("signup_role");
