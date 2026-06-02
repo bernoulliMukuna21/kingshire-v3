@@ -1,12 +1,21 @@
 import Stripe from "stripe";
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("Missing STRIPE_SECRET_KEY environment variable");
+function createStripeClient(): Stripe {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error("Missing STRIPE_SECRET_KEY environment variable");
+  }
+  return new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2026-04-22.dahlia",
+    typescript: true,
+  });
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2026-04-22.dahlia",
-  typescript: true,
+export const stripe: Stripe = new Proxy({} as Stripe, {
+  get(_target, prop: string | symbol) {
+    return (
+      createStripeClient() as unknown as Record<string | symbol, unknown>
+    )[prop];
+  },
 });
 
 // Fee config — 5% from each side (10% total)
