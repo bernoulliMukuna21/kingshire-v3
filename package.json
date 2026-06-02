@@ -42,9 +42,5 @@
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.1.7"
-  },
-  "optionalDependencies": {
-    "@next/swc-linux-x64-gnu": "16.2.4",
-    "lightningcss-linux-x64-gnu": "1.32.0"
   }
 }

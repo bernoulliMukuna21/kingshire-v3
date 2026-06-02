@@ -1,2 +1,6 @@
 [phases.install]
-cmds = ["npm cache clean --force", "npm install --include=dev"]
+cmds = [
+  "npm cache clean --force",
+  "npm install --include=dev",
+  "npm install --no-save @tailwindcss/oxide-linux-x64-gnu@4.3.0 lightningcss-linux-x64-gnu@1.32.0 @next/swc-linux-x64-gnu@16.2.4"
+]
