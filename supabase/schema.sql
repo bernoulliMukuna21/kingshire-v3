@@ -390,3 +390,18 @@ create policy "Users can delete their own avatar" on storage.objects
     bucket_id = 'avatars'
     and auth.uid()::text = (storage.foldername(name))[1]
   );
+
+-- ============================================================
+-- ROLE GRANTS
+-- Object-level privileges must be granted explicitly even when
+-- RLS is enabled. RLS policies are the actual security boundary;
+-- these grants just allow the roles to reach the table at all.
+--   anon        → public read-only access (RLS restricts further)
+--   authenticated → full CRUD (RLS restricts further)
+--   service_role  → full CRUD, bypasses RLS (used by server routes)
+-- ============================================================
+grant select on all tables in schema public to anon;
+grant select, insert, update, delete on all tables in schema public to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+grant select, insert, update, delete on all tables in schema public to service_role;
+grant usage, select on all sequences in schema public to service_role;

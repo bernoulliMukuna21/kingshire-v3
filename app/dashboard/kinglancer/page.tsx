@@ -132,7 +132,7 @@ export default async function KinglancerDashboard() {
         profile.jobs_completed > 0 ? Number(profile.rating).toFixed(1) : "—",
       icon: Star,
       color: "bg-yellow-50 text-yellow-600",
-      href: "/dashboard/kinglancer/profile",
+      href: "/dashboard/profile",
     },
   ];
 
