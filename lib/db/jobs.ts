@@ -1,0 +1,62 @@
+import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/types";
+
+type Job = Database["public"]["Tables"]["jobs"]["Row"];
+type JobInsert = Database["public"]["Tables"]["jobs"]["Insert"];
+
+export type JobWithClient = Job & {
+  client: { full_name: string; avatar_url: string | null };
+  application_count?: number;
+};
+
+import { JOB_CATEGORIES } from "@/lib/job-categories";
+export { JOB_CATEGORIES } from "@/lib/job-categories";
+
+export async function getOpenJobs(): Promise<JobWithClient[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*, client:profiles!client_id(full_name, avatar_url)")
+    .eq("status", "open")
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) throw error;
+  return (data ?? []) as unknown as JobWithClient[];
+}
+
+export async function getJobById(id: string): Promise<JobWithClient | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*, client:profiles!client_id(full_name, avatar_url)")
+    .eq("id", id)
+    .single();
+
+  if (error) return null;
+  return data as unknown as JobWithClient;
+}
+
+export async function getJobsByClient(clientId: string): Promise<Job[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("jobs")
+    .select("*")
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function createJob(data: JobInsert): Promise<Job> {
+  const supabase = await createClient();
+  const { data: job, error } = await supabase
+    .from("jobs")
+    .insert(data)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return job;
+}

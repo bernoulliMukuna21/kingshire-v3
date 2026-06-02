@@ -1,0 +1,363 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Loader2, AlertCircle } from "lucide-react";
+import { JOB_CATEGORIES } from "@/lib/job-categories";
+
+export default function PostJobForm() {
+  const router = useRouter();
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [budget, setBudget] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [rateType, setRateType] = useState<"fixed" | "per_hour" | "per_day">(
+    "fixed",
+  );
+  const [deadline, setDeadline] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    title?: string;
+    description?: string;
+    categories?: string;
+    budget?: string;
+    quantity?: string;
+  }>({});
+
+  const clearFieldError = (field: keyof typeof fieldErrors) =>
+    setFieldErrors((p) => ({ ...p, [field]: undefined }));
+
+  const toggleCategory = (cat: string) =>
+    setCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+    );
+
+  // Minimum deadline is tomorrow
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() + 1);
+  const minDateStr = minDate.toISOString().split("T")[0];
+
+  // For per_hour / per_day, the total escrowed = rate × quantity
+  const rate = parseFloat(budget) || 0;
+  const qty = parseFloat(quantity) || 0;
+  const totalBudget = rateType === "fixed" ? rate : rate * qty;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setFieldErrors({});
+
+    const fe: typeof fieldErrors = {};
+    if (!title.trim()) fe.title = "Job title is required.";
+    if (!description.trim()) fe.description = "Description is required.";
+    if (categories.length === 0)
+      fe.categories = "Please select at least one category.";
+    if (!budget || rate <= 0) fe.budget = "Please enter a valid budget.";
+    else if (rateType !== "fixed" && (!quantity || qty <= 0))
+      fe.quantity = `Please enter how many ${rateType === "per_hour" ? "hours" : "days"} you expect the work to take.`;
+    else if (totalBudget < 5) fe.budget = "Minimum total budget is £5.";
+    else if (totalBudget > 50000)
+      fe.budget = "Maximum total budget is £50,000.";
+
+    if (Object.keys(fe).length > 0) {
+      setFieldErrors(fe);
+      return;
+    }
+
+    setLoading(true);
+
+    const res = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        description,
+        categories,
+        budget: totalBudget,
+        rate_type: rateType,
+        deadline: deadline || null,
+      }),
+    });
+
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error ?? "Failed to post job. Please try again.");
+      return;
+    }
+
+    router.push("/dashboard/client/jobs");
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Title */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Job title <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            clearFieldError("title");
+          }}
+          maxLength={120}
+          className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
+            fieldErrors.title
+              ? "border-red-400 focus:ring-red-300"
+              : "border-gray-200 focus:ring-blue-500"
+          }`}
+          placeholder="e.g. Need a photographer for graduation ceremony"
+        />
+        {fieldErrors.title && (
+          <p className="text-xs text-red-500 mt-1">{fieldErrors.title}</p>
+        )}
+      </div>
+
+      {/* Description */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Description <span className="text-red-500">*</span>
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => {
+            setDescription(e.target.value);
+            clearFieldError("description");
+          }}
+          rows={5}
+          maxLength={2000}
+          className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all resize-none ${
+            fieldErrors.description
+              ? "border-red-400 focus:ring-red-300"
+              : "border-gray-200 focus:ring-blue-500"
+          }`}
+          placeholder="Describe exactly what you need done, where, and any important details..."
+        />
+        <div className="flex justify-between items-center mt-1">
+          {fieldErrors.description ? (
+            <p className="text-xs text-red-500">{fieldErrors.description}</p>
+          ) : (
+            <span />
+          )}
+          <p className="text-xs text-gray-400 text-right">
+            {description.length}/2000
+          </p>
+        </div>
+      </div>
+
+      {/* Category */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Category <span className="text-red-500">*</span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {JOB_CATEGORIES.map((cat) => {
+            const selected = categories.includes(cat);
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => {
+                  toggleCategory(cat);
+                  clearFieldError("categories");
+                }}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all cursor-pointer ${
+                  selected
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
+        </div>
+        {fieldErrors.categories ? (
+          <p className="text-xs text-red-500 mt-2">{fieldErrors.categories}</p>
+        ) : categories.length > 0 ? (
+          <p className="text-xs text-gray-400 mt-2">
+            {categories.length} selected
+          </p>
+        ) : null}
+      </div>
+
+      {/* Budget */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Budget (£) <span className="text-red-500">*</span>
+        </label>
+        {/* Rate type segmented toggle */}
+        {/* Rate type toggle */}
+        <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-2 text-xs font-medium">
+          {(
+            [
+              { value: "fixed", label: "Fixed price" },
+              { value: "per_hour", label: "Per hour" },
+              { value: "per_day", label: "Per day" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                setRateType(opt.value);
+                setQuantity("");
+              }}
+              className={`flex-1 py-1.5 transition-colors ${
+                rateType === opt.value
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        {rateType === "fixed" ? (
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
+              £
+            </span>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={budget}
+              onChange={(e) => {
+                setBudget(e.target.value);
+                clearFieldError("budget");
+              }}
+              className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
+                fieldErrors.budget
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+              placeholder="0"
+            />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex gap-2 items-center">
+              <div className="relative flex-1">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
+                  £
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={budget}
+                  onChange={(e) => {
+                    setBudget(e.target.value);
+                    clearFieldError("budget");
+                  }}
+                  className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
+                    fieldErrors.budget
+                      ? "border-red-400 focus:ring-red-300"
+                      : "border-gray-200 focus:ring-blue-500"
+                  }`}
+                  placeholder={
+                    rateType === "per_hour" ? "Rate per hour" : "Rate per day"
+                  }
+                />
+              </div>
+              <span className="text-gray-400 text-sm shrink-0">×</span>
+              <div className="relative w-28">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={quantity}
+                  onChange={(e) => {
+                    setQuantity(e.target.value);
+                    clearFieldError("quantity");
+                  }}
+                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
+                    fieldErrors.quantity
+                      ? "border-red-400 focus:ring-red-300"
+                      : "border-gray-200 focus:ring-blue-500"
+                  }`}
+                  placeholder={rateType === "per_hour" ? "Hours" : "Days"}
+                />
+              </div>
+            </div>
+            {rate > 0 && qty > 0 && (
+              <p className="text-sm font-semibold text-green-700">
+                Total: £{totalBudget.toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
+        {fieldErrors.budget && (
+          <p className="text-xs text-red-500 mt-1">{fieldErrors.budget}</p>
+        )}
+        {fieldErrors.quantity && (
+          <p className="text-xs text-red-500 mt-1">{fieldErrors.quantity}</p>
+        )}
+        {!fieldErrors.budget && !fieldErrors.quantity && (
+          <p className="text-xs text-gray-400 mt-1">
+            {rateType === "fixed"
+              ? "Total price for the whole job — held in escrow when a kinglancer is selected."
+              : rateType === "per_hour"
+                ? "Enter your hourly rate and how many hours you expect the work to take. The total is held in escrow."
+                : "Enter your daily rate and how many days you expect the work to take. The total is held in escrow."}
+          </p>
+        )}
+      </div>
+
+      {/* Deadline */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Deadline <span className="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <input
+          type="date"
+          value={deadline}
+          min={minDateStr}
+          onChange={(e) => setDeadline(e.target.value)}
+          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+        />
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          <AlertCircle size={16} className="shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Escrow notice */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700">
+        <strong>How payment works:</strong> Your budget is only charged when you
+        select a kinglancer. It is held securely in escrow until you approve the
+        completed work.
+      </div>
+
+      {/* Submit */}
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all hover:scale-[1.01] shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
+      >
+        {loading ? (
+          <>
+            <Loader2 size={16} className="animate-spin" />
+            Posting job...
+          </>
+        ) : (
+          "Post job"
+        )}
+      </button>
+    </form>
+  );
+}

@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KingsHire
 
-## Getting Started
+KingsHire is a Next.js marketplace MVP with Supabase auth/database/storage,
+Stripe payments, Stripe Connect payouts, scheduled payment maintenance jobs,
+and Railway deployment support.
 
-First, run the development server:
+## Local Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Local secrets should live in `.env.local`. Do not commit real environment
+values.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deployment
 
-## Learn More
+This project is configured for Railway.
 
-To learn more about Next.js, take a look at the following resources:
+- Railway guide: `docs/railway-deployment.md`
+- Staging guide: `docs/staging-environment.md`
+- Deployment checklist: `docs/deployment-checklist.md`
+- Env template: `.env.example`
+- Staging env template: `.env.staging.example`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Railway web service:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run build
+npm run start
+```
 
-## Deploy on Vercel
+Railway cron services:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run cron:auto-release
+npm run cron:cleanup-abandoned-checkouts
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Supabase
+
+For a fresh staging Supabase project, run `supabase/schema.sql` as the baseline.
+Do not run historical migrations `002` through `019` on top of the baseline.
+
+See `supabase/README.md`.

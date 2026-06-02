@@ -1,0 +1,55 @@
+import Link from "next/link";
+import { ArrowRight, ChevronRight } from "lucide-react";
+import { ScaleIn } from "@/components/animations";
+
+export default function CtaBanner() {
+  return (
+    <section className="py-24 px-6">
+      <div className="max-w-4xl mx-auto">
+        <ScaleIn>
+          <div className="relative bg-linear-to-br from-[#1a2e5a] via-[#1e3a8a] to-[#1a2e5a] animate-gradient rounded-3xl p-12 md:p-16 text-center overflow-hidden">
+            <div className="absolute top-0 left-1/4 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl" />
+
+            <div className="relative z-10">
+              <p className="text-blue-300 font-semibold text-sm tracking-widest uppercase mb-4">
+                Ready to get started?
+              </p>
+              <h2 className="text-4xl md:text-5xl font-black text-white leading-tight mb-6">
+                Join your community.
+                <br />
+                Build something real.
+              </h2>
+              <p className="text-white/60 text-lg mb-10 max-w-xl mx-auto">
+                Whether you have work to get done or skills to offer — KingsHire
+                is your platform.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link
+                  href="/sign-up?role=client"
+                  className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1a2e5a] font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl text-base"
+                >
+                  Post a Job
+                  <ArrowRight
+                    size={18}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </Link>
+                <Link
+                  href="/sign-up?role=kinglancer"
+                  className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-base"
+                >
+                  Become a Kinglancer
+                  <ChevronRight
+                    size={18}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </ScaleIn>
+      </div>
+    </section>
+  );
+}
