@@ -11,8 +11,13 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { hasValidAdminSession, isAdminEmail } from "@/lib/admin-auth";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
 import SignOutButton from "@/components/SignOutButton";
+import { Card } from "@/components/ui/Card";
+import PageHeader from "@/components/ui/PageHeader";
+import { Avatar } from "@/components/ui/Avatar";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -46,19 +51,8 @@ export default async function AdminDashboard() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  // Admin gate — check against ADMIN_EMAILS env var
-  const adminEmails = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-
-  // Fail closed: if ADMIN_EMAILS is not configured, deny access in production.
-  // In dev without a list configured, allow through for convenience.
-  if (adminEmails.length === 0) {
-    if (process.env.NODE_ENV === "production") redirect("/");
-  } else if (!user.email || !adminEmails.includes(user.email.toLowerCase())) {
-    redirect("/");
-  }
+  if (!isAdminEmail(user.email)) redirect("/");
+  if (!(await hasValidAdminSession(user.id))) redirect("/admin/login");
 
   // Use the service client for all data queries so RLS does not hide records.
   const serviceDb = createServiceClient();
@@ -134,8 +128,6 @@ export default async function AdminDashboard() {
     0,
   );
 
-  const initials = user.email?.[0]?.toUpperCase() ?? "A";
-
   const JOB_STATUS_COLORS: Record<string, string> = {
     open: "bg-green-50 text-green-700",
     in_progress: "bg-blue-50 text-blue-700",
@@ -145,25 +137,26 @@ export default async function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#eef6ff_0,#f8fafc_34%,#f1f5f9_100%)] text-slate-900">
       {/* Sidebar */}
-      <div className="hidden lg:flex fixed top-0 left-0 bottom-0 w-64 bg-[#0f172a] flex-col z-40">
-        <div className="p-6 border-b border-white/5">
+      <div className="hidden lg:flex fixed top-0 left-0 bottom-0 w-72 bg-[#10234b] flex-col z-40 shadow-2xl shadow-slate-950/20">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.26),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.08),transparent_30%)] pointer-events-none" />
+        <div className="relative p-6 border-b border-white/10">
           <Link href="/" className="flex items-center">
             <Image
               src="/logo.png"
               alt="KingsHire"
-              width={120}
+              width={137}
               height={36}
-              className="h-8 w-auto brightness-0 invert"
+              className="h-9 w-auto brightness-0 invert"
               priority
             />
           </Link>
-          <span className="mt-2 inline-block bg-red-500/20 text-red-400 text-xs font-semibold px-2 py-0.5 rounded-md">
+          <span className="mt-4 inline-block rounded-full bg-red-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-red-200 ring-1 ring-red-300/20">
             Admin
           </span>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="relative flex-1 p-4 space-y-1.5">
           {[
             { label: "Overview", icon: "📊", href: "/admin" },
             { label: "Users", icon: "👥", href: "/admin" },
@@ -173,18 +166,16 @@ export default async function AdminDashboard() {
             <Link
               key={item.label}
               href={item.href}
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all text-white/50 hover:text-white hover:bg-white/5 first:bg-blue-600 first:text-white"
+              className="w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all text-white/55 hover:text-white hover:bg-white/10 first:bg-white first:text-[#10234b] first:shadow-lg first:shadow-slate-950/15"
             >
-              <span>{item.icon}</span>
+              <span className="text-lg leading-none">{item.icon}</span>
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t border-white/5 space-y-2">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5">
-            <div className="w-8 h-8 rounded-full bg-linear-to-br from-red-500 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
-              {initials}
-            </div>
+        <div className="relative p-4 border-t border-white/10 space-y-3">
+          <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
+            <Avatar name={user.email} tone="red" className="h-10 w-10" />
             <div className="min-w-0">
               <p className="text-white text-sm font-medium truncate">
                 {user.email}
@@ -192,20 +183,20 @@ export default async function AdminDashboard() {
               <p className="text-white/40 text-xs">Super Admin</p>
             </div>
           </div>
-          <SignOutButton />
+          <SignOutButton className="w-full" />
         </div>
       </div>
 
       {/* Mobile top bar */}
-      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#0f172a] sticky top-0 z-40">
+      <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#10234b]/95 shadow-xl shadow-slate-950/15 backdrop-blur-md sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center">
             <Image
               src="/logo.png"
               alt="KingsHire"
-              width={110}
+              width={122}
               height={32}
-              className="h-7 w-auto brightness-0 invert"
+              className="h-8 w-auto brightness-0 invert"
               priority
             />
           </Link>
@@ -213,25 +204,26 @@ export default async function AdminDashboard() {
             Admin
           </span>
         </div>
-        <SignOutButton />
+        <SignOutButton className="px-4 py-2 text-xs" />
       </div>
 
       {/* Main */}
-      <div className="lg:pl-64">
-        <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="lg:pl-72">
+        <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
           <FadeIn className="mb-8">
-            <h1 className="text-2xl font-black text-gray-900">
-              Admin Overview
-            </h1>
-            <p className="text-gray-500 text-sm mt-1">
-              KingsHire platform ·{" "}
-              {new Date().toLocaleDateString("en-GB", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
+            <PageHeader
+              eyebrow="Admin"
+              title="Admin Overview"
+              description={`KingsHire platform · ${new Date().toLocaleDateString(
+                "en-GB",
+                {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                },
+              )}`}
+            />
           </FadeIn>
 
           {/* Stats */}
@@ -274,24 +266,24 @@ export default async function AdminDashboard() {
               },
             ].map((stat) => (
               <StaggerItem key={stat.label}>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md transition-shadow">
+                <Card interactive className="p-5">
                   <div
                     className={`w-10 h-10 rounded-xl ${stat.color} flex items-center justify-center mb-3`}
                   >
                     <stat.icon size={18} />
                   </div>
-                  <p className="text-2xl font-black text-gray-900">
+                  <p className="text-2xl font-black text-slate-950">
                     {stat.value}
                   </p>
-                  <p className="text-gray-500 text-sm">{stat.label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{stat.sub}</p>
-                </div>
+                  <p className="text-slate-500 text-sm">{stat.label}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{stat.sub}</p>
+                </Card>
               </StaggerItem>
             ))}
           </Stagger>
 
           {/* Open Disputes */}
-          <FadeIn className="bg-white rounded-2xl border border-red-100 overflow-hidden mb-6">
+          <FadeIn className="mb-6 overflow-hidden rounded-[1.75rem] border border-red-100 bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-red-100/60">
             <div className="flex items-center gap-2 px-6 py-4 border-b border-red-50 bg-red-50">
               <AlertCircle size={16} className="text-red-600" />
               <h2 className="font-bold text-red-900">Open Disputes</h2>
@@ -336,7 +328,7 @@ export default async function AdminDashboard() {
                           href={`/jobs/${d.job.id}`}
                           className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:underline"
                         >
-                          <Eye size={14} /> Review
+                          <Eye size={14} /> View job
                         </Link>
                       )}
                     </div>
@@ -349,7 +341,7 @@ export default async function AdminDashboard() {
           {/* Recent sign-ups + Recent jobs side by side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent users */}
-            <FadeIn className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <FadeIn className="overflow-hidden rounded-[1.75rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
               <div className="px-6 py-4 border-b border-gray-50">
                 <h2 className="font-bold text-gray-900">Recent Sign-ups</h2>
               </div>
@@ -359,75 +351,48 @@ export default async function AdminDashboard() {
                     No users yet.
                   </p>
                 ) : (
-                  recentUsers.map((u) => {
-                    const initials = u.full_name
-                      .split(" ")
-                      .map((n: string) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2);
-                    const avatarColor =
-                      u.role === "kinglancer"
-                        ? "bg-linear-to-br from-green-500 to-emerald-600"
-                        : false
-                          ? "bg-linear-to-br from-purple-500 to-indigo-600"
-                          : "bg-linear-to-br from-blue-500 to-indigo-600";
-                    return (
-                      <div
-                        key={u.id}
-                        className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-8 h-8 rounded-full ${avatarColor} flex items-center justify-center text-white font-bold text-xs overflow-hidden shrink-0`}
-                          >
-                            {u.avatar_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={u.avatar_url}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              initials
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm">
-                              {u.full_name}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {u.skills?.length > 0
-                                ? u.skills[0]
-                                : "Client account"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-                              u.role === "kinglancer"
-                                ? "bg-green-50 text-green-700"
-                                : false
-                                  ? "bg-purple-50 text-purple-700"
-                                  : "bg-blue-50 text-blue-700"
-                            }`}
-                          >
-                            {u.role}
-                          </span>
-                          <span className="text-xs text-gray-400 hidden sm:block">
-                            {timeAgo(u.created_at)}
-                          </span>
+                  recentUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center justify-between px-6 py-3.5 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar
+                          name={u.full_name}
+                          src={u.avatar_url}
+                          tone={u.role === "kinglancer" ? "green" : "blue"}
+                          className="h-8 w-8 rounded-xl text-xs"
+                        />
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">
+                            {u.full_name}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {u.skills?.length > 0
+                              ? u.skills[0]
+                              : "Client account"}
+                          </p>
                         </div>
                       </div>
-                    );
-                  })
+                      <div className="flex items-center gap-3">
+                        <StatusBadge
+                          tone={u.role === "kinglancer" ? "green" : "blue"}
+                          className="capitalize"
+                        >
+                          {u.role}
+                        </StatusBadge>
+                        <span className="text-xs text-gray-400 hidden sm:block">
+                          {timeAgo(u.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </FadeIn>
 
             {/* Recent jobs */}
-            <FadeIn className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <FadeIn className="overflow-hidden rounded-[1.75rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
               <div className="px-6 py-4 border-b border-gray-50">
                 <h2 className="font-bold text-gray-900">Recent Jobs</h2>
               </div>
@@ -473,72 +438,3 @@ export default async function AdminDashboard() {
     </div>
   );
 }
-
-const stats = [
-  {
-    label: "Total Users",
-    value: "142",
-    sub: "+12 this week",
-    icon: Users,
-    color: "bg-blue-50 text-blue-600",
-  },
-  {
-    label: "Active Jobs",
-    value: "38",
-    sub: "11 awaiting hire",
-    icon: Briefcase,
-    color: "bg-green-50 text-green-600",
-  },
-  {
-    label: "Open Disputes",
-    value: "2",
-    sub: "Needs attention",
-    icon: AlertCircle,
-    color: "bg-red-50 text-red-600",
-  },
-  {
-    label: "Completed Jobs",
-    value: "94",
-    sub: "£14,200 processed",
-    icon: TrendingUp,
-    color: "bg-purple-50 text-purple-600",
-  },
-];
-
-const disputes = [
-  {
-    id: 1,
-    job: "Deep cleaning — 3 bed house",
-    client: "Sister Joy",
-    kinglancer: "Chidinma A.",
-    amount: 120,
-    raised: "2h ago",
-    status: "open",
-  },
-  {
-    id: 2,
-    job: "Photography — wedding event",
-    client: "Deacon Bola",
-    kinglancer: "Grace M.",
-    amount: 350,
-    raised: "1d ago",
-    status: "investigating",
-  },
-];
-
-const recentUsers = [
-  {
-    name: "Favour Nwosu",
-    role: "Kinglancer",
-    joined: "1h ago",
-    skills: "Tutoring",
-  },
-  { name: "Mrs Adeyemi", role: "Client", joined: "3h ago", skills: "—" },
-  {
-    name: "Joshua Eze",
-    role: "Kinglancer",
-    joined: "5h ago",
-    skills: "Plumbing",
-  },
-  { name: "Sis Chioma", role: "Client", joined: "1d ago", skills: "—" },
-];

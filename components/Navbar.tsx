@@ -6,6 +6,8 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import SignOutButton from "@/components/SignOutButton";
+import { ButtonLink } from "@/components/ui/Button";
 
 const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
@@ -20,15 +22,6 @@ export default function Navbar() {
   const [authReady, setAuthReady] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [dashboardHref, setDashboardHref] = useState("/dashboard/client");
-
-  const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    setMenuOpen(false);
-    setIsLoggedIn(false);
-    setFirstName("");
-    window.location.href = "/";
-  };
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -96,8 +89,8 @@ export default function Navbar() {
           <Image
             src="/logo.png"
             alt="KingsHire"
-            width={140}
-            height={40}
+            width={137}
+            height={36}
             className={`h-9 w-auto transition-opacity ${scrolled ? "opacity-100" : "brightness-0 invert opacity-90"}`}
             priority
           />
@@ -123,19 +116,18 @@ export default function Navbar() {
           {authReady &&
             (isLoggedIn ? (
               <>
-                <Link
+                <ButtonLink
                   href={dashboardHref}
-                  className="text-sm font-semibold px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all hover:scale-105 active:scale-95 shadow-md shadow-blue-500/30"
+                  size="sm"
                 >
                   {firstName ? `Hi, ${firstName}` : "Dashboard"}
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="text-sm font-medium px-4 py-2 rounded-lg transition-colors bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300"
-                >
-                  Sign out
-                </button>
+                </ButtonLink>
+                <SignOutButton
+                  onSignOut={() => {
+                    setIsLoggedIn(false);
+                    setFirstName("");
+                  }}
+                />
               </>
             ) : (
               <>
@@ -149,12 +141,12 @@ export default function Navbar() {
                 >
                   Sign in
                 </Link>
-                <Link
+                <ButtonLink
                   href="/sign-up"
-                  className="text-sm font-semibold px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all hover:scale-105 active:scale-95 shadow-md shadow-blue-500/30"
+                  size="sm"
                 >
                   Get started
-                </Link>
+                </ButtonLink>
               </>
             ))}
         </div>
@@ -188,39 +180,42 @@ export default function Navbar() {
                   {link.label}
                 </Link>
               ))}
-              <div className="flex gap-3 pt-3 border-t border-gray-100 mt-2">
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-100 mt-2">
                 {authReady &&
                   (isLoggedIn ? (
                     <>
-                      <Link
+                      <ButtonLink
                         href={dashboardHref}
                         onClick={() => setMenuOpen(false)}
-                        className="flex-1 text-center text-sm font-semibold py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        size="sm"
+                        className="w-full"
                       >
                         {firstName ? `Hi, ${firstName}` : "Dashboard"}
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={handleSignOut}
-                        className="flex-1 text-center text-sm font-medium py-2 rounded-lg bg-red-50 text-red-500 border border-red-200 hover:bg-red-100 transition-colors"
-                      >
-                        Sign out
-                      </button>
+                      </ButtonLink>
+                      <SignOutButton
+                        onSignOut={() => {
+                          setMenuOpen(false);
+                          setIsLoggedIn(false);
+                          setFirstName("");
+                        }}
+                        className="w-full"
+                      />
                     </>
                   ) : (
                     <>
                       <Link
                         href="/sign-in"
-                        className="flex-1 text-center text-sm font-medium py-2 border border-gray-200 rounded-lg text-gray-700 hover:border-blue-300 transition-colors"
+                        className="w-full text-center text-sm font-medium py-2 border border-gray-200 rounded-lg text-gray-700 hover:border-blue-300 transition-colors"
                       >
                         Sign in
                       </Link>
-                      <Link
+                      <ButtonLink
                         href="/sign-up"
-                        className="flex-1 text-center text-sm font-semibold py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        size="sm"
+                        className="w-full"
                       >
                         Get started
-                      </Link>
+                      </ButtonLink>
                     </>
                   ))}
               </div>

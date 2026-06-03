@@ -87,6 +87,12 @@ export default function ProfileForm({ profile }: Props) {
 
   const roleLabel = profile.role === "client" ? "Client" : "Kinglancer";
 
+  const cardClass =
+    "rounded-[1.75rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur sm:p-6";
+
+  const fieldClass =
+    "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm shadow-slate-900/5 transition-all placeholder:text-slate-400 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500";
+
   const addService = () =>
     setServices((prev) => [
       ...prev,
@@ -198,15 +204,22 @@ export default function ProfileForm({ profile }: Props) {
     .slice(0, 2);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {/* Avatar */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <h2 className="font-bold text-gray-900 mb-5">Profile Photo</h2>
+      <div className={cardClass}>
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="font-black text-slate-950">Profile Photo</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Use a clear photo so clients can recognise you.
+            </p>
+          </div>
+        </div>
         <div className="flex items-center gap-5">
           <div className="relative">
             <div
               onClick={handleAvatarClick}
-              className={`w-20 h-20 rounded-full overflow-hidden flex items-center justify-center cursor-pointer ${isKinglancer ? "bg-linear-to-br from-green-500 to-emerald-600" : "bg-linear-to-br from-blue-500 to-indigo-600"}`}
+              className={`flex h-24 w-24 cursor-pointer items-center justify-center overflow-hidden rounded-[1.75rem] shadow-xl shadow-slate-900/10 ring-4 ring-white ${isKinglancer ? "bg-linear-to-br from-green-500 to-emerald-600" : "bg-linear-to-br from-blue-500 to-indigo-600"}`}
             >
               {avatarUploading ? (
                 <Loader2 size={24} className="text-white animate-spin" />
@@ -218,16 +231,18 @@ export default function ProfileForm({ profile }: Props) {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-white font-bold text-xl">{initials}</span>
+                <span className="text-2xl font-black text-white">
+                  {initials}
+                </span>
               )}
             </div>
             <button
               type="button"
               onClick={handleAvatarClick}
               disabled={avatarUploading}
-              className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center shadow-md transition-colors disabled:opacity-50 cursor-pointer"
+              className="absolute -bottom-2 -right-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5 hover:bg-blue-700 disabled:opacity-50"
             >
-              <Camera size={13} className="text-white" />
+              <Camera size={15} />
             </button>
           </div>
           <div>
@@ -235,11 +250,11 @@ export default function ProfileForm({ profile }: Props) {
               type="button"
               onClick={handleAvatarClick}
               disabled={avatarUploading}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors disabled:opacity-50 cursor-pointer"
+              className="cursor-pointer rounded-2xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-50"
             >
               {avatarUploading ? "Uploading..." : "Change photo"}
             </button>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="mt-2 text-xs text-slate-400">
               JPG, PNG or WebP · Max 2MB
             </p>
           </div>
@@ -254,11 +269,18 @@ export default function ProfileForm({ profile }: Props) {
       </div>
 
       {/* Personal info */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <div className={cardClass}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="font-bold text-gray-900">Personal Information</h2>
+          <div>
+            <h2 className="font-black text-slate-950">
+              Personal Information
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Keep your contact details accurate.
+            </p>
+          </div>
           <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold ${roleBadgeColor}`}
+            className={`rounded-full px-3 py-1 text-xs font-bold ${roleBadgeColor}`}
           >
             {roleLabel}
           </span>
@@ -273,7 +295,7 @@ export default function ProfileForm({ profile }: Props) {
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+              className={fieldClass}
               placeholder="Your full name"
             />
           </div>
@@ -286,7 +308,7 @@ export default function ProfileForm({ profile }: Props) {
               type="email"
               value={profile.email}
               disabled
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-gray-400 text-sm cursor-not-allowed"
+              className="w-full cursor-not-allowed rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-400"
             />
             <p className="text-xs text-gray-400 mt-1">
               Email cannot be changed here.
@@ -301,7 +323,7 @@ export default function ProfileForm({ profile }: Props) {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+              className={fieldClass}
               placeholder="+44 7700 000000"
             />
           </div>
@@ -314,7 +336,7 @@ export default function ProfileForm({ profile }: Props) {
               type="text"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+              className={fieldClass}
               placeholder="e.g. London, UK"
             />
           </div>
@@ -323,11 +345,13 @@ export default function ProfileForm({ profile }: Props) {
 
       {/* Kinglancer section */}
       {isKinglancer && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h2 className="font-bold text-gray-900 mb-1">Kinglancer Profile</h2>
-          <p className="text-sm text-gray-500 mb-5">
-            This information is visible to clients when you apply to jobs.
-          </p>
+        <div className={cardClass}>
+          <div className="mb-5">
+            <h2 className="font-black text-slate-950">Kinglancer Profile</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              This information is visible to clients when you apply to jobs.
+            </p>
+          </div>
 
           {/* Professional title */}
           <div className="mb-5">
@@ -339,7 +363,7 @@ export default function ProfileForm({ profile }: Props) {
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
               maxLength={80}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+              className={fieldClass}
               placeholder="e.g. Freelance Web Designer · Event Photographer"
             />
             <p className="text-xs text-gray-400 mt-1">
@@ -357,7 +381,7 @@ export default function ProfileForm({ profile }: Props) {
               onChange={(e) => setBio(e.target.value)}
               rows={3}
               maxLength={500}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all resize-none"
+              className={`${fieldClass} resize-none`}
               placeholder="Tell clients a bit about yourself and what you offer..."
             />
             <p className="text-xs text-gray-400 mt-1 text-right">
@@ -386,7 +410,7 @@ export default function ProfileForm({ profile }: Props) {
               {services.map((svc, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100"
+                  className="grid gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 sm:flex sm:items-center"
                 >
                   {/* Service name — free text with suggestions */}
                   <input
@@ -395,7 +419,7 @@ export default function ProfileForm({ profile }: Props) {
                     value={svc.name}
                     onChange={(e) => updateService(i, "name", e.target.value)}
                     placeholder="e.g. Web Design"
-                    className="flex-1 min-w-0 px-3 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
 
                   {/* Rate type 3-way toggle */}
@@ -405,7 +429,7 @@ export default function ProfileForm({ profile }: Props) {
                         key={rt.value}
                         type="button"
                         onClick={() => updateService(i, "rate_type", rt.value)}
-                        className={`px-2.5 py-2 text-xs font-semibold border transition-all cursor-pointer first:rounded-l-lg last:rounded-r-lg -ml-px first:ml-0 ${
+                        className={`-ml-px cursor-pointer border px-2.5 py-2 text-xs font-bold transition-all first:ml-0 first:rounded-l-xl last:rounded-r-xl ${
                           svc.rate_type === rt.value
                             ? "bg-blue-600 text-white border-blue-600 z-10 relative"
                             : "bg-white text-gray-500 border-gray-200 hover:border-blue-300 hover:text-blue-600"
@@ -428,7 +452,7 @@ export default function ProfileForm({ profile }: Props) {
                       value={svc.rate}
                       onChange={(e) => updateService(i, "rate", e.target.value)}
                       placeholder="0"
-                      className="w-full pl-7 pr-2 py-2 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+                      className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-7 pr-2 text-sm shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
@@ -455,7 +479,7 @@ export default function ProfileForm({ profile }: Props) {
               <button
                 type="button"
                 onClick={addService}
-                className="mt-2 w-full py-2.5 flex items-center justify-center gap-1.5 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-blue-300 hover:text-blue-600 transition-all cursor-pointer font-medium"
+                className="mt-3 flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-slate-200 py-3 text-sm font-bold text-slate-400 transition-all hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600"
               >
                 <Plus size={15} />
                 Add a service
@@ -472,7 +496,7 @@ export default function ProfileForm({ profile }: Props) {
               type="url"
               value={portfolioUrl}
               onChange={(e) => setPortfolioUrl(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+              className={fieldClass}
               placeholder="https://yourportfolio.com"
             />
           </div>
@@ -480,7 +504,7 @@ export default function ProfileForm({ profile }: Props) {
       )}
 
       {/* Feedback + Save */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="sticky bottom-20 z-20 flex items-center justify-between gap-4 rounded-[1.5rem] border border-white bg-white/90 p-4 shadow-2xl shadow-slate-900/10 ring-1 ring-slate-200/50 backdrop-blur lg:bottom-6">
         <div className="flex-1">
           {error && (
             <div className="flex items-center gap-2 text-red-600 text-sm">
@@ -498,7 +522,7 @@ export default function ProfileForm({ profile }: Props) {
         <button
           type="submit"
           disabled={saving || avatarUploading}
-          className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all hover:scale-105 text-sm shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+          className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
         >
           {saving ? (
             <>

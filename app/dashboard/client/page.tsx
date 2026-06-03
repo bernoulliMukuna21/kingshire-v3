@@ -12,6 +12,12 @@ import { createClient } from "@/lib/supabase/server";
 import { FadeIn } from "@/components/animations";
 import DashboardShell from "@/components/DashboardShell";
 import { getNavItems } from "@/lib/dashboard-nav";
+import PageHeader from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import EmptyState from "@/components/ui/EmptyState";
+import { ButtonLink } from "@/components/ui/Button";
+import { Avatar } from "@/components/ui/Avatar";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export default async function ClientDashboard() {
   const supabase = await createClient();
@@ -80,20 +86,24 @@ export default async function ClientDashboard() {
 
   return (
     <DashboardShell profile={profile} navItems={navItems}>
-      <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
+      <div className="mx-auto max-w-5xl space-y-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         {/* Greeting */}
         <FadeIn>
-          <h1 className="text-2xl font-black text-gray-900">
-            Welcome back, {firstName} 👋
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Here&apos;s what&apos;s happening with your jobs today.
-          </p>
+          <PageHeader
+            eyebrow="Client dashboard"
+            title={`Welcome back, ${firstName} 👋`}
+            description="Track your posted jobs, review applicants, and release payments from one place."
+            action={
+              <ButtonLink href="/jobs/post" variant="secondary">
+                Post a job
+              </ButtonLink>
+            }
+          />
         </FadeIn>
 
         {/* Needs your attention */}
         <FadeIn>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
             Needs your attention
           </h2>
           {hasPendingActions ? (
@@ -101,7 +111,7 @@ export default async function ClientDashboard() {
               {awaitingReview.map((job) => (
                 <div
                   key={job.id}
-                  className="bg-yellow-50 border border-yellow-200 rounded-2xl p-5 flex items-start gap-4"
+                  className="flex flex-col gap-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 shadow-lg shadow-amber-900/5 sm:flex-row sm:items-start"
                 >
                   <AlertCircle
                     size={20}
@@ -119,7 +129,7 @@ export default async function ClientDashboard() {
                   </div>
                   <Link
                     href={`/jobs/${job.id}`}
-                    className="shrink-0 px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors"
+                    className="shrink-0 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
                   >
                     Review
                   </Link>
@@ -130,7 +140,7 @@ export default async function ClientDashboard() {
                 return (
                   <div
                     key={job.id}
-                    className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-start gap-4"
+                    className="flex flex-col gap-4 rounded-[1.5rem] border border-blue-200 bg-blue-50 p-5 shadow-lg shadow-blue-900/5 sm:flex-row sm:items-start"
                   >
                     <Users
                       size={20}
@@ -147,7 +157,7 @@ export default async function ClientDashboard() {
                     </div>
                     <Link
                       href={`/jobs/${job.id}`}
-                      className="shrink-0 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                      className="shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700"
                     >
                       View applicants
                     </Link>
@@ -156,73 +166,59 @@ export default async function ClientDashboard() {
               })}
             </div>
           ) : (
-            <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl px-5 py-4">
+            <Card className="flex items-center gap-3 px-5 py-4">
               <CheckCircle size={18} className="text-green-500 shrink-0" />
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-slate-500">
                 You&apos;re all caught up — nothing needs your attention right
                 now.
               </p>
-            </div>
+            </Card>
           )}
         </FadeIn>
 
         {/* Active work */}
         <FadeIn>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
             Active work
           </h2>
           {inProgressJobs.length === 0 ? (
-            <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl px-5 py-4">
-              <Briefcase size={18} className="text-gray-300 shrink-0" />
-              <p className="text-sm text-gray-400">
-                {jobs.length === 0 ? (
-                  <>
-                    No jobs posted yet.{" "}
-                    <Link
-                      href="/jobs/post"
-                      className="text-blue-600 hover:underline"
-                    >
-                      Post a job
-                    </Link>{" "}
-                    to get started.
-                  </>
-                ) : (
-                  "No jobs in progress yet — hire a Kinglancer to get the work moving."
-                )}
-              </p>
-            </div>
+            <EmptyState
+              icon={<Briefcase size={22} />}
+              title={jobs.length === 0 ? "No jobs posted yet" : "No active work"}
+              description={
+                jobs.length === 0
+                  ? "Post your first job to start receiving proposals from Kinglancers."
+                  : "Hire a Kinglancer to get the work moving."
+              }
+              action={
+                jobs.length === 0 ? (
+                  <ButtonLink href="/jobs/post" size="sm">
+                    Post a job
+                  </ButtonLink>
+                ) : null
+              }
+            />
           ) : (
             <div className="space-y-2">
               {inProgressJobs.map((job) => {
-                const initials =
-                  job.kinglancer?.full_name
-                    ?.split(" ")
-                    .map((w) => w[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2) ?? "?";
                 return (
                   <Link
                     key={job.id}
                     href={`/jobs/${job.id}`}
-                    className="flex items-center gap-4 bg-white border border-gray-100 rounded-2xl px-5 py-4 hover:border-blue-200 hover:shadow-sm transition-all group"
+                    className="group flex items-center gap-4 rounded-[1.5rem] border border-white bg-white/90 px-5 py-4 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-blue-950/10"
                   >
-                    <div className="w-9 h-9 rounded-full bg-linear-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                      {initials}
-                    </div>
+                    <Avatar name={job.kinglancer?.full_name} tone="green" />
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors truncate">
+                      <p className="font-bold text-slate-950 group-hover:text-blue-700 transition-colors truncate">
                         {job.title}
                       </p>
-                      <p className="text-sm text-gray-400 mt-0.5">
+                      <p className="text-sm text-slate-500 mt-0.5">
                         {job.kinglancer?.full_name ?? "Kinglancer"} · £
                         {Number(job.budget).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
-                        In progress
-                      </span>
+                      <StatusBadge>In progress</StatusBadge>
                       <ChevronRight
                         size={15}
                         className="text-gray-300 group-hover:text-blue-500 transition-colors"
@@ -237,13 +233,13 @@ export default async function ClientDashboard() {
 
         {/* Numbers */}
         <FadeIn>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
             Your numbers
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <Link
               href="/dashboard/client/transactions"
-              className="group bg-white border border-gray-100 rounded-2xl p-5 hover:border-green-200 hover:shadow-sm transition-all"
+              className="group rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-emerald-100"
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-9 h-9 rounded-xl bg-green-50 text-green-600 flex items-center justify-center">
@@ -254,20 +250,20 @@ export default async function ClientDashboard() {
                   className="text-gray-300 group-hover:text-green-500 transition-colors"
                 />
               </div>
-              <p className="text-2xl font-black text-gray-900">
+              <p className="text-2xl font-black text-slate-950">
                 {totalSpent > 0 ? `£${totalSpent.toLocaleString()}` : "£0"}
               </p>
-              <p className="text-sm text-gray-500 mt-0.5">Total spent</p>
+              <p className="text-sm text-slate-500 mt-0.5">Total spent</p>
             </Link>
-            <div className="bg-white border border-gray-100 rounded-2xl p-5">
+            <Card className="p-5">
               <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
                 <CheckCircle size={16} />
               </div>
-              <p className="text-2xl font-black text-gray-900">
+              <p className="text-2xl font-black text-slate-950">
                 {completedCount}
               </p>
-              <p className="text-sm text-gray-500 mt-0.5">Jobs completed</p>
-            </div>
+              <p className="text-sm text-slate-500 mt-0.5">Jobs completed</p>
+            </Card>
           </div>
         </FadeIn>
       </div>

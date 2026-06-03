@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { CheckCircle, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { Card } from "@/components/ui/Card";
+import { ButtonLink } from "@/components/ui/Button";
 
 export default async function PayoutsReturnPage({
   searchParams,
@@ -18,8 +19,8 @@ export default async function PayoutsReturnPage({
   const isComplete = status === "complete";
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 max-w-md w-full text-center">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#eef6ff_0,#f8fafc_34%,#f1f5f9_100%)] flex items-center justify-center px-4">
+      <Card className="max-w-md p-10 text-center">
         {isComplete ? (
           <>
             <div className="flex justify-center mb-5">
@@ -52,13 +53,12 @@ export default async function PayoutsReturnPage({
             </p>
           </>
         )}
-        <Link
+        <ButtonLink
           href="/dashboard/kinglancer"
-          className="inline-block px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-colors text-sm"
         >
           Back to dashboard
-        </Link>
-      </div>
+        </ButtonLink>
+      </Card>
     </div>
   );
 }

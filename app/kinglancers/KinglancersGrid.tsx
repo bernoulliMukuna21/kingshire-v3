@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { Star, Briefcase } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/animations";
+import { Avatar } from "@/components/ui/Avatar";
+import { Card } from "@/components/ui/Card";
 
 interface Kinglancer {
   id: string;
@@ -32,17 +34,17 @@ export default function KinglancersGrid({
   return (
     <>
       {/* Search */}
-      <div className="max-w-6xl mx-auto px-6 -mt-6 mb-8">
+      <div className="mx-auto mb-8 max-w-6xl px-4 pt-10 sm:px-6">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="w-full max-w-md pl-4 pr-4 py-3 rounded-xl border border-gray-200 bg-white shadow-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+          className="w-full max-w-md rounded-2xl border border-white bg-white/90 px-4 py-3 text-sm text-slate-950 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 placeholder:text-slate-400 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Filter by name or skill…"
         />
       </div>
 
       {/* Grid */}
-      <div className="max-w-6xl mx-auto px-6 pb-16">
+      <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         {filtered.length === 0 ? (
           <p className="text-gray-500 text-sm py-12 text-center">
             No Kinglancers match &ldquo;{query}&rdquo;.
@@ -53,42 +55,27 @@ export default function KinglancersGrid({
             staggerDelay={0.05}
           >
             {filtered.map((k) => {
-              const initials = k.full_name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2);
-
               const primarySkill = k.skills?.[0] ?? "Kinglancer";
 
               return (
                 <StaggerItem key={k.id}>
                   <Link href={`/kinglancers/${k.id}`}>
-                    <div className="group bg-white rounded-2xl border border-gray-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50/60 transition-all duration-300 hover:-translate-y-0.5 overflow-hidden">
+                    <Card interactive className="group overflow-hidden">
                       {/* Card body */}
                       <div className="p-5">
                         {/* Avatar + name row */}
                         <div className="flex items-center gap-3.5 mb-4">
-                          <div className="w-12 h-12 rounded-xl bg-[#0f172a] flex items-center justify-center shrink-0 overflow-hidden">
-                            {k.avatar_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={k.avatar_url}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-white font-bold text-base tracking-wide">
-                                {initials}
-                              </span>
-                            )}
-                          </div>
+                          <Avatar
+                            name={k.full_name}
+                            src={k.avatar_url}
+                            className="h-12 w-12"
+                            tone="green"
+                          />
                           <div className="min-w-0">
-                            <p className="font-bold text-gray-900 truncate text-sm group-hover:text-blue-700 transition-colors">
+                            <p className="truncate text-sm font-black text-slate-950 transition-colors group-hover:text-blue-700">
                               {k.full_name}
                             </p>
-                            <p className="text-blue-600 text-xs font-medium truncate">
+                            <p className="truncate text-xs font-bold text-blue-700">
                               {primarySkill}
                             </p>
                           </div>
@@ -100,7 +87,7 @@ export default function KinglancersGrid({
                             {k.skills!.slice(0, 3).map((s) => (
                               <span
                                 key={s}
-                                className="bg-gray-50 border border-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-md"
+                                className="rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs text-slate-600"
                               >
                                 {s}
                               </span>
@@ -109,13 +96,13 @@ export default function KinglancersGrid({
                         )}
 
                         {/* Stats */}
-                        <div className="flex items-center justify-between pt-3 border-t border-gray-50 text-xs text-gray-500">
+                        <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
                           <span className="flex items-center gap-1">
                             <Star
                               size={11}
                               className="text-yellow-400 fill-yellow-400"
                             />
-                            <span className="font-semibold text-gray-700">
+                            <span className="font-bold text-slate-700">
                               {k.jobs_completed > 0
                                 ? Number(k.rating).toFixed(1)
                                 : "New"}
@@ -127,7 +114,7 @@ export default function KinglancersGrid({
                           </span>
                         </div>
                       </div>
-                    </div>
+                    </Card>
                   </Link>
                 </StaggerItem>
               );

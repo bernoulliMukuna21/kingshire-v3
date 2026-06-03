@@ -1,7 +1,8 @@
-import Navbar from "@/components/Navbar";
 import { FadeIn } from "@/components/animations";
 import { createClient } from "@/lib/supabase/server";
 import KinglancersGrid from "./KinglancersGrid";
+import PublicHero from "@/components/ui/PublicHero";
+import PublicShell from "@/components/ui/PublicShell";
 
 export default async function KinglancersPage() {
   const supabase = await createClient();
@@ -15,26 +16,15 @@ export default async function KinglancersPage() {
   const kinglancers = data ?? [];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
-      <div className="bg-[#0f172a] pt-24 pb-16 px-6">
-        <div className="max-w-6xl mx-auto">
-          <FadeIn>
-            <p className="text-blue-400 text-xs font-semibold tracking-widest uppercase mb-3">
-              Community Talent
-            </p>
-            <h1 className="text-3xl md:text-4xl font-black text-white mb-2">
-              Our Kinglancers
-            </h1>
-            <p className="text-white/50 text-base">
-              Skilled, verified members of your community — ready to deliver.
-            </p>
-          </FadeIn>
-        </div>
-      </div>
-
+    <PublicShell>
+      <FadeIn>
+        <PublicHero
+          eyebrow="Community Talent"
+          title="Our Kinglancers"
+          description="Skilled, verified members of your community — ready to deliver."
+        />
+      </FadeIn>
       <KinglancersGrid kinglancers={kinglancers} />
-    </div>
+    </PublicShell>
   );
 }

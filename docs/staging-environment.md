@@ -77,6 +77,10 @@ Set:
 - Stripe test-mode variables
 - A staging-only `CRON_SECRET`
 - Brevo variables if you want to test real email delivery
+- Admin gate variables:
+  - `ADMIN_EMAILS=kingshirecompany@gmail.com`
+  - `ADMIN_PASSCODE=<strong-shared-admin-passcode>`
+  - `ADMIN_SESSION_SECRET=<strong-random-staging-secret>`
 
 Deploy the web service first and verify:
 
@@ -116,7 +120,17 @@ If testing email delivery, verify the sender in Brevo and set:
 The Brevo account can be owned by the Bernoulli developer email; the sender
 address can still be the KingsHire Gmail address once Brevo verifies it.
 
-## 7. Configure Railway Cron Services
+## 7. Configure Admin Access
+
+The admin dashboard is protected by both the signed-in Supabase user email and a
+separate passcode. Only emails listed in `ADMIN_EMAILS` can reach
+`/admin/login`; everyone else is redirected away.
+
+For staging, set `ADMIN_EMAILS` to the exact admin email addresses allowed to
+access the dashboard. Set a different `ADMIN_PASSCODE` and
+`ADMIN_SESSION_SECRET` for production.
+
+## 8. Configure Railway Cron Services
 
 Create two Railway cron services from the same repo:
 

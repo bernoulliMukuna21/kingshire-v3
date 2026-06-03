@@ -4,10 +4,10 @@ import { ScaleIn } from "@/components/animations";
 
 export default function CtaBanner() {
   return (
-    <section className="py-24 px-6">
+    <section className="py-16 md:py-24 px-6">
       <div className="max-w-4xl mx-auto">
         <ScaleIn>
-          <div className="relative bg-linear-to-br from-[#1a2e5a] via-[#1e3a8a] to-[#1a2e5a] animate-gradient rounded-3xl p-12 md:p-16 text-center overflow-hidden">
+          <div className="relative bg-linear-to-br from-[#1a2e5a] via-[#1e3a8a] to-[#1a2e5a] animate-gradient rounded-3xl p-8 sm:p-12 md:p-16 text-center overflow-hidden">
             <div className="absolute top-0 left-1/4 w-64 h-64 bg-blue-400/20 rounded-full blur-3xl" />
             <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-indigo-400/20 rounded-full blur-3xl" />
 
@@ -15,7 +15,7 @@ export default function CtaBanner() {
               <p className="text-blue-300 font-semibold text-sm tracking-widest uppercase mb-4">
                 Ready to get started?
               </p>
-              <h2 className="text-4xl md:text-5xl font-black text-white leading-tight mb-6">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-white leading-tight mb-6">
                 Join your community.
                 <br />
                 Build something real.
@@ -27,7 +27,7 @@ export default function CtaBanner() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
                   href="/sign-up?role=client"
-                  className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#1a2e5a] font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl text-base"
+                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white text-[#1a2e5a] font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl text-sm sm:text-base"
                 >
                   Post a Job
                   <ArrowRight
@@ -37,7 +37,7 @@ export default function CtaBanner() {
                 </Link>
                 <Link
                   href="/sign-up?role=kinglancer"
-                  className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-base"
+                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
                 >
                   Become a Kinglancer
                   <ChevronRight

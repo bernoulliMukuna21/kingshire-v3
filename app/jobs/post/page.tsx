@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import PostJobForm from "./PostJobForm";
 import DashboardShell from "@/components/DashboardShell";
 import { getNavItems } from "@/lib/dashboard-nav";
+import PageHeader from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
 
 export default async function PostJobPage() {
   const supabase = await createClient();
@@ -22,18 +24,16 @@ export default async function PostJobPage() {
 
   return (
     <DashboardShell profile={profile} navItems={navItems}>
-      <div className="max-w-2xl mx-auto px-6 py-10">
-        <div className="mb-8">
-          <h1 className="text-2xl font-black text-gray-900">Post a Job</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Describe what you need and kinglancers from your community will
-            apply.
-          </p>
-        </div>
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <PageHeader
+          eyebrow="New job"
+          title="Post a Job"
+          description="Describe what you need and Kinglancers from your community will apply."
+        />
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
+        <Card className="p-6">
           <PostJobForm />
-        </div>
+        </Card>
       </div>
     </DashboardShell>
   );

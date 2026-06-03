@@ -71,13 +71,13 @@ export default async function HowItWorks() {
       : "Four steps. Fully protected. Built on trust.";
 
   return (
-    <section id="how-it-works" className="py-24 px-6 bg-gray-50">
+    <section id="how-it-works" className="py-16 md:py-24 px-6 bg-gray-50">
       <div className="max-w-6xl mx-auto">
-        <FadeIn className="text-center mb-16">
+        <FadeIn className="text-center mb-10 md:mb-16">
           <p className="text-blue-600 font-semibold text-sm tracking-widest uppercase mb-3">
             Simple by design
           </p>
-          <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 leading-tight">
             How KingsHire works
           </h2>
           <p className="mt-4 text-gray-500 text-lg max-w-xl mx-auto">

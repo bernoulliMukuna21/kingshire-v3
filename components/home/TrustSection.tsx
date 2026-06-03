@@ -24,14 +24,14 @@ const features = [
 
 export default function TrustSection() {
   return (
-    <section className="py-24 px-6 bg-white">
+    <section className="py-16 md:py-24 px-6 bg-white">
       <div className="max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 md:gap-16 items-center">
           <FadeIn direction="right">
             <p className="text-blue-600 font-semibold text-sm tracking-widest uppercase mb-3">
               Built on trust
             </p>
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight mb-6">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 leading-tight mb-6">
               Your money is safe.
               <br />
               <span className="text-gradient">Always.</span>

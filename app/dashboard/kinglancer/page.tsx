@@ -138,55 +138,71 @@ export default async function KinglancerDashboard() {
 
   return (
     <DashboardShell profile={profile} navItems={navItems}>
-      <div className="max-w-5xl mx-auto px-6 py-8">
-        <FadeIn className="mb-8">
-          <h1 className="text-2xl font-black text-gray-900">
-            Welcome back, {firstName} 👋
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            {activeJobsCount > 0
-              ? `You have ${activeJobsCount} active contract${activeJobsCount !== 1 ? "s" : ""}.`
-              : "No active contracts. Browse jobs to find your next opportunity."}
-          </p>
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <FadeIn className="relative mb-6 overflow-hidden rounded-[2rem] bg-[#10234b] p-6 text-white shadow-2xl shadow-blue-950/15 sm:p-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.24),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.28),transparent_34%)]" />
+          <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <span className="mb-4 inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-sky-100 ring-1 ring-white/15">
+                Kinglancer dashboard
+              </span>
+              <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
+                Welcome back, {firstName} 👋
+              </h1>
+              <p className="mt-3 text-sm leading-6 text-white/70 sm:text-base">
+                {activeJobsCount > 0
+                  ? `You have ${activeJobsCount} active contract${activeJobsCount !== 1 ? "s" : ""}. Keep delivery moving and track every payout from here.`
+                  : "No active contracts right now. Browse open jobs and turn your next application into paid work."}
+              </p>
+            </div>
+            <Link
+              href="/jobs"
+              className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-[#10234b] shadow-xl shadow-slate-950/20 transition-all hover:-translate-y-0.5 hover:bg-sky-50"
+            >
+              Browse jobs
+              <ChevronRight size={16} className="ml-1" />
+            </Link>
+          </div>
         </FadeIn>
 
         {/* Payout connection status */}
         <FadeIn className="mb-6">
           {profile.stripe_onboarding_complete ? (
-            <div className="flex items-start gap-4 bg-green-50 border border-green-200 rounded-2xl px-5 py-4">
-              <CheckCircle
-                size={20}
-                className="text-green-600 shrink-0 mt-0.5"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-green-900 text-sm">
-                  Your personal payout account is active
-                </p>
-                <p className="text-green-700 text-sm mt-0.5">
-                  When a client approves your work, KingsHire transfers your
-                  earnings directly to the bank account you registered. The
-                  Stripe dashboard is your personal earnings record — it shows
-                  your balance, upcoming payouts, and transaction history.
-                </p>
+            <div className="flex flex-col gap-4 rounded-[1.75rem] border border-emerald-200/80 bg-emerald-50/90 p-5 shadow-lg shadow-emerald-900/5 ring-1 ring-white sm:flex-row sm:items-start">
+              <div className="flex min-w-0 flex-1 items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm">
+                  <CheckCircle size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-base font-black text-emerald-950">
+                    Your personal payout account is active
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-emerald-800">
+                    When a client approves your work, KingsHire transfers your
+                    earnings directly to the bank account you registered. The
+                    Stripe dashboard shows balances, upcoming payouts, and
+                    transaction history.
+                  </p>
+                </div>
               </div>
               <StripeLoginButton />
             </div>
           ) : (
-            <div className="flex items-start gap-4 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
-              <AlertCircle
-                size={20}
-                className="text-amber-600 shrink-0 mt-0.5"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-amber-900 text-sm">
-                  Connect your bank account to receive earnings
-                </p>
-                <p className="text-amber-700 text-sm mt-0.5">
-                  KingsHire uses Stripe to pay you securely. Set up your
-                  personal payout account once — after that, every approved
-                  payment goes straight to your bank automatically. Takes less
-                  than 2 minutes.
-                </p>
+            <div className="flex flex-col gap-4 rounded-[1.75rem] border border-amber-200/80 bg-amber-50/90 p-5 shadow-lg shadow-amber-900/5 ring-1 ring-white sm:flex-row sm:items-start">
+              <div className="flex min-w-0 flex-1 items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-amber-600 shadow-sm">
+                  <AlertCircle size={22} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-base font-black text-amber-950">
+                    Connect your bank account to receive earnings
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-amber-800">
+                    KingsHire uses Stripe to pay you securely. Set up your
+                    personal payout account once — after that, every approved
+                    payment goes straight to your bank automatically.
+                  </p>
+                </div>
               </div>
               <PayoutSetupButton />
             </div>
@@ -208,9 +224,9 @@ export default async function KinglancerDashboard() {
             }, 0);
             return (
               <FadeIn className="mb-6">
-                <div className="rounded-2xl overflow-hidden border border-white/5">
+                <div className="overflow-hidden rounded-[1.75rem] border border-white/10 shadow-2xl shadow-blue-950/10">
                   {/* Summary header */}
-                  <div className="bg-linear-to-r from-[#0f172a] to-[#1e3a7a] px-5 py-4 flex items-center justify-between">
+                  <div className="flex items-center justify-between bg-linear-to-r from-[#0f172a] to-[#1e3a7a] px-5 py-4">
                     <div>
                       <p className="text-white font-bold text-sm">
                         Active Contracts
@@ -257,7 +273,7 @@ export default async function KinglancerDashboard() {
 
         {/* Stats */}
         <Stagger
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+          className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4"
           staggerDelay={0.07}
         >
           {stats.map((stat) => (
@@ -265,29 +281,33 @@ export default async function KinglancerDashboard() {
               {stat.href ? (
                 <Link
                   href={stat.href}
-                  className="block bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-md hover:border-blue-100 transition-all"
+                  className="group block rounded-[1.5rem] border border-white bg-white/85 p-5 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur transition-all hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-950/10"
                 >
                   <div
-                    className={`w-10 h-10 rounded-xl ${stat.color} flex items-center justify-center mb-3`}
+                    className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color} transition-transform group-hover:scale-105`}
                   >
                     <stat.icon size={18} />
                   </div>
-                  <p className="text-2xl font-black text-gray-900">
+                  <p className="text-2xl font-black text-slate-950">
                     {stat.value}
                   </p>
-                  <p className="text-gray-500 text-sm">{stat.label}</p>
+                  <p className="text-sm font-medium text-slate-500">
+                    {stat.label}
+                  </p>
                 </Link>
               ) : (
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
+                <div className="rounded-[1.5rem] border border-white bg-white/85 p-5 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">
                   <div
-                    className={`w-10 h-10 rounded-xl ${stat.color} flex items-center justify-center mb-3`}
+                    className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color}`}
                   >
                     <stat.icon size={18} />
                   </div>
-                  <p className="text-2xl font-black text-gray-900">
+                  <p className="text-2xl font-black text-slate-950">
                     {stat.value}
                   </p>
-                  <p className="text-gray-500 text-sm">{stat.label}</p>
+                  <p className="text-sm font-medium text-slate-500">
+                    {stat.label}
+                  </p>
                 </div>
               )}
             </StaggerItem>
@@ -295,30 +315,37 @@ export default async function KinglancerDashboard() {
         </Stagger>
 
         {/* Applications list */}
-        <FadeIn className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
-            <h2 className="font-bold text-gray-900">My Applications</h2>
+        <FadeIn className="overflow-hidden rounded-[1.75rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">
+          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+            <div>
+              <h2 className="font-black text-slate-950">My Applications</h2>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Recent applications and selection status
+              </p>
+            </div>
             <Link
               href="/jobs"
-              className="text-sm text-blue-600 hover:underline"
+              className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100"
             >
-              Browse more jobs
+              Browse jobs
             </Link>
           </div>
 
           {applications.length === 0 ? (
             <div className="px-6 py-12 text-center">
               <DollarSign size={32} className="text-gray-200 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">No applications yet.</p>
+              <p className="text-sm font-medium text-slate-500">
+                No applications yet.
+              </p>
               <Link
                 href="/jobs"
-                className="inline-block mt-4 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm transition-colors"
+                className="mt-4 inline-block rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-700"
               >
                 Browse open jobs
               </Link>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-slate-100">
               {applications.map((app) => {
                 if (!app.job) return null;
                 const isDisputed = app.job.status === "disputed";
@@ -329,13 +356,13 @@ export default async function KinglancerDashboard() {
                   <Link
                     key={app.id}
                     href={`/jobs/${app.job.id}`}
-                    className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors group"
+                    className="group flex items-center justify-between px-5 py-4 transition-colors hover:bg-slate-50 sm:px-6"
                   >
                     <div className="flex-1 min-w-0 pr-4">
-                      <p className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors truncate">
+                      <p className="truncate font-bold text-slate-950 transition-colors group-hover:text-blue-700">
                         {app.job.title}
                       </p>
-                      <p className="text-sm text-gray-500 mt-0.5">
+                      <p className="mt-1 text-sm text-slate-500">
                         {isDisputed
                           ? "This job is under dispute."
                           : app.status === "accepted"
@@ -351,7 +378,7 @@ export default async function KinglancerDashboard() {
                       >
                         {s.label}
                       </span>
-                      <span className="font-bold text-gray-900">
+                      <span className="font-black text-slate-950">
                         £{Number(app.job.budget).toLocaleString()}
                       </span>
                       <ChevronRight

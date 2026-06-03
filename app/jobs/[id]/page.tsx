@@ -1,6 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
 import { Calendar, Briefcase, Tag } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
@@ -15,6 +13,10 @@ import {
   KinglancerCompleteButton,
   ClientApproveActions,
 } from "./JobActions";
+import PublicShell from "@/components/ui/PublicShell";
+import { ButtonLink } from "@/components/ui/Button";
+import { Card, cardPadding } from "@/components/ui/Card";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export default async function JobDetailPage({
   params,
@@ -98,24 +100,22 @@ export default async function JobDetailPage({
         : "Daily rate held in escrow on selection";
 
   const pageContent = (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <BackButton />
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6">
+          <Card className={cardPadding}>
             <div className="flex items-center gap-2 mb-3">
-              <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${s.color}`}
-              >
+              <StatusBadge className={s.color}>
                 {s.label}
-              </span>
+              </StatusBadge>
             </div>
 
-            <h1 className="text-xl font-black text-gray-900 mb-4">
+            <h1 className="text-xl font-black text-slate-950 mb-4">
               {job.title}
             </h1>
 
-            <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
+            <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
               {job.description}
             </p>
 
@@ -124,69 +124,69 @@ export default async function JobDetailPage({
                 {job.categories.map((cat) => (
                   <span
                     key={cat}
-                    className="bg-blue-50 text-blue-600 text-xs font-medium px-2.5 py-1 rounded-lg"
+                    className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700"
                   >
                     {cat}
                   </span>
                 ))}
               </div>
             )}
-          </div>
+          </Card>
 
           {isOwner && job.status === "open" && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <Card className={cardPadding}>
               <h2 className="font-bold text-gray-900 mb-4">
                 Applicants ({applications.length})
               </h2>
               <ApplicantsList applications={applications} jobId={id} />
-            </div>
+            </Card>
           )}
 
           {isAssignedKinglancer && job.status === "in_progress" && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <Card className={cardPadding}>
               <h2 className="font-bold text-gray-900 mb-1">Ready to submit?</h2>
               <p className="text-sm text-gray-500 mb-4">
                 Once you mark your work as done, the client will be asked to
                 review and approve it.
               </p>
               <KinglancerCompleteButton jobId={id} />
-            </div>
+            </Card>
           )}
 
           {isOwner && job.status === "completed" && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <Card className={cardPadding}>
               <h2 className="font-bold text-gray-900 mb-1">Work submitted</h2>
               <p className="text-sm text-gray-500 mb-4">
                 The Kinglancer has marked this work as done. Review it and
                 release the payment, or raise a dispute if something is wrong.
               </p>
               <ClientApproveActions jobId={id} showApprove={true} />
-            </div>
+            </Card>
           )}
 
           {isOwner && job.status === "in_progress" && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <Card className={cardPadding}>
               <h2 className="font-bold text-gray-900 mb-1">Job in progress</h2>
               <p className="text-sm text-gray-500 mb-4">
                 Waiting for the Kinglancer to complete the work and submit it
                 for review.
               </p>
               <ClientApproveActions jobId={id} showApprove={false} />
-            </div>
+            </Card>
           )}
 
           {!isOwner && job.status === "open" && (
-            <div className="bg-white rounded-2xl border border-gray-100 p-6">
+            <Card className={cardPadding}>
               <h2 className="font-bold text-gray-900 mb-1">Apply</h2>
               {!user ? (
                 <div className="text-sm text-gray-500 space-y-3 mt-3">
                   <p>Sign in to apply for this job.</p>
-                  <Link
+                  <ButtonLink
                     href="/sign-in"
-                    className="inline-block px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-sm transition-all"
+                    size="sm"
                   >
                     Sign in
-                  </Link>
+                  </ButtonLink>
                 </div>
               ) : alreadyApplied ? (
                 <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-xl p-4 mt-3">
@@ -203,12 +203,12 @@ export default async function JobDetailPage({
                   Switch your account to Kinglancer to apply for jobs.
                 </p>
               ) : null}
-            </div>
+            </Card>
           )}
         </div>
 
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <Card className="p-5">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
               Budget
             </p>
@@ -225,9 +225,9 @@ export default async function JobDetailPage({
                 stated above.
               </p>
             )}
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
+          <Card className="space-y-3 p-5">
             {job.deadline && (
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Calendar size={16} className="text-gray-400 shrink-0" />
@@ -257,9 +257,9 @@ export default async function JobDetailPage({
                 })}
               </span>
             </div>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
+          <Card className="p-5">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
               Posted by
             </p>
@@ -280,7 +280,7 @@ export default async function JobDetailPage({
                 {job.client.full_name}
               </p>
             </div>
-          </div>
+          </Card>
         </div>
       </div>
     </div>
@@ -300,24 +300,10 @@ export default async function JobDetailPage({
     );
   }
 
-  // Guest: minimal public header
+  // Guest: public shell
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-[#0f172a] sticky top-0 z-40">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center">
-          <Link href="/">
-            <Image
-              src="/logo.png"
-              alt="KingsHire"
-              width={120}
-              height={36}
-              className="h-8 w-auto brightness-0 invert"
-              priority
-            />
-          </Link>
-        </div>
-      </div>
-      {pageContent}
-    </div>
+    <PublicShell>
+      <div className="pt-20">{pageContent}</div>
+    </PublicShell>
   );
 }

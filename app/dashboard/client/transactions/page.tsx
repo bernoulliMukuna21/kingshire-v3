@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
 import DashboardShell from "@/components/DashboardShell";
 import { getNavItems } from "@/lib/dashboard-nav";
+import PageHeader from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import EmptyState from "@/components/ui/EmptyState";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: "Awaiting payment", color: "bg-gray-100 text-gray-600" },
@@ -69,24 +73,23 @@ export default async function TransactionsPage() {
 
   return (
     <DashboardShell profile={profile} navItems={navItems}>
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
         <FadeIn className="mb-8">
-          <h1 className="text-2xl font-black text-gray-900">
-            Transaction History
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            All payments made through KingsHire.
-          </p>
+          <PageHeader
+            eyebrow="Payments"
+            title="Transaction History"
+            description="All payments made through KingsHire, including escrow and released payments."
+          />
         </FadeIn>
 
         {/* Summary cards */}
         <Stagger className="grid grid-cols-2 gap-4 mb-8" staggerDelay={0.07}>
           <StaggerItem>
-            <div className="bg-white rounded-2xl p-5 border border-gray-100">
+            <Card className="p-5">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                 Total Spent
               </p>
-              <p className="text-3xl font-black text-gray-900">
+              <p className="text-3xl font-black text-slate-950">
                 £{totalSpent.toFixed(2)}
               </p>
               <p className="text-xs text-gray-400 mt-1">
@@ -98,32 +101,30 @@ export default async function TransactionsPage() {
                   ? "s"
                   : ""}
               </p>
-            </div>
+            </Card>
           </StaggerItem>
           <StaggerItem>
-            <div className="bg-white rounded-2xl p-5 border border-gray-100">
+            <Card className="p-5">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                 Held in Escrow
               </p>
-              <p className="text-3xl font-black text-gray-900">
+              <p className="text-3xl font-black text-slate-950">
                 £{totalHeld.toFixed(2)}
               </p>
               <p className="text-xs text-gray-400 mt-1">
                 Funds reserved for active jobs
               </p>
-            </div>
+            </Card>
           </StaggerItem>
         </Stagger>
 
         {/* Transactions list */}
-        <FadeIn className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <FadeIn className="overflow-hidden rounded-[1.75rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
           {transactions.length === 0 ? (
-            <div className="px-6 py-12 text-center">
-              <p className="text-gray-400 text-sm">No transactions yet.</p>
-              <p className="text-gray-400 text-xs mt-1">
-                Payments will appear here once you hire a Kinglancer.
-              </p>
-            </div>
+            <EmptyState
+              title="No transactions yet"
+              description="Payments will appear here once you hire a Kinglancer."
+            />
           ) : (
             <div className="divide-y divide-gray-50">
               {/* Header row */}
@@ -163,7 +164,7 @@ export default async function TransactionsPage() {
                     </div>
 
                     <div className="text-right">
-                      <p className="font-bold text-gray-900 text-sm">
+                      <p className="font-bold text-slate-950 text-sm">
                         £{total.toFixed(2)}
                       </p>
                       <p className="text-xs text-gray-400">total</p>
@@ -177,11 +178,9 @@ export default async function TransactionsPage() {
                     </div>
 
                     <div>
-                      <span
-                        className={`inline-block px-2.5 py-1 rounded-full text-xs font-medium ${s.color}`}
-                      >
+                      <StatusBadge className={s.color}>
                         {s.label}
-                      </span>
+                      </StatusBadge>
                     </div>
                   </div>
                 );

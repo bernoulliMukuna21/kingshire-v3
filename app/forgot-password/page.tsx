@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
+import { Button } from "@/components/ui/Button";
+import { Field } from "@/components/ui/Field";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -88,27 +90,22 @@ export default function ForgotPasswordPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                  Email address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-sm transition-all bg-white"
-                  placeholder="jane@example.com"
-                  required
-                />
-              </div>
-              <button
+              <Field
+                label="Email address"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jane@example.com"
+                required
+              />
+              <Button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 flex items-center justify-center gap-2"
+                className="w-full"
               >
                 {loading && <Loader2 size={16} className="animate-spin" />}
                 {loading ? "Sending…" : "Send reset link"}
-              </button>
+              </Button>
             </form>
           </>
         )}

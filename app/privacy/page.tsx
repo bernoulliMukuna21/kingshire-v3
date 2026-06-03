@@ -1,26 +1,24 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Metadata } from "next";
+import PublicShell from "@/components/ui/PublicShell";
+import PublicHero from "@/components/ui/PublicHero";
+import { Card } from "@/components/ui/Card";
 
 export const metadata: Metadata = { title: "Privacy Policy" };
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors mb-10"
-        >
-          <ArrowLeft size={14} /> Back to home
-        </Link>
+    <PublicShell>
+      <PublicHero
+        title="Privacy Policy"
+        description="How KingsHire collects, uses, and protects your personal data."
+      />
+      <section className="px-4 py-10 sm:px-6">
+        <Card className="mx-auto max-w-3xl p-6 sm:p-8">
+          <p className="mb-10 text-sm text-slate-400">
+            Last updated: 15 May 2026
+          </p>
 
-        <h1 className="text-3xl font-black text-gray-900 mb-2">
-          Privacy Policy
-        </h1>
-        <p className="text-sm text-gray-400 mb-10">Last updated: 15 May 2026</p>
-
-        <div className="prose prose-gray max-w-none space-y-8 text-sm text-gray-600 leading-relaxed">
+          <div className="prose prose-gray max-w-none space-y-8 text-sm text-gray-600 leading-relaxed">
           <section>
             <h2 className="text-base font-bold text-gray-900 mb-2">
               1. Who We Are
@@ -165,8 +163,9 @@ export default function PrivacyPage() {
               .
             </p>
           </section>
-        </div>
-      </div>
-    </div>
+          </div>
+        </Card>
+      </section>
+    </PublicShell>
   );
 }

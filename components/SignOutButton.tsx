@@ -1,25 +1,30 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/Button";
 
-export default function SignOutButton() {
-  const router = useRouter();
+type Props = {
+  className?: string;
+  onSignOut?: () => void;
+};
 
+export default function SignOutButton({ className = "", onSignOut }: Props) {
   const handleSignOut = async () => {
     const supabase = createClient();
+    await fetch("/api/admin/session", { method: "DELETE" }).catch(() => null);
     await supabase.auth.signOut();
-    router.push("/sign-in");
+    onSignOut?.();
+    window.location.href = "/sign-in";
   };
 
   return (
-    <button
+    <Button
+      type="button"
       onClick={handleSignOut}
-      className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-white/50 hover:text-white hover:bg-white/5 transition-all"
+      variant="danger"
+      className={className}
     >
-      <LogOut size={16} />
       Sign out
-    </button>
+    </Button>
   );
 }

@@ -112,7 +112,7 @@ export default function HeroSection() {
   return (
     <section
       ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16"
     >
       {/* Animated gradient background */}
       <motion.div
@@ -203,7 +203,7 @@ export default function HeroSection() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8"
         >
-          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+          <span className="w-2 h-2 bg-green-400 rounded-full" />
           <span className="text-white/90 text-sm font-medium">
             Trusted · Secure · Fair
           </span>
@@ -213,7 +213,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3 }}
-          className="text-5xl md:text-7xl font-black text-white leading-tight tracking-tight"
+          className="text-4xl sm:text-5xl md:text-7xl font-black text-white leading-tight tracking-tight"
         >
           Hire from your{" "}
           <span className="relative">
@@ -233,7 +233,7 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="mt-6 text-lg md:text-xl text-white/60 max-w-2xl mx-auto leading-relaxed"
+          className="mt-4 text-base sm:text-lg md:text-xl text-white/60 max-w-2xl mx-auto leading-relaxed"
         >
           KingsHire connects people who need work done with skilled people who
           can do it — with trust, security, and fair pay built in from the
@@ -244,20 +244,20 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="mt-10 flex flex-col sm:flex-row gap-4 justify-center"
+          className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center"
         >
           {isLoggedIn ? (
             <>
               <Link
                 href={dashboardHref}
-                className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/30 text-base"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/30 text-sm sm:text-base"
               >
                 <LayoutDashboard size={18} />
                 Go to Dashboard
               </Link>
               <Link
                 href="/jobs"
-                className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-base"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
               >
                 Browse Jobs
                 <ChevronRight
@@ -270,7 +270,7 @@ export default function HeroSection() {
             <>
               <Link
                 href="/sign-up?role=client"
-                className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/30 text-base"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/30 text-sm sm:text-base"
               >
                 Post a Job
                 <ArrowRight
@@ -280,7 +280,7 @@ export default function HeroSection() {
               </Link>
               <Link
                 href="/sign-up?role=kinglancer"
-                className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-base"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
               >
                 Offer Your Skills
                 <ChevronRight
@@ -296,7 +296,7 @@ export default function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.9 }}
-          className="mt-10 flex flex-wrap justify-center gap-8"
+          className="mt-8 flex flex-wrap justify-center gap-6 sm:gap-8"
         >
           {stats.map((stat) => (
             <div key={stat.label} className="text-center">
@@ -310,7 +310,7 @@ export default function HeroSection() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 1 }}
-          className="mt-14 flex flex-wrap justify-center gap-6 text-white/50 text-sm"
+          className="mt-8 sm:mt-14 flex flex-wrap justify-center gap-4 sm:gap-6 text-white/50 text-xs sm:text-sm"
         >
           {trustBadges.map((item) => (
             <span key={item} className="flex items-center gap-1.5">

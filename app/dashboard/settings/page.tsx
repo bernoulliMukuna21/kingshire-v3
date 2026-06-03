@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import SwitchRoleButton from "@/app/dashboard/profile/SwitchRoleButton";
 import DashboardShell from "@/components/DashboardShell";
 import { getNavItems } from "@/lib/dashboard-nav";
+import PageHeader from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -29,33 +31,32 @@ export default async function SettingsPage() {
 
   return (
     <DashboardShell profile={profile} navItems={navItems}>
-      <div className="max-w-2xl mx-auto px-6 py-8 space-y-6">
-        <div className="mb-8">
-          <h1 className="text-2xl font-black text-gray-900">Settings</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Manage your account preferences.
-          </p>
-        </div>
+      <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <PageHeader
+          eyebrow="Account"
+          title="Settings"
+          description="Manage your account preferences and account-level requests."
+        />
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-1">
+        <Card className="p-6">
+          <h2 className="text-base font-black text-slate-950 mb-1">
             Switch Role
           </h2>
-          <p className="text-gray-500 text-sm mb-5">
+          <p className="text-slate-500 text-sm mb-5">
             You are currently a{" "}
-            <span className="font-semibold text-gray-800">
+            <span className="font-bold text-slate-800">
               {isKinglancer ? "Kinglancer" : "Client"}
             </span>
             . Switching will move you to the other dashboard.
           </p>
           <SwitchRoleButton currentRole={profile.role} />
-        </div>
+        </Card>
 
-        <div className="bg-white rounded-2xl border border-red-100 p-6">
-          <h2 className="text-base font-bold text-gray-900 mb-1">
+        <Card className="border-red-100 p-6 ring-red-100/60">
+          <h2 className="text-base font-black text-slate-950 mb-1">
             Account Deletion
           </h2>
-          <p className="text-gray-500 text-sm mb-5">
+          <p className="text-slate-500 text-sm mb-5">
             For the MVP, deletion requests are reviewed manually so payments,
             jobs, disputes, and required transaction records are handled
             correctly.
@@ -66,7 +67,7 @@ export default async function SettingsPage() {
           >
             Request account deletion
           </a>
-        </div>
+        </Card>
       </div>
     </DashboardShell>
   );

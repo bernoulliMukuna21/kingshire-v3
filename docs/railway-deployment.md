@@ -26,12 +26,18 @@ Required variables:
 - `BREVO_SENDER_NAME`
 - `BREVO_SENDER_EMAIL`
 - `ADMIN_NOTIFICATION_EMAIL`
+- `ADMIN_EMAILS`
+- `ADMIN_PASSCODE`
+- `ADMIN_SESSION_SECRET`
 
 `APP_URL` and `NEXT_PUBLIC_APP_URL` should both point to the Railway public URL
 or custom domain for the current environment.
 
 `<STAGING_APP_URL>` in the staging docs means this same Railway public URL; it
 is not a separate environment variable.
+
+`ADMIN_EMAILS` is a comma-separated allowlist. `ADMIN_PASSCODE` is required for
+`/admin/login`, and `ADMIN_SESSION_SECRET` signs the short-lived admin cookie.
 
 ## Cron Services
 

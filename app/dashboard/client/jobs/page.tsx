@@ -4,6 +4,10 @@ import { Plus, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import DashboardShell from "@/components/DashboardShell";
 import { getNavItems } from "@/lib/dashboard-nav";
+import PageHeader from "@/components/ui/PageHeader";
+import EmptyState from "@/components/ui/EmptyState";
+import { ButtonLink } from "@/components/ui/Button";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const STATUS_CONFIG: Record<
   string,
@@ -91,43 +95,31 @@ export default async function MyJobsPage() {
 
   return (
     <DashboardShell profile={profile} navItems={navItems}>
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-black text-gray-900">My Jobs</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              All jobs you&apos;ve posted — track progress and manage
-              applicants.
-            </p>
-          </div>
-          <Link
-            href="/jobs/post"
-            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
-          >
-            <Plus size={16} />
-            Post a Job
-          </Link>
-        </div>
+      <div className="mx-auto max-w-5xl space-y-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+        <PageHeader
+          eyebrow="Client"
+          title="My Jobs"
+          description="All jobs you have posted — track progress and manage applicants."
+          action={
+            <ButtonLink href="/jobs/post" variant="secondary">
+              <Plus size={16} />
+              Post a Job
+            </ButtonLink>
+          }
+        />
 
         {!jobs || jobs.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center">
-            <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">💼</span>
-            </div>
-            <h3 className="text-gray-900 font-semibold mb-1">
-              No jobs posted yet
-            </h3>
-            <p className="text-gray-500 text-sm mb-6">
-              Post your first job to start finding skilled community members.
-            </p>
-            <Link
-              href="/jobs/post"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition-colors"
-            >
-              <Plus size={15} />
-              Post your first job
-            </Link>
-          </div>
+          <EmptyState
+            icon={<span className="text-2xl">💼</span>}
+            title="No jobs posted yet"
+            description="Post your first job to start finding skilled community members."
+            action={
+              <ButtonLink href="/jobs/post" size="sm">
+                <Plus size={15} />
+                Post your first job
+              </ButtonLink>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {jobs.map((job) => {
@@ -137,23 +129,21 @@ export default async function MyJobsPage() {
                 <Link
                   key={job.id}
                   href={`/jobs/${job.id}`}
-                  className="flex items-center gap-4 bg-white rounded-2xl border border-gray-100 px-6 py-4 hover:border-blue-200 hover:shadow-sm transition-all group"
+                  className="group flex items-center gap-4 rounded-[1.5rem] border border-white bg-white/90 px-6 py-4 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-gray-900 font-semibold truncate group-hover:text-blue-600 transition-colors">
+                      <h3 className="text-slate-950 font-bold truncate group-hover:text-blue-600 transition-colors">
                         {job.title}
                       </h3>
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${config.color}`}
-                      >
+                      <StatusBadge className={`shrink-0 ${config.color}`}>
                         <span
                           className={`w-1.5 h-1.5 rounded-full ${config.dot}`}
                         />
                         {config.label}
-                      </span>
+                      </StatusBadge>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
                       <span>£{Number(job.budget).toLocaleString()}</span>
                       <span>{(job.categories ?? []).join(", ")}</span>
                       {appCount > 0 && (

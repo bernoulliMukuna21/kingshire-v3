@@ -18,7 +18,7 @@ const skills = [
 
 export default function SkillsMarquee() {
   return (
-    <div className="bg-[#0f172a] py-5 overflow-hidden border-y border-white/5">
+    <div className="bg-[#1a2e5a] py-5 overflow-hidden border-y border-white/5">
       <div className="flex gap-0">
         <div className="flex gap-8 animate-marquee whitespace-nowrap">
           {[...skills, ...skills].map((skill, i) => (

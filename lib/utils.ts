@@ -9,3 +9,9 @@ export function getInitials(fullName: string | null | undefined): string {
       .slice(0, 2) ?? "?"
   );
 }
+
+export function cn(
+  ...classes: Array<string | false | null | undefined>
+): string {
+  return classes.filter(Boolean).join(" ");
+}
