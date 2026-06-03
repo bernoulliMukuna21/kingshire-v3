@@ -66,12 +66,38 @@ export async function GET(request: NextRequest) {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        // Use service client so the profile trigger does not revert `role`
+        const metadata = user.user_metadata ?? {};
+        const fullName =
+          typeof metadata.full_name === "string" && metadata.full_name.trim()
+            ? metadata.full_name
+            : typeof metadata.name === "string" && metadata.name.trim()
+              ? metadata.name
+              : user.email?.split("@")[0] || "KingsHire user";
+        const avatarUrl =
+          typeof metadata.avatar_url === "string"
+            ? metadata.avatar_url
+            : typeof metadata.picture === "string"
+              ? metadata.picture
+              : null;
+
+        // Use service client so the profile trigger does not revert `role`.
+        // Upsert protects the first Google callback even if the auth trigger
+        // has not created the profile row yet.
         const serviceDb = createServiceClient();
-        await serviceDb
-          .from("profiles")
-          .update({ role: signupRole as "client" | "kinglancer" })
-          .eq("id", user.id);
+        const { error: profileError } = await serviceDb.from("profiles").upsert(
+          {
+            id: user.id,
+            email: user.email ?? "",
+            full_name: fullName,
+            avatar_url: avatarUrl,
+            role: signupRole,
+          },
+          { onConflict: "id" },
+        );
+
+        if (profileError) {
+          return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
+        }
       }
     }
     destination =

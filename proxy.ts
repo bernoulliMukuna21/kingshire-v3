@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getRoleHome } from "@/lib/roles";
 
 export const config = {
   matcher: [
@@ -23,7 +24,12 @@ export const proxy = async (request: NextRequest) => {
   }
 
   // Protected routes → must be logged in
-  const protectedPrefixes = ["/dashboard", "/jobs/post", "/onboarding", "/reset-password"];
+  const protectedPrefixes = [
+    "/dashboard",
+    "/jobs/post",
+    "/onboarding",
+    "/reset-password",
+  ];
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p));
   if (!user && isProtected) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
@@ -74,10 +80,7 @@ const redirectLoggedInUser = async (
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
-  const dashboard =
-    profile.role === "kinglancer"
-      ? "/dashboard/kinglancer"
-      : "/dashboard/client";
-
-  return NextResponse.redirect(new URL(dashboard, request.url));
+  return NextResponse.redirect(
+    new URL(getRoleHome(profile.role), request.url),
+  );
 };
