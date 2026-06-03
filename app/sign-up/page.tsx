@@ -62,7 +62,12 @@ export default function SignUpPage() {
     const redirectTo = `${window.location.origin}/auth/callback?signup_role=${role}&signup_via=google`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: {
+        redirectTo,
+        queryParams: {
+          prompt: "select_account",
+        },
+      },
     });
   };
 
@@ -88,7 +93,7 @@ export default function SignUpPage() {
       options: {
         data: {
           full_name: `${form.firstName} ${form.lastName}`,
-          role,
+          role: role === "client" ? "client" : null,
           phone: form.phone || null,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback?signup_role=${role}&signup_via=email`,

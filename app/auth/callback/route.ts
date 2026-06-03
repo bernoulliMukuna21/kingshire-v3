@@ -61,49 +61,75 @@ export async function GET(request: NextRequest) {
     // Password-reset flow → go straight to the reset page
     destination = `${origin}${next}`;
   } else if (signupRole) {
+    let existingRole: string | null = null;
+
     if (signupVia === "google") {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) {
-        const metadata = user.user_metadata ?? {};
-        const fullName =
-          typeof metadata.full_name === "string" && metadata.full_name.trim()
-            ? metadata.full_name
-            : typeof metadata.name === "string" && metadata.name.trim()
-              ? metadata.name
-              : user.email?.split("@")[0] || "KingsHire user";
-        const avatarUrl =
-          typeof metadata.avatar_url === "string"
-            ? metadata.avatar_url
-            : typeof metadata.picture === "string"
-              ? metadata.picture
-              : null;
 
-        // Use service client so the profile trigger does not revert `role`.
-        // Upsert protects the first Google callback even if the auth trigger
-        // has not created the profile row yet.
-        const serviceDb = createServiceClient();
-        const { error: profileError } = await serviceDb.from("profiles").upsert(
-          {
-            id: user.id,
-            email: user.email ?? "",
-            full_name: fullName,
-            avatar_url: avatarUrl,
-            role: signupRole,
-          },
-          { onConflict: "id" },
-        );
+      if (!user) {
+        return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
+      }
 
-        if (profileError) {
-          return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
-        }
+      const metadata = user.user_metadata ?? {};
+      const fullName =
+        typeof metadata.full_name === "string" && metadata.full_name.trim()
+          ? metadata.full_name
+          : typeof metadata.name === "string" && metadata.name.trim()
+            ? metadata.name
+            : user.email?.split("@")[0] || "KingsHire user";
+      const avatarUrl =
+        typeof metadata.avatar_url === "string"
+          ? metadata.avatar_url
+          : typeof metadata.picture === "string"
+            ? metadata.picture
+            : null;
+
+      // Use service client so the profile trigger does not revert system fields.
+      // Existing users keep their current role. New/unfinished Google users only
+      // receive the client role immediately; kinglancer role is assigned after
+      // they complete onboarding with at least one service.
+      const serviceDb = createServiceClient();
+      const { data: currentProfile, error: profileReadError } = await serviceDb
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileReadError) {
+        return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
+      }
+
+      existingRole = currentProfile?.role ?? null;
+      const roleToPersist = existingRole
+        ? existingRole
+        : signupRole === "client"
+          ? "client"
+          : null;
+
+      const { error: profileError } = await serviceDb.from("profiles").upsert(
+        {
+          id: user.id,
+          email: user.email ?? "",
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          role: roleToPersist,
+        },
+        { onConflict: "id" },
+      );
+
+      if (profileError) {
+        return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
       }
     }
+
     destination =
-      signupRole === "client"
+      existingRole === "admin" || existingRole === "kinglancer"
+        ? `${origin}${getRoleHome(existingRole)}`
+        : signupRole === "client"
         ? `${origin}/dashboard/client`
-        : `${origin}/onboarding?from=${signupVia ?? "google"}`;
+        : `${origin}/onboarding?from=${signupVia ?? "google"}&role=kinglancer&next=/dashboard/kinglancer`;
   } else {
     const {
       data: { user },
