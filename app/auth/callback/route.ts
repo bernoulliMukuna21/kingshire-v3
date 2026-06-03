@@ -3,6 +3,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRoleHome, isMarketplaceRole } from "@/lib/roles";
 
+function getGoogleProfileMetadata(metadata: Record<string, unknown>) {
+  const fullName =
+    typeof metadata.full_name === "string" && metadata.full_name.trim()
+      ? metadata.full_name
+      : typeof metadata.name === "string" && metadata.name.trim()
+        ? metadata.name
+        : null;
+  const avatarUrl =
+    typeof metadata.avatar_url === "string" && metadata.avatar_url.trim()
+      ? metadata.avatar_url
+      : typeof metadata.picture === "string" && metadata.picture.trim()
+        ? metadata.picture
+        : null;
+
+  return { fullName, avatarUrl };
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin: requestOrigin } = new URL(request.url);
   // Behind Railway's reverse proxy, request.url may contain the internal
@@ -72,19 +89,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
       }
 
-      const metadata = user.user_metadata ?? {};
-      const fullName =
-        typeof metadata.full_name === "string" && metadata.full_name.trim()
-          ? metadata.full_name
-          : typeof metadata.name === "string" && metadata.name.trim()
-            ? metadata.name
-            : user.email?.split("@")[0] || "KingsHire user";
-      const avatarUrl =
-        typeof metadata.avatar_url === "string"
-          ? metadata.avatar_url
-          : typeof metadata.picture === "string"
-            ? metadata.picture
-            : null;
+      const { fullName, avatarUrl } = getGoogleProfileMetadata(
+        user.user_metadata ?? {},
+      );
 
       // Use service client so the profile trigger does not revert system fields.
       // Existing users keep their current role. New/unfinished Google users only
@@ -93,7 +100,7 @@ export async function GET(request: NextRequest) {
       const serviceDb = createServiceClient();
       const { data: currentProfile, error: profileReadError } = await serviceDb
         .from("profiles")
-        .select("role")
+        .select("role, avatar_url")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -108,16 +115,26 @@ export async function GET(request: NextRequest) {
           ? "client"
           : null;
 
-      const { error: profileError } = await serviceDb.from("profiles").upsert(
-        {
-          id: user.id,
-          email: user.email ?? "",
-          full_name: fullName,
-          avatar_url: avatarUrl,
-          role: roleToPersist,
-        },
-        { onConflict: "id" },
-      );
+      const profilePayload: {
+        id: string;
+        email: string;
+        full_name: string;
+        role: string | null;
+        avatar_url?: string;
+      } = {
+        id: user.id,
+        email: user.email ?? "",
+        full_name: fullName ?? user.email?.split("@")[0] ?? "KingsHire user",
+        role: roleToPersist,
+      };
+
+      if (avatarUrl && !currentProfile?.avatar_url) {
+        profilePayload.avatar_url = avatarUrl;
+      }
+
+      const { error: profileError } = await serviceDb
+        .from("profiles")
+        .upsert(profilePayload, { onConflict: "id" });
 
       if (profileError) {
         return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
@@ -141,9 +158,18 @@ export async function GET(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, avatar_url")
       .eq("id", user.id)
       .single();
+
+    const { avatarUrl } = getGoogleProfileMetadata(user.user_metadata ?? {});
+    if (avatarUrl && profile && !profile.avatar_url) {
+      const serviceDb = createServiceClient();
+      await serviceDb
+        .from("profiles")
+        .update({ avatar_url: avatarUrl })
+        .eq("id", user.id);
+    }
 
     destination = `${origin}${getRoleHome(profile?.role)}`;
   }
