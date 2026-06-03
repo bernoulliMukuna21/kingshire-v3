@@ -260,9 +260,9 @@ export function ApplicantsList({
                     <p className="text-sm text-gray-600 mt-3 mb-3">{k.bio}</p>
                   )}
 
-                  {(k.skills ?? []).length > 0 && (
+                  {(k.service_tags ?? []).length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mb-4">
-                      {k.skills.map((s) => (
+                      {k.service_tags.map((s) => (
                         <span
                           key={s}
                           className="bg-blue-50 text-blue-600 text-xs font-medium px-2 py-0.5 rounded-lg"

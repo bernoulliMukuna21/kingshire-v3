@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { getRoleHome } from "@/lib/roles";
 
 const floatingAvatars = [
   {
@@ -61,13 +62,12 @@ const trustBadges = [
   "5% platform fee",
 ];
 
-const stats = [
-  { value: "2,400+", label: "People registered" },
-  { value: "£180k+", label: "Paid out to Kinglancers" },
-  { value: "98%", label: "Satisfaction rate" },
-];
+type HeroStat = {
+  value: string;
+  label: string;
+};
 
-export default function HeroSection() {
+export default function HeroSection({ stats }: { stats: HeroStat[] }) {
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -98,8 +98,7 @@ export default function HeroSection() {
 
         if (authData.user) {
           setIsLoggedIn(true);
-          if (profile?.role === "kinglancer")
-            setDashboardHref("/dashboard/kinglancer");
+          setDashboardHref(getRoleHome(profile?.role));
         }
       }
     })();
@@ -152,7 +151,7 @@ export default function HeroSection() {
       {/* Grid overlay */}
       <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
 
-      {/* Floating skill cards */}
+      {/* Floating service cards */}
       {floatingAvatars.map((a, i) => (
         <motion.div
           key={i}
@@ -226,7 +225,7 @@ export default function HeroSection() {
             />
           </span>
           <br />
-          <span className="text-white/80">Earn from your skills.</span>
+          <span className="text-white/80">Earn from your services.</span>
         </motion.h1>
 
         <motion.p
@@ -282,7 +281,7 @@ export default function HeroSection() {
                 href="/sign-up?role=kinglancer"
                 className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
               >
-                Offer Your Skills
+                Offer Your Services
                 <ChevronRight
                   size={18}
                   className="group-hover:translate-x-1 transition-transform"

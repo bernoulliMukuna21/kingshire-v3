@@ -8,6 +8,7 @@ import { Menu, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import SignOutButton from "@/components/SignOutButton";
 import { ButtonLink } from "@/components/ui/Button";
+import { getRoleHome } from "@/lib/roles";
 
 const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
@@ -52,12 +53,7 @@ export default function Navbar() {
         if (authData.user) {
           setIsLoggedIn(true);
           if (profile?.full_name) setFirstName(profile.full_name.split(" ")[0]);
-          if (profile?.role)
-            setDashboardHref(
-              profile.role === "kinglancer"
-                ? "/dashboard/kinglancer"
-                : "/dashboard/client",
-            );
+          setDashboardHref(getRoleHome(profile?.role));
         }
       }
       setAuthReady(true);

@@ -4,7 +4,6 @@ import { ShieldCheck } from "lucide-react";
 import AdminLoginForm from "./AdminLoginForm";
 import {
   hasValidAdminSession,
-  isAdminEmail,
   isAdminPasscodeConfigured,
 } from "@/lib/admin-auth";
 import { createClient } from "@/lib/supabase/server";
@@ -19,7 +18,13 @@ export default async function AdminLoginPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/sign-in");
-  if (!isAdminEmail(user.email)) redirect("/");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") redirect("/");
   if (await hasValidAdminSession(user.id)) redirect("/admin");
 
   return (
@@ -45,8 +50,8 @@ export default async function AdminLoginPage() {
               Confirm admin passcode
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-500">
-              Your email is on the admin allowlist. Enter the shared passcode to
-              open the dashboard.
+              Your account has the admin role. Enter the shared passcode to open
+              the dashboard.
             </p>
           </div>
 

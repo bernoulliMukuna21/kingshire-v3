@@ -20,8 +20,8 @@ const roles = [
   {
     id: "kinglancer",
     title: "Kinglancer",
-    subtitle: "I offer my skills",
-    desc: "Browse jobs and earn money from your skills.",
+    subtitle: "I offer services",
+    desc: "Browse jobs and earn money from your services.",
     emoji: "⚡",
   },
 ];

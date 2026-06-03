@@ -6,7 +6,6 @@ import { getJobById } from "@/lib/db/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import DashboardShell from "@/components/DashboardShell";
-import { getNavItems } from "@/lib/dashboard-nav";
 import {
   ApplyForm,
   ApplicantsList,
@@ -17,6 +16,7 @@ import PublicShell from "@/components/ui/PublicShell";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import AdminShell from "@/components/admin/AdminShell";
 
 export default async function JobDetailPage({
   params,
@@ -72,6 +72,7 @@ export default async function JobDetailPage({
     !isOwner &&
     job.status === "open" &&
     !alreadyApplied;
+  const isAdmin = profile?.role === "admin";
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     open: {
@@ -177,8 +178,16 @@ export default async function JobDetailPage({
 
           {!isOwner && job.status === "open" && (
             <Card className={cardPadding}>
-              <h2 className="font-bold text-gray-900 mb-1">Apply</h2>
-              {!user ? (
+              <h2 className="font-bold text-gray-900 mb-1">
+                {isAdmin ? "Admin view" : "Apply"}
+              </h2>
+              {isAdmin ? (
+                <p className="text-sm text-gray-500 mt-3">
+                  Admin accounts can inspect jobs, but cannot apply, hire, or
+                  take payment actions. Use a client or kinglancer account to
+                  test marketplace flows.
+                </p>
+              ) : !user ? (
                 <div className="text-sm text-gray-500 space-y-3 mt-3">
                   <p>Sign in to apply for this job.</p>
                   <ButtonLink
@@ -288,13 +297,16 @@ export default async function JobDetailPage({
 
   // Logged-in users get the full dashboard shell
   if (profile) {
-    const activeHref =
-      profile.role === "kinglancer" ? "/jobs" : "/dashboard/client/jobs";
+    if (profile.role === "admin") {
+      return (
+        <AdminShell userEmail={user?.email}>
+          {pageContent}
+        </AdminShell>
+      );
+    }
+
     return (
-      <DashboardShell
-        profile={profile}
-        navItems={getNavItems(profile.role, activeHref)}
-      >
+      <DashboardShell profile={profile}>
         {pageContent}
       </DashboardShell>
     );

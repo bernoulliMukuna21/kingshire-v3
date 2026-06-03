@@ -17,7 +17,9 @@ export default async function TopKinglancers() {
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, skills, rating, jobs_completed")
+    .select(
+      "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services",
+    )
     .eq("role", "kinglancer")
     .order("jobs_completed", { ascending: false })
     .limit(6);
@@ -58,7 +60,12 @@ export default async function TopKinglancers() {
           >
             {kinglancers.map((k, i) => {
               const color = GRADIENT_CYCLE[i % GRADIENT_CYCLE.length];
-              const primarySkill = k.skills?.[0] ?? "Kinglancer";
+              const serviceNames =
+                k.services
+                  ?.map((service) => service.name)
+                  .filter((name) => name.trim().length > 0) ?? [];
+              const headline =
+                k.tagline || serviceNames.slice(0, 2).join(" · ") || "Kinglancer";
               const initials = k.full_name
                 .split(" ")
                 .map((n: string) => n[0])
@@ -68,7 +75,10 @@ export default async function TopKinglancers() {
 
               return (
                 <StaggerItem key={k.id}>
-                  <div className="group bg-white rounded-2xl p-6 border border-gray-100 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50 transition-all duration-300 hover:-translate-y-1">
+                  <Link
+                    href={`/kinglancers/${k.id}`}
+                    className="group block cursor-pointer rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50"
+                  >
                     <div className="flex items-start gap-4 mb-4">
                       <div
                         className={`w-12 h-12 rounded-2xl bg-linear-to-br ${color} flex items-center justify-center text-white font-bold text-lg shrink-0 overflow-hidden`}
@@ -88,7 +98,7 @@ export default async function TopKinglancers() {
                         <p className="font-bold text-gray-900 truncate">
                           {k.full_name}
                         </p>
-                        <p className="text-gray-500 text-sm">{primarySkill}</p>
+                        <p className="text-gray-500 text-sm">{headline}</p>
                       </div>
                     </div>
                     <div className="flex items-center justify-between pt-4 border-t border-gray-50">
@@ -110,7 +120,7 @@ export default async function TopKinglancers() {
                         View profile →
                       </span>
                     </div>
-                  </div>
+                  </Link>
                 </StaggerItem>
               );
             })}

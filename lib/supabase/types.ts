@@ -15,10 +15,10 @@ export type Database = {
           email: string;
           full_name: string;
           avatar_url: string | null;
-          role: "client" | "kinglancer" | null;
+          role: "client" | "kinglancer" | "admin" | null;
           bio: string | null;
           phone: string | null;
-          skills: string[];
+          service_tags: string[];
           location: string | null;
           hourly_rate: number | null;
           tagline: string | null;
@@ -39,8 +39,8 @@ export type Database = {
           id: string;
           email: string;
           full_name: string;
-          role?: "client" | "kinglancer" | null;
-          skills: string[];
+          role?: "client" | "kinglancer" | "admin" | null;
+          service_tags: string[];
           avatar_url?: string | null;
           bio?: string | null;
           phone?: string | null;
@@ -60,8 +60,8 @@ export type Database = {
           id?: string;
           email?: string;
           full_name?: string;
-          role?: "client" | "kinglancer" | null;
-          skills?: string[];
+          role?: "client" | "kinglancer" | "admin" | null;
+          service_tags?: string[];
           avatar_url?: string | null;
           bio?: string | null;
           phone?: string | null;
@@ -89,7 +89,7 @@ export type Database = {
           description: string;
           budget: number;
           categories: string[];
-          skills_required: string[];
+          service_tags_required: string[];
           status:
             | "open"
             | "in_progress"
@@ -109,7 +109,7 @@ export type Database = {
           description: string;
           budget: number;
           categories: string[];
-          skills_required?: string[];
+          service_tags_required?: string[];
           deadline?: string | null;
           kinglancer_id?: string | null;
           rate_type?: "fixed" | "per_hour" | "per_day";
@@ -119,7 +119,7 @@ export type Database = {
           description?: string;
           budget?: number;
           categories?: string[];
-          skills_required?: string[];
+          service_tags_required?: string[];
           rate_type?: "fixed" | "per_hour" | "per_day";
           status?:
             | "open"

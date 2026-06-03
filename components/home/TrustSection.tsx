@@ -91,9 +91,12 @@ export default function TrustSection() {
                     </div>
                   ))}
                 </div>
-                <button className="mt-6 w-full py-3 bg-green-500 hover:bg-green-400 text-white font-semibold rounded-xl transition-colors text-sm">
+                <div
+                  aria-hidden="true"
+                  className="mt-6 w-full rounded-xl bg-green-500 py-3 text-center text-sm font-semibold text-white"
+                >
                   Approve & Release Payment
-                </button>
+                </div>
               </div>
 
               <motion.div

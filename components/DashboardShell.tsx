@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import NotificationBell from "@/components/NotificationBell";
 import SignOutButton from "@/components/SignOutButton";
 import { getInitials } from "@/lib/utils";
-import type { DashboardNavItem } from "@/lib/dashboard-nav";
+import { getNavItems } from "@/lib/dashboard-nav";
 
 type Props = {
   profile: {
@@ -11,14 +14,18 @@ type Props = {
     role: string | null;
     avatar_url: string | null;
   };
-  navItems: DashboardNavItem[];
   children: React.ReactNode;
 };
 
-export default function DashboardShell({ profile, navItems, children }: Props) {
+export default function DashboardShell({ profile, children }: Props) {
+  const pathname = usePathname();
+  const navItems = getNavItems(profile.role, pathname);
   const isKinglancer = profile.role === "kinglancer";
+  const isAdmin = profile.role === "admin";
   const initials = getInitials(profile.full_name);
-  const avatarGradient = isKinglancer
+  const avatarGradient = isAdmin
+    ? "bg-linear-to-br from-red-500 to-orange-600"
+    : isKinglancer
     ? "bg-linear-to-br from-green-500 to-emerald-600"
     : "bg-linear-to-br from-blue-500 to-indigo-600";
 
@@ -42,7 +49,11 @@ export default function DashboardShell({ profile, navItems, children }: Props) {
             <NotificationBell />
           </div>
           <div className="mt-4">
-            {isKinglancer ? (
+            {isAdmin ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-red-200 ring-1 ring-red-300/20">
+                Admin
+              </span>
+            ) : isKinglancer ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-200 ring-1 ring-amber-300/20">
                 Kinglancer
               </span>
@@ -92,7 +103,7 @@ export default function DashboardShell({ profile, navItems, children }: Props) {
                 {profile.full_name}
               </p>
               <p className="text-white/40 text-xs">
-                {isKinglancer ? "Kinglancer" : "Client"}
+                {isAdmin ? "Admin" : isKinglancer ? "Kinglancer" : "Client"}
               </p>
             </div>
           </div>

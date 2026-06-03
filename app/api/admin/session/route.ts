@@ -4,7 +4,6 @@ import {
   ADMIN_SESSION_COOKIE,
   ADMIN_SESSION_MAX_AGE,
   createAdminSessionValue,
-  isAdminEmail,
   isAdminPasscodeConfigured,
 } from "@/lib/admin-auth";
 import { createClient } from "@/lib/supabase/server";
@@ -27,7 +26,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   }
 
-  if (!isAdminEmail(user.email)) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (profile?.role !== "admin") {
     return NextResponse.json({ error: "Admin access denied." }, { status: 403 });
   }
 

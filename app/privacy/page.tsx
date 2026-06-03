@@ -38,7 +38,7 @@ export default function PrivacyPage() {
             <p>When you register and use KingsHire, we may collect:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
               <li>Name, email address, and phone number</li>
-              <li>Profile information (skills, bio, location, hourly rate)</li>
+              <li>Profile information (services, bio, location, rates)</li>
               <li>Portfolio URLs and CV links you choose to share</li>
               <li>Job postings, applications, and messages</li>
               <li>
@@ -83,7 +83,7 @@ export default function PrivacyPage() {
                 <strong>Stripe</strong> — payment processing
               </li>
               <li>
-                Other users — your public profile (name, skills, rating) is
+                Other users — your public profile (name, services, rating) is
                 visible to registered community members
               </li>
             </ul>

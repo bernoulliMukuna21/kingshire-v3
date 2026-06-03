@@ -21,10 +21,25 @@ const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
   { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
 ];
 
+const ADMIN_NAV: Omit<DashboardNavItem, "active">[] = [
+  { label: "Admin", icon: "🛡️", href: "/admin" },
+];
+
 export function getNavItems(
   role: "client" | "kinglancer" | string | null,
-  activeHref: string,
+  pathname: string,
 ): DashboardNavItem[] {
-  const base = role === "kinglancer" ? KINGLANCER_NAV : CLIENT_NAV;
-  return base.map((item) => ({ ...item, active: item.href === activeHref }));
+  const base =
+    role === "admin"
+      ? ADMIN_NAV
+      : role === "kinglancer"
+        ? KINGLANCER_NAV
+        : CLIENT_NAV;
+  return base.map((item) => ({
+    ...item,
+    active:
+      item.href === "/jobs"
+        ? pathname === "/jobs" || pathname.startsWith("/jobs/")
+        : pathname === item.href,
+  }));
 }

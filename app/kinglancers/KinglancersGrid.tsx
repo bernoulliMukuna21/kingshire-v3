@@ -11,9 +11,24 @@ interface Kinglancer {
   id: string;
   full_name: string;
   avatar_url: string | null;
-  skills: string[] | null;
+  service_tags: string[] | null;
+  tagline: string | null;
+  services: Array<{ name: string; rate: number; rate_type: string }> | null;
   rating: number | null;
   jobs_completed: number;
+}
+
+function getProfileHeadline(kinglancer: Kinglancer) {
+  const serviceNames =
+    kinglancer.services
+      ?.map((service) => service.name)
+      .filter((name) => name.trim().length > 0) ?? [];
+
+  return (
+    kinglancer.tagline ||
+    serviceNames.slice(0, 2).join(" · ") ||
+    "Kinglancer"
+  );
 }
 
 export default function KinglancersGrid({
@@ -27,7 +42,13 @@ export default function KinglancersGrid({
     ? kinglancers.filter(
         (k) =>
           k.full_name.toLowerCase().includes(query.toLowerCase()) ||
-          k.skills?.some((s) => s.toLowerCase().includes(query.toLowerCase())),
+          k.tagline?.toLowerCase().includes(query.toLowerCase()) ||
+          k.service_tags?.some((s) =>
+            s.toLowerCase().includes(query.toLowerCase()),
+          ) ||
+          k.services?.some((service) =>
+            service.name.toLowerCase().includes(query.toLowerCase()),
+          ),
       )
     : kinglancers;
 
@@ -39,7 +60,7 @@ export default function KinglancersGrid({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full max-w-md rounded-2xl border border-white bg-white/90 px-4 py-3 text-sm text-slate-950 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 placeholder:text-slate-400 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Filter by name or skill…"
+          placeholder="Filter by name or service…"
         />
       </div>
 
@@ -55,7 +76,7 @@ export default function KinglancersGrid({
             staggerDelay={0.05}
           >
             {filtered.map((k) => {
-              const primarySkill = k.skills?.[0] ?? "Kinglancer";
+              const headline = getProfileHeadline(k);
 
               return (
                 <StaggerItem key={k.id}>
@@ -76,15 +97,15 @@ export default function KinglancersGrid({
                               {k.full_name}
                             </p>
                             <p className="truncate text-xs font-bold text-blue-700">
-                              {primarySkill}
+                              {headline}
                             </p>
                           </div>
                         </div>
 
-                        {/* Skills */}
-                        {(k.skills?.length ?? 0) > 0 && (
+                        {/* Service tags */}
+                        {(k.service_tags?.length ?? 0) > 0 && (
                           <div className="flex flex-wrap gap-1.5 mb-4">
-                            {k.skills!.slice(0, 3).map((s) => (
+                            {k.service_tags!.slice(0, 3).map((s) => (
                               <span
                                 key={s}
                                 className="rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs text-slate-600"

@@ -29,7 +29,7 @@ const KINGLANCER_STEPS = [
   {
     num: "01",
     title: "Browse Jobs",
-    desc: "Explore jobs posted by people in your community that match your skills.",
+    desc: "Explore jobs posted by people in your community that match your services.",
   },
   {
     num: "02",

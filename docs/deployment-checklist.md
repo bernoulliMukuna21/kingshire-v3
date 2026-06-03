@@ -51,9 +51,10 @@ Use this checklist for both staging and production.
 - Set variables from `.env.example`.
 - Set `APP_URL` and `NEXT_PUBLIC_APP_URL` to the Railway public URL or custom domain.
 - Set admin gate variables:
-  - `ADMIN_EMAILS`
   - `ADMIN_PASSCODE`
   - `ADMIN_SESSION_SECRET`
+- Create at least one admin auth user, then internally set
+  `profiles.role = 'admin'` for that profile.
 - Confirm `/api/health` returns `200`.
 
 ## 6. Cron Services
@@ -77,6 +78,6 @@ Use this checklist for both staging and production.
 - Confirm transaction moves to `released`.
 - Confirm Stripe transfer is created for an onboarded kinglancer.
 - Confirm a non-admin user cannot access `/admin`.
-- Confirm an admin allowlisted user must enter the passcode at `/admin/login`.
+- Confirm an admin-role user must enter the passcode at `/admin/login`.
 - Test abandoned checkout cleanup with an unpaid selection.
 - Test account deletion request link from settings.

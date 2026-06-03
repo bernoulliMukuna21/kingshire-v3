@@ -44,9 +44,12 @@ export default function JobsList({ jobs }: { jobs: JobWithClient[] }) {
             placeholder="Search jobs..."
           />
         </div>
-        <button className="cursor-pointer rounded-2xl border border-white bg-white/90 px-4 py-3 text-slate-500 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-colors hover:text-blue-700">
+        <div
+          aria-hidden="true"
+          className="rounded-2xl border border-white bg-white/90 px-4 py-3 text-slate-400 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50"
+        >
           <SlidersHorizontal size={16} />
-        </button>
+        </div>
       </div>
 
       {/* Category filters */}

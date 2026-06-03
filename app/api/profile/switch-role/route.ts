@@ -15,7 +15,7 @@ export async function POST() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, skills")
+    .select("role, service_tags")
     .eq("id", user.id)
     .single();
 
@@ -23,11 +23,19 @@ export async function POST() {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
 
+  if (profile.role === "admin") {
+    return NextResponse.json(
+      { error: "Admin accounts cannot switch marketplace roles." },
+      { status: 403 },
+    );
+  }
+
   const newRole = profile.role === "client" ? "kinglancer" : "client";
 
-  // Switching into kinglancer requires profile setup first.
-  const hasSkills = Array.isArray(profile.skills) && profile.skills.length > 0;
-  if (newRole === "kinglancer" && !hasSkills) {
+  // Switching into kinglancer requires service setup first.
+  const hasServices =
+    Array.isArray(profile.service_tags) && profile.service_tags.length > 0;
+  if (newRole === "kinglancer" && !hasServices) {
     return NextResponse.json(
       {
         error: "Please complete your kinglancer setup first.",

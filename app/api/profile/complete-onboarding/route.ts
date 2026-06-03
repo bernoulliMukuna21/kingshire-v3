@@ -17,17 +17,17 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { role, phone, skills, portfolio_url, cv_url } = body;
+  const { role, phone, service_tags, portfolio_url, cv_url } = body;
 
   if (role !== "client" && role !== "kinglancer") {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
   if (
     role === "kinglancer" &&
-    (!Array.isArray(skills) || skills.length === 0)
+    (!Array.isArray(service_tags) || service_tags.length === 0)
   ) {
     return NextResponse.json(
-      { error: "Please select at least one skill." },
+      { error: "Please select at least one service." },
       { status: 400 },
     );
   }
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     .update({
       role,
       phone: phone || null,
-      skills: role === "kinglancer" ? skills : [],
+      service_tags: role === "kinglancer" ? service_tags : [],
       portfolio_url: portfolio_url || null,
       cv_url: cv_url || null,
     })

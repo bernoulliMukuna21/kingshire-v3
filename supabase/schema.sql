@@ -14,9 +14,9 @@ create table public.profiles (
   full_name       text not null,
   avatar_url      text,
   phone           text,
-  role            text check (role is null or role in ('client', 'kinglancer')),
+  role            text check (role is null or role in ('client', 'kinglancer', 'admin')),
   bio             text,
-  skills          text[] not null default '{}',
+  service_tags    text[] not null default '{}',
   location        text,
   hourly_rate     numeric(10,2),
   rate_type       text not null default 'per_hour' check (rate_type in ('per_hour','per_day','per_project')),
@@ -42,7 +42,7 @@ create table public.jobs (
   description      text not null,
   budget           numeric(10,2) not null,
   categories       text[] not null default '{}',
-  skills_required  text[] not null default '{}',
+  service_tags_required text[] not null default '{}',
   rate_type        text not null default 'fixed' check (rate_type in ('fixed','per_hour','per_day')),
   status           text not null default 'open' check (status in ('open','in_progress','completed','cancelled','disputed','approved')),
   deadline         date,
@@ -174,14 +174,18 @@ create trigger on_jobs_updated before update on public.jobs
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
-  insert into public.profiles (id, email, full_name, role, skills, phone)
+  insert into public.profiles (id, email, full_name, role, service_tags, phone)
   values (
     new.id,
     new.email,
     coalesce(new.raw_user_meta_data->>'full_name', ''),
-    nullif(new.raw_user_meta_data->>'role', ''),
+    case
+      when nullif(new.raw_user_meta_data->>'role', '') in ('client', 'kinglancer')
+        then nullif(new.raw_user_meta_data->>'role', '')
+      else null
+    end,
     coalesce(
-      array(select jsonb_array_elements_text(new.raw_user_meta_data->'skills')),
+      array(select jsonb_array_elements_text(new.raw_user_meta_data->'service_tags')),
       '{}'::text[]
     ),
     new.raw_user_meta_data->>'phone'

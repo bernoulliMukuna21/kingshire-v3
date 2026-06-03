@@ -7,10 +7,11 @@ interface FadeInProps {
   children: React.ReactNode
   delay?: number
   direction?: 'up' | 'down' | 'left' | 'right' | 'none'
+  id?: string
   className?: string
 }
 
-export function FadeIn({ children, delay = 0, direction = 'up', className = '' }: FadeInProps) {
+export function FadeIn({ children, delay = 0, direction = 'up', id, className = '' }: FadeInProps) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-80px' })
 
@@ -25,6 +26,7 @@ export function FadeIn({ children, delay = 0, direction = 'up', className = '' }
   return (
     <motion.div
       ref={ref}
+      id={id}
       className={className}
       initial={{ opacity: 0, ...directionMap[direction] }}
       animate={isInView ? { opacity: 1, x: 0, y: 0 } : {}}

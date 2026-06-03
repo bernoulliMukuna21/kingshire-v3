@@ -21,7 +21,7 @@ export default function CtaBanner() {
                 Build something real.
               </h2>
               <p className="text-white/60 text-lg mb-10 max-w-xl mx-auto">
-                Whether you have work to get done or skills to offer — KingsHire
+                Whether you have work to get done or services to offer — KingsHire
                 is your platform.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">

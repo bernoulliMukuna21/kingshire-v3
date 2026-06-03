@@ -9,6 +9,7 @@ import AuthLayout from "@/components/auth/AuthLayout";
 import GoogleButton from "@/components/auth/GoogleButton";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { getRoleHome } from "@/lib/roles";
 
 function SignInContent() {
   const router = useRouter();
@@ -62,15 +63,7 @@ function SignInContent() {
       .eq("id", data.user.id)
       .single();
 
-    if (!profile?.role) {
-      router.push("/onboarding");
-    } else {
-      router.push(
-        profile.role === "client"
-          ? "/dashboard/client"
-          : "/dashboard/kinglancer",
-      );
-    }
+    router.push(getRoleHome(profile?.role));
   };
 
   return (

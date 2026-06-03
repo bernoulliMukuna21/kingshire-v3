@@ -9,7 +9,7 @@ export type ApplicationWithKinglancer = Application & {
   kinglancer: {
     full_name: string;
     avatar_url: string | null;
-    skills: string[];
+    service_tags: string[];
     rating: number;
     jobs_completed: number;
     bio: string | null;
@@ -28,7 +28,7 @@ export async function getApplicationsByJob(
   const { data, error } = await supabase
     .from("applications")
     .select(
-      "*, kinglancer:profiles!kinglancer_id(full_name, avatar_url, skills, rating, jobs_completed, bio, location)",
+      "*, kinglancer:profiles!kinglancer_id(full_name, avatar_url, service_tags, rating, jobs_completed, bio, location)",
     )
     .eq("job_id", jobId)
     .order("created_at", { ascending: true });

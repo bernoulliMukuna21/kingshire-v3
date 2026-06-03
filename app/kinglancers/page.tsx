@@ -8,7 +8,9 @@ export default async function KinglancersPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, skills, rating, jobs_completed")
+    .select(
+      "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services",
+    )
     .eq("role", "kinglancer")
     .order("jobs_completed", { ascending: false })
     .limit(60);

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getRoleHome, isMarketplaceRole } from "@/lib/roles";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin: requestOrigin } = new URL(request.url);
@@ -10,7 +11,10 @@ export async function GET(request: NextRequest) {
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || requestOrigin;
   const code = searchParams.get("code");
   const next = searchParams.get("next"); // password-reset flow
-  const signupRole = searchParams.get("signup_role");
+  const signupRoleParam = searchParams.get("signup_role");
+  const signupRole = isMarketplaceRole(signupRoleParam)
+    ? signupRoleParam
+    : null;
   const signupVia = searchParams.get("signup_via"); // "google" | "email"
 
   if (!code) {
@@ -89,14 +93,7 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!profile?.role) {
-      destination = `${origin}/onboarding`;
-    } else {
-      destination =
-        profile.role === "client"
-          ? `${origin}/dashboard/client`
-          : `${origin}/dashboard/kinglancer`;
-    }
+    destination = `${origin}${getRoleHome(profile?.role)}`;
   }
 
   // Return the redirect with the session cookies attached

@@ -18,13 +18,13 @@ const roles = [
   {
     id: "kinglancer",
     title: "Kinglancer",
-    subtitle: "I offer my skills",
-    desc: "Browse jobs and earn money from your skills.",
+    subtitle: "I offer services",
+    desc: "Browse jobs and earn money from your services.",
     emoji: "⚡",
   },
 ];
 
-const skills = [
+const serviceOptions = [
   "Web Design",
   "Photography",
   "Cleaning",
@@ -51,7 +51,7 @@ function OnboardingContent() {
   const nextParam = searchParams.get("next");
 
   const [role, setRole] = useState<string>("");
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [phone, setPhone] = useState("");
   const [portfolioUrl, setPortfolioUrl] = useState("");
   const [cvUrl, setCvUrl] = useState("");
@@ -87,9 +87,11 @@ function OnboardingContent() {
     loadProfile();
   }, [router, roleParam]);
 
-  const toggleSkill = (skill: string) =>
-    setSelectedSkills((prev) =>
-      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill],
+  const toggleService = (service: string) =>
+    setSelectedServices((prev) =>
+      prev.includes(service)
+        ? prev.filter((s) => s !== service)
+        : [...prev, service],
     );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,8 +102,8 @@ function OnboardingContent() {
       setError("Please select a role.");
       return;
     }
-    if (role === "kinglancer" && selectedSkills.length === 0) {
-      setError("Please select at least one skill.");
+    if (role === "kinglancer" && selectedServices.length === 0) {
+      setError("Please select at least one service.");
       return;
     }
 
@@ -113,7 +115,7 @@ function OnboardingContent() {
       body: JSON.stringify({
         role,
         phone: phone || null,
-        skills: selectedSkills,
+        service_tags: selectedServices,
         portfolio_url: portfolioUrl || null,
         cv_url: cvUrl || null,
       }),
@@ -258,24 +260,24 @@ function OnboardingContent() {
           {role === "kinglancer" && (
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-2">
-                Your skills{" "}
+                Your services{" "}
                 <span className="text-gray-400 font-normal">
                   (select all that apply)
                 </span>
               </label>
               <div className="flex flex-wrap gap-2">
-                {skills.map((skill) => (
+                {serviceOptions.map((service) => (
                   <button
-                    key={skill}
+                    key={service}
                     type="button"
-                    onClick={() => toggleSkill(skill)}
+                    onClick={() => toggleService(service)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      selectedSkills.includes(skill)
+                      selectedServices.includes(service)
                         ? "bg-blue-600 text-white shadow-sm"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                   >
-                    {skill}
+                    {service}
                   </button>
                 ))}
               </div>
