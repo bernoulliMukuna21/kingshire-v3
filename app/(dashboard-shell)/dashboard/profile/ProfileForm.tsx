@@ -180,7 +180,7 @@ export default function ProfileForm({ profile }: Props) {
       (service) =>
         service.name.trim() &&
         service.rate.trim() &&
-        !isValidCurrencyAmount(service.rate, { min: 0.01, max: 50000 }),
+        !isValidCurrencyAmount(service.rate, { min: 0, max: 50000 }),
     );
 
     if (invalidServiceRate) {
@@ -190,10 +190,10 @@ export default function ProfileForm({ profile }: Props) {
     }
 
     const parsedServices = services
-      .filter((s) => s.name.trim() && s.rate.trim())
+      .filter((s) => s.name.trim())
       .map((s) => ({
         name: s.name.trim(),
-        rate: normalizeCurrencyAmount(s.rate),
+        rate: s.rate.trim() ? normalizeCurrencyAmount(s.rate) : 0,
         rate_type: s.rate_type,
       }));
 
@@ -480,7 +480,7 @@ export default function ProfileForm({ profile }: Props) {
                     </span>
                     <input
                       type="number"
-                      min="0.01"
+                      min="0"
                       step="0.01"
                       inputMode="decimal"
                       value={svc.rate}

@@ -49,9 +49,11 @@ export default async function KinglancerProfilePage({
     kinglancer.services
       ?.map((service) => service.name)
       .filter((name) => name.trim().length > 0) ?? [];
+  const pricedServices =
+    kinglancer.services?.filter((service) => Number(service.rate) > 0) ?? [];
   const lowestServiceRate =
-    kinglancer.services && kinglancer.services.length > 0
-      ? Math.min(...kinglancer.services.map((service) => Number(service.rate)))
+    pricedServices.length > 0
+      ? Math.min(...pricedServices.map((service) => Number(service.rate)))
       : null;
   const profileHeadline =
     kinglancer.tagline ||
@@ -211,22 +213,31 @@ export default async function KinglancerProfilePage({
             <Card className="p-6">
               <h2 className="text-lg font-black text-slate-950">Services</h2>
               <div className="mt-4 divide-y divide-slate-100">
-                {kinglancer.services.map((service) => (
-                  <div
-                    key={`${service.name}-${service.rate}`}
-                    className="flex items-center justify-between gap-4 py-3"
-                  >
-                    <p className="text-sm font-bold text-slate-800">
-                      {service.name}
-                    </p>
-                    <p className="text-sm font-black text-green-700">
-                      £{Number(service.rate).toLocaleString()}{" "}
-                      <span className="font-semibold text-slate-400">
-                        {service.rate_type.replace("_", " ")}
-                      </span>
-                    </p>
-                  </div>
-                ))}
+                {kinglancer.services.map((service, index) => {
+                  const serviceRate = Number(service.rate);
+                  return (
+                    <div
+                      key={`${service.name}-${service.rate}-${index}`}
+                      className="flex items-center justify-between gap-4 py-3"
+                    >
+                      <p className="text-sm font-bold text-slate-800">
+                        {service.name}
+                      </p>
+                      <p className="text-sm font-black text-green-700">
+                        {serviceRate > 0 ? (
+                          <>
+                            £{serviceRate.toLocaleString()}{" "}
+                            <span className="font-semibold text-slate-400">
+                              {service.rate_type.replace("_", " ")}
+                            </span>
+                          </>
+                        ) : (
+                          "Discuss"
+                        )}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           )}

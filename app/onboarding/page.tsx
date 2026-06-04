@@ -3,9 +3,14 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
+import {
+  CURRENCY_VALIDATION_MESSAGE,
+  isValidCurrencyAmount,
+  normalizeCurrencyAmount,
+} from "@/lib/validation";
 
 const roles = [
   {
@@ -43,6 +48,18 @@ const serviceOptions = [
   "Other",
 ];
 
+type ServiceEntry = {
+  name: string;
+  rate: string;
+  rate_type: "per_hour" | "per_day" | "per_project";
+};
+
+const rateTypes = [
+  { value: "per_hour", label: "/hr" },
+  { value: "per_day", label: "/day" },
+  { value: "per_project", label: "fixed" },
+] as const;
+
 function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,7 +68,9 @@ function OnboardingContent() {
   const nextParam = searchParams.get("next");
 
   const [role, setRole] = useState<string>("");
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [services, setServices] = useState<ServiceEntry[]>([
+    { name: "", rate: "", rate_type: "per_hour" },
+  ]);
   const [phone, setPhone] = useState("");
   const [portfolioUrl, setPortfolioUrl] = useState("");
   const [cvUrl, setCvUrl] = useState("");
@@ -87,11 +106,24 @@ function OnboardingContent() {
     loadProfile();
   }, [router, roleParam]);
 
-  const toggleService = (service: string) =>
-    setSelectedServices((prev) =>
-      prev.includes(service)
-        ? prev.filter((s) => s !== service)
-        : [...prev, service],
+  const addService = () =>
+    setServices((prev) => [
+      ...prev,
+      { name: "", rate: "", rate_type: "per_hour" },
+    ]);
+
+  const removeService = (index: number) =>
+    setServices((prev) => prev.filter((_, i) => i !== index));
+
+  const updateService = (
+    index: number,
+    field: keyof ServiceEntry,
+    value: string,
+  ) =>
+    setServices((prev) =>
+      prev.map((service, i) =>
+        i === index ? { ...service, [field]: value } : service,
+      ),
     );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,10 +134,27 @@ function OnboardingContent() {
       setError("Please select a role.");
       return;
     }
-    if (role === "kinglancer" && selectedServices.length === 0) {
+    const namedServices = services.filter((service) => service.name.trim());
+    const invalidServiceRate = namedServices.some(
+      (service) =>
+        service.rate.trim() &&
+        !isValidCurrencyAmount(service.rate, { min: 0, max: 50000 }),
+    );
+
+    if (role === "kinglancer" && namedServices.length === 0) {
       setError("Please select at least one service.");
       return;
     }
+    if (role === "kinglancer" && invalidServiceRate) {
+      setError(CURRENCY_VALIDATION_MESSAGE);
+      return;
+    }
+
+    const servicePayload = namedServices.map((service) => ({
+      name: service.name.trim(),
+      rate: service.rate.trim() ? normalizeCurrencyAmount(service.rate) : 0,
+      rate_type: service.rate_type,
+    }));
 
     setLoading(true);
 
@@ -115,7 +164,8 @@ function OnboardingContent() {
       body: JSON.stringify({
         role,
         phone: phone || null,
-        service_tags: selectedServices,
+        services: servicePayload,
+        service_tags: servicePayload.map((service) => service.name),
         portfolio_url: portfolioUrl || null,
         cv_url: cvUrl || null,
       }),
@@ -149,7 +199,7 @@ function OnboardingContent() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="w-full max-w-md"
+        className="w-full max-w-xl"
       >
         <div className="text-center mb-8">
           <Image
@@ -258,29 +308,98 @@ function OnboardingContent() {
           )}
 
           {role === "kinglancer" && (
-            <div>
+            <div className="space-y-3">
               <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Your services{" "}
                 <span className="text-gray-400 font-normal">
-                  (select all that apply)
+                  (add rates now or leave blank to discuss)
                 </span>
               </label>
-              <div className="flex flex-wrap gap-2">
+              <datalist id="onboarding-service-suggestions">
                 {serviceOptions.map((service) => (
-                  <button
-                    key={service}
-                    type="button"
-                    onClick={() => toggleService(service)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      selectedServices.includes(service)
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
+                  <option key={service} value={service} />
+                ))}
+              </datalist>
+              <div className="space-y-2">
+                {services.map((service, index) => (
+                  <div
+                    key={index}
+                    className="rounded-2xl border border-gray-200 bg-white p-3"
                   >
-                    {service}
-                  </button>
+                    <input
+                      type="text"
+                      list="onboarding-service-suggestions"
+                      value={service.name}
+                      onChange={(e) =>
+                        updateService(index, "name", e.target.value)
+                      }
+                      className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                      placeholder="e.g. Cleaning"
+                    />
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="flex overflow-hidden rounded-xl border border-gray-200">
+                        {rateTypes.map((rateType) => (
+                          <button
+                            key={rateType.value}
+                            type="button"
+                            onClick={() =>
+                              updateService(
+                                index,
+                                "rate_type",
+                                rateType.value,
+                              )
+                            }
+                            className={`px-3 py-2 text-xs font-bold transition-all ${
+                              service.rate_type === rateType.value
+                                ? "bg-blue-600 text-white"
+                                : "bg-white text-gray-500 hover:bg-gray-50"
+                            }`}
+                          >
+                            {rateType.label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="relative min-w-0 flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-400">
+                          £
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          inputMode="decimal"
+                          value={service.rate}
+                          onChange={(e) =>
+                            updateService(index, "rate", e.target.value)
+                          }
+                          className="w-full rounded-xl border border-gray-200 py-2.5 pl-7 pr-3 text-sm outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                          placeholder="Discuss"
+                        />
+                      </div>
+                      {services.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeService(index)}
+                          className="rounded-xl p-2 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                          title="Remove service"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 ))}
               </div>
+              {services.length < 8 && (
+                <button
+                  type="button"
+                  onClick={addService}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 py-2.5 text-sm font-bold text-gray-500 transition-all hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+                >
+                  <Plus size={15} />
+                  Add another service
+                </button>
+              )}
             </div>
           )}
 

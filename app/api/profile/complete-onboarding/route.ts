@@ -1,6 +1,73 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import {
+  hasValidCurrencyPrecision,
+  normalizeCurrencyAmount,
+} from "@/lib/validation";
+
+type ServiceInput = {
+  name?: unknown;
+  rate?: unknown;
+  rate_type?: unknown;
+};
+
+const VALID_SERVICE_RATE_TYPES = ["per_hour", "per_day", "per_project"];
+
+function normalizeServices(services: unknown, serviceTags: unknown) {
+  const rawServices = Array.isArray(services)
+    ? services
+    : Array.isArray(serviceTags)
+      ? serviceTags.map((name) => ({ name, rate: 0, rate_type: "per_hour" }))
+      : [];
+
+  const seen = new Set<string>();
+  const normalizedServices = [];
+
+  for (const service of rawServices as ServiceInput[]) {
+    const name = String(service.name ?? "").trim();
+    if (!name) continue;
+    if (name.length > 80) {
+      return { error: "Service names must be 80 characters or fewer." };
+    }
+
+    const dedupeKey = name.toLowerCase();
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    const rateRaw = service.rate === "" || service.rate == null ? 0 : service.rate;
+    const rateValue =
+      typeof rateRaw === "string" || typeof rateRaw === "number" ? rateRaw : "";
+    const rate = Number(rateRaw);
+    if (
+      !Number.isFinite(rate) ||
+      rate < 0 ||
+      rate > 50000 ||
+      !hasValidCurrencyPrecision(rateValue)
+    ) {
+      return {
+        error: "Service rates must be valid amounts with up to 2 decimals.",
+      };
+    }
+
+    const rateType = VALID_SERVICE_RATE_TYPES.includes(
+      String(service.rate_type),
+    )
+      ? String(service.rate_type)
+      : "per_hour";
+
+    normalizedServices.push({
+      name,
+      rate: normalizeCurrencyAmount(rate),
+      rate_type: rateType,
+    });
+  }
+
+  return {
+    services: normalizedServices,
+    serviceTags: normalizedServices.map((service) => service.name),
+  };
+}
 
 // POST /api/profile/complete-onboarding
 // Persists the onboarding form. Uses the service client so that the profile
@@ -17,15 +84,18 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { role, phone, service_tags, portfolio_url, cv_url } = body;
+  const { role, phone, service_tags, services, portfolio_url, cv_url } = body;
 
   if (role !== "client" && role !== "kinglancer") {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
   }
-  if (
-    role === "kinglancer" &&
-    (!Array.isArray(service_tags) || service_tags.length === 0)
-  ) {
+  const normalized = normalizeServices(services, service_tags);
+
+  if ("error" in normalized) {
+    return NextResponse.json({ error: normalized.error }, { status: 400 });
+  }
+
+  if (role === "kinglancer" && normalized.services.length === 0) {
     return NextResponse.json(
       { error: "Please select at least one service." },
       { status: 400 },
@@ -38,7 +108,8 @@ export async function POST(request: Request) {
     .update({
       role,
       phone: phone || null,
-      service_tags: role === "kinglancer" ? service_tags : [],
+      services: role === "kinglancer" ? normalized.services : [],
+      service_tags: role === "kinglancer" ? normalized.serviceTags : [],
       portfolio_url: portfolio_url || null,
       cv_url: cv_url || null,
     })
