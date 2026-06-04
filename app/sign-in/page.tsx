@@ -10,6 +10,11 @@ import GoogleButton from "@/components/auth/GoogleButton";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { getRoleHome } from "@/lib/roles";
+import {
+  EMAIL_VALIDATION_MESSAGE,
+  isValidEmailAddress,
+  normalizeEmail,
+} from "@/lib/validation";
 
 function SignInContent() {
   const router = useRouter();
@@ -39,11 +44,18 @@ function SignInContent() {
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!isValidEmailAddress(email)) {
+      setError(EMAIL_VALIDATION_MESSAGE);
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
+    const normalizedEmail = normalizeEmail(email);
     const { data, error: signInError } = await supabase.auth.signInWithPassword(
-      { email, password },
+      { email: normalizedEmail, password },
     );
 
     if (signInError || !data.user) {

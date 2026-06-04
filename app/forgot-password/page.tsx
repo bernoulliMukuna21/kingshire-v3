@@ -7,6 +7,11 @@ import { createClient } from "@/lib/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import {
+  EMAIL_VALIDATION_MESSAGE,
+  isValidEmailAddress,
+  normalizeEmail,
+} from "@/lib/validation";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -17,11 +22,18 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!isValidEmailAddress(email)) {
+      setError(EMAIL_VALIDATION_MESSAGE);
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
+    const normalizedEmail = normalizeEmail(email);
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-      email,
+      normalizedEmail,
       {
         redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
       },
@@ -61,8 +73,10 @@ export default function ForgotPasswordPage() {
             </h1>
             <p className="text-gray-500 text-sm leading-relaxed mb-6">
               We sent a password reset link to{" "}
-              <span className="font-semibold text-gray-700">{email}</span>.
-              Click the link to set a new password.
+              <span className="font-semibold text-gray-700">
+                {normalizeEmail(email)}
+              </span>
+              . Click the link to set a new password.
             </p>
             <p className="text-xs text-gray-400">
               Wrong email?{" "}

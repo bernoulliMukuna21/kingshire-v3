@@ -8,6 +8,11 @@ import { Eye, EyeOff, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import GoogleButton from "@/components/auth/GoogleButton";
+import {
+  EMAIL_VALIDATION_MESSAGE,
+  isValidEmailAddress,
+  normalizeEmail,
+} from "@/lib/validation";
 
 const roles = [
   {
@@ -52,7 +57,10 @@ export default function SignUpPage() {
   const handleResend = async () => {
     setResendLoading(true);
     const supabase = createClient();
-    await supabase.auth.resend({ type: "signup", email: form.email });
+    await supabase.auth.resend({
+      type: "signup",
+      email: normalizeEmail(form.email),
+    });
     setResendLoading(false);
     setResendSent(true);
   };
@@ -90,6 +98,10 @@ export default function SignUpPage() {
       setError("Password must be at least 8 characters.");
       return;
     }
+    if (!isValidEmailAddress(form.email)) {
+      setError(EMAIL_VALIDATION_MESSAGE);
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -97,9 +109,10 @@ export default function SignUpPage() {
 
     setLoading(true);
     const supabase = createClient();
+    const email = normalizeEmail(form.email);
 
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email: form.email,
+      email,
       password: form.password,
       options: {
         data: {
@@ -407,7 +420,7 @@ export default function SignUpPage() {
               <p className="text-gray-500 text-sm leading-relaxed mb-6">
                 We sent a confirmation link to{" "}
                 <span className="font-semibold text-gray-700">
-                  {form.email}
+                  {normalizeEmail(form.email)}
                 </span>
                 . Click the link to activate your account.
               </p>
