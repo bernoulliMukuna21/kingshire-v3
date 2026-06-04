@@ -16,7 +16,6 @@ const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
 
 const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
   { label: "Dashboard", icon: "⬛", href: "/dashboard/kinglancer" },
-  { label: "Browse Jobs", icon: "🔍", href: "/jobs" },
   { label: "My Profile", icon: "👤", href: "/dashboard/profile" },
   { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
 ];
@@ -37,9 +36,6 @@ export function getNavItems(
         : CLIENT_NAV;
   return base.map((item) => ({
     ...item,
-    active:
-      item.href === "/jobs"
-        ? pathname === "/jobs" || pathname.startsWith("/jobs/")
-        : pathname === item.href,
+    active: pathname === item.href,
   }));
 }

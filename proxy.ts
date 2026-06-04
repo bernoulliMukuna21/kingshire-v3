@@ -5,17 +5,18 @@ import { getRoleHome } from "@/lib/roles";
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|auth/callback|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
 
 export const proxy = async (request: NextRequest) => {
   const { supabase, ctx } = createProxyClient(request);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   const { pathname } = request.nextUrl;
+  const { user, authError } = await getProxyUser(supabase, pathname);
+
+  if (authError) {
+    clearSupabaseAuthCookies(ctx.response, request);
+  }
 
   // Logged-in users visiting auth pages → send to their dashboard
   const onAuthPage = pathname === "/sign-in" || pathname === "/sign-up";
@@ -36,6 +37,47 @@ export const proxy = async (request: NextRequest) => {
   }
 
   return ctx.response;
+};
+
+const getProxyUser = async (supabase: SupabaseClient, pathname: string) => {
+  try {
+    const { data, error } = await supabase.auth.getUser();
+
+    if (error) {
+      console.warn("[proxy/auth]", "get_user_failed", {
+        pathname,
+        code: "code" in error ? error.code : undefined,
+        status: "status" in error ? error.status : undefined,
+        message: error.message,
+      });
+    }
+
+    return { user: data.user, authError: error };
+  } catch (error) {
+    console.warn("[proxy/auth]", "get_user_threw", {
+      pathname,
+      message: error instanceof Error ? error.message : "Unknown auth error",
+    });
+    return { user: null, authError: error };
+  }
+};
+
+const clearSupabaseAuthCookies = (
+  response: NextResponse,
+  request: NextRequest,
+) => {
+  request.cookies
+    .getAll()
+    .filter(
+      (cookie) =>
+        cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"),
+    )
+    .forEach((cookie) => {
+      response.cookies.set(cookie.name, "", {
+        maxAge: 0,
+        path: "/",
+      });
+    });
 };
 
 const createProxyClient = (request: NextRequest) => {

@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRoleHome, isMarketplaceRole } from "@/lib/roles";
@@ -20,6 +21,16 @@ function getGoogleProfileMetadata(metadata: Record<string, unknown>) {
   return { fullName, avatarUrl };
 }
 
+function logAuthCallback(
+  level: "info" | "error",
+  event: string,
+  details: Record<string, unknown>,
+) {
+  if (level === "info" && process.env.AUTH_DEBUG_LOGS !== "true") return;
+
+  console[level]("[auth/callback]", event, details);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin: requestOrigin } = new URL(request.url);
   // Behind Railway's reverse proxy, request.url may contain the internal
@@ -27,16 +38,25 @@ export async function GET(request: NextRequest) {
   const origin =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || requestOrigin;
   const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const tokenType = searchParams.get("type");
   const next = searchParams.get("next"); // password-reset flow
   const signupRoleParam = searchParams.get("signup_role");
   const signupRole = isMarketplaceRole(signupRoleParam)
     ? signupRoleParam
     : null;
   const signupVia = searchParams.get("signup_via"); // "google" | "email"
+  const flow = code ? "code" : tokenHash ? "token_hash" : "missing";
 
-  if (!code) {
-    return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
-  }
+  logAuthCallback("info", "received", {
+    flow,
+    tokenType,
+    hasNext: Boolean(next),
+    hasSignupRole: Boolean(signupRole),
+    signupVia,
+    hasCode: Boolean(code),
+    hasTokenHash: Boolean(tokenHash),
+  });
 
   // Collect cookies set during the exchange so we can attach them to the
   // redirect response. Using request.cookies (not next/headers) ensures the
@@ -65,11 +85,37 @@ export async function GET(request: NextRequest) {
     },
   );
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const authResult = code
+    ? await supabase.auth.exchangeCodeForSession(code)
+    : tokenHash && tokenType
+      ? await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: tokenType as EmailOtpType,
+        })
+      : { error: new Error("Missing auth callback code or token hash") };
+
+  const { error } = authResult;
 
   if (error) {
+    logAuthCallback("error", "auth_exchange_failed", {
+      flow,
+      tokenType,
+      hasNext: Boolean(next),
+      hasSignupRole: Boolean(signupRole),
+      signupVia,
+      errorName: error.name,
+      errorMessage: error.message,
+    });
     return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
   }
+
+  logAuthCallback("info", "auth_exchange_succeeded", {
+    flow,
+    tokenType,
+    hasNext: Boolean(next),
+    hasSignupRole: Boolean(signupRole),
+    signupVia,
+  });
 
   // Determine where to send the user
   let destination: string;
@@ -77,6 +123,8 @@ export async function GET(request: NextRequest) {
   if (next) {
     // Password-reset flow → go straight to the reset page
     destination = `${origin}${next}`;
+  } else if (tokenType === "recovery") {
+    destination = `${origin}/reset-password`;
   } else if (signupRole) {
     let existingRole: string | null = null;
 
@@ -86,6 +134,10 @@ export async function GET(request: NextRequest) {
       } = await supabase.auth.getUser();
 
       if (!user) {
+        logAuthCallback("error", "google_signup_missing_user", {
+          signupRole,
+          signupVia,
+        });
         return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
       }
 
@@ -105,6 +157,11 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
 
       if (profileReadError) {
+        logAuthCallback("error", "google_signup_profile_read_failed", {
+          signupRole,
+          signupVia,
+          errorMessage: profileReadError.message,
+        });
         return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
       }
 
@@ -137,6 +194,11 @@ export async function GET(request: NextRequest) {
         .upsert(profilePayload, { onConflict: "id" });
 
       if (profileError) {
+        logAuthCallback("error", "google_signup_profile_upsert_failed", {
+          signupRole,
+          signupVia,
+          errorMessage: profileError.message,
+        });
         return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
       }
     }
@@ -153,6 +215,10 @@ export async function GET(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
+      logAuthCallback("error", "post_exchange_missing_user", {
+        flow,
+        tokenType,
+      });
       return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
     }
 
@@ -173,6 +239,15 @@ export async function GET(request: NextRequest) {
 
     destination = `${origin}${getRoleHome(profile?.role)}`;
   }
+
+  logAuthCallback("info", "redirecting", {
+    flow,
+    tokenType,
+    hasNext: Boolean(next),
+    hasSignupRole: Boolean(signupRole),
+    signupVia,
+    destinationPath: new URL(destination).pathname,
+  });
 
   // Return the redirect with the session cookies attached
   const response = NextResponse.redirect(destination);
