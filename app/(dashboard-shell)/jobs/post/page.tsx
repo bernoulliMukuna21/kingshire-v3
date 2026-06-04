@@ -27,7 +27,7 @@ export default async function PostJobPage({
   if (profile.role !== "client") redirect("/onboarding");
 
   const { data: preferredKinglancer } = preferredKinglancerId
-      ? await supabase
+    ? await supabase
         .from("profiles")
         .select("id, full_name, service_tags, services, avatar_url")
         .eq("id", preferredKinglancerId)

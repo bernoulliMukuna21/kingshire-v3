@@ -31,6 +31,20 @@ function logAuthCallback(
   console[level]("[auth/callback]", event, details);
 }
 
+function getSafeCookieDiagnostics(request: NextRequest) {
+  const cookies = request.cookies.getAll();
+
+  return {
+    hasCodeVerifierCookie: cookies.some((cookie) =>
+      cookie.name.includes("code-verifier"),
+    ),
+    hasSupabaseAuthCookie: cookies.some(
+      (cookie) =>
+        cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"),
+    ),
+  };
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin: requestOrigin } = new URL(request.url);
   // Behind Railway's reverse proxy, request.url may contain the internal
@@ -47,15 +61,19 @@ export async function GET(request: NextRequest) {
     : null;
   const signupVia = searchParams.get("signup_via"); // "google" | "email"
   const flow = code ? "code" : tokenHash ? "token_hash" : "missing";
+  const queryKeys = Array.from(searchParams.keys()).sort();
+  const cookieDiagnostics = getSafeCookieDiagnostics(request);
 
   logAuthCallback("info", "received", {
     flow,
     tokenType,
+    queryKeys,
     hasNext: Boolean(next),
     hasSignupRole: Boolean(signupRole),
     signupVia,
     hasCode: Boolean(code),
     hasTokenHash: Boolean(tokenHash),
+    ...cookieDiagnostics,
   });
 
   // Collect cookies set during the exchange so we can attach them to the
@@ -97,24 +115,37 @@ export async function GET(request: NextRequest) {
   const { error } = authResult;
 
   if (error) {
+    const reason = code
+      ? "code_exchange_failed"
+      : tokenHash && tokenType
+        ? "otp_verify_failed"
+        : "missing_callback_params";
+
     logAuthCallback("error", "auth_exchange_failed", {
       flow,
       tokenType,
+      queryKeys,
       hasNext: Boolean(next),
       hasSignupRole: Boolean(signupRole),
       signupVia,
+      reason,
       errorName: error.name,
       errorMessage: error.message,
+      ...cookieDiagnostics,
     });
-    return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
+    return NextResponse.redirect(
+      `${origin}/sign-in?error=auth_failed&reason=${reason}`,
+    );
   }
 
   logAuthCallback("info", "auth_exchange_succeeded", {
     flow,
     tokenType,
+    queryKeys,
     hasNext: Boolean(next),
     hasSignupRole: Boolean(signupRole),
     signupVia,
+    ...cookieDiagnostics,
   });
 
   // Determine where to send the user

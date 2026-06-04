@@ -10,21 +10,8 @@ export const config = {
 };
 
 export const proxy = async (request: NextRequest) => {
-  const { supabase, ctx } = createProxyClient(request);
   const { pathname } = request.nextUrl;
-  const { user, authError } = await getProxyUser(supabase, pathname);
-
-  if (authError) {
-    clearSupabaseAuthCookies(ctx.response, request);
-  }
-
-  // Logged-in users visiting auth pages → send to their dashboard
   const onAuthPage = pathname === "/sign-in" || pathname === "/sign-up";
-  if (user && onAuthPage) {
-    return redirectLoggedInUser(supabase, user.id, request);
-  }
-
-  // Protected routes → must be logged in
   const protectedPrefixes = [
     "/dashboard",
     "/jobs/post",
@@ -32,6 +19,24 @@ export const proxy = async (request: NextRequest) => {
     "/reset-password",
   ];
   const isProtected = protectedPrefixes.some((p) => pathname.startsWith(p));
+
+  if (!onAuthPage && !isProtected) {
+    return NextResponse.next({ request });
+  }
+
+  const { supabase, ctx } = createProxyClient(request);
+  const { user, authError } = await getProxyUser(supabase, pathname);
+
+  if (authError) {
+    clearSupabaseAuthCookies(ctx.response, request);
+  }
+
+  // Logged-in users visiting auth pages → send to their dashboard
+  if (user && onAuthPage) {
+    return redirectLoggedInUser(supabase, user.id, request);
+  }
+
+  // Protected routes → must be logged in
   if (!user && isProtected) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
@@ -44,12 +49,15 @@ const getProxyUser = async (supabase: SupabaseClient, pathname: string) => {
     const { data, error } = await supabase.auth.getUser();
 
     if (error) {
-      console.warn("[proxy/auth]", "get_user_failed", {
-        pathname,
-        code: "code" in error ? error.code : undefined,
-        status: "status" in error ? error.status : undefined,
-        message: error.message,
-      });
+      const isMissingSession = error.message === "Auth session missing!";
+      if (!isMissingSession) {
+        console.warn("[proxy/auth]", "get_user_failed", {
+          pathname,
+          code: "code" in error ? error.code : undefined,
+          status: "status" in error ? error.status : undefined,
+          message: error.message,
+        });
+      }
     }
 
     return { user: data.user, authError: error };
@@ -70,7 +78,9 @@ const clearSupabaseAuthCookies = (
     .getAll()
     .filter(
       (cookie) =>
-        cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"),
+        cookie.name.startsWith("sb-") &&
+        cookie.name.includes("auth-token") &&
+        !cookie.name.endsWith("-code-verifier"),
     )
     .forEach((cookie) => {
       response.cookies.set(cookie.name, "", {
@@ -122,7 +132,5 @@ const redirectLoggedInUser = async (
     return NextResponse.redirect(new URL("/onboarding", request.url));
   }
 
-  return NextResponse.redirect(
-    new URL(getRoleHome(profile.role), request.url),
-  );
+  return NextResponse.redirect(new URL(getRoleHome(profile.role), request.url));
 };

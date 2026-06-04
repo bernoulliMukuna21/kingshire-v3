@@ -145,14 +145,16 @@ export default function PostJobForm({
               </p>
               {preferredKinglancer.serviceTags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {preferredKinglancer.serviceTags.slice(0, 3).map((service) => (
-                    <span
-                      key={service}
-                      className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-blue-700"
-                    >
-                      {service}
-                    </span>
-                  ))}
+                  {preferredKinglancer.serviceTags
+                    .slice(0, 3)
+                    .map((service) => (
+                      <span
+                        key={service}
+                        className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold text-blue-700"
+                      >
+                        {service}
+                      </span>
+                    ))}
                 </div>
               )}
             </div>
