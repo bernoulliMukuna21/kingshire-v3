@@ -27,7 +27,6 @@ export default function SignUpPage() {
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
     password: "",
     confirmPassword: "",
   });
@@ -98,7 +97,6 @@ export default function SignUpPage() {
         data: {
           full_name: `${form.firstName} ${form.lastName}`,
           role: null,
-          phone: form.phone || null,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
@@ -264,23 +262,10 @@ export default function SignUpPage() {
                     </button>
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                    Phone number
-                  </label>
-                  <input
-                    type="tel"
-                    value={form.phone}
-                    onChange={set("phone")}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 outline-none text-sm transition-all"
-                    placeholder="+44 7700 000000"
-                  />
-                </div>
-
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 flex items-center justify-center gap-2"
+                  className="w-full mt-2 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {loading && <Loader2 size={16} className="animate-spin" />}
                   {loading ? "Creating account…" : "Create account"}
