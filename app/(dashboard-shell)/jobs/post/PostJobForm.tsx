@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
+import {
+  CURRENCY_VALIDATION_MESSAGE,
+  hasValidCurrencyPrecision,
+  normalizeCurrencyAmount,
+} from "@/lib/validation";
 
 export function FormSkeleton() {
   return (
@@ -74,7 +79,13 @@ export default function PostJobForm({
   // For per_hour / per_day, the total escrowed = rate × quantity
   const rate = parseFloat(budget) || 0;
   const qty = parseFloat(quantity) || 0;
-  const totalBudget = rateType === "fixed" ? rate : rate * qty;
+  const totalBudget = normalizeCurrencyAmount(
+    rateType === "fixed" ? rate : rate * qty,
+  );
+  const formattedTotalBudget = totalBudget.toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +98,8 @@ export default function PostJobForm({
     if (categories.length === 0)
       fe.categories = "Please select at least one category.";
     if (!budget || rate <= 0) fe.budget = "Please enter a valid budget.";
+    else if (!hasValidCurrencyPrecision(budget))
+      fe.budget = CURRENCY_VALIDATION_MESSAGE;
     else if (rateType !== "fixed" && (!quantity || qty <= 0))
       fe.quantity = `Please enter how many ${rateType === "per_hour" ? "hours" : "days"} you expect the work to take.`;
     else if (totalBudget < 5) fe.budget = "Minimum total budget is £5.";
@@ -295,8 +308,9 @@ export default function PostJobForm({
             </span>
             <input
               type="number"
-              min="1"
-              step="1"
+              min="0.01"
+              step="0.01"
+              inputMode="decimal"
               value={budget}
               onChange={(e) => {
                 setBudget(e.target.value);
@@ -319,8 +333,9 @@ export default function PostJobForm({
                 </span>
                 <input
                   type="number"
-                  min="1"
-                  step="1"
+                  min="0.01"
+                  step="0.01"
+                  inputMode="decimal"
                   value={budget}
                   onChange={(e) => {
                     setBudget(e.target.value);
@@ -358,7 +373,7 @@ export default function PostJobForm({
             </div>
             {rate > 0 && qty > 0 && (
               <p className="text-sm font-semibold text-green-700">
-                Total: £{totalBudget.toLocaleString()}
+                Total: £{formattedTotalBudget}
               </p>
             )}
           </div>

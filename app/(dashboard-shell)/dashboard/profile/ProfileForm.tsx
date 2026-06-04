@@ -12,6 +12,11 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
+import {
+  CURRENCY_VALIDATION_MESSAGE,
+  isValidCurrencyAmount,
+  normalizeCurrencyAmount,
+} from "@/lib/validation";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -171,11 +176,24 @@ export default function ProfileForm({ profile }: Props) {
     }
 
     const serviceNames = uniqueServiceNames(services);
+    const invalidServiceRate = services.some(
+      (service) =>
+        service.name.trim() &&
+        service.rate.trim() &&
+        !isValidCurrencyAmount(service.rate, { min: 0.01, max: 50000 }),
+    );
+
+    if (invalidServiceRate) {
+      setError(CURRENCY_VALIDATION_MESSAGE);
+      setSaving(false);
+      return;
+    }
+
     const parsedServices = services
       .filter((s) => s.name.trim() && s.rate.trim())
       .map((s) => ({
         name: s.name.trim(),
-        rate: parseFloat(s.rate) || 0,
+        rate: normalizeCurrencyAmount(s.rate),
         rate_type: s.rate_type,
       }));
 
@@ -462,8 +480,9 @@ export default function ProfileForm({ profile }: Props) {
                     </span>
                     <input
                       type="number"
-                      min="0"
-                      step="0.5"
+                      min="0.01"
+                      step="0.01"
+                      inputMode="decimal"
                       value={svc.rate}
                       onChange={(e) => updateService(i, "rate", e.target.value)}
                       placeholder="0"

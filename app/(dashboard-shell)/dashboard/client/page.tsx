@@ -36,6 +36,7 @@ export default async function ClientDashboard() {
       .from("jobs")
       .select(
         "id, title, status, budget, kinglancer_id, kinglancer:profiles!kinglancer_id(full_name), applications:applications(count)",
+        { count: "exact" },
       )
       .eq("client_id", user.id)
       .order("created_at", { ascending: false })
@@ -72,6 +73,12 @@ export default async function ClientDashboard() {
     .reduce((sum, t) => sum + t.amount + t.platform_fee_client, 0);
 
   const completedCount = jobs.filter((j) => j.status === "approved").length;
+  const postedJobsCount = jobsResult.count ?? jobs.length;
+  const openJobsCount = jobs.filter((j) => j.status === "open").length;
+  const totalApplicantCount = jobs.reduce(
+    (sum, job) => sum + (job.applications?.[0]?.count ?? 0),
+    0,
+  );
 
   const awaitingReview = jobs.filter((j) => j.status === "completed");
   const jobsWithApplicants = jobs.filter(
@@ -234,7 +241,61 @@ export default async function ClientDashboard() {
           <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
             Your numbers
           </h2>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Link
+              href="/dashboard/client/jobs"
+              className="group rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <Briefcase size={16} />
+                </div>
+                <ChevronRight
+                  size={14}
+                  className="text-gray-300 group-hover:text-blue-500 transition-colors"
+                />
+              </div>
+              <p className="text-2xl font-black text-slate-950">
+                {postedJobsCount}
+              </p>
+              <p className="text-sm text-slate-500 mt-0.5">Jobs posted</p>
+            </Link>
+            <Link
+              href="/dashboard/client/jobs"
+              className="group rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-emerald-100"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <CheckCircle size={16} />
+                </div>
+                <ChevronRight
+                  size={14}
+                  className="text-gray-300 group-hover:text-emerald-500 transition-colors"
+                />
+              </div>
+              <p className="text-2xl font-black text-slate-950">
+                {openJobsCount}
+              </p>
+              <p className="text-sm text-slate-500 mt-0.5">Open jobs</p>
+            </Link>
+            <Link
+              href="/dashboard/client/jobs"
+              className="group rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-purple-100"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Users size={16} />
+                </div>
+                <ChevronRight
+                  size={14}
+                  className="text-gray-300 group-hover:text-purple-500 transition-colors"
+                />
+              </div>
+              <p className="text-2xl font-black text-slate-950">
+                {totalApplicantCount}
+              </p>
+              <p className="text-sm text-slate-500 mt-0.5">Applicants</p>
+            </Link>
             <Link
               href="/dashboard/client/transactions"
               className="group rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-emerald-100"
@@ -253,16 +314,13 @@ export default async function ClientDashboard() {
               </p>
               <p className="text-sm text-slate-500 mt-0.5">Total spent</p>
             </Link>
-            <Card className="p-5">
-              <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
-                <CheckCircle size={16} />
-              </div>
-              <p className="text-2xl font-black text-slate-950">
-                {completedCount}
-              </p>
-              <p className="text-sm text-slate-500 mt-0.5">Jobs completed</p>
-            </Card>
           </div>
+          {completedCount > 0 && (
+            <p className="mt-3 text-xs font-semibold text-slate-400">
+              {completedCount} completed job{completedCount !== 1 ? "s" : ""}{" "}
+              included in your posted jobs.
+            </p>
+          )}
         </FadeIn>
     </div>
   );

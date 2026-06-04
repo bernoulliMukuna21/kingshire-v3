@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import Pagination from "@/components/ui/Pagination";
 import { getPageNumber, getPageRange } from "@/lib/pagination";
 
-const CLIENT_JOBS_PAGE_SIZE = 10;
+const CLIENT_JOBS_PAGE_SIZE = 5;
 
 const STATUS_CONFIG: Record<
   string,

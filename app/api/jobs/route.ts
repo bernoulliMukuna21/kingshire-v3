@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOpenJobs, createJob } from "@/lib/db/jobs";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
+import {
+  hasValidCurrencyPrecision,
+  normalizeCurrencyAmount,
+} from "@/lib/validation";
 
 export async function GET() {
   try {
@@ -46,6 +50,7 @@ export async function POST(request: Request) {
   const titleStr = (title ?? "").trim();
   const descStr = (description ?? "").trim();
   const budgetNum = Number(budget);
+  const normalizedBudget = normalizeCurrencyAmount(budgetNum);
 
   if (!titleStr || !descStr || !categories?.length || !budget)
     return NextResponse.json(
@@ -62,9 +67,14 @@ export async function POST(request: Request) {
       { error: "Description must be between 10 and 2000 characters." },
       { status: 400 },
     );
-  if (!Number.isFinite(budgetNum) || budgetNum < 5 || budgetNum > 50000)
+  if (
+    !Number.isFinite(budgetNum) ||
+    !hasValidCurrencyPrecision(budget) ||
+    normalizedBudget < 5 ||
+    normalizedBudget > 50000
+  )
     return NextResponse.json(
-      { error: "Budget must be between £5 and £50,000." },
+      { error: "Budget must be between £5 and £50,000 with up to 2 decimals." },
       { status: 400 },
     );
   if (
@@ -94,7 +104,7 @@ export async function POST(request: Request) {
       title: titleStr,
       description: descStr,
       categories,
-      budget: budgetNum,
+      budget: normalizedBudget,
       rate_type: resolvedRateType,
       deadline: deadline || null,
     });

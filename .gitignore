@@ -49,6 +49,7 @@ next-env.d.ts
 
 # internal only
 /app/plan/
+docs/*test-plan.md
 
 # node modules in the root (if accidentally created there instead of in app/)
 /node_modules
