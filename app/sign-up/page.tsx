@@ -166,12 +166,6 @@ export default function SignUpPage() {
 
               <GoogleButton onClick={handleGoogleSignUp} />
 
-              <div className="my-6 flex items-center gap-4">
-                <div className="h-px flex-1 bg-gray-200" />
-                <span className="text-sm text-gray-400">or</span>
-                <div className="h-px flex-1 bg-gray-200" />
-              </div>
-
               {error && (
                 <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
                   {error}
