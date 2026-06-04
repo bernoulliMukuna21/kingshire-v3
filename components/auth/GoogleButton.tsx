@@ -12,7 +12,7 @@ export default function GoogleButton({
       <button
         type="button"
         onClick={onClick}
-        className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-50 hover:border-gray-300 transition-all hover:scale-[1.01] mb-4 bg-white shadow-sm"
+        className="w-full flex items-center justify-center gap-3 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium text-sm hover:bg-gray-50 hover:border-gray-300 transition-all hover:scale-[1.01] mb-4 bg-white shadow-sm cursor-pointer"
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24">
           <path

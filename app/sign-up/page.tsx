@@ -138,7 +138,7 @@ export default function SignUpPage() {
     <AuthLayout
       headline="Join your community."
       accent="Earn your worth."
-      body="A trusted platform where church members hire and earn from each other."
+      body="A trusted platform where people hire local talent and earn from their services."
       bullets={[
         "Free to join",
         "Payments protected by Stripe",
