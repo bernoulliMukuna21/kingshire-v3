@@ -31,22 +31,25 @@ test.describe("Sign In page", () => {
 });
 
 test.describe("Sign Up page", () => {
-  test("renders role selection step", async ({ page }) => {
+  test("renders account creation form", async ({ page }) => {
     await page.goto("/sign-up");
-    // Step 1: choose Client or Kinglancer
-    await expect(page.getByText(/client/i).first()).toBeVisible();
-    await expect(page.getByText(/kinglancer/i).first()).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /create your account/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/choose client or kinglancer/i)).toBeVisible();
+    await expect(page.getByPlaceholder("Jane", { exact: true })).toBeVisible();
+    await expect(page.getByPlaceholder("jane@example.com")).toBeVisible();
   });
 
-  test("selecting a role advances to details step", async ({ page }) => {
+  test("rejects incomplete email domains", async ({ page }) => {
     await page.goto("/sign-up");
-    await page.getByText("Client").click();
-    // Must click Continue to advance to the details step
-    await page.getByRole("button", { name: /continue/i }).click();
-    // Details form should appear
-    await expect(page.getByPlaceholder("Jane", { exact: true })).toBeVisible({
-      timeout: 5000,
-    });
+    await page.getByPlaceholder("Jane", { exact: true }).fill("Paul");
+    await page.getByPlaceholder("Doe").fill("Tester");
+    await page.getByPlaceholder("jane@example.com").fill("paulin@fjkse");
+    await page.getByPlaceholder("Min. 8 characters").fill("password123");
+    await page.getByPlaceholder("Repeat your password").fill("password123");
+    await page.getByRole("button", { name: /create account/i }).click();
+    await expect(page.getByText(/valid email address/i)).toBeVisible();
   });
 
   test("link to sign-in page works", async ({ page }) => {

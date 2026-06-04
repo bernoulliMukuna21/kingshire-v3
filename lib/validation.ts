@@ -1,5 +1,4 @@
-export const EMAIL_VALIDATION_MESSAGE =
-  "Please enter a valid email address, including a domain such as .com or .co.uk.";
+export const EMAIL_VALIDATION_MESSAGE = "Please enter a valid email address.";
 
 export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();

@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getRoleHome, isMarketplaceRole } from "@/lib/roles";
+import { getRoleHome } from "@/lib/roles";
 
 function getGoogleProfileMetadata(metadata: Record<string, unknown>) {
   const fullName =
@@ -72,14 +72,6 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const tokenType = searchParams.get("type");
   const next = searchParams.get("next") ?? redirectSearchParams?.get("next"); // password-reset flow
-  const signupRoleParam =
-    searchParams.get("signup_role") ??
-    redirectSearchParams?.get("signup_role");
-  let signupRole = isMarketplaceRole(signupRoleParam)
-    ? signupRoleParam
-    : null;
-  let signupVia =
-    searchParams.get("signup_via") ?? redirectSearchParams?.get("signup_via"); // "google" | "email"
   const flow = code ? "code" : tokenHash ? "token_hash" : "missing";
   const queryKeys = Array.from(searchParams.keys()).sort();
   const cookieDiagnostics = getSafeCookieDiagnostics(request);
@@ -89,8 +81,6 @@ export async function GET(request: NextRequest) {
     tokenType,
     queryKeys,
     hasNext: Boolean(next),
-    hasSignupRole: Boolean(signupRole),
-    signupVia,
     hasCode: Boolean(code),
     hasTokenHash: Boolean(tokenHash),
     ...cookieDiagnostics,
@@ -146,8 +136,6 @@ export async function GET(request: NextRequest) {
       tokenType,
       queryKeys,
       hasNext: Boolean(next),
-      hasSignupRole: Boolean(signupRole),
-      signupVia,
       reason,
       errorName: error.name,
       errorMessage: error.message,
@@ -163,22 +151,8 @@ export async function GET(request: NextRequest) {
     tokenType,
     queryKeys,
     hasNext: Boolean(next),
-    hasSignupRole: Boolean(signupRole),
-    signupVia,
     ...cookieDiagnostics,
   });
-
-  if (!signupRole && (tokenType === "email" || tokenType === "signup")) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const intendedRole = user?.user_metadata?.intended_role;
-
-    if (isMarketplaceRole(intendedRole)) {
-      signupRole = intendedRole;
-      signupVia ??= "email";
-    }
-  }
 
   // Determine where to send the user
   let destination: string;
@@ -188,90 +162,6 @@ export async function GET(request: NextRequest) {
     destination = `${origin}${next}`;
   } else if (tokenType === "recovery") {
     destination = `${origin}/reset-password`;
-  } else if (signupRole) {
-    let existingRole: string | null = null;
-
-    if (signupVia === "google") {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        logAuthCallback("error", "google_signup_missing_user", {
-          signupRole,
-          signupVia,
-        });
-        return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
-      }
-
-      const { fullName, avatarUrl } = getGoogleProfileMetadata(
-        user.user_metadata ?? {},
-      );
-
-      // Use service client so the profile trigger does not revert system fields.
-      // Existing users keep their current role. New/unfinished Google users only
-      // receive the client role immediately; kinglancer role is assigned after
-      // they complete onboarding with at least one service.
-      const serviceDb = createServiceClient();
-      const { data: currentProfile, error: profileReadError } = await serviceDb
-        .from("profiles")
-        .select("role, avatar_url")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (profileReadError) {
-        logAuthCallback("error", "google_signup_profile_read_failed", {
-          signupRole,
-          signupVia,
-          errorMessage: profileReadError.message,
-        });
-        return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
-      }
-
-      existingRole = currentProfile?.role ?? null;
-      const roleToPersist = existingRole
-        ? existingRole
-        : signupRole === "client"
-          ? "client"
-          : null;
-
-      const profilePayload: {
-        id: string;
-        email: string;
-        full_name: string;
-        role: string | null;
-        avatar_url?: string;
-      } = {
-        id: user.id,
-        email: user.email ?? "",
-        full_name: fullName ?? user.email?.split("@")[0] ?? "KingsHire user",
-        role: roleToPersist,
-      };
-
-      if (avatarUrl && !currentProfile?.avatar_url) {
-        profilePayload.avatar_url = avatarUrl;
-      }
-
-      const { error: profileError } = await serviceDb
-        .from("profiles")
-        .upsert(profilePayload, { onConflict: "id" });
-
-      if (profileError) {
-        logAuthCallback("error", "google_signup_profile_upsert_failed", {
-          signupRole,
-          signupVia,
-          errorMessage: profileError.message,
-        });
-        return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
-      }
-    }
-
-    destination =
-      existingRole === "admin" || existingRole === "kinglancer"
-        ? `${origin}${getRoleHome(existingRole)}`
-        : signupRole === "client"
-        ? `${origin}/dashboard/client`
-        : `${origin}/onboarding?from=${signupVia ?? "google"}&role=kinglancer&next=/dashboard/kinglancer`;
   } else {
     const {
       data: { user },
@@ -289,15 +179,42 @@ export async function GET(request: NextRequest) {
       .from("profiles")
       .select("role, avatar_url")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
-    const { avatarUrl } = getGoogleProfileMetadata(user.user_metadata ?? {});
-    if (avatarUrl && profile && !profile.avatar_url) {
+    const { fullName, avatarUrl } = getGoogleProfileMetadata(
+      user.user_metadata ?? {},
+    );
+    if (!profile || (avatarUrl && !profile.avatar_url)) {
       const serviceDb = createServiceClient();
-      await serviceDb
+      const profilePayload: {
+        id: string;
+        email: string;
+        full_name: string;
+        role: string | null;
+        avatar_url?: string;
+      } = {
+        id: user.id,
+        email: user.email ?? "",
+        full_name: fullName ?? user.email?.split("@")[0] ?? "KingsHire user",
+        role: profile?.role ?? null,
+      };
+
+      if (avatarUrl) {
+        profilePayload.avatar_url = avatarUrl;
+      }
+
+      const { error: profileError } = await serviceDb
         .from("profiles")
-        .update({ avatar_url: avatarUrl })
-        .eq("id", user.id);
+        .upsert(profilePayload, { onConflict: "id" });
+
+      if (profileError) {
+        logAuthCallback("error", "profile_upsert_failed", {
+          flow,
+          tokenType,
+          errorMessage: profileError.message,
+        });
+        return NextResponse.redirect(`${origin}/sign-in?error=auth_failed`);
+      }
     }
 
     destination = `${origin}${getRoleHome(profile?.role)}`;
@@ -307,8 +224,6 @@ export async function GET(request: NextRequest) {
     flow,
     tokenType,
     hasNext: Boolean(next),
-    hasSignupRole: Boolean(signupRole),
-    signupVia,
     destinationPath: new URL(destination).pathname,
   });
 

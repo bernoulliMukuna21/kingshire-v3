@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { Eye, EyeOff, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { Eye, EyeOff, CheckCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import GoogleButton from "@/components/auth/GoogleButton";
@@ -14,27 +14,9 @@ import {
   normalizeEmail,
 } from "@/lib/validation";
 
-const roles = [
-  {
-    id: "client",
-    title: "Client",
-    subtitle: "I need work done",
-    desc: "Post jobs and hire skilled people from your community.",
-    emoji: "💼",
-  },
-  {
-    id: "kinglancer",
-    title: "Kinglancer",
-    subtitle: "I offer services",
-    desc: "Browse jobs and earn money from your services.",
-    emoji: "⚡",
-  },
-];
-
 export default function SignUpPage() {
   const router = useRouter();
-  const [step, setStep] = useState<"role" | "details" | "verify">("role");
-  const [role, setRole] = useState<string>("");
+  const [step, setStep] = useState<"details" | "verify">("details");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -67,12 +49,10 @@ export default function SignUpPage() {
 
   const handleGoogleSignUp = async () => {
     const supabase = createClient();
-    // Pass role as a URL param so the callback can route correctly
-    const redirectTo = `${window.location.origin}/auth/callback?signup_role=${role}&signup_via=google`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo,
+        redirectTo: `${window.location.origin}/auth/callback`,
         queryParams: {
           prompt: "select_account",
         },
@@ -117,11 +97,10 @@ export default function SignUpPage() {
       options: {
         data: {
           full_name: `${form.firstName} ${form.lastName}`,
-          role: role === "client" ? "client" : null,
-          intended_role: role,
+          role: null,
           phone: form.phone || null,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback?signup_role=${role}&signup_via=email`,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
       },
     });
 
@@ -148,12 +127,7 @@ export default function SignUpPage() {
 
     // If email confirmation is disabled, Supabase returns a session immediately
     if (data.session) {
-      // Clients go straight to dashboard; kinglancers need onboarding first
-      if (role === "client") {
-        router.push("/dashboard/client");
-      } else {
-        router.push("/onboarding?from=email");
-      }
+      router.push("/onboarding");
       return;
     }
 
@@ -176,9 +150,9 @@ export default function SignUpPage() {
     >
       <div className="w-full max-w-md">
         <AnimatePresence mode="wait">
-          {step === "role" ? (
+          {step === "details" ? (
             <motion.div
-              key="role"
+              key="details"
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -30 }}
@@ -187,94 +161,18 @@ export default function SignUpPage() {
               <h1 className="text-2xl font-black text-gray-900 mb-1">
                 Create your account
               </h1>
-              <p className="text-gray-500 mb-8 text-sm">
-                How are you joining KingsHire?
-              </p>
-
-              <div className="grid grid-cols-1 gap-4 mb-6">
-                {roles.map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => setRole(r.id)}
-                    className={`group text-left p-5 rounded-2xl border-2 transition-all duration-200 ${
-                      role === r.id
-                        ? "border-blue-600 bg-blue-50 shadow-lg shadow-blue-100"
-                        : "border-gray-200 bg-white hover:border-blue-300 hover:shadow-md"
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <span className="text-3xl">{r.emoji}</span>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="font-bold text-gray-900">{r.title}</p>
-                          <div
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                              role === r.id
-                                ? "border-blue-600 bg-blue-600"
-                                : "border-gray-300"
-                            }`}
-                          >
-                            {role === r.id && (
-                              <div className="w-2 h-2 bg-white rounded-full" />
-                            )}
-                          </div>
-                        </div>
-                        <p className="text-blue-600 text-sm font-medium mt-0.5">
-                          {r.subtitle}
-                        </p>
-                        <p className="text-gray-500 text-sm mt-1">{r.desc}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              <p className="text-xs text-gray-400 text-center mb-4">
-                You can always switch roles later from your profile.
-              </p>
-
-              <button
-                onClick={() => role && setStep("details")}
-                disabled={!role}
-                className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 disabled:cursor-not-allowed"
-              >
-                Continue
-              </button>
-
-              <p className="text-center text-sm text-gray-500 mt-6">
-                Already have an account?{" "}
-                <Link
-                  href="/sign-in"
-                  className="text-blue-600 font-semibold hover:underline"
-                >
-                  Sign in
-                </Link>
-              </p>
-            </motion.div>
-          ) : step === "details" ? (
-            <motion.div
-              key="details"
-              initial={{ opacity: 0, x: 30 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.3 }}
-            >
-              <button
-                onClick={() => setStep("role")}
-                className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors mb-6"
-              >
-                <ArrowLeft size={14} /> Back
-              </button>
-              <h1 className="text-2xl font-black text-gray-900 mb-1">
-                {role === "client"
-                  ? "Set up your Client account"
-                  : "Set up your Kinglancer profile"}
-              </h1>
               <p className="text-gray-500 mb-6 text-sm">
-                Just a few details to get you started.
+                Create your login first. You&apos;ll choose Client or
+                Kinglancer in the next step.
               </p>
 
               <GoogleButton onClick={handleGoogleSignUp} />
+
+              <div className="my-6 flex items-center gap-4">
+                <div className="h-px flex-1 bg-gray-200" />
+                <span className="text-sm text-gray-400">or</span>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
 
               {error && (
                 <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
@@ -401,6 +299,15 @@ export default function SignUpPage() {
                   </Link>
                 </p>
               </form>
+              <p className="text-center text-sm text-gray-500 mt-6">
+                Already have an account?{" "}
+                <Link
+                  href="/sign-in"
+                  className="text-blue-600 font-semibold hover:underline"
+                >
+                  Sign in
+                </Link>
+              </p>
             </motion.div>
           ) : (
             // Verify email step
