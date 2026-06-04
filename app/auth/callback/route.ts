@@ -45,21 +45,41 @@ function getSafeCookieDiagnostics(request: NextRequest) {
   };
 }
 
+function getRedirectSearchParams(
+  redirectTo: string | null,
+  origin: string,
+): URLSearchParams | null {
+  if (!redirectTo) return null;
+
+  try {
+    return new URL(redirectTo, origin).searchParams;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin: requestOrigin } = new URL(request.url);
   // Behind Railway's reverse proxy, request.url may contain the internal
   // hostname. Use the configured public URL when available.
   const origin =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || requestOrigin;
+  const redirectSearchParams = getRedirectSearchParams(
+    searchParams.get("redirect_to"),
+    origin,
+  );
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const tokenType = searchParams.get("type");
-  const next = searchParams.get("next"); // password-reset flow
-  const signupRoleParam = searchParams.get("signup_role");
-  const signupRole = isMarketplaceRole(signupRoleParam)
+  const next = searchParams.get("next") ?? redirectSearchParams?.get("next"); // password-reset flow
+  const signupRoleParam =
+    searchParams.get("signup_role") ??
+    redirectSearchParams?.get("signup_role");
+  let signupRole = isMarketplaceRole(signupRoleParam)
     ? signupRoleParam
     : null;
-  const signupVia = searchParams.get("signup_via"); // "google" | "email"
+  let signupVia =
+    searchParams.get("signup_via") ?? redirectSearchParams?.get("signup_via"); // "google" | "email"
   const flow = code ? "code" : tokenHash ? "token_hash" : "missing";
   const queryKeys = Array.from(searchParams.keys()).sort();
   const cookieDiagnostics = getSafeCookieDiagnostics(request);
@@ -147,6 +167,18 @@ export async function GET(request: NextRequest) {
     signupVia,
     ...cookieDiagnostics,
   });
+
+  if (!signupRole && (tokenType === "email" || tokenType === "signup")) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const intendedRole = user?.user_metadata?.intended_role;
+
+    if (isMarketplaceRole(intendedRole)) {
+      signupRole = intendedRole;
+      signupVia ??= "email";
+    }
+  }
 
   // Determine where to send the user
   let destination: string;

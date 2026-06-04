@@ -105,6 +105,7 @@ export default function SignUpPage() {
         data: {
           full_name: `${form.firstName} ${form.lastName}`,
           role: role === "client" ? "client" : null,
+          intended_role: role,
           phone: form.phone || null,
         },
         emailRedirectTo: `${window.location.origin}/auth/callback?signup_role=${role}&signup_via=email`,
