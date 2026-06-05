@@ -13,15 +13,15 @@ import {
 } from "lucide-react";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import ConfirmModal from "@/components/ConfirmModal";
+import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
 // ── Apply form (for kinglancers) ──────────────────────────
 
 export function ApplyForm({ jobId }: { jobId: string }) {
   const router = useRouter();
   const [coverLetter, setCoverLetter] = useState("");
-  const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, setError, run } = useAsyncAction();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,23 +32,23 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       return;
     }
 
-    setLoading(true);
-    const res = await fetch("/api/applications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ job_id: jobId, cover_letter: coverLetter }),
+    run(async () => {
+      const res = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: jobId, cover_letter: coverLetter }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data.error ?? "Failed to submit. Please try again.");
+        return;
+      }
+
+      setDone(true);
+      router.refresh();
     });
-
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setError(data.error ?? "Failed to submit. Please try again.");
-      return;
-    }
-
-    setDone(true);
-    router.refresh();
   };
 
   if (done) {
@@ -162,21 +162,26 @@ export function DirectRequestActions({
   ) => {
     setError(null);
     setLoadingAction(action);
-    const res = await fetch(`/api/jobs/${jobId}/direct-request`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...extraBody }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setLoadingAction(null);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/direct-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...extraBody }),
+      });
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      setError(data.error ?? "Something went wrong.");
-      return;
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong.");
+        return;
+      }
+
+      setShowCounter(false);
+      router.refresh();
+    } catch {
+      setError("Something went wrong.");
+    } finally {
+      setLoadingAction(null);
     }
-
-    setShowCounter(false);
-    router.refresh();
   };
 
   const startPayment = async () => {
@@ -605,22 +610,22 @@ export function ApplicantsList({
 
 export function KinglancerCompleteButton({ jobId }: { jobId: string }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, setError, run } = useAsyncAction();
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     setConfirmOpen(false);
-    setLoading(true);
-    setError(null);
-    const res = await fetch(`/api/jobs/${jobId}/complete`, { method: "POST" });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error ?? "Failed to mark as complete.");
-      return;
-    }
-    router.refresh();
+    run(async () => {
+      const res = await fetch(`/api/jobs/${jobId}/complete`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error ?? "Failed to mark as complete.");
+        return;
+      }
+      router.refresh();
+    });
   };
 
   return (
@@ -633,6 +638,7 @@ export function KinglancerCompleteButton({ jobId }: { jobId: string }) {
         message="This tells the client you've completed the work. They'll be asked to review and approve — releasing payment to you. You can't undo this once submitted."
         confirmLabel="Yes, submit for review"
         variant="success"
+        loading={loading}
       />
       <div className="space-y-3">
         {error && (
@@ -674,42 +680,42 @@ export function ClientApproveActions({
 }) {
   const router = useRouter();
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
-  const [approving, setApproving] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
   const [reason, setReason] = useState("");
-  const [disputing, setDisputing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const approveAction = useAsyncAction();
+  const disputeAction = useAsyncAction();
+  const error = approveAction.error ?? disputeAction.error;
 
-  const handleApprove = async () => {
+  const handleApprove = () => {
     setApproveConfirmOpen(false);
-    setApproving(true);
-    setError(null);
-    const res = await fetch(`/api/jobs/${jobId}/approve`, { method: "POST" });
-    const data = await res.json();
-    setApproving(false);
-    if (!res.ok) {
-      setError(data.error ?? "Failed to release payment.");
-      return;
-    }
-    router.refresh();
+    approveAction.run(async () => {
+      const res = await fetch(`/api/jobs/${jobId}/approve`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        approveAction.setError(data.error ?? "Failed to release payment.");
+        return;
+      }
+      router.refresh();
+    });
   };
 
-  const handleDispute = async (e: React.FormEvent) => {
+  const handleDispute = (e: React.FormEvent) => {
     e.preventDefault();
-    setDisputing(true);
-    setError(null);
-    const res = await fetch(`/api/jobs/${jobId}/dispute`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
+    disputeAction.run(async () => {
+      const res = await fetch(`/api/jobs/${jobId}/dispute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        disputeAction.setError(data.error ?? "Failed to raise dispute.");
+        return;
+      }
+      router.refresh();
     });
-    const data = await res.json();
-    setDisputing(false);
-    if (!res.ok) {
-      setError(data.error ?? "Failed to raise dispute.");
-      return;
-    }
-    router.refresh();
   };
 
   return (
@@ -722,7 +728,7 @@ export function ClientApproveActions({
         message="This confirms the work is complete and immediately releases the escrowed payment to the Kinglancer. This cannot be undone."
         confirmLabel="Yes, release payment"
         variant="success"
-        loading={approving}
+        loading={approveAction.loading}
       />
       <div className="space-y-3">
         {error && (
@@ -735,10 +741,10 @@ export function ClientApproveActions({
         {showApprove && (
           <button
             onClick={() => setApproveConfirmOpen(true)}
-            disabled={approving}
+            disabled={approveAction.loading}
             className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {approving ? (
+            {approveAction.loading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
                 Releasing payment...
@@ -780,10 +786,10 @@ export function ClientApproveActions({
               </button>
               <button
                 type="submit"
-                disabled={disputing}
+                disabled={disputeAction.loading}
                 className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {disputing ? (
+                {disputeAction.loading ? (
                   <Loader2 size={14} className="animate-spin" />
                 ) : (
                   "Submit dispute"

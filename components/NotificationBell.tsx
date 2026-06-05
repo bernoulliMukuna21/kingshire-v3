@@ -52,12 +52,11 @@ export default function NotificationBell() {
       } catch {}
     };
 
-    const initialFetch = setTimeout(fetchNotifications, 0);
+    fetchNotifications();
     const interval = setInterval(fetchNotifications, 30_000);
 
     return () => {
       cancelled = true;
-      clearTimeout(initialFetch);
       clearInterval(interval);
     };
   }, []);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { X, Loader2 } from "lucide-react";
 
 interface ConfirmModalProps {
@@ -24,14 +24,21 @@ export default function ConfirmModal({
   loading = false,
   variant = "primary",
 }: ConfirmModalProps) {
+  // Keep a ref to the latest onClose so the keydown listener never needs to
+  // be torn down and re-registered just because the parent re-renders.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !loading) onClose();
+      if (e.key === "Escape" && !loading) onCloseRef.current();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [isOpen, loading, onClose]);
+  }, [isOpen, loading]);
 
   if (!isOpen) return null;
 

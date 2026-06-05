@@ -1,16 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { Loader2, ExternalLink } from "lucide-react";
+import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
 export default function StripeLoginButton() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, setError, run } = useAsyncAction();
 
-  const handleClick = async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const handleClick = () =>
+    run(async () => {
       const res = await fetch("/api/stripe/connect-login", { method: "POST" });
       const data = await res.json();
       if (data.url) {
@@ -20,12 +17,7 @@ export default function StripeLoginButton() {
           data.error ?? "Could not open Stripe dashboard. Please try again.",
         );
       }
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
 
   return (
     <div className="shrink-0">

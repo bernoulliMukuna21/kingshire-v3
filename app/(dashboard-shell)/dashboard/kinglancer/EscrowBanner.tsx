@@ -6,6 +6,7 @@ import { CheckCircle, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import ConfirmModal from "@/components/ConfirmModal";
 import { AlertCircle } from "lucide-react";
+import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
 interface EscrowRowProps {
   jobId: string;
@@ -24,14 +25,11 @@ export default function EscrowRow({
 }: EscrowRowProps) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, setError, run } = useAsyncAction();
 
-  const handleMarkDone = async () => {
+  const handleMarkDone = () => {
     setConfirmOpen(false);
-    setLoading(true);
-    setError(null);
-    try {
+    run(async () => {
       const res = await fetch(`/api/jobs/${jobId}/complete`, {
         method: "POST",
       });
@@ -41,11 +39,7 @@ export default function EscrowRow({
       } else {
         router.refresh();
       }
-    } catch {
-      setError("Network error. Please check your connection and try again.");
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   return (
@@ -57,7 +51,8 @@ export default function EscrowRow({
         title="Mark work as done?"
         message={
           <>
-            This tells the client you&apos;ve completed &quot;<strong>{jobTitle}</strong>&quot;. They&apos;ll review and approve —
+            This tells the client you&apos;ve completed &quot;
+            <strong>{jobTitle}</strong>&quot;. They&apos;ll review and approve —
             releasing £{heldAmount.toFixed(2)} to you. You can&apos;t undo this.
           </>
         }

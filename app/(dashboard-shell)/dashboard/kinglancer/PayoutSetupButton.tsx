@@ -1,16 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
 export default function PayoutSetupButton() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error, setError, run } = useAsyncAction();
 
-  const handleClick = async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const handleClick = () =>
+    run(async () => {
       const res = await fetch("/api/stripe/connect-onboard", {
         method: "POST",
       });
@@ -20,12 +17,7 @@ export default function PayoutSetupButton() {
         return;
       }
       setError(data.error ?? "Failed to start payout setup. Please try again.");
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    });
 
   return (
     <div className="shrink-0">

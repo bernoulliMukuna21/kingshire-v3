@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
 export default function SwitchRoleButton({
   currentRole,
@@ -10,13 +10,10 @@ export default function SwitchRoleButton({
   currentRole: string | null;
 }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { loading, error, setError, run } = useAsyncAction();
 
-  async function handleSwitch() {
-    setLoading(true);
-    setError("");
-    try {
+  const handleSwitch = () =>
+    run(async () => {
       const res = await fetch("/api/profile/switch-role", { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
@@ -29,12 +26,7 @@ export default function SwitchRoleButton({
       }
       router.push(data.redirect);
       router.refresh();
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  }
+    });
 
   const target = currentRole === "client" ? "Kinglancer" : "Client";
 

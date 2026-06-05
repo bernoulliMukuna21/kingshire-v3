@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
@@ -9,8 +9,7 @@ import {
   ChevronRight,
   LayoutDashboard,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { getRoleHome } from "@/lib/roles";
+import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
 
 const floatingAvatars = [
   {
@@ -75,38 +74,11 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
   });
   const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [dashboardHref, setDashboardHref] = useState("/dashboard/client");
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    (async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        const [{ data: authData }, { data: profile }] = await Promise.all([
-          supabase.auth.getUser(),
-          supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single(),
-        ]);
-
-        if (authData.user) {
-          setIsLoggedIn(true);
-          setDashboardHref(getRoleHome(profile?.role));
-        }
-      }
-    })();
-    const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
-      setIsLoggedIn(!!session?.user);
-    });
-    return () => listener.subscription.unsubscribe();
-  }, []);
+  const { isLoggedIn, role, dashboardHref } = usePublicAuth();
+  const secondaryCta =
+    role === "client"
+      ? { href: "/jobs/post", label: "Post a Job" }
+      : { href: "/jobs", label: "Browse Jobs" };
 
   return (
     <section
@@ -255,10 +227,10 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
                 Go to Dashboard
               </Link>
               <Link
-                href="/jobs"
+                href={secondaryCta.href}
                 className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
               >
-                Browse Jobs
+                {secondaryCta.label}
                 <ChevronRight
                   size={18}
                   className="group-hover:translate-x-1 transition-transform"
@@ -268,7 +240,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
           ) : (
             <>
               <Link
-                href="/sign-up?role=client"
+                href="/sign-up"
                 className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/30 text-sm sm:text-base"
               >
                 Post a Job
@@ -278,7 +250,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
                 />
               </Link>
               <Link
-                href="/sign-up?role=kinglancer"
+                href="/sign-up"
                 className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
               >
                 Offer Your Services

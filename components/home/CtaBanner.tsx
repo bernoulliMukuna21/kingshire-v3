@@ -26,7 +26,7 @@ export default function CtaBanner() {
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
-                  href="/sign-up?role=client"
+                  href="/sign-up"
                   className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white text-[#1a2e5a] font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl text-sm sm:text-base"
                 >
                   Post a Job
@@ -36,7 +36,7 @@ export default function CtaBanner() {
                   />
                 </Link>
                 <Link
-                  href="/sign-up?role=kinglancer"
+                  href="/sign-up"
                   className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
                 >
                   Become a Kinglancer

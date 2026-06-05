@@ -5,10 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
 import SignOutButton from "@/components/SignOutButton";
 import { ButtonLink } from "@/components/ui/Button";
-import { getRoleHome } from "@/lib/roles";
 
 const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
@@ -29,58 +28,22 @@ export default function Navbar({
 }) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [authReady, setAuthReady] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [role, setRole] = useState<"client" | "kinglancer" | "admin" | null>(
-    null,
-  );
-  const [dashboardHref, setDashboardHref] = useState("/dashboard/client");
+  const {
+    isLoggedIn,
+    authReady,
+    firstName,
+    role,
+    dashboardHref,
+    clearAuthState,
+  } = usePublicAuth();
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handler);
+    const handler = () => {
+      const isScrolled = window.scrollY > 20;
+      setScrolled((prev) => (prev === isScrolled ? prev : isScrolled));
+    };
+    window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
-  }, []);
-
-  useEffect(() => {
-    const supabase = createClient();
-
-    (async () => {
-      // getSession reads from local storage — no network call — gives us the user ID
-      // immediately so we can fire getUser (server validation) + profile fetch in parallel.
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session?.user) {
-        const [{ data: authData }, { data: profile }] = await Promise.all([
-          supabase.auth.getUser(),
-          supabase
-            .from("profiles")
-            .select("full_name, role")
-            .eq("id", session.user.id)
-            .single(),
-        ]);
-
-        if (authData.user) {
-          setIsLoggedIn(true);
-          if (profile?.full_name) setFirstName(profile.full_name.split(" ")[0]);
-          setRole(profile?.role ?? null);
-          setDashboardHref(getRoleHome(profile?.role));
-        }
-      }
-      setAuthReady(true);
-    })();
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
-      setIsLoggedIn(!!session?.user);
-      if (!session?.user) {
-        setFirstName("");
-        setRole(null);
-      }
-    });
-    return () => listener.subscription.unsubscribe();
   }, []);
 
   const isSolid = variant === "solid" || scrolled;
@@ -133,13 +96,7 @@ export default function Navbar({
                 <ButtonLink href={dashboardHref} size="sm">
                   {firstName ? `Hi, ${firstName}` : "Dashboard"}
                 </ButtonLink>
-                <SignOutButton
-                  onSignOut={() => {
-                    setIsLoggedIn(false);
-                    setFirstName("");
-                    setRole(null);
-                  }}
-                />
+                <SignOutButton onSignOut={clearAuthState} />
               </>
             ) : (
               <>
@@ -204,9 +161,7 @@ export default function Navbar({
                       <SignOutButton
                         onSignOut={() => {
                           setMenuOpen(false);
-                          setIsLoggedIn(false);
-                          setFirstName("");
-                          setRole(null);
+                          clearAuthState();
                         }}
                         className="w-full"
                       />
