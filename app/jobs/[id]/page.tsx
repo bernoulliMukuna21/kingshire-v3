@@ -319,7 +319,7 @@ export default async function JobDetailPage({
   );
 
   return (
-    <PublicShell>
+    <PublicShell navbarVariant="solid">
       <div className="pt-20">{pageContent}</div>
     </PublicShell>
   );

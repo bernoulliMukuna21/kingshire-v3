@@ -16,7 +16,11 @@ const navLinks = [
   { label: "Kinglancers", href: "/kinglancers" },
 ];
 
-export default function Navbar() {
+export default function Navbar({
+  variant = "transparent",
+}: {
+  variant?: "transparent" | "solid";
+}) {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -68,13 +72,15 @@ export default function Navbar() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  const isSolid = variant === "solid" || scrolled;
+
   return (
     <motion.header
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.21, 0.47, 0.32, 0.98] }}
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
+        isSolid
           ? "bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100"
           : "bg-transparent"
       }`}
@@ -87,7 +93,7 @@ export default function Navbar() {
             alt="KingsHire"
             width={137}
             height={36}
-            className={`h-9 w-auto transition-opacity ${scrolled ? "opacity-100" : "brightness-0 invert opacity-90"}`}
+            className={`h-9 w-auto transition-opacity ${isSolid ? "opacity-100" : "brightness-0 invert opacity-90"}`}
             priority
           />
         </Link>
@@ -99,7 +105,7 @@ export default function Navbar() {
               key={link.label}
               href={link.href}
               className={`text-sm font-medium transition-colors hover:text-blue-400 ${
-                scrolled ? "text-gray-600" : "text-white/80"
+                isSolid ? "text-gray-600" : "text-white/80"
               }`}
             >
               {link.label}
@@ -130,7 +136,7 @@ export default function Navbar() {
                 <Link
                   href="/sign-in"
                   className={`text-sm font-medium px-4 py-2 rounded-lg transition-colors ${
-                    scrolled
+                    isSolid
                       ? "text-gray-700 hover:text-blue-600"
                       : "text-white/90 hover:text-white"
                   }`}
@@ -150,7 +156,7 @@ export default function Navbar() {
         {/* Mobile menu button */}
         <button
           onClick={() => setMenuOpen(!menuOpen)}
-          className={`md:hidden p-2 rounded-lg transition-colors ${scrolled ? "text-gray-700" : "text-white"}`}
+          className={`md:hidden p-2 rounded-lg transition-colors ${isSolid ? "text-gray-700" : "text-white"}`}
         >
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
