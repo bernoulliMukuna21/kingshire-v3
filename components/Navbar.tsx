@@ -16,6 +16,12 @@ const navLinks = [
   { label: "Kinglancers", href: "/kinglancers" },
 ];
 
+const clientNavLinks = [
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Kinglancers", href: "/kinglancers" },
+  { label: "Post a Job", href: "/jobs/post" },
+];
+
 export default function Navbar({
   variant = "transparent",
 }: {
@@ -26,6 +32,9 @@ export default function Navbar({
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authReady, setAuthReady] = useState(false);
   const [firstName, setFirstName] = useState("");
+  const [role, setRole] = useState<"client" | "kinglancer" | "admin" | null>(
+    null,
+  );
   const [dashboardHref, setDashboardHref] = useState("/dashboard/client");
 
   useEffect(() => {
@@ -57,6 +66,7 @@ export default function Navbar({
         if (authData.user) {
           setIsLoggedIn(true);
           if (profile?.full_name) setFirstName(profile.full_name.split(" ")[0]);
+          setRole(profile?.role ?? null);
           setDashboardHref(getRoleHome(profile?.role));
         }
       }
@@ -67,12 +77,14 @@ export default function Navbar({
       setIsLoggedIn(!!session?.user);
       if (!session?.user) {
         setFirstName("");
+        setRole(null);
       }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
 
   const isSolid = variant === "solid" || scrolled;
+  const visibleNavLinks = role === "client" ? clientNavLinks : navLinks;
 
   return (
     <motion.header
@@ -100,7 +112,7 @@ export default function Navbar({
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
+          {visibleNavLinks.map((link) => (
             <Link
               key={link.label}
               href={link.href}
@@ -128,6 +140,7 @@ export default function Navbar({
                   onSignOut={() => {
                     setIsLoggedIn(false);
                     setFirstName("");
+                    setRole(null);
                   }}
                 />
               </>
@@ -172,7 +185,7 @@ export default function Navbar({
             className="md:hidden bg-white border-b border-gray-100 px-6 pb-4"
           >
             <nav className="flex flex-col gap-1 pt-2">
-              {navLinks.map((link) => (
+              {visibleNavLinks.map((link) => (
                 <Link
                   key={link.label}
                   href={link.href}
@@ -199,6 +212,7 @@ export default function Navbar({
                           setMenuOpen(false);
                           setIsLoggedIn(false);
                           setFirstName("");
+                          setRole(null);
                         }}
                         className="w-full"
                       />

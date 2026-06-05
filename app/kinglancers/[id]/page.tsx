@@ -60,10 +60,9 @@ export default async function KinglancerProfilePage({
     serviceNames.slice(0, 2).join(" · ") ||
     "Kinglancer";
   const profileDescription =
-    kinglancer.bio ||
-    (serviceNames.length > 0
+    serviceNames.length > 0
       ? `${serviceNames.slice(0, 3).join(" · ")} available through KingsHire.`
-      : "Available through KingsHire.");
+      : "View services, rates, and profile details before sending a private request.";
   const ratingLabel =
     kinglancer.jobs_completed > 0
       ? Number(kinglancer.rating).toFixed(1)
@@ -119,11 +118,6 @@ export default async function KinglancerProfilePage({
             <ArrowLeft size={15} />
             Back to Kinglancers
           </ButtonLink>
-          {currentProfile?.role === "client" && (
-            <ButtonLink href={bookingHref} size="sm">
-              Request this Kinglancer
-            </ButtonLink>
-          )}
         </div>
       </PublicHero>
 
