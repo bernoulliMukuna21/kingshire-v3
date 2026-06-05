@@ -18,8 +18,8 @@ const navLinks = [
 
 const clientNavLinks = [
   { label: "How it works", href: "/#how-it-works" },
-  { label: "Kinglancers", href: "/kinglancers" },
   { label: "Post a Job", href: "/jobs/post" },
+  { label: "Kinglancers", href: "/kinglancers" },
 ];
 
 export default function Navbar({
@@ -130,10 +130,7 @@ export default function Navbar({
           {authReady &&
             (isLoggedIn ? (
               <>
-                <ButtonLink
-                  href={dashboardHref}
-                  size="sm"
-                >
+                <ButtonLink href={dashboardHref} size="sm">
                   {firstName ? `Hi, ${firstName}` : "Dashboard"}
                 </ButtonLink>
                 <SignOutButton
@@ -156,10 +153,7 @@ export default function Navbar({
                 >
                   Sign in
                 </Link>
-                <ButtonLink
-                  href="/sign-up"
-                  size="sm"
-                >
+                <ButtonLink href="/sign-up" size="sm">
                   Get started
                 </ButtonLink>
               </>
@@ -225,11 +219,7 @@ export default function Navbar({
                       >
                         Sign in
                       </Link>
-                      <ButtonLink
-                        href="/sign-up"
-                        size="sm"
-                        className="w-full"
-                      >
+                      <ButtonLink href="/sign-up" size="sm" className="w-full">
                         Get started
                       </ButtonLink>
                     </>
