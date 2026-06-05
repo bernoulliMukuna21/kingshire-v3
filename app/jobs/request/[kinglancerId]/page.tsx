@@ -63,7 +63,6 @@ export default async function RequestKinglancerPage({
           serviceTags,
           avatarUrl: kinglancer.avatar_url,
         }}
-        kinglancerId={kinglancerId}
       />
     </div>
   );

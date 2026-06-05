@@ -12,7 +12,10 @@ export default function RequestKinglancerLoading() {
           <LoadingBlock className="h-32 w-full bg-slate-200/70" />
           <div className="flex flex-wrap gap-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <LoadingBlock key={i} className="h-8 w-24 rounded-full bg-slate-200/70" />
+              <LoadingBlock
+                key={i}
+                className="h-8 w-24 rounded-full bg-slate-200/70"
+              />
             ))}
           </div>
           <LoadingBlock className="h-12 w-full bg-slate-200/70" />

@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { stripe } from "@/lib/stripe";
@@ -34,51 +35,36 @@ export default async function PayConfirmedPage({
     }
   }
 
+  // Payment failed or was cancelled — redirect back to the job page with a
+  // banner param so the client knows they need to try again.
+  if (!success) {
+    redirect(`/jobs/${id}?payment_failed=1`);
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl border border-gray-100 p-10 max-w-md w-full text-center space-y-5">
-        {success ? (
-          <>
-            <CheckCircle size={48} className="text-green-500 mx-auto" />
-            <h1 className="text-2xl font-bold text-gray-900">
-              Payment received!
-            </h1>
-            <p className="text-gray-500 text-sm leading-relaxed">
-              Your payment is safely held in escrow. The Kinglancer has been
-              notified and will start work. Once they mark it as done,
-              you&apos;ll be asked to approve and release the payment.
-            </p>
-            <div className="flex flex-col gap-3 pt-2">
-              <Link
-                href={`/jobs/${id}`}
-                className="block w-full py-3 bg-[#1a2e5a] text-white font-bold rounded-xl hover:bg-[#1e3a7a] transition-colors"
-              >
-                View job
-              </Link>
-              <Link
-                href="/dashboard/client"
-                className="block w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
-              >
-                Go to dashboard
-              </Link>
-            </div>
-          </>
-        ) : (
-          <>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Payment not confirmed
-            </h1>
-            <p className="text-gray-500 text-sm">
-              Something went wrong. Please try again.
-            </p>
-            <Link
-              href={`/jobs/${id}`}
-              className="block w-full py-3 bg-[#1a2e5a] text-white font-bold rounded-xl hover:bg-[#1e3a7a] transition-colors"
-            >
-              Go back
-            </Link>
-          </>
-        )}
+        <CheckCircle size={48} className="text-green-500 mx-auto" />
+        <h1 className="text-2xl font-bold text-gray-900">Payment received!</h1>
+        <p className="text-gray-500 text-sm leading-relaxed">
+          Your payment is safely held in escrow. The Kinglancer has been
+          notified and will start work. Once they mark it as done, you&apos;ll
+          be asked to approve and release the payment.
+        </p>
+        <div className="flex flex-col gap-3 pt-2">
+          <Link
+            href={`/jobs/${id}`}
+            className="block w-full py-3 bg-[#1a2e5a] text-white font-bold rounded-xl hover:bg-[#1e3a7a] transition-colors"
+          >
+            View job
+          </Link>
+          <Link
+            href="/dashboard/client"
+            className="block w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+          >
+            Go to dashboard
+          </Link>
+        </div>
       </div>
     </div>
   );

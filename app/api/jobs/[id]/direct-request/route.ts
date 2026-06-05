@@ -71,7 +71,7 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { error } = await db
+    const { data: updatedJob, error } = await db
       .from("jobs")
       .update({
         direct_request_status: "accepted_pending_payment",
@@ -82,12 +82,21 @@ export async function POST(
       })
       .eq("id", jobId)
       .eq("invited_kinglancer_id", user.id)
-      .in("direct_request_status", ["pending", "changes_requested"]);
+      .eq("status", "open")
+      .in("direct_request_status", ["pending", "changes_requested"])
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json(
         { error: "Failed to accept request." },
         { status: 500 },
+      );
+    }
+    if (!updatedJob) {
+      return NextResponse.json(
+        { error: "This request is no longer available." },
+        { status: 409 },
       );
     }
 
@@ -99,17 +108,26 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { error } = await db
+    const { data: updatedJob, error } = await db
       .from("jobs")
       .update({ direct_request_status: "declined" })
       .eq("id", jobId)
       .eq("invited_kinglancer_id", user.id)
-      .in("direct_request_status", ["pending", "changes_requested"]);
+      .eq("status", "open")
+      .in("direct_request_status", ["pending", "changes_requested"])
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json(
         { error: "Failed to decline request." },
         { status: 500 },
+      );
+    }
+    if (!updatedJob) {
+      return NextResponse.json(
+        { error: "This request is no longer available." },
+        { status: 409 },
       );
     }
 
@@ -160,7 +178,7 @@ export async function POST(
       }
     }
 
-    const { error } = await db
+    const { data: updatedJob, error } = await db
       .from("jobs")
       .update({
         direct_request_status: "changes_requested",
@@ -171,12 +189,21 @@ export async function POST(
       })
       .eq("id", jobId)
       .eq("invited_kinglancer_id", user.id)
-      .in("direct_request_status", ["pending", "changes_requested"]);
+      .eq("status", "open")
+      .in("direct_request_status", ["pending", "changes_requested"])
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json(
         { error: "Failed to request changes." },
         { status: 500 },
+      );
+    }
+    if (!updatedJob) {
+      return NextResponse.json(
+        { error: "This request is no longer available." },
+        { status: 409 },
       );
     }
 
@@ -201,7 +228,7 @@ export async function POST(
       );
     }
 
-    const { error } = await db
+    const { data: updatedJob, error } = await db
       .from("jobs")
       .update({
         budget: currentJob.counter_budget,
@@ -215,12 +242,21 @@ export async function POST(
       })
       .eq("id", jobId)
       .eq("client_id", user.id)
-      .eq("direct_request_status", "changes_requested");
+      .eq("status", "open")
+      .eq("direct_request_status", "changes_requested")
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json(
         { error: "Failed to accept changes." },
         { status: 500 },
+      );
+    }
+    if (!updatedJob) {
+      return NextResponse.json(
+        { error: "This request is no longer available." },
+        { status: 409 },
       );
     }
 
@@ -232,21 +268,30 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const { error } = await db
+    const { data: updatedJob, error } = await db
       .from("jobs")
-      .update({ direct_request_status: "cancelled", status: "cancelled" })
+      .update({ direct_request_status: "cancelled" })
       .eq("id", jobId)
       .eq("client_id", user.id)
+      .eq("status", "open")
       .in("direct_request_status", [
         "pending",
         "changes_requested",
         "accepted_pending_payment",
-      ]);
+      ])
+      .select("id")
+      .maybeSingle();
 
     if (error) {
       return NextResponse.json(
         { error: "Failed to cancel request." },
         { status: 500 },
+      );
+    }
+    if (!updatedJob) {
+      return NextResponse.json(
+        { error: "This request is no longer available." },
+        { status: 409 },
       );
     }
 

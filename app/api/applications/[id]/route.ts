@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { selectApplicant } from "@/lib/db/applications";
+import {
+  ApplicantSelectionConflictError,
+  selectApplicant,
+} from "@/lib/db/applications";
 import { stripe, calculateFees } from "@/lib/stripe";
 import { createTransaction } from "@/lib/db/transactions";
 
@@ -146,6 +149,12 @@ export async function PATCH(
     });
   } catch (err) {
     console.error("[SELECT APPLICANT] failed:", err);
+    if (err instanceof ApplicantSelectionConflictError) {
+      return NextResponse.json(
+        { error: "A kinglancer has already been selected for this job" },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { error: "Failed to select applicant" },
       { status: 500 },

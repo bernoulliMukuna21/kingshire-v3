@@ -77,19 +77,33 @@ export async function POST(
 
     const db = createServiceClient();
 
+    const { data: reservedJob, error: jobError } = await db
+      .from("jobs")
+      .update({
+        status: "in_progress",
+        kinglancer_id: job.invited_kinglancer_id,
+      })
+      .eq("id", job.id)
+      .eq("client_id", user.id)
+      .eq("status", "open")
+      .eq("direct_request_status", "accepted_pending_payment")
+      .select("id")
+      .maybeSingle();
+
+    if (jobError) {
+      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
+      throw jobError;
+    }
+
+    if (!reservedJob) {
+      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
+      return NextResponse.json(
+        { error: "This request is no longer ready for payment." },
+        { status: 409 },
+      );
+    }
+
     try {
-      const { error: jobError } = await db
-        .from("jobs")
-        .update({
-          status: "in_progress",
-          kinglancer_id: job.invited_kinglancer_id,
-        })
-        .eq("id", job.id)
-        .eq("client_id", user.id)
-        .eq("direct_request_status", "accepted_pending_payment");
-
-      if (jobError) throw jobError;
-
       await createTransaction({
         job_id: job.id,
         client_id: user.id,
@@ -106,7 +120,9 @@ export async function POST(
         db
           .from("jobs")
           .update({ status: "open", kinglancer_id: null })
-          .eq("id", job.id),
+          .eq("id", job.id)
+          .eq("status", "in_progress")
+          .eq("direct_request_status", "accepted_pending_payment"),
       ]);
       throw err;
     }

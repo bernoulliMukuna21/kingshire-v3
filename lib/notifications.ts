@@ -288,6 +288,45 @@ export async function notifyPayoutClaimReady({
   });
 }
 
+export async function notifyDisputeResolved({
+  userId,
+  userEmail,
+  jobTitle,
+  outcome,
+  claimUrl,
+}: {
+  userId: string;
+  userEmail: string;
+  jobTitle: string;
+  outcome: "release" | "refund";
+  claimUrl?: string;
+}) {
+  const isRelease = outcome === "release";
+  const title = isRelease
+    ? "Dispute resolved — payment released"
+    : "Dispute resolved — refund issued";
+  const body = isRelease
+    ? claimUrl
+      ? `The dispute on "${jobTitle}" has been resolved by our team. Your payment is ready to claim — set up your payouts to receive it.`
+      : `The dispute on "${jobTitle}" has been resolved by our team. Payment has been released to the Kinglancer.`
+    : `The dispute on "${jobTitle}" has been resolved by our team. A full refund has been issued to the client's original payment method.`;
+  const link =
+    claimUrl ?? (isRelease ? "/dashboard/kinglancer" : "/dashboard/client");
+
+  await notify({
+    userId,
+    type: "dispute_raised", // reuse existing type — no schema change needed
+    title,
+    body,
+    link,
+    email: {
+      to: userEmail,
+      subject: `Dispute resolved: "${jobTitle}"`,
+      ctaLabel: claimUrl ? "Set up payouts →" : "View dashboard →",
+    },
+  });
+}
+
 // ── Email delivery ─────────────────────────────────────────
 
 async function sendEmail({

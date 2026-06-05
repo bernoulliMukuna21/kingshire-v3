@@ -187,7 +187,8 @@ export default async function MyJobsPage({
                           )}
                           {job.direct_request_status && (
                             <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-600">
-                              {directStatusLabel[job.direct_request_status] ?? job.direct_request_status}
+                              {directStatusLabel[job.direct_request_status] ??
+                                job.direct_request_status}
                             </span>
                           )}
                         </>

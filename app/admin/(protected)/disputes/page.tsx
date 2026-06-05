@@ -4,6 +4,7 @@ import AdminPagination from "@/components/admin/AdminPagination";
 import AdminPanel from "@/components/admin/AdminPanel";
 import { FadeIn } from "@/components/animations";
 import PageHeader from "@/components/ui/PageHeader";
+import DisputeActions from "./DisputeActions";
 import {
   ADMIN_PAGE_SIZE,
   type AdminDispute,
@@ -73,6 +74,14 @@ export default async function AdminDisputesPage({
                     <p className="mt-2 text-xs text-gray-400">
                       Raised {timeAgo(dispute.created_at)}
                     </p>
+                    {dispute.status === "open" && dispute.job && (
+                      <div className="mt-3">
+                        <DisputeActions
+                          disputeId={dispute.id}
+                          jobBudget={dispute.job.budget}
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                     {dispute.job && (
@@ -80,7 +89,13 @@ export default async function AdminDisputesPage({
                         {formatMoney(dispute.job.budget)}
                       </span>
                     )}
-                    <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold capitalize text-red-700 ring-1 ring-red-100">
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold capitalize ring-1 ${
+                        dispute.status === "open"
+                          ? "bg-red-50 text-red-700 ring-red-100"
+                          : "bg-green-50 text-green-700 ring-green-100"
+                      }`}
+                    >
                       {dispute.status}
                     </span>
                     {dispute.job && (

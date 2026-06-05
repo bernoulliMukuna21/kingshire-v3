@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Calendar, Briefcase, Tag } from "lucide-react";
+import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
@@ -19,10 +19,13 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export default async function JobDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ payment_failed?: string }>;
 }) {
   const { id } = await params;
+  const { payment_failed } = await searchParams;
   const supabase = await createClient();
 
   // Phase 1: job fetch and auth check run in parallel
@@ -118,13 +121,26 @@ export default async function JobDetailPage({
   const pageContent = (
     <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
       <BackButton />
+
+      {isOwner && payment_failed === "1" && (
+        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <AlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+          <div>
+            <p className="text-sm font-bold text-amber-900">
+              Payment unsuccessful
+            </p>
+            <p className="mt-0.5 text-sm text-amber-700">
+              Your card was not charged. Please try again — select a Kinglancer
+              below to restart the payment.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-5">
           <Card className={cardPadding}>
             <div className="flex items-center gap-2 mb-3">
-              <StatusBadge className={s.color}>
-                {s.label}
-              </StatusBadge>
+              <StatusBadge className={s.color}>{s.label}</StatusBadge>
             </div>
 
             <h1 className="text-xl font-black text-slate-950 mb-4">
@@ -227,10 +243,7 @@ export default async function JobDetailPage({
               ) : !user ? (
                 <div className="text-sm text-gray-500 space-y-3 mt-3">
                   <p>Sign in to apply for this job.</p>
-                  <ButtonLink
-                    href="/sign-in"
-                    size="sm"
-                  >
+                  <ButtonLink href="/sign-in" size="sm">
                     Sign in
                   </ButtonLink>
                 </div>

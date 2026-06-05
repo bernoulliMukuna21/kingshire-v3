@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -11,10 +12,59 @@ import {
   ChevronUp,
   Star,
   Flag,
+  Users,
 } from "lucide-react";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
+
+// ── Open to all (after declined/cancelled direct request) ───
+
+function OpenToAllButton({ jobId }: { jobId: string }) {
+  const router = useRouter();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const { loading, error, run } = useAsyncAction();
+
+  const handleConfirm = () => {
+    run(async () => {
+      const res = await fetch(`/api/jobs/${jobId}/open-to-all`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      setConfirmOpen(false);
+      router.refresh();
+    });
+  };
+
+  return (
+    <>
+      {error && (
+        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          <AlertCircle size={16} className="shrink-0" />
+          {error}
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={() => setConfirmOpen(true)}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700"
+      >
+        <Users size={15} />
+        Open to all Kinglancers
+      </button>
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={handleConfirm}
+        loading={loading}
+        title="Open to all Kinglancers?"
+        message="This will remove the direct request and list the job publicly. Any Kinglancer will be able to apply."
+        confirmLabel="Open listing"
+      />
+    </>
+  );
+}
 
 // ── Apply form (for kinglancers) ──────────────────────────
 
@@ -142,7 +192,11 @@ export function DirectRequestActions({
   counterBudget: number | null;
   counterRateType: "fixed" | "per_hour" | "per_day" | null;
   counterDeadline: string | null;
-  invitedKinglancer?: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  invitedKinglancer?: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null;
 }) {
   const router = useRouter();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -190,20 +244,25 @@ export function DirectRequestActions({
   const startPayment = async () => {
     setError(null);
     setLoadingAction("direct_pay");
-    const res = await fetch(`/api/jobs/${jobId}/direct-pay`, {
-      method: "POST",
-    });
-    const data = await res.json().catch(() => ({}));
-    setLoadingAction(null);
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/direct-pay`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      setError(data.error ?? "Failed to start payment.");
-      return;
+      if (!res.ok) {
+        setError(data.error ?? "Failed to start payment.");
+        return;
+      }
+
+      router.push(
+        `/jobs/${data.jobId}/pay?cs=${encodeURIComponent(data.clientSecret)}`,
+      );
+    } catch {
+      setError("Failed to start payment.");
+    } finally {
+      setLoadingAction(null);
     }
-
-    router.push(
-      `/jobs/${data.jobId}/pay?cs=${encodeURIComponent(data.clientSecret)}`,
-    );
   };
 
   if (!status) return null;
@@ -216,18 +275,22 @@ export function DirectRequestActions({
     );
   }
 
-  if (status === "declined") {
+  if (status === "declined" || status === "cancelled") {
+    const isDeclined = status === "declined";
     return (
-      <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
-        This direct request was declined.
-      </div>
-    );
-  }
-
-  if (status === "cancelled") {
-    return (
-      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
-        This direct request was cancelled.
+      <div className="space-y-3">
+        <div
+          className={`rounded-2xl p-4 text-sm font-semibold ${
+            isDeclined
+              ? "border border-red-100 bg-red-50 text-red-700"
+              : "border border-slate-100 bg-slate-50 text-slate-500"
+          }`}
+        >
+          {isDeclined
+            ? `${invitedKinglancer?.full_name?.split(" ")[0] ?? "The Kinglancer"} declined this request.`
+            : "This direct request was cancelled."}
+        </div>
+        {isOwner && <OpenToAllButton jobId={jobId} />}
       </div>
     );
   }
@@ -370,9 +433,11 @@ export function DirectRequestActions({
               className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:border-blue-100 hover:bg-blue-50/50"
             >
               {invitedKinglancer.avatar_url ? (
-                <img
+                <Image
                   src={invitedKinglancer.avatar_url}
                   alt={invitedKinglancer.full_name ?? "Kinglancer"}
+                  width={40}
+                  height={40}
                   className="h-10 w-10 rounded-full object-cover shrink-0"
                 />
               ) : (
@@ -381,13 +446,17 @@ export function DirectRequestActions({
                 </div>
               )}
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-slate-900">{invitedKinglancer.full_name}</p>
+                <p className="text-sm font-bold text-slate-900">
+                  {invitedKinglancer.full_name}
+                </p>
                 <p className="text-xs text-blue-600">View profile →</p>
               </div>
             </Link>
           )}
           <p className="rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
-            Waiting for {invitedKinglancer?.full_name?.split(" ")[0] ?? "the Kinglancer"} to respond to your request.
+            Waiting for{" "}
+            {invitedKinglancer?.full_name?.split(" ")[0] ?? "the Kinglancer"} to
+            respond to your request.
           </p>
         </div>
       )}

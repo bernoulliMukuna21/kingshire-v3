@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import PostJobFormLoader from "@/app/(dashboard-shell)/jobs/post/PostJobFormLoader";
 import { Card } from "@/components/ui/Card";
@@ -16,10 +15,8 @@ type PreferredKinglancer = {
 
 export default function RequestView({
   kinglancer,
-  kinglancerId,
 }: {
   kinglancer: PreferredKinglancer;
-  kinglancerId: string;
 }) {
   const [submitted, setSubmitted] = useState(false);
   const firstName = kinglancer.fullName.split(" ")[0];

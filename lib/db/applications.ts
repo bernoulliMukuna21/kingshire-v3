@@ -21,6 +21,13 @@ export type ApplicationWithJob = Application & {
   job: Database["public"]["Tables"]["jobs"]["Row"];
 };
 
+export class ApplicantSelectionConflictError extends Error {
+  constructor() {
+    super("A kinglancer has already been selected for this job");
+    this.name = "ApplicantSelectionConflictError";
+  }
+}
+
 export async function getApplicationsByJob(
   jobId: string,
 ): Promise<ApplicationWithKinglancer[]> {
@@ -87,13 +94,38 @@ export async function selectApplicant(
 ): Promise<void> {
   const db = createServiceClient();
 
-  // Accept the selected application
-  const { error: acceptError } = await db
+  // Reserve the job first. This is the critical idempotency guard: only one
+  // payment-start request can move an open job into progress.
+  const { data: reservedJob, error: reserveError } = await db
+    .from("jobs")
+    .update({ status: "in_progress", kinglancer_id: kinglancerId })
+    .eq("id", jobId)
+    .eq("status", "open")
+    .is("kinglancer_id", null)
+    .select("id")
+    .maybeSingle();
+
+  if (reserveError) throw reserveError;
+  if (!reservedJob) throw new ApplicantSelectionConflictError();
+
+  // Accept the selected application, but only if it is still pending.
+  const { data: acceptedApplication, error: acceptError } = await db
     .from("applications")
     .update({ status: "accepted" })
-    .eq("id", applicationId);
+    .eq("id", applicationId)
+    .eq("job_id", jobId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
 
-  if (acceptError) throw acceptError;
+  if (acceptError || !acceptedApplication) {
+    await db
+      .from("jobs")
+      .update({ status: "open", kinglancer_id: null })
+      .eq("id", jobId);
+    if (acceptError) throw acceptError;
+    throw new ApplicantSelectionConflictError();
+  }
 
   // Reject all other pending applications for this job
   const { error: rejectError } = await db
@@ -103,13 +135,17 @@ export async function selectApplicant(
     .neq("id", applicationId)
     .eq("status", "pending");
 
-  if (rejectError) throw rejectError;
-
-  // Assign kinglancer and mark job as in_progress (contract created)
-  const { error: jobError } = await db
-    .from("jobs")
-    .update({ status: "in_progress", kinglancer_id: kinglancerId })
-    .eq("id", jobId);
-
-  if (jobError) throw jobError;
+  if (rejectError) {
+    await Promise.all([
+      db
+        .from("jobs")
+        .update({ status: "open", kinglancer_id: null })
+        .eq("id", jobId),
+      db
+        .from("applications")
+        .update({ status: "pending" })
+        .eq("id", applicationId),
+    ]);
+    throw rejectError;
+  }
 }

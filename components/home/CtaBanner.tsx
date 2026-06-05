@@ -20,7 +20,10 @@ export default function CtaBanner() {
         className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white text-[#1a2e5a] font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl text-sm sm:text-base"
       >
         Post a Job
-        <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+        <ArrowRight
+          size={18}
+          className="group-hover:translate-x-1 transition-transform"
+        />
       </Link>
     );
     secondaryBtn = (
@@ -29,7 +32,10 @@ export default function CtaBanner() {
         className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
       >
         Become a Kinglancer
-        <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+        <ChevronRight
+          size={18}
+          className="group-hover:translate-x-1 transition-transform"
+        />
       </Link>
     );
   } else if (isKinglancer) {
@@ -40,7 +46,10 @@ export default function CtaBanner() {
         className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white text-[#1a2e5a] font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl text-sm sm:text-base"
       >
         Browse Jobs
-        <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+        <ArrowRight
+          size={18}
+          className="group-hover:translate-x-1 transition-transform"
+        />
       </Link>
     );
     secondaryBtn = (
@@ -49,7 +58,10 @@ export default function CtaBanner() {
         className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
       >
         Go to Dashboard
-        <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+        <ChevronRight
+          size={18}
+          className="group-hover:translate-x-1 transition-transform"
+        />
       </Link>
     );
   } else {
@@ -60,7 +72,10 @@ export default function CtaBanner() {
         className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white text-[#1a2e5a] font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl text-sm sm:text-base"
       >
         Post a Job
-        <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+        <ArrowRight
+          size={18}
+          className="group-hover:translate-x-1 transition-transform"
+        />
       </Link>
     );
     secondaryBtn = (
@@ -69,7 +84,10 @@ export default function CtaBanner() {
         className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
       >
         Become a Kinglancer
-        <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+        <ChevronRight
+          size={18}
+          className="group-hover:translate-x-1 transition-transform"
+        />
       </Link>
     );
   }
@@ -106,4 +124,3 @@ export default function CtaBanner() {
     </section>
   );
 }
-
