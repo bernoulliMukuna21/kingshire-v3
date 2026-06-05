@@ -58,7 +58,9 @@ export default async function AdminDashboard() {
 
     serviceDb
       .from("profiles")
-      .select("id, email, full_name, role, service_tags, created_at, avatar_url")
+      .select(
+        "id, email, full_name, role, service_tags, created_at, avatar_url",
+      )
       .or("role.is.null,role.neq.admin")
       .order("created_at", { ascending: false })
       .limit(5),
@@ -163,9 +165,7 @@ export default async function AdminDashboard() {
               >
                 <stat.icon size={18} />
               </div>
-              <p className="text-2xl font-black text-slate-950">
-                {stat.value}
-              </p>
+              <p className="text-2xl font-black text-slate-950">{stat.value}</p>
               <p className="text-sm text-slate-500">{stat.label}</p>
               <p className="mt-0.5 text-xs text-slate-400">{stat.sub}</p>
             </Card>

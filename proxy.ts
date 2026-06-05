@@ -15,6 +15,7 @@ export const proxy = async (request: NextRequest) => {
   const protectedPrefixes = [
     "/dashboard",
     "/jobs/post",
+    "/jobs/request",
     "/onboarding",
     "/reset-password",
   ];

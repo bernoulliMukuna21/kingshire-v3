@@ -71,120 +71,118 @@ export default async function TransactionsPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-        <FadeIn className="mb-8">
-          <PageHeader
-            eyebrow="Payments"
-            title="Transaction History"
-            description="All payments made through KingsHire, including escrow and released payments."
+      <FadeIn className="mb-8">
+        <PageHeader
+          eyebrow="Payments"
+          title="Transaction History"
+          description="All payments made through KingsHire, including escrow and released payments."
+        />
+      </FadeIn>
+
+      {/* Summary cards */}
+      <Stagger className="grid grid-cols-2 gap-4 mb-8" staggerDelay={0.07}>
+        <StaggerItem>
+          <Card className="p-5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Total Spent
+            </p>
+            <p className="text-3xl font-black text-slate-950">
+              £{totalSpent.toFixed(2)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Across{" "}
+              {transactions.filter((t) => t.status === "released").length}{" "}
+              released payment
+              {transactions.filter((t) => t.status === "released").length !== 1
+                ? "s"
+                : ""}
+            </p>
+          </Card>
+        </StaggerItem>
+        <StaggerItem>
+          <Card className="p-5">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              Held in Escrow
+            </p>
+            <p className="text-3xl font-black text-slate-950">
+              £{totalHeld.toFixed(2)}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              Funds reserved for active jobs
+            </p>
+          </Card>
+        </StaggerItem>
+      </Stagger>
+
+      {/* Transactions list */}
+      <FadeIn className="overflow-hidden rounded-[1.75rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
+        {transactions.length === 0 ? (
+          <EmptyState
+            title="No transactions yet"
+            description="Payments will appear here once you hire a Kinglancer."
           />
-        </FadeIn>
-
-        {/* Summary cards */}
-        <Stagger className="grid grid-cols-2 gap-4 mb-8" staggerDelay={0.07}>
-          <StaggerItem>
-            <Card className="p-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                Total Spent
-              </p>
-              <p className="text-3xl font-black text-slate-950">
-                £{totalSpent.toFixed(2)}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                Across{" "}
-                {transactions.filter((t) => t.status === "released").length}{" "}
-                released payment
-                {transactions.filter((t) => t.status === "released").length !==
-                1
-                  ? "s"
-                  : ""}
-              </p>
-            </Card>
-          </StaggerItem>
-          <StaggerItem>
-            <Card className="p-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                Held in Escrow
-              </p>
-              <p className="text-3xl font-black text-slate-950">
-                £{totalHeld.toFixed(2)}
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                Funds reserved for active jobs
-              </p>
-            </Card>
-          </StaggerItem>
-        </Stagger>
-
-        {/* Transactions list */}
-        <FadeIn className="overflow-hidden rounded-[1.75rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
-          {transactions.length === 0 ? (
-            <EmptyState
-              title="No transactions yet"
-              description="Payments will appear here once you hire a Kinglancer."
-            />
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {/* Header row */}
-              <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-6 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                <span>Job / Kinglancer</span>
-                <span className="text-right">Amount</span>
-                <span className="text-right hidden sm:block">Fee</span>
-                <span className="text-right">Status</span>
-              </div>
-
-              {transactions.map((tx) => {
-                const s = STATUS_CONFIG[tx.status] ?? STATUS_CONFIG.pending;
-                const total = tx.amount + tx.platform_fee_client;
-                const date = new Date(tx.created_at).toLocaleDateString(
-                  "en-GB",
-                  { day: "numeric", month: "short", year: "numeric" },
-                );
-                return (
-                  <div
-                    key={tx.id}
-                    className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-6 py-4 items-center"
-                  >
-                    <div className="min-w-0">
-                      <Link
-                        href={`/jobs/${tx.job_id}`}
-                        className="font-semibold text-gray-900 hover:text-blue-700 transition-colors text-sm inline-flex items-center gap-1 group"
-                      >
-                        {tx.job?.title ?? "Deleted job"}
-                        <ArrowUpRight
-                          size={13}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        />
-                      </Link>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {tx.kinglancer?.full_name ?? "—"} · {date}
-                      </p>
-                    </div>
-
-                    <div className="text-right">
-                      <p className="font-bold text-slate-950 text-sm">
-                        £{total.toFixed(2)}
-                      </p>
-                      <p className="text-xs text-gray-400">total</p>
-                    </div>
-
-                    <div className="text-right hidden sm:block">
-                      <p className="text-sm text-gray-500">
-                        £{tx.platform_fee_client.toFixed(2)}
-                      </p>
-                      <p className="text-xs text-gray-400">platform</p>
-                    </div>
-
-                    <div>
-                      <StatusBadge className={s.color}>
-                        {s.label}
-                      </StatusBadge>
-                    </div>
-                  </div>
-                );
-              })}
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {/* Header row */}
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-6 py-3 bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <span>Job / Kinglancer</span>
+              <span className="text-right">Amount</span>
+              <span className="text-right hidden sm:block">Fee</span>
+              <span className="text-right">Status</span>
             </div>
-          )}
-        </FadeIn>
+
+            {transactions.map((tx) => {
+              const s = STATUS_CONFIG[tx.status] ?? STATUS_CONFIG.pending;
+              const total = tx.amount + tx.platform_fee_client;
+              const date = new Date(tx.created_at).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
+              return (
+                <div
+                  key={tx.id}
+                  className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-6 py-4 items-center"
+                >
+                  <div className="min-w-0">
+                    <Link
+                      href={`/jobs/${tx.job_id}`}
+                      className="font-semibold text-gray-900 hover:text-blue-700 transition-colors text-sm inline-flex items-center gap-1 group"
+                    >
+                      {tx.job?.title ?? "Deleted job"}
+                      <ArrowUpRight
+                        size={13}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      />
+                    </Link>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {tx.kinglancer?.full_name ?? "—"} · {date}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="font-bold text-slate-950 text-sm">
+                      £{total.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-400">total</p>
+                  </div>
+
+                  <div className="text-right hidden sm:block">
+                    <p className="text-sm text-gray-500">
+                      £{tx.platform_fee_client.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-gray-400">platform</p>
+                  </div>
+
+                  <div>
+                    <StatusBadge className={s.color}>{s.label}</StatusBadge>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </FadeIn>
     </div>
   );
 }

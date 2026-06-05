@@ -109,7 +109,7 @@ export default function JobsList({ jobs }: { jobs: JobWithClient[] }) {
                       {job.categories.map((s) => (
                         <span
                           key={s}
-                            className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700"
+                          className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700"
                         >
                           {s}
                         </span>

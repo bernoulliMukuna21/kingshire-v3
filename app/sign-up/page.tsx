@@ -160,8 +160,8 @@ export default function SignUpPage() {
                 Create your account
               </h1>
               <p className="text-gray-500 mb-6 text-sm">
-                Create your login first. You&apos;ll choose Client or
-                Kinglancer in the next step.
+                Create your login first. You&apos;ll choose Client or Kinglancer
+                in the next step.
               </p>
 
               <GoogleButton onClick={handleGoogleSignUp} />

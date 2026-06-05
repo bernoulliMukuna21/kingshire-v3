@@ -65,7 +65,9 @@ export default async function TopKinglancers() {
                   ?.map((service) => service.name)
                   .filter((name) => name.trim().length > 0) ?? [];
               const headline =
-                k.tagline || serviceNames.slice(0, 2).join(" · ") || "Kinglancer";
+                k.tagline ||
+                serviceNames.slice(0, 2).join(" · ") ||
+                "Kinglancer";
               const initials = k.full_name
                 .split(" ")
                 .map((n: string) => n[0])

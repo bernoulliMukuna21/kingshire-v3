@@ -81,5 +81,12 @@ export function useAuthState(): AuthState {
     setDashboardHref("/dashboard/client");
   }, []);
 
-  return { isLoggedIn, authReady, firstName, role, dashboardHref, clearAuthState };
+  return {
+    isLoggedIn,
+    authReady,
+    firstName,
+    role,
+    dashboardHref,
+    clearAuthState,
+  };
 }

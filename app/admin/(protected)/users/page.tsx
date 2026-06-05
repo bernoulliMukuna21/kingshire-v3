@@ -26,9 +26,12 @@ export default async function AdminUsersPage({
 
   const { data, count } = await serviceDb
     .from("profiles")
-    .select("id, email, full_name, role, service_tags, created_at, avatar_url", {
-      count: "exact",
-    })
+    .select(
+      "id, email, full_name, role, service_tags, created_at, avatar_url",
+      {
+        count: "exact",
+      },
+    )
     .or("role.is.null,role.neq.admin")
     .order("created_at", { ascending: false })
     .range(from, to);

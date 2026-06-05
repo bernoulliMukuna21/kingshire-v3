@@ -35,7 +35,8 @@ function normalizeServices(services: unknown, serviceTags: unknown) {
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
 
-    const rateRaw = service.rate === "" || service.rate == null ? 0 : service.rate;
+    const rateRaw =
+      service.rate === "" || service.rate == null ? 0 : service.rate;
     const rateValue =
       typeof rateRaw === "string" || typeof rateRaw === "number" ? rateRaw : "";
     const rate = Number(rateRaw);

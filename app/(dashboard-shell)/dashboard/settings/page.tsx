@@ -30,42 +30,42 @@ export default async function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-        <PageHeader
-          eyebrow="Account"
-          title="Settings"
-          description="Manage your account preferences and account-level requests."
-        />
+      <PageHeader
+        eyebrow="Account"
+        title="Settings"
+        description="Manage your account preferences and account-level requests."
+      />
 
-        <Card className="p-6">
-          <h2 className="text-base font-black text-slate-950 mb-1">
-            Switch Role
-          </h2>
-          <p className="text-slate-500 text-sm mb-5">
-            You are currently a{" "}
-            <span className="font-bold text-slate-800">
-              {isKinglancer ? "Kinglancer" : "Client"}
-            </span>
-            . Switching will move you to the other dashboard.
-          </p>
-          <SwitchRoleButton currentRole={profile.role} />
-        </Card>
+      <Card className="p-6">
+        <h2 className="text-base font-black text-slate-950 mb-1">
+          Switch Role
+        </h2>
+        <p className="text-slate-500 text-sm mb-5">
+          You are currently a{" "}
+          <span className="font-bold text-slate-800">
+            {isKinglancer ? "Kinglancer" : "Client"}
+          </span>
+          . Switching will move you to the other dashboard.
+        </p>
+        <SwitchRoleButton currentRole={profile.role} />
+      </Card>
 
-        <Card className="border-red-100 p-6 ring-red-100/60">
-          <h2 className="text-base font-black text-slate-950 mb-1">
-            Account Deletion
-          </h2>
-          <p className="text-slate-500 text-sm mb-5">
-            For the MVP, deletion requests are reviewed manually so payments,
-            jobs, disputes, and required transaction records are handled
-            correctly.
-          </p>
-          <a
-            href={deletionRequestHref}
-            className="inline-flex items-center justify-center rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 transition-colors"
-          >
-            Request account deletion
-          </a>
-        </Card>
+      <Card className="border-red-100 p-6 ring-red-100/60">
+        <h2 className="text-base font-black text-slate-950 mb-1">
+          Account Deletion
+        </h2>
+        <p className="text-slate-500 text-sm mb-5">
+          For the MVP, deletion requests are reviewed manually so payments,
+          jobs, disputes, and required transaction records are handled
+          correctly.
+        </p>
+        <a
+          href={deletionRequestHref}
+          className="inline-flex items-center justify-center rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 transition-colors"
+        >
+          Request account deletion
+        </a>
+      </Card>
     </div>
   );
 }

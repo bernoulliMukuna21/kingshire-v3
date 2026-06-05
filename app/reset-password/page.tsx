@@ -103,11 +103,7 @@ export default function ResetPasswordPage() {
             placeholder="Repeat your password"
             required
           />
-          <Button
-            type="submit"
-            disabled={loading}
-            className="mt-2 w-full"
-          >
+          <Button type="submit" disabled={loading} className="mt-2 w-full">
             {loading && <Loader2 size={16} className="animate-spin" />}
             {loading ? "Updating password…" : "Update password"}
           </Button>

@@ -38,11 +38,7 @@ export default async function KinglancerProfilePage({
   if (!kinglancer) notFound();
 
   const { data: currentProfile } = user
-    ? await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single()
+    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
     : { data: null };
 
   const serviceNames =
@@ -56,9 +52,7 @@ export default async function KinglancerProfilePage({
       ? Math.min(...pricedServices.map((service) => Number(service.rate)))
       : null;
   const profileHeadline =
-    kinglancer.tagline ||
-    serviceNames.slice(0, 2).join(" · ") ||
-    "Kinglancer";
+    kinglancer.tagline || serviceNames.slice(0, 2).join(" · ") || "Kinglancer";
   const profileDescription =
     serviceNames.length > 0
       ? `${serviceNames.slice(0, 3).join(" · ")} available through KingsHire.`
@@ -67,7 +61,7 @@ export default async function KinglancerProfilePage({
     kinglancer.jobs_completed > 0
       ? Number(kinglancer.rating).toFixed(1)
       : "New";
-  const bookingHref = `/jobs/post?kinglancer=${kinglancer.id}`;
+  const bookingHref = `/jobs/request/${kinglancer.id}`;
 
   const bookingCta =
     currentProfile?.role === "admin" ? (
@@ -87,12 +81,19 @@ export default async function KinglancerProfilePage({
         <p className="text-sm text-slate-500">
           Switch to a client account before requesting another Kinglancer.
         </p>
-        <ButtonLink href="/dashboard/settings" variant="secondary" className="w-full sm:w-auto">
+        <ButtonLink
+          href="/dashboard/settings"
+          variant="secondary"
+          className="w-full sm:w-auto"
+        >
           Go to settings
         </ButtonLink>
       </div>
     ) : user ? (
-      <ButtonLink href={getRoleHome(currentProfile?.role)} className="w-full sm:w-auto">
+      <ButtonLink
+        href={getRoleHome(currentProfile?.role)}
+        className="w-full sm:w-auto"
+      >
         Complete client setup
       </ButtonLink>
     ) : (
@@ -100,7 +101,11 @@ export default async function KinglancerProfilePage({
         <ButtonLink href="/sign-up" className="w-full sm:w-auto">
           Sign up to request
         </ButtonLink>
-        <ButtonLink href="/sign-in" variant="secondary" className="w-full sm:w-auto">
+        <ButtonLink
+          href="/sign-in"
+          variant="secondary"
+          className="w-full sm:w-auto"
+        >
           Sign in
         </ButtonLink>
       </div>
@@ -240,7 +245,8 @@ export default async function KinglancerProfilePage({
         <aside className="space-y-6">
           <Card className="hidden p-6 lg:block">
             <h2 className="text-lg font-black text-slate-950">
-              Work with {kinglancer.full_name?.split(" ")[0] || "this Kinglancer"}
+              Work with{" "}
+              {kinglancer.full_name?.split(" ")[0] || "this Kinglancer"}
             </h2>
             <p className="mb-5 mt-2 text-sm leading-6 text-slate-500">
               Send a private job request. They can accept, decline, or suggest
@@ -277,8 +283,8 @@ export default async function KinglancerProfilePage({
               {lowestServiceRate !== null
                 ? `From £${lowestServiceRate.toLocaleString()}`
                 : kinglancer.hourly_rate
-                ? `£${Number(kinglancer.hourly_rate).toLocaleString()}`
-                : "Discuss"}
+                  ? `£${Number(kinglancer.hourly_rate).toLocaleString()}`
+                  : "Discuss"}
             </p>
             {lowestServiceRate !== null ? (
               <p className="mt-1 text-sm font-semibold text-slate-400">

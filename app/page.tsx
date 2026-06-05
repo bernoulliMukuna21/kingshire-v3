@@ -32,7 +32,8 @@ export default async function HomePage() {
         stats={[
           {
             value: formatMilestoneCount(peopleCount),
-            label: peopleCount === 1 ? "Person registered" : "People registered",
+            label:
+              peopleCount === 1 ? "Person registered" : "People registered",
           },
           {
             value: formatMilestoneCount(jobsCount),

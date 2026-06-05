@@ -33,7 +33,10 @@ export async function POST(request: Request) {
     .single();
 
   if (profile?.role !== "admin") {
-    return NextResponse.json({ error: "Admin access denied." }, { status: 403 });
+    return NextResponse.json(
+      { error: "Admin access denied." },
+      { status: 403 },
+    );
   }
 
   if (!isAdminPasscodeConfigured()) {

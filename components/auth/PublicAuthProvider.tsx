@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, type ReactNode } from "react";
 import { useAuthState, type AuthState } from "@/lib/hooks/useAuthState";
 
 const PublicAuthContext = createContext<AuthState | null>(null);

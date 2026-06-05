@@ -20,7 +20,10 @@ export default function Footer() {
             © 2026 KingsHire. Community-first platform.
           </p>
           <div className="flex justify-center gap-5 text-sm font-semibold text-white/65 sm:justify-end">
-            <Link href="/privacy" className="transition-colors hover:text-white">
+            <Link
+              href="/privacy"
+              className="transition-colors hover:text-white"
+            >
               Privacy
             </Link>
             <Link href="/terms" className="transition-colors hover:text-white">

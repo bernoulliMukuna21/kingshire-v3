@@ -304,9 +304,7 @@ export default function ProfileForm({ profile }: Props) {
       <div className={cardClass}>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="font-black text-slate-950">
-              Personal Information
-            </h2>
+            <h2 className="font-black text-slate-950">Personal Information</h2>
             <p className="mt-1 text-sm text-slate-500">
               Keep your contact details accurate.
             </p>
@@ -428,8 +426,8 @@ export default function ProfileForm({ profile }: Props) {
             </label>
             <p className="text-xs text-gray-400 mb-3">
               Add each service you offer with its own price. Clients will see
-              exactly what to expect. Existing services are shown here so you can
-              add rates when ready.
+              exactly what to expect. Existing services are shown here so you
+              can add rates when ready.
             </p>
 
             {/* Browser-native datalist for service name suggestions */}

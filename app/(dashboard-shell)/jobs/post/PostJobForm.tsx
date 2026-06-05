@@ -38,8 +38,10 @@ type PreferredKinglancer = {
 
 export default function PostJobForm({
   preferredKinglancer,
+  onSuccess,
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
 
@@ -135,7 +137,11 @@ export default function PostJobForm({
       return;
     }
 
-    router.push("/dashboard/client/jobs");
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      router.push("/dashboard/client/jobs");
+    }
   };
 
   return (
@@ -151,7 +157,7 @@ export default function PostJobForm({
             />
             <div>
               <p className="text-sm font-black text-slate-950">
-                Booking with {preferredKinglancer.fullName} in mind
+                Sending a private request to {preferredKinglancer.fullName}
               </p>
               <p className="mt-1 text-xs leading-5 text-slate-500">
                 This request is private to them. If they accept the terms, you
@@ -420,9 +426,19 @@ export default function PostJobForm({
 
       {/* Escrow notice */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700">
-        <strong>How payment works:</strong> Your budget is only charged when you
-        select a kinglancer. It is held securely in escrow until you approve the
-        completed work.
+        {preferredKinglancer ? (
+          <>
+            <strong>How payment works:</strong> Your budget is held in escrow
+            once {preferredKinglancer.fullName.split(" ")[0]} accepts your
+            request. Released only when you approve the completed work.
+          </>
+        ) : (
+          <>
+            <strong>How payment works:</strong> Your budget is only charged when
+            you select a kinglancer. It is held securely in escrow until you
+            approve the completed work.
+          </>
+        )}
       </div>
 
       {/* Submit */}
@@ -434,8 +450,10 @@ export default function PostJobForm({
         {loading ? (
           <>
             <Loader2 size={16} className="animate-spin" />
-            Posting job...
+            {preferredKinglancer ? "Sending..." : "Posting job..."}
           </>
+        ) : preferredKinglancer ? (
+          "Send Request"
         ) : (
           "Post job"
         )}

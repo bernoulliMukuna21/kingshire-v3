@@ -17,8 +17,15 @@ type PreferredKinglancer = {
 
 export default function PostJobFormLoader({
   preferredKinglancer,
+  onSuccess,
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
+  onSuccess?: () => void;
 }) {
-  return <PostJobForm preferredKinglancer={preferredKinglancer} />;
+  return (
+    <PostJobForm
+      preferredKinglancer={preferredKinglancer}
+      onSuccess={onSuccess}
+    />
+  );
 }

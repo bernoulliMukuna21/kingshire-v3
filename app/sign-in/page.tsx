@@ -156,11 +156,7 @@ function SignInContent() {
               />
             </div>
           </div>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="mt-2 w-full"
-          >
+          <Button type="submit" disabled={loading} className="mt-2 w-full">
             {loading && <Loader2 size={16} className="animate-spin" />}
             {loading ? "Signing in…" : "Sign in"}
           </Button>

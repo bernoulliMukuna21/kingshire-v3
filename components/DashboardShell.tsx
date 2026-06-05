@@ -26,8 +26,8 @@ export default function DashboardShell({ profile, children }: Props) {
   const avatarGradient = isAdmin
     ? "bg-linear-to-br from-red-500 to-orange-600"
     : isKinglancer
-    ? "bg-linear-to-br from-green-500 to-emerald-600"
-    : "bg-linear-to-br from-blue-500 to-indigo-600";
+      ? "bg-linear-to-br from-green-500 to-emerald-600"
+      : "bg-linear-to-br from-blue-500 to-indigo-600";
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#eef6ff_0,#f8fafc_34%,#f1f5f9_100%)] text-slate-900">

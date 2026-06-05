@@ -112,11 +112,7 @@ export default function ForgotPasswordPage() {
                 placeholder="jane@example.com"
                 required
               />
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full"
-              >
+              <Button type="submit" disabled={loading} className="w-full">
                 {loading && <Loader2 size={16} className="animate-spin" />}
                 {loading ? "Sending…" : "Send reset link"}
               </Button>

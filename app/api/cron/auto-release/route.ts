@@ -90,14 +90,12 @@ export async function GET(request: Request) {
     }
 
     const netAmount = txData.amount - txData.platform_fee_kinglancer;
-    let profile:
-      | {
-          email: string | null;
-          full_name: string | null;
-          stripe_account_id: string | null;
-          stripe_onboarding_complete: boolean;
-        }
-      | null = null;
+    let profile: {
+      email: string | null;
+      full_name: string | null;
+      stripe_account_id: string | null;
+      stripe_onboarding_complete: boolean;
+    } | null = null;
 
     if (job.kinglancer_id) {
       const { data } = await serviceClient

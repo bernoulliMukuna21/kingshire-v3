@@ -343,11 +343,7 @@ function OnboardingContent() {
                             key={rateType.value}
                             type="button"
                             onClick={() =>
-                              updateService(
-                                index,
-                                "rate_type",
-                                rateType.value,
-                              )
+                              updateService(index, "rate_type", rateType.value)
                             }
                             className={`px-3 py-2 text-xs font-bold transition-all ${
                               service.rate_type === rateType.value

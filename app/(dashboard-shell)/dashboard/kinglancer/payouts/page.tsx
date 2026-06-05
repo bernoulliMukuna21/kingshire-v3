@@ -62,11 +62,7 @@ export default async function PayoutsReturnPage({
             </p>
           </>
         )}
-        <ButtonLink
-          href="/dashboard/kinglancer"
-        >
-          Back to dashboard
-        </ButtonLink>
+        <ButtonLink href="/dashboard/kinglancer">Back to dashboard</ButtonLink>
       </Card>
     </div>
   );

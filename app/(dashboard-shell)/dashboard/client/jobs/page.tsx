@@ -112,114 +112,114 @@ export default async function MyJobsPage({
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-        <PageHeader
-          eyebrow="Client"
-          title="My Jobs"
-          description="All jobs you have posted — track progress and manage applicants."
+      <PageHeader
+        eyebrow="Client"
+        title="My Jobs"
+        description="All jobs you have posted — track progress and manage applicants."
+        action={
+          <ButtonLink href="/jobs/post" variant="secondary">
+            <Plus size={16} />
+            Post a Job
+          </ButtonLink>
+        }
+      />
+
+      {!jobs || jobs.length === 0 ? (
+        <EmptyState
+          icon={<span className="text-2xl">💼</span>}
+          title="No jobs posted yet"
+          description="Post your first job to start finding skilled community members."
           action={
-            <ButtonLink href="/jobs/post" variant="secondary">
-              <Plus size={16} />
-              Post a Job
+            <ButtonLink href="/jobs/post" size="sm">
+              <Plus size={15} />
+              Post your first job
             </ButtonLink>
           }
         />
-
-        {!jobs || jobs.length === 0 ? (
-          <EmptyState
-            icon={<span className="text-2xl">💼</span>}
-            title="No jobs posted yet"
-            description="Post your first job to start finding skilled community members."
-            action={
-              <ButtonLink href="/jobs/post" size="sm">
-                <Plus size={15} />
-                Post your first job
-              </ButtonLink>
-            }
-          />
-        ) : (
-          <div className="space-y-3">
-            {jobs.map((job) => {
-              const config = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.open;
-              const appCount = countMap[job.id] ?? 0;
-              const categories = compactCategories(job.categories ?? []);
-              return (
-                <Link
-                  key={job.id}
-                  href={`/jobs/${job.id}`}
-                  className="group block rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:p-6"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-base font-black text-slate-950 transition-colors group-hover:text-blue-600">
-                        {job.title}
-                      </h3>
-                      <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                        <span className="font-bold text-slate-900">
-                          £{Number(job.budget).toLocaleString()}
-                        </span>
-                        {appCount > 0 && (
-                          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
-                            {appCount} applicant{appCount !== 1 ? "s" : ""}
-                          </span>
-                        )}
-                        {job.kinglancer && (
-                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                            Assigned
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-3">
-                      <StatusBadge className={config.color}>
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${config.dot}`}
-                        />
-                        {config.label}
-                      </StatusBadge>
-                      <ChevronRight
-                        size={18}
-                        className="text-gray-300 transition-colors group-hover:text-blue-400"
-                      />
-                    </div>
-                  </div>
-
-                  {(categories.visible.length > 0 || job.kinglancer) && (
-                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
-                      {categories.visible.map((category) => (
-                        <span
-                          key={category}
-                          className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500"
-                        >
-                          {category}
-                        </span>
-                      ))}
-                      {categories.remaining > 0 && (
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-400">
-                          +{categories.remaining} more
+      ) : (
+        <div className="space-y-3">
+          {jobs.map((job) => {
+            const config = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.open;
+            const appCount = countMap[job.id] ?? 0;
+            const categories = compactCategories(job.categories ?? []);
+            return (
+              <Link
+                key={job.id}
+                href={`/jobs/${job.id}`}
+                className="group block rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:p-6"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-black text-slate-950 transition-colors group-hover:text-blue-600">
+                      {job.title}
+                    </h3>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                      <span className="font-bold text-slate-900">
+                        £{Number(job.budget).toLocaleString()}
+                      </span>
+                      {appCount > 0 && (
+                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                          {appCount} applicant{appCount !== 1 ? "s" : ""}
                         </span>
                       )}
                       {job.kinglancer && (
-                        <span className="text-xs font-semibold text-slate-400">
-                          Assigned to {job.kinglancer.full_name}
+                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                          Assigned
                         </span>
                       )}
                     </div>
-                  )}
-                </Link>
-              );
-            })}
-            <div className="overflow-hidden rounded-[1.5rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
-              <Pagination
-                basePath="/dashboard/client/jobs"
-                page={page}
-                total={count ?? 0}
-                pageSize={CLIENT_JOBS_PAGE_SIZE}
-                itemLabel="jobs"
-              />
-            </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-3">
+                    <StatusBadge className={config.color}>
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${config.dot}`}
+                      />
+                      {config.label}
+                    </StatusBadge>
+                    <ChevronRight
+                      size={18}
+                      className="text-gray-300 transition-colors group-hover:text-blue-400"
+                    />
+                  </div>
+                </div>
+
+                {(categories.visible.length > 0 || job.kinglancer) && (
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+                    {categories.visible.map((category) => (
+                      <span
+                        key={category}
+                        className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-500"
+                      >
+                        {category}
+                      </span>
+                    ))}
+                    {categories.remaining > 0 && (
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-400">
+                        +{categories.remaining} more
+                      </span>
+                    )}
+                    {job.kinglancer && (
+                      <span className="text-xs font-semibold text-slate-400">
+                        Assigned to {job.kinglancer.full_name}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+          <div className="overflow-hidden rounded-[1.5rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
+            <Pagination
+              basePath="/dashboard/client/jobs"
+              page={page}
+              total={count ?? 0}
+              pageSize={CLIENT_JOBS_PAGE_SIZE}
+              itemLabel="jobs"
+            />
           </div>
-        )}
+        </div>
+      )}
     </div>
   );
 }
