@@ -2,8 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import PageHeader from "@/components/ui/PageHeader";
-import PublicShell from "@/components/ui/PublicShell";
 import RequestView from "./RequestView";
 
 export default async function RequestKinglancerPage({
@@ -48,36 +46,25 @@ export default async function RequestKinglancerPage({
       ? kinglancer.services.map((s: { name: string }) => s.name)
       : (kinglancer.service_tags ?? []);
 
-  const firstName = kinglancer.full_name?.split(" ")[0] ?? "them";
-
   return (
-    <PublicShell withFooter={false} navbarVariant="solid">
-      <div className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
-        <PageHeader
-          eyebrow="Direct Request"
-          title={`Send a Request to ${kinglancer.full_name}`}
-          description={`Describe the work clearly. ${firstName} can accept, decline, or suggest changes before you fund escrow.`}
-          action={
-            <Link
-              href={`/kinglancers/${kinglancerId}`}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold text-white/90 ring-1 ring-white/20 transition-colors hover:bg-white/20"
-            >
-              <ArrowLeft size={14} />
-              Back to profile
-            </Link>
-          }
-        />
+    <div className="mx-auto max-w-3xl space-y-5 px-4 pt-20 pb-12 sm:px-6 lg:px-8">
+      <Link
+        href={`/kinglancers/${kinglancerId}`}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
+      >
+        <ArrowLeft size={14} />
+        Back to {kinglancer.full_name}&apos;s profile
+      </Link>
 
-        <RequestView
-          kinglancer={{
-            id: kinglancer.id,
-            fullName: kinglancer.full_name,
-            serviceTags,
-            avatarUrl: kinglancer.avatar_url,
-          }}
-          kinglancerId={kinglancerId}
-        />
-      </div>
-    </PublicShell>
+      <RequestView
+        kinglancer={{
+          id: kinglancer.id,
+          fullName: kinglancer.full_name,
+          serviceTags,
+          avatarUrl: kinglancer.avatar_url,
+        }}
+        kinglancerId={kinglancerId}
+      />
+    </div>
   );
 }
