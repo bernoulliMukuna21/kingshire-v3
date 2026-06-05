@@ -47,10 +47,15 @@ export default async function JobDetailPage({
   } | null = null;
   let alreadyApplied = false;
   let applications: ApplicationWithKinglancer[] = [];
+  let invitedKinglancer: {
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null = null;
 
   if (user) {
-    // Phase 2: profile, applications list (if owner), and hasApplied check all in parallel
-    const [profileResult, applicationsResult, appliedResult] =
+    // Phase 2: profile, applications list (if owner), hasApplied, and invited kinglancer all in parallel
+    const [profileResult, applicationsResult, appliedResult, invitedKlResult] =
       await Promise.all([
         supabase
           .from("profiles")
@@ -61,10 +66,18 @@ export default async function JobDetailPage({
           ? getApplicationsByJob(id)
           : Promise.resolve([] as ApplicationWithKinglancer[]),
         hasApplied(id, user.id),
+        isDirectRequest && job.invited_kinglancer_id
+          ? supabase
+              .from("profiles")
+              .select("id, full_name, avatar_url")
+              .eq("id", job.invited_kinglancer_id)
+              .single()
+          : Promise.resolve({ data: null }),
       ]);
     profile = profileResult.data;
     applications = applicationsResult;
     alreadyApplied = appliedResult;
+    invitedKinglancer = invitedKlResult.data as typeof invitedKinglancer;
   }
 
   const canApply =
@@ -195,6 +208,7 @@ export default async function JobDetailPage({
                 counterBudget={job.counter_budget}
                 counterRateType={job.counter_rate_type}
                 counterDeadline={job.counter_deadline}
+                invitedKinglancer={invitedKinglancer}
               />
             </Card>
           )}

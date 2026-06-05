@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Plus, ChevronRight } from "lucide-react";
+import { Plus, ChevronRight, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -81,7 +81,10 @@ export default async function MyJobsPage({
     categories: string[];
     created_at: string;
     deadline: string | null;
+    invited_kinglancer_id: string | null;
+    direct_request_status: string | null;
     kinglancer: { full_name: string } | null;
+    invited_kinglancer: { full_name: string } | null;
   };
 
   const { data: jobsRaw, count } = await supabase
@@ -89,7 +92,9 @@ export default async function MyJobsPage({
     .select(
       `
       id, title, status, budget, categories, created_at, deadline,
-      kinglancer:profiles!kinglancer_id(full_name)
+      invited_kinglancer_id, direct_request_status,
+      kinglancer:profiles!kinglancer_id(full_name),
+      invited_kinglancer:profiles!invited_kinglancer_id(full_name)
     `,
       { count: "exact" },
     )
@@ -139,33 +144,66 @@ export default async function MyJobsPage({
       ) : (
         <div className="space-y-3">
           {jobs.map((job) => {
+            const isDirectRequest = !!job.invited_kinglancer_id;
             const config = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.open;
             const appCount = countMap[job.id] ?? 0;
             const categories = compactCategories(job.categories ?? []);
+            const directStatusLabel: Record<string, string> = {
+              pending: "Awaiting response",
+              changes_requested: "Changes requested",
+              accepted_pending_payment: "Awaiting payment",
+              declined: "Declined",
+              cancelled: "Cancelled",
+            };
             return (
               <Link
                 key={job.id}
                 href={`/jobs/${job.id}`}
-                className="group block rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:p-6"
+                className="group block rounded-3xl border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:p-6"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-black text-slate-950 transition-colors group-hover:text-blue-600">
-                      {job.title}
-                    </h3>
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 mb-1">
+                      {isDirectRequest && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-bold text-violet-700 ring-1 ring-violet-100">
+                          <Send size={10} />
+                          Direct
+                        </span>
+                      )}
+                      <h3 className="truncate text-base font-black text-slate-950 transition-colors group-hover:text-blue-600">
+                        {job.title}
+                      </h3>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                       <span className="font-bold text-slate-900">
                         £{Number(job.budget).toLocaleString()}
                       </span>
-                      {appCount > 0 && (
-                        <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
-                          {appCount} applicant{appCount !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                      {job.kinglancer && (
-                        <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                          Assigned
-                        </span>
+                      {isDirectRequest ? (
+                        <>
+                          {job.invited_kinglancer && (
+                            <span className="text-xs text-slate-500">
+                              → {job.invited_kinglancer.full_name}
+                            </span>
+                          )}
+                          {job.direct_request_status && (
+                            <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-600">
+                              {directStatusLabel[job.direct_request_status] ?? job.direct_request_status}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {appCount > 0 && (
+                            <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700">
+                              {appCount} applicant{appCount !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                          {job.kinglancer && (
+                            <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                              Assigned
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
@@ -209,7 +247,7 @@ export default async function MyJobsPage({
               </Link>
             );
           })}
-          <div className="overflow-hidden rounded-[1.5rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
+          <div className="overflow-hidden rounded-3xl border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
             <Pagination
               basePath="/dashboard/client/jobs"
               page={page}

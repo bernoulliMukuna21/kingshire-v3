@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Loader2,
@@ -130,6 +131,7 @@ export function DirectRequestActions({
   counterBudget,
   counterRateType,
   counterDeadline,
+  invitedKinglancer,
 }: {
   jobId: string;
   viewerRole: string | null | undefined;
@@ -140,6 +142,7 @@ export function DirectRequestActions({
   counterBudget: number | null;
   counterRateType: "fixed" | "per_hour" | "per_day" | null;
   counterDeadline: string | null;
+  invitedKinglancer?: { id: string; full_name: string | null; avatar_url: string | null } | null;
 }) {
   const router = useRouter();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -360,9 +363,33 @@ export function DirectRequestActions({
       )}
 
       {isOwner && status === "pending" && (
-        <p className="rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
-          Waiting for the Kinglancer to respond to this direct request.
-        </p>
+        <div className="space-y-3">
+          {invitedKinglancer && (
+            <Link
+              href={`/kinglancers/${invitedKinglancer.id}`}
+              className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4 transition-colors hover:border-blue-100 hover:bg-blue-50/50"
+            >
+              {invitedKinglancer.avatar_url ? (
+                <img
+                  src={invitedKinglancer.avatar_url}
+                  alt={invitedKinglancer.full_name ?? "Kinglancer"}
+                  className="h-10 w-10 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                  {(invitedKinglancer.full_name ?? "?")[0].toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-slate-900">{invitedKinglancer.full_name}</p>
+                <p className="text-xs text-blue-600">View profile →</p>
+              </div>
+            </Link>
+          )}
+          <p className="rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
+            Waiting for {invitedKinglancer?.full_name?.split(" ")[0] ?? "the Kinglancer"} to respond to your request.
+          </p>
+        </div>
       )}
 
       {isOwner && status === "changes_requested" && (
