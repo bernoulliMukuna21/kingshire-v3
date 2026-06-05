@@ -16,6 +16,7 @@ const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
 
 const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
   { label: "Dashboard", icon: "⬛", href: "/dashboard/kinglancer" },
+  { label: "Browse Jobs", icon: "🔎", href: "/jobs" },
   { label: "My Profile", icon: "👤", href: "/dashboard/profile" },
   { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
 ];

@@ -46,7 +46,7 @@ export default async function PostJobPage({
         }
         description={
           preferredKinglancer
-            ? "Describe the work clearly. They still need to apply or be selected through the normal escrow-protected flow."
+            ? "Describe the work clearly. They can accept, decline, or request changes before you fund escrow."
             : "Describe what you need and Kinglancers from your community will apply."
         }
       />

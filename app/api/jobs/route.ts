@@ -45,7 +45,15 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { title, description, categories, budget, rate_type, deadline } = body;
+  const {
+    title,
+    description,
+    categories,
+    budget,
+    rate_type,
+    deadline,
+    invited_kinglancer_id,
+  } = body;
 
   const titleStr = (title ?? "").trim();
   const descStr = (description ?? "").trim();
@@ -97,6 +105,26 @@ export async function POST(request: Request) {
   const resolvedRateType = validRateTypes.includes(rate_type)
     ? rate_type
     : "fixed";
+  const invitedKinglancerId =
+    typeof invited_kinglancer_id === "string" && invited_kinglancer_id.trim()
+      ? invited_kinglancer_id.trim()
+      : null;
+
+  if (invitedKinglancerId) {
+    const { data: invitedKinglancer } = await supabase
+      .from("profiles")
+      .select("id, role")
+      .eq("id", invitedKinglancerId)
+      .eq("role", "kinglancer")
+      .single();
+
+    if (!invitedKinglancer) {
+      return NextResponse.json(
+        { error: "Selected Kinglancer was not found." },
+        { status: 404 },
+      );
+    }
+  }
 
   try {
     const job = await createJob({
@@ -106,17 +134,25 @@ export async function POST(request: Request) {
       categories,
       budget: normalizedBudget,
       rate_type: resolvedRateType,
+      invited_kinglancer_id: invitedKinglancerId,
+      direct_request_status: invitedKinglancerId ? "pending" : null,
       deadline: deadline || null,
     });
 
     // MVP-safe fan-out: create bounded in-app notifications only.
     // Avoid sending one email per kinglancer during the job-post request.
-    const { data: kinglancers } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("role", "kinglancer")
-      .order("jobs_completed", { ascending: false })
-      .limit(50);
+    const { data: kinglancers } = invitedKinglancerId
+      ? await supabase
+          .from("profiles")
+          .select("id")
+          .eq("id", invitedKinglancerId)
+          .limit(1)
+      : await supabase
+          .from("profiles")
+          .select("id")
+          .eq("role", "kinglancer")
+          .order("jobs_completed", { ascending: false })
+          .limit(50);
 
     if (kinglancers?.length) {
       await createServiceClient()
@@ -124,9 +160,13 @@ export async function POST(request: Request) {
         .insert(
           kinglancers.map((k) => ({
             user_id: k.id,
-            type: "new_job",
-            title: "New job posted",
-            body: `A new job has just been posted: "${job.title}". Be one of the first to apply!`,
+            type: invitedKinglancerId ? "direct_request" : "new_job",
+            title: invitedKinglancerId
+              ? "New direct job request"
+              : "New job posted",
+            body: invitedKinglancerId
+              ? `You have a direct job request: "${job.title}".`
+              : `A new job has just been posted: "${job.title}". Be one of the first to apply!`,
             link: `/jobs/${job.id}`,
           })),
         )

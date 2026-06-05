@@ -110,14 +110,318 @@ export function ApplyForm({ jobId }: { jobId: string }) {
   );
 }
 
+// ── Direct request actions ────────────────────────────────
+
+type DirectRequestStatus =
+  | "pending"
+  | "changes_requested"
+  | "accepted_pending_payment"
+  | "declined"
+  | "cancelled"
+  | null;
+
+export function DirectRequestActions({
+  jobId,
+  viewerRole,
+  isOwner,
+  isInvitedKinglancer,
+  status,
+  message,
+  counterBudget,
+  counterRateType,
+  counterDeadline,
+}: {
+  jobId: string;
+  viewerRole: string | null | undefined;
+  isOwner: boolean;
+  isInvitedKinglancer: boolean;
+  status: DirectRequestStatus;
+  message: string | null;
+  counterBudget: number | null;
+  counterRateType: "fixed" | "per_hour" | "per_day" | null;
+  counterDeadline: string | null;
+}) {
+  const router = useRouter();
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [showCounter, setShowCounter] = useState(false);
+  const [proposedBudget, setProposedBudget] = useState(
+    counterBudget ? String(counterBudget) : "",
+  );
+  const [proposedRateType, setProposedRateType] = useState<
+    "fixed" | "per_hour" | "per_day"
+  >(counterRateType ?? "fixed");
+  const [proposedDeadline, setProposedDeadline] = useState(
+    counterDeadline ?? "",
+  );
+  const [counterMessage, setCounterMessage] = useState(message ?? "");
+  const [error, setError] = useState<string | null>(null);
+
+  const submitAction = async (
+    action: string,
+    extraBody: Record<string, unknown> = {},
+  ) => {
+    setError(null);
+    setLoadingAction(action);
+    const res = await fetch(`/api/jobs/${jobId}/direct-request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, ...extraBody }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setLoadingAction(null);
+
+    if (!res.ok) {
+      setError(data.error ?? "Something went wrong.");
+      return;
+    }
+
+    setShowCounter(false);
+    router.refresh();
+  };
+
+  const startPayment = async () => {
+    setError(null);
+    setLoadingAction("direct_pay");
+    const res = await fetch(`/api/jobs/${jobId}/direct-pay`, {
+      method: "POST",
+    });
+    const data = await res.json().catch(() => ({}));
+    setLoadingAction(null);
+
+    if (!res.ok) {
+      setError(data.error ?? "Failed to start payment.");
+      return;
+    }
+
+    router.push(
+      `/jobs/${data.jobId}/pay?cs=${encodeURIComponent(data.clientSecret)}`,
+    );
+  };
+
+  if (!status) return null;
+
+  if (viewerRole === "admin") {
+    return (
+      <p className="text-sm text-gray-500">
+        Admin accounts can inspect direct requests but cannot act on them.
+      </p>
+    );
+  }
+
+  if (status === "declined") {
+    return (
+      <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
+        This direct request was declined.
+      </div>
+    );
+  }
+
+  if (status === "cancelled") {
+    return (
+      <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+        This direct request was cancelled.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          <AlertCircle size={16} className="shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {isInvitedKinglancer && status !== "accepted_pending_payment" && (
+        <>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => submitAction("accept")}
+              disabled={loadingAction !== null}
+              className="rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-green-700 disabled:opacity-50"
+            >
+              {loadingAction === "accept" ? "Accepting..." : "Accept request"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCounter((value) => !value)}
+              disabled={loadingAction !== null}
+              className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100 disabled:opacity-50"
+            >
+              Request changes
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => submitAction("decline")}
+            disabled={loadingAction !== null}
+            className="w-full rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 transition-all hover:bg-red-100 disabled:opacity-50"
+          >
+            {loadingAction === "decline" ? "Declining..." : "Decline request"}
+          </button>
+
+          {showCounter && (
+            <form
+              className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitAction("request_changes", {
+                  proposed_budget: proposedBudget,
+                  proposed_rate_type: proposedRateType,
+                  proposed_deadline: proposedDeadline || null,
+                  message: counterMessage,
+                });
+              }}
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-slate-500">
+                    Proposed budget
+                  </label>
+                  <input
+                    type="number"
+                    min="5"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={proposedBudget}
+                    onChange={(event) => setProposedBudget(event.target.value)}
+                    className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="e.g. 150"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-slate-500">
+                    Rate type
+                  </label>
+                  <select
+                    value={proposedRateType}
+                    onChange={(event) =>
+                      setProposedRateType(
+                        event.target.value as "fixed" | "per_hour" | "per_day",
+                      )
+                    }
+                    className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="fixed">Fixed</option>
+                    <option value="per_hour">Per hour</option>
+                    <option value="per_day">Per day</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-500">
+                  Proposed deadline
+                </label>
+                <input
+                  type="date"
+                  value={proposedDeadline}
+                  onChange={(event) => setProposedDeadline(event.target.value)}
+                  className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-bold text-slate-500">
+                  Message to client
+                </label>
+                <textarea
+                  value={counterMessage}
+                  onChange={(event) => setCounterMessage(event.target.value)}
+                  rows={3}
+                  maxLength={1000}
+                  className="w-full resize-none rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                  placeholder="Explain why the request needs changing..."
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loadingAction !== null}
+                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loadingAction === "request_changes"
+                  ? "Sending..."
+                  : "Send requested changes"}
+              </button>
+            </form>
+          )}
+        </>
+      )}
+
+      {isInvitedKinglancer && status === "accepted_pending_payment" && (
+        <p className="rounded-2xl bg-green-50 p-4 text-sm font-semibold text-green-700">
+          You accepted this request. Waiting for the client to fund escrow.
+        </p>
+      )}
+
+      {isOwner && status === "pending" && (
+        <p className="rounded-2xl bg-blue-50 p-4 text-sm font-semibold text-blue-700">
+          Waiting for the Kinglancer to respond to this direct request.
+        </p>
+      )}
+
+      {isOwner && status === "changes_requested" && (
+        <div className="space-y-3 rounded-2xl border border-amber-100 bg-amber-50 p-4">
+          <p className="text-sm font-black text-amber-900">
+            The Kinglancer requested changes
+          </p>
+          {message && <p className="text-sm text-amber-800">{message}</p>}
+          <div className="flex flex-wrap gap-2 text-xs font-bold text-amber-800">
+            {counterBudget && <span>Budget: £{counterBudget}</span>}
+            {counterRateType && (
+              <span>Rate: {counterRateType.replace("_", " ")}</span>
+            )}
+            {counterDeadline && <span>Deadline: {counterDeadline}</span>}
+          </div>
+          <button
+            type="button"
+            onClick={() => submitAction("accept_changes")}
+            disabled={loadingAction !== null}
+            className="w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-amber-700 disabled:opacity-50"
+          >
+            {loadingAction === "accept_changes"
+              ? "Accepting..."
+              : "Accept changes"}
+          </button>
+        </div>
+      )}
+
+      {isOwner && status === "accepted_pending_payment" && (
+        <button
+          type="button"
+          onClick={startPayment}
+          disabled={loadingAction !== null}
+          className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loadingAction === "direct_pay"
+            ? "Starting payment..."
+            : "Fund escrow and start job"}
+        </button>
+      )}
+
+      {isOwner &&
+        ["pending", "changes_requested", "accepted_pending_payment"].includes(
+          status,
+        ) && (
+          <button
+            type="button"
+            onClick={() => submitAction("cancel")}
+            disabled={loadingAction !== null}
+            className="w-full rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-500 transition-all hover:bg-slate-200 disabled:opacity-50"
+          >
+            Cancel request
+          </button>
+        )}
+    </div>
+  );
+}
+
 // ── Applicants list (for the client who owns the job) ────
 
 export function ApplicantsList({
   applications,
-  jobId,
 }: {
   applications: ApplicationWithKinglancer[];
-  jobId: string;
 }) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);

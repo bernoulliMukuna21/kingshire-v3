@@ -9,7 +9,6 @@ export type JobWithClient = Job & {
   application_count?: number;
 };
 
-import { JOB_CATEGORIES } from "@/lib/job-categories";
 export { JOB_CATEGORIES } from "@/lib/job-categories";
 
 export async function getOpenJobs(): Promise<JobWithClient[]> {
@@ -18,6 +17,7 @@ export async function getOpenJobs(): Promise<JobWithClient[]> {
     .from("jobs")
     .select("*, client:profiles!client_id(full_name, avatar_url)")
     .eq("status", "open")
+    .is("invited_kinglancer_id", null)
     .order("created_at", { ascending: false })
     .limit(100);
 

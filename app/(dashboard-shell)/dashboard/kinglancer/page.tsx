@@ -34,7 +34,12 @@ export default async function KinglancerDashboard() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const [profileResult, applicationsResult, transactionsResult] =
+  const [
+    profileResult,
+    applicationsResult,
+    transactionsResult,
+    directRequestsResult,
+  ] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -59,6 +64,20 @@ export default async function KinglancerDashboard() {
         .eq("kinglancer_id", user.id)
         .order("created_at", { ascending: false })
         .limit(200),
+
+      supabase
+        .from("jobs")
+        .select(
+          "id, title, budget, rate_type, status, deadline, direct_request_status, direct_request_message, counter_budget, counter_rate_type, counter_deadline, client:profiles!client_id(full_name)",
+        )
+        .eq("invited_kinglancer_id", user.id)
+        .in("direct_request_status", [
+          "pending",
+          "changes_requested",
+          "accepted_pending_payment",
+        ])
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
 
   const profile = profileResult.data;
@@ -83,6 +102,20 @@ export default async function KinglancerDashboard() {
   }>;
 
   const transactions = transactionsResult.data ?? [];
+  const directRequests = (directRequestsResult.data ?? []) as Array<{
+    id: string;
+    title: string;
+    budget: number;
+    rate_type: string;
+    status: string;
+    deadline: string | null;
+    direct_request_status: string | null;
+    direct_request_message: string | null;
+    counter_budget: number | null;
+    counter_rate_type: string | null;
+    counter_deadline: string | null;
+    client: { full_name: string } | null;
+  }>;
 
   // Derived stats
   const totalEarned = transactions
@@ -268,6 +301,54 @@ export default async function KinglancerDashboard() {
               </FadeIn>
             );
           })()}
+
+        {directRequests.length > 0 && (
+          <FadeIn className="mb-6 overflow-hidden rounded-[1.75rem] border border-blue-100 bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+              <div>
+                <h2 className="font-black text-slate-950">Direct Requests</h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Private job requests sent specifically to you
+                </p>
+              </div>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {directRequests.map((job) => (
+                <Link
+                  key={job.id}
+                  href={`/jobs/${job.id}`}
+                  className="group flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-slate-50 sm:px-6"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-slate-950 transition-colors group-hover:text-blue-700">
+                      {job.title}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {job.client?.full_name ?? "Client"} · £
+                      {Number(job.budget).toLocaleString()}{" "}
+                      {job.rate_type === "fixed"
+                        ? "fixed"
+                        : job.rate_type.replace("_", " ")}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="hidden rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 sm:inline">
+                      {job.direct_request_status === "accepted_pending_payment"
+                        ? "Accepted"
+                        : job.direct_request_status === "changes_requested"
+                          ? "Changes requested"
+                          : "New request"}
+                    </span>
+                    <ChevronRight
+                      size={16}
+                      className="text-gray-300 transition-colors group-hover:text-blue-500"
+                    />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </FadeIn>
+        )}
 
         {/* Stats */}
         <Stagger

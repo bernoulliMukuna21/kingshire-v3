@@ -99,6 +99,18 @@ export type Database = {
             | "approved";
           deadline: string | null;
           kinglancer_id: string | null;
+          invited_kinglancer_id: string | null;
+          direct_request_status:
+            | "pending"
+            | "changes_requested"
+            | "accepted_pending_payment"
+            | "declined"
+            | "cancelled"
+            | null;
+          direct_request_message: string | null;
+          counter_budget: number | null;
+          counter_rate_type: "fixed" | "per_hour" | "per_day" | null;
+          counter_deadline: string | null;
           rate_type: "fixed" | "per_hour" | "per_day";
           created_at: string;
           updated_at: string;
@@ -112,6 +124,18 @@ export type Database = {
           service_tags_required?: string[];
           deadline?: string | null;
           kinglancer_id?: string | null;
+          invited_kinglancer_id?: string | null;
+          direct_request_status?:
+            | "pending"
+            | "changes_requested"
+            | "accepted_pending_payment"
+            | "declined"
+            | "cancelled"
+            | null;
+          direct_request_message?: string | null;
+          counter_budget?: number | null;
+          counter_rate_type?: "fixed" | "per_hour" | "per_day" | null;
+          counter_deadline?: string | null;
           rate_type?: "fixed" | "per_hour" | "per_day";
         };
         Update: {
@@ -121,6 +145,18 @@ export type Database = {
           categories?: string[];
           service_tags_required?: string[];
           rate_type?: "fixed" | "per_hour" | "per_day";
+          invited_kinglancer_id?: string | null;
+          direct_request_status?:
+            | "pending"
+            | "changes_requested"
+            | "accepted_pending_payment"
+            | "declined"
+            | "cancelled"
+            | null;
+          direct_request_message?: string | null;
+          counter_budget?: number | null;
+          counter_rate_type?: "fixed" | "per_hour" | "per_day" | null;
+          counter_deadline?: string | null;
           status?:
             | "open"
             | "in_progress"
@@ -246,7 +282,9 @@ export type Database = {
             | "work_submitted"
             | "payment_released"
             | "dispute_raised"
-            | "new_job";
+            | "new_job"
+            | "payout_ready"
+            | "direct_request";
           title: string;
           body: string;
           link: string | null;
@@ -261,7 +299,9 @@ export type Database = {
             | "work_submitted"
             | "payment_released"
             | "dispute_raised"
-            | "new_job";
+            | "new_job"
+            | "payout_ready"
+            | "direct_request";
           title: string;
           body: string;
           link?: string | null;

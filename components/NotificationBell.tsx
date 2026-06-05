@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 
@@ -32,6 +31,8 @@ const TYPE_ICON: Record<string, string> = {
   payment_released: "💷",
   dispute_raised: "⚠️",
   new_job: "💼",
+  payout_ready: "💷",
+  direct_request: "📨",
 };
 
 export default function NotificationBell() {
@@ -40,19 +41,26 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const res = await fetch("/api/notifications");
-      if (res.ok) setNotifications(await res.json());
-    } catch {}
-  }, []);
-
   // Fetch on mount and poll every 30 s
   useEffect(() => {
-    fetchNotifications();
+    let cancelled = false;
+
+    const fetchNotifications = async () => {
+      try {
+        const res = await fetch("/api/notifications");
+        if (res.ok && !cancelled) setNotifications(await res.json());
+      } catch {}
+    };
+
+    const initialFetch = setTimeout(fetchNotifications, 0);
     const interval = setInterval(fetchNotifications, 30_000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initialFetch);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Close panel on outside click
   useEffect(() => {

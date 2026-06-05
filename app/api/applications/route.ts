@@ -49,6 +49,12 @@ export async function POST(request: Request) {
       { status: 409 },
     );
   }
+  if (job.invited_kinglancer_id) {
+    return NextResponse.json(
+      { error: "Direct requests must be handled from the job page" },
+      { status: 403 },
+    );
+  }
 
   // Prevent duplicate applications
   const alreadyApplied = await hasApplied(job_id, user.id);

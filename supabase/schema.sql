@@ -47,6 +47,12 @@ create table public.jobs (
   status           text not null default 'open' check (status in ('open','in_progress','completed','cancelled','disputed','approved')),
   deadline         date,
   kinglancer_id    uuid references public.profiles(id),
+  invited_kinglancer_id uuid references public.profiles(id),
+  direct_request_status text check (direct_request_status is null or direct_request_status in ('pending','changes_requested','accepted_pending_payment','declined','cancelled')),
+  direct_request_message text,
+  counter_budget   numeric(10,2),
+  counter_rate_type text check (counter_rate_type is null or counter_rate_type in ('fixed','per_hour','per_day')),
+  counter_deadline date,
   created_at       timestamptz not null default now(),
   updated_at       timestamptz not null default now()
 );
@@ -222,8 +228,14 @@ create policy "Users can update own profile" on public.profiles
 -- Direct client edits are restricted to open jobs only (before a kinglancer
 -- is selected). All status transitions go through server routes that use the
 -- service role and bypass RLS, so no kinglancer update policy is needed.
-create policy "Jobs are viewable by everyone" on public.jobs
-  for select using (true);
+create policy "Jobs are viewable by relevant users" on public.jobs
+  for select using (
+    invited_kinglancer_id is null
+    OR auth.uid() = client_id
+    OR auth.uid() = invited_kinglancer_id
+    OR auth.uid() = kinglancer_id
+    OR (select role from public.profiles where id = auth.uid()) = 'admin'
+  );
 -- Only a client (by profile role) can post jobs.
 create policy "Clients can create jobs" on public.jobs
   for insert with check (
@@ -249,6 +261,7 @@ create policy "Kinglancers can apply" on public.applications
     auth.uid() = kinglancer_id
     AND (select role from public.profiles where id = auth.uid()) = 'kinglancer'
     AND (select status from public.jobs where id = job_id) = 'open'
+    AND (select invited_kinglancer_id from public.jobs where id = job_id) is null
   );
 
 -- Transactions: only parties involved can view.
@@ -311,7 +324,8 @@ create table if not exists public.notifications (
                 'payment_released',
                 'dispute_raised',
                 'new_job',
-                'payout_ready'
+                'payout_ready',
+                'direct_request'
               )),
   title       text not null,
   body        text not null,

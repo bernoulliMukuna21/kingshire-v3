@@ -81,12 +81,12 @@ export default async function KinglancerProfilePage({
       </ButtonLink>
     ) : currentProfile?.role === "client" ? (
       <ButtonLink href={bookingHref} className="w-full sm:w-auto">
-        Book this Kinglancer
+        Request this Kinglancer
       </ButtonLink>
     ) : currentProfile?.role === "kinglancer" ? (
       <div className="space-y-3">
         <p className="text-sm text-slate-500">
-          Switch to a client account before booking another Kinglancer.
+          Switch to a client account before requesting another Kinglancer.
         </p>
         <ButtonLink href="/dashboard/settings" variant="secondary" className="w-full sm:w-auto">
           Go to settings
@@ -99,7 +99,7 @@ export default async function KinglancerProfilePage({
     ) : (
       <div className="flex flex-col gap-3 sm:flex-row">
         <ButtonLink href="/sign-up" className="w-full sm:w-auto">
-          Sign up to book
+          Sign up to request
         </ButtonLink>
         <ButtonLink href="/sign-in" variant="secondary" className="w-full sm:w-auto">
           Sign in
@@ -121,7 +121,7 @@ export default async function KinglancerProfilePage({
           </ButtonLink>
           {currentProfile?.role === "client" && (
             <ButtonLink href={bookingHref} size="sm">
-              Book this Kinglancer
+              Request this Kinglancer
             </ButtonLink>
           )}
         </div>
@@ -133,8 +133,8 @@ export default async function KinglancerProfilePage({
             Work with {kinglancer.full_name?.split(" ")[0] || "this Kinglancer"}
           </h2>
           <p className="mb-5 mt-2 text-sm leading-6 text-slate-500">
-            Start by posting a job. They can apply through the normal escrow
-            flow, keeping payment protection intact.
+            Send a private job request. They can accept, decline, or suggest
+            changes before you fund escrow.
           </p>
           {bookingCta}
         </Card>
@@ -249,8 +249,8 @@ export default async function KinglancerProfilePage({
               Work with {kinglancer.full_name?.split(" ")[0] || "this Kinglancer"}
             </h2>
             <p className="mb-5 mt-2 text-sm leading-6 text-slate-500">
-              Start by posting a job. They can apply through the normal escrow
-              flow, keeping payment protection intact.
+              Send a private job request. They can accept, decline, or suggest
+              changes before you fund escrow.
             </p>
             {bookingCta}
           </Card>

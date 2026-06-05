@@ -5,18 +5,17 @@ import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
-import DashboardShell from "@/components/DashboardShell";
 import {
   ApplyForm,
   ApplicantsList,
   KinglancerCompleteButton,
   ClientApproveActions,
+  DirectRequestActions,
 } from "./JobActions";
 import PublicShell from "@/components/ui/PublicShell";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import AdminShell from "@/components/admin/AdminShell";
 
 export default async function JobDetailPage({
   params,
@@ -37,6 +36,8 @@ export default async function JobDetailPage({
 
   const isOwner = user?.id === job.client_id;
   const isAssignedKinglancer = user?.id === job.kinglancer_id;
+  const isDirectRequest = !!job.invited_kinglancer_id;
+  const isInvitedKinglancer = user?.id === job.invited_kinglancer_id;
 
   let profile: {
     id: string;
@@ -70,6 +71,7 @@ export default async function JobDetailPage({
     profile &&
     profile.role === "kinglancer" &&
     !isOwner &&
+    !isDirectRequest &&
     job.status === "open" &&
     !alreadyApplied;
   const isAdmin = profile?.role === "admin";
@@ -139,7 +141,7 @@ export default async function JobDetailPage({
               <h2 className="font-bold text-gray-900 mb-4">
                 Applicants ({applications.length})
               </h2>
-              <ApplicantsList applications={applications} jobId={id} />
+              <ApplicantsList applications={applications} />
             </Card>
           )}
 
@@ -176,7 +178,28 @@ export default async function JobDetailPage({
             </Card>
           )}
 
-          {!isOwner && job.status === "open" && (
+          {isDirectRequest && job.status === "open" && (
+            <Card className={cardPadding}>
+              <h2 className="font-bold text-gray-900 mb-1">Direct request</h2>
+              <p className="mb-4 text-sm text-gray-500">
+                This job was sent directly to a specific Kinglancer. Escrow is
+                only funded once both sides agree on the terms.
+              </p>
+              <DirectRequestActions
+                jobId={id}
+                viewerRole={profile?.role}
+                isOwner={isOwner}
+                isInvitedKinglancer={!!isInvitedKinglancer}
+                status={job.direct_request_status}
+                message={job.direct_request_message}
+                counterBudget={job.counter_budget}
+                counterRateType={job.counter_rate_type}
+                counterDeadline={job.counter_deadline}
+              />
+            </Card>
+          )}
+
+          {!isDirectRequest && !isOwner && job.status === "open" && (
             <Card className={cardPadding}>
               <h2 className="font-bold text-gray-900 mb-1">
                 {isAdmin ? "Admin view" : "Apply"}
@@ -295,24 +318,6 @@ export default async function JobDetailPage({
     </div>
   );
 
-  // Logged-in users get the full dashboard shell
-  if (profile) {
-    if (profile.role === "admin") {
-      return (
-        <AdminShell userEmail={user?.email}>
-          {pageContent}
-        </AdminShell>
-      );
-    }
-
-    return (
-      <DashboardShell profile={profile}>
-        {pageContent}
-      </DashboardShell>
-    );
-  }
-
-  // Guest: public shell
   return (
     <PublicShell>
       <div className="pt-20">{pageContent}</div>

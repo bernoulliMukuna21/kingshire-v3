@@ -122,6 +122,7 @@ export default function PostJobForm({
         categories,
         budget: totalBudget,
         rate_type: rateType,
+        invited_kinglancer_id: preferredKinglancer?.id ?? null,
         deadline: deadline || null,
       }),
     });
@@ -153,8 +154,8 @@ export default function PostJobForm({
                 Booking with {preferredKinglancer.fullName} in mind
               </p>
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                This does not bypass escrow or application checks. Post the job,
-                then select the Kinglancer through the normal payment flow.
+                This request is private to them. If they accept the terms, you
+                will fund escrow before the job starts.
               </p>
               {preferredKinglancer.serviceTags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">

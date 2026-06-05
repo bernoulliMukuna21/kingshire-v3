@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -20,7 +19,6 @@ const stripePromise = loadStripe(
 function CheckoutForm({ jobId }: { jobId: string }) {
   const stripe = useStripe();
   const elements = useElements();
-  const router = useRouter();
 
   const [processing, setProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
