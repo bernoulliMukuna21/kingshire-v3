@@ -25,8 +25,8 @@ export async function GET(request: Request) {
 
   const db = createServiceClient();
 
-  // Find pending transactions older than 1 hour
-  const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  // Find pending transactions older than 15 minutes
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const { data: stuckTxns, error } = await db
     .from("transactions")
     .select("id, job_id, stripe_payment_intent_id, kinglancer_id")
@@ -52,28 +52,36 @@ export async function GET(request: Request) {
         const pi = await stripe.paymentIntents.retrieve(
           txn.stripe_payment_intent_id,
         );
-        const cancellable = [
-          "requires_payment_method",
-          "requires_confirmation",
-          "requires_action",
-        ];
-        if (!cancellable.includes(pi.status)) {
-          // PI is succeeded/processing/etc. — the webhook will handle cleanup.
+
+        if (pi.status === "canceled") {
+          // Stripe already auto-cancelled it (e.g. after 24 h with no payment
+          // method attached). Safe to clean up the DB — no need to call cancel.
+        } else if (
+          [
+            "requires_payment_method",
+            "requires_confirmation",
+            "requires_action",
+          ].includes(pi.status)
+        ) {
+          // Safe to cancel on Stripe then clean up DB
+          try {
+            await stripe.paymentIntents.cancel(txn.stripe_payment_intent_id);
+          } catch (stripeErr: unknown) {
+            const msg =
+              stripeErr instanceof Error
+                ? stripeErr.message
+                : String(stripeErr);
+            console.warn(
+              `[cleanup-abandoned-checkouts] Could not cancel PI ${txn.stripe_payment_intent_id}: ${msg}`,
+            );
+            // Cancel failed for an unexpected reason — skip to avoid data inconsistency
+            continue;
+          }
+        } else {
+          // succeeded / processing — the webhook will handle cleanup.
           console.warn(
             `[cleanup-abandoned-checkouts] PI ${txn.stripe_payment_intent_id} has status "${pi.status}", skipping txn ${txn.id}`,
           );
-          continue;
-        }
-        // Safe to cancel
-        try {
-          await stripe.paymentIntents.cancel(txn.stripe_payment_intent_id);
-        } catch (stripeErr: unknown) {
-          const msg =
-            stripeErr instanceof Error ? stripeErr.message : String(stripeErr);
-          console.warn(
-            `[cleanup-abandoned-checkouts] Could not cancel PI ${txn.stripe_payment_intent_id}: ${msg}`,
-          );
-          // Cancel failed for an unexpected reason — skip to avoid data inconsistency
           continue;
         }
       }
