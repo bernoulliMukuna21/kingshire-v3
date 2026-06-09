@@ -62,23 +62,38 @@ export async function GET(request: Request) {
       // A PI can succeed between our cutoff query and now (delayed webhook),
       // so we must only clean up if it is in a safely-cancellable state.
       if (txn.stripe_payment_intent_id) {
-        const pi = await stripe.paymentIntents.retrieve(
-          txn.stripe_payment_intent_id,
-        );
+        let piStatus: string | null = null;
+        try {
+          const pi = await stripe.paymentIntents.retrieve(
+            txn.stripe_payment_intent_id,
+          );
+          piStatus = pi.status;
+        } catch (stripeErr: unknown) {
+          const code = (stripeErr as { code?: string })?.code;
+          if (code === "resource_missing") {
+            // PI doesn't exist in the current Stripe account (e.g. key mismatch,
+            // or PI was created in a different test environment). Safe to clean up DB.
+            console.warn(
+              `[cleanup-abandoned-checkouts] PI ${txn.stripe_payment_intent_id} not found in Stripe — cleaning up DB only`,
+            );
+            piStatus = "not_found";
+          } else {
+            throw stripeErr;
+          }
+        }
 
         console.log(
-          `[cleanup-abandoned-checkouts] PI ${txn.stripe_payment_intent_id} status: "${pi.status}"`,
+          `[cleanup-abandoned-checkouts] PI ${txn.stripe_payment_intent_id} status: "${piStatus}"`,
         );
 
-        if (pi.status === "canceled") {
-          // Stripe already auto-cancelled it (e.g. after 24 h with no payment
-          // method attached). Safe to clean up the DB — no need to call cancel.
+        if (piStatus === "canceled" || piStatus === "not_found") {
+          // Already gone from Stripe — just clean the DB
         } else if (
           [
             "requires_payment_method",
             "requires_confirmation",
             "requires_action",
-          ].includes(pi.status)
+          ].includes(piStatus!)
         ) {
           // Safe to cancel on Stripe then clean up DB
           try {
@@ -91,13 +106,12 @@ export async function GET(request: Request) {
             console.warn(
               `[cleanup-abandoned-checkouts] Could not cancel PI ${txn.stripe_payment_intent_id}: ${msg}`,
             );
-            // Cancel failed for an unexpected reason — skip to avoid data inconsistency
             continue;
           }
         } else {
           // succeeded / processing — the webhook will handle cleanup.
           console.warn(
-            `[cleanup-abandoned-checkouts] PI ${txn.stripe_payment_intent_id} has status "${pi.status}", skipping txn ${txn.id}`,
+            `[cleanup-abandoned-checkouts] PI ${txn.stripe_payment_intent_id} has status "${piStatus}", skipping txn ${txn.id}`,
           );
           continue;
         }
