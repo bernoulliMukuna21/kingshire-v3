@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, SlidersHorizontal, Clock, Briefcase } from "lucide-react";
+import {
+  Search,
+  SlidersHorizontal,
+  Clock,
+  Briefcase,
+  CheckCircle,
+} from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/animations";
 import type { JobWithClient } from "@/lib/db/jobs";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
@@ -17,7 +23,13 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-export default function JobsList({ jobs }: { jobs: JobWithClient[] }) {
+export default function JobsList({
+  jobs,
+  appliedJobIds = [],
+}: {
+  jobs: JobWithClient[];
+  appliedJobIds?: string[];
+}) {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
 
@@ -99,9 +111,17 @@ export default function JobsList({ jobs }: { jobs: JobWithClient[] }) {
                         {job.title}
                       </h3>
                     </div>
-                    <span className="text-lg font-black text-green-600 shrink-0">
-                      £{Number(job.budget).toLocaleString()}
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <span className="text-lg font-black text-green-600">
+                        £{Number(job.budget).toLocaleString()}
+                      </span>
+                      {appliedJobIds.includes(job.id) && (
+                        <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
+                          <CheckCircle size={11} />
+                          Applied
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {(job.categories ?? []).length > 0 && (

@@ -608,24 +608,34 @@ export function ApplicantsList({
               className="bg-white border border-gray-100 rounded-2xl overflow-hidden"
             >
               {/* Header row */}
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => setExpandedId(expanded ? null : app.id)}
-                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors text-left"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ")
+                    setExpandedId(expanded ? null : app.id);
+                }}
+                className="w-full flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors text-left cursor-pointer"
               >
-                {/* Avatar */}
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0 overflow-hidden">
+                {/* Avatar — links to public profile, does not toggle */}
+                <Link
+                  href={`/kinglancers/${app.kinglancer_id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm shrink-0 overflow-hidden ring-2 ring-transparent hover:ring-blue-300 transition-all"
+                  title={`View ${k.full_name}'s profile`}
+                >
                   {k.avatar_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={k.avatar_url}
-                      alt=""
+                      alt={k.full_name}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     k.full_name[0]?.toUpperCase()
                   )}
-                </div>
+                </Link>
 
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900 text-sm">
@@ -656,7 +666,7 @@ export function ApplicantsList({
                 ) : (
                   <ChevronDown size={16} className="text-gray-400 shrink-0" />
                 )}
-              </button>
+              </div>
 
               {/* Expanded details */}
               {expanded && (

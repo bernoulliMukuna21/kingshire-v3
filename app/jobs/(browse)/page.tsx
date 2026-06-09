@@ -29,6 +29,15 @@ export default async function JobsPage() {
     ? jobs.filter((job) => job.client_id !== user.id)
     : jobs;
 
+  let appliedJobIds: string[] = [];
+  if (user) {
+    const { data: applications } = await supabase
+      .from("applications")
+      .select("job_id")
+      .eq("kinglancer_id", user.id);
+    appliedJobIds = (applications ?? []).map((a) => a.job_id);
+  }
+
   return (
     <PublicShell>
       <PublicHero
@@ -38,7 +47,7 @@ export default async function JobsPage() {
       <section className="px-4 py-10 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <FadeIn>
-            <JobsList jobs={visibleJobs} />
+            <JobsList jobs={visibleJobs} appliedJobIds={appliedJobIds} />
           </FadeIn>
         </div>
       </section>
