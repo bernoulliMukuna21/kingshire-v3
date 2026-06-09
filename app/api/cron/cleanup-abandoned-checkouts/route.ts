@@ -39,8 +39,21 @@ export async function GET(request: Request) {
   }
 
   if (!stuckTxns?.length) {
+    console.log(
+      "[cleanup-abandoned-checkouts] No pending transactions found older than cutoff:",
+      cutoff,
+    );
     return NextResponse.json({ cleaned: 0 });
   }
+
+  console.log(
+    `[cleanup-abandoned-checkouts] Found ${stuckTxns.length} pending txn(s):`,
+    stuckTxns.map((t) => ({
+      id: t.id,
+      pi: t.stripe_payment_intent_id,
+      job_id: t.job_id,
+    })),
+  );
 
   let cleaned = 0;
   for (const txn of stuckTxns) {
@@ -51,6 +64,10 @@ export async function GET(request: Request) {
       if (txn.stripe_payment_intent_id) {
         const pi = await stripe.paymentIntents.retrieve(
           txn.stripe_payment_intent_id,
+        );
+
+        console.log(
+          `[cleanup-abandoned-checkouts] PI ${txn.stripe_payment_intent_id} status: "${pi.status}"`,
         );
 
         if (pi.status === "canceled") {
@@ -87,23 +104,38 @@ export async function GET(request: Request) {
       }
 
       // Delete the pending transaction row
-      await db.from("transactions").delete().eq("id", txn.id);
+      const { error: delError } = await db
+        .from("transactions")
+        .delete()
+        .eq("id", txn.id);
+      console.log(
+        `[cleanup-abandoned-checkouts] Deleted txn ${txn.id}:`,
+        delError ?? "ok",
+      );
 
       // Reset the job to open and clear the assigned kinglancer
-      await db
+      const { error: jobError } = await db
         .from("jobs")
         .update({ status: "open", kinglancer_id: null })
         .eq("id", txn.job_id)
         .eq("status", "in_progress"); // only reset if still in_progress
+      console.log(
+        `[cleanup-abandoned-checkouts] Reset job ${txn.job_id}:`,
+        jobError ?? "ok",
+      );
 
       // Reset accepted/rejected applications back to pending. selectApplicant()
       // rejects other pending applicants before payment succeeds.
-      await db
+      const appsResult = await db
         .from("applications")
         .update({ status: "pending" })
         .eq("job_id", txn.job_id)
         .in("status", ["accepted", "rejected"]);
 
+      console.log(
+        `[cleanup-abandoned-checkouts] Cleaned txn ${txn.id} / job ${txn.job_id}. Apps reset error:`,
+        appsResult.error ?? "none",
+      );
       cleaned++;
     } catch (err) {
       console.error(
