@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import AdminPagination from "@/components/admin/AdminPagination";
 import AdminPanel from "@/components/admin/AdminPanel";
 import { FadeIn } from "@/components/animations";

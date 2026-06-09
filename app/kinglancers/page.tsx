@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { FadeIn } from "@/components/animations";
 import { createClient } from "@/lib/supabase/server";
 import KinglancersGrid from "./KinglancersGrid";

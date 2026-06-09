@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { Eye } from "lucide-react";
 import AdminPagination from "@/components/admin/AdminPagination";

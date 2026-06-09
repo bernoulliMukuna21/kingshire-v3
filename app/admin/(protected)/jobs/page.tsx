@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import AdminPagination from "@/components/admin/AdminPagination";
 import AdminPanel from "@/components/admin/AdminPanel";
