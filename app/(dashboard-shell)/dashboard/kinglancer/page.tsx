@@ -8,6 +8,7 @@ import {
   Briefcase,
   DollarSign,
   AlertCircle,
+  Send,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
@@ -168,8 +169,10 @@ export default async function KinglancerDashboard() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <FadeIn className="relative mb-6 overflow-hidden rounded-[2rem] bg-[#10234b] p-6 text-white shadow-2xl shadow-blue-950/15 sm:p-8">
+    <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10 space-y-6">
+
+      {/* ── Hero ── */}
+      <FadeIn className="relative overflow-hidden rounded-4xl bg-[#10234b] p-6 text-white shadow-2xl shadow-blue-950/15 sm:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.24),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.28),transparent_34%)]" />
         <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
@@ -195,92 +198,82 @@ export default async function KinglancerDashboard() {
         </div>
       </FadeIn>
 
-      {/* Payout connection status */}
-      <FadeIn className="mb-6">
-        {profile.stripe_onboarding_complete ? (
-          <div className="flex flex-col gap-4 rounded-[1.75rem] border border-emerald-200/80 bg-emerald-50/90 p-5 shadow-lg shadow-emerald-900/5 ring-1 ring-white sm:flex-row sm:items-start">
+      {/* ── Stats ── */}
+      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4" staggerDelay={0.07}>
+        {stats.map((stat) => (
+          <StaggerItem key={stat.label}>
+            {stat.href ? (
+              <Link
+                href={stat.href}
+                className="group block rounded-3xl border border-white bg-white/85 p-5 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur transition-all hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-950/10"
+              >
+                <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color} transition-transform group-hover:scale-105`}>
+                  <stat.icon size={18} />
+                </div>
+                <p className="text-2xl font-black text-slate-950">{stat.value}</p>
+                <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+              </Link>
+            ) : (
+              <div className="rounded-3xl border border-white bg-white/85 p-5 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">
+                <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color}`}>
+                  <stat.icon size={18} />
+                </div>
+                <p className="text-2xl font-black text-slate-950">{stat.value}</p>
+                <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+              </div>
+            )}
+          </StaggerItem>
+        ))}
+      </Stagger>
+
+      {/* ── Payout warning (only when not connected) ── */}
+      {!profile.stripe_onboarding_complete && (
+        <FadeIn>
+          <div className="flex flex-col gap-4 rounded-3xl border border-amber-200/80 bg-amber-50/90 p-5 shadow-lg shadow-amber-900/5 ring-1 ring-white sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-600 shadow-sm">
-                <CheckCircle size={22} />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-amber-600 shadow-sm">
+                <AlertCircle size={20} />
               </div>
               <div className="min-w-0">
-                <p className="text-base font-black text-emerald-950">
-                  Your personal payout account is active
-                </p>
-                <p className="mt-1 text-sm leading-6 text-emerald-800">
-                  When a client approves your work, KingsHire transfers your
-                  earnings directly to the bank account you registered. The
-                  Stripe dashboard shows balances, upcoming payouts, and
-                  transaction history.
-                </p>
-              </div>
-            </div>
-            <StripeLoginButton />
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4 rounded-[1.75rem] border border-amber-200/80 bg-amber-50/90 p-5 shadow-lg shadow-amber-900/5 ring-1 ring-white sm:flex-row sm:items-start">
-            <div className="flex min-w-0 flex-1 items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-amber-600 shadow-sm">
-                <AlertCircle size={22} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-base font-black text-amber-950">
-                  Connect your bank account to receive earnings
-                </p>
-                <p className="mt-1 text-sm leading-6 text-amber-800">
-                  KingsHire uses Stripe to pay you securely. Set up your
-                  personal payout account once — after that, every approved
-                  payment goes straight to your bank automatically.
+                <p className="text-sm font-black text-amber-950">Connect your bank account to receive earnings</p>
+                <p className="mt-0.5 text-sm text-amber-800">
+                  Set up your payout account once — every approved payment goes straight to your bank.
                 </p>
               </div>
             </div>
             <PayoutSetupButton />
           </div>
-        )}
-      </FadeIn>
+        </FadeIn>
+      )}
 
-      {/* Active contracts — summary card */}
-      {escrowJobs.length > 0 &&
-        (() => {
-          const totalEscrow = escrowJobs.reduce((sum, app) => {
-            if (!app.job) return sum;
-            const tx = transactions.find((t) => t.job_id === app.job!.id);
-            return (
-              sum +
-              (tx
-                ? app.job.budget - tx.platform_fee_kinglancer
-                : app.job.budget * 0.95)
-            );
-          }, 0);
-          return (
-            <FadeIn className="mb-6">
-              <div className="overflow-hidden rounded-[1.75rem] border border-white/10 shadow-2xl shadow-blue-950/10">
-                {/* Summary header */}
-                <div className="flex items-center justify-between bg-linear-to-r from-[#0f172a] to-[#1e3a7a] px-5 py-4">
-                  <div>
-                    <p className="text-white font-bold text-sm">
-                      Active Contracts
-                      <span className="ml-2 text-white/40 font-normal">
-                        {escrowJobs.length} job
-                        {escrowJobs.length !== 1 ? "s" : ""} in progress
-                      </span>
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-white/40 text-xs">total in escrow</p>
-                    <p className="text-white font-black text-lg leading-none mt-0.5">
-                      £{totalEscrow.toFixed(2)}
-                    </p>
-                  </div>
+      {/* ── Needs your attention ── */}
+      {(escrowJobs.length > 0 || directRequests.length > 0) && (
+        <FadeIn>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+            Needs your attention
+          </h2>
+          <div className="space-y-3">
+
+            {/* Active contracts */}
+            {escrowJobs.length > 0 && (
+              <div className="overflow-hidden rounded-3xl border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
+                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Active Contracts
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    £{escrowJobs.reduce((sum, app) => {
+                      if (!app.job) return sum;
+                      const tx = transactions.find((t) => t.job_id === app.job!.id);
+                      return sum + (tx ? app.job.budget - tx.platform_fee_kinglancer : app.job.budget * 0.95);
+                    }, 0).toFixed(2)} in escrow
+                  </p>
                 </div>
-                {/* Individual rows */}
-                <div className="bg-[#0f172a] divide-y divide-white/5">
+                <div className="divide-y divide-slate-100">
                   {escrowJobs.map((app) => {
                     if (!app.job) return null;
                     const isDone = app.job.status === "completed";
-                    const escrowTx = transactions.find(
-                      (t) => t.job_id === app.job!.id,
-                    );
+                    const escrowTx = transactions.find((t) => t.job_id === app.job!.id);
                     const heldAmount = escrowTx
                       ? app.job.budget - escrowTx.platform_fee_kinglancer
                       : app.job.budget * 0.95;
@@ -297,51 +290,38 @@ export default async function KinglancerDashboard() {
                   })}
                 </div>
               </div>
-            </FadeIn>
-          );
-        })()}
+            )}
 
-      {directRequests.length > 0 && (
-        <FadeIn className="mb-6 overflow-hidden rounded-[1.75rem] border border-blue-100 bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
-            <div>
-              <h2 className="font-black text-slate-950">Direct Requests</h2>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Private job requests sent specifically to you
-              </p>
-            </div>
-          </div>
-          <div className="divide-y divide-slate-100">
+            {/* Direct requests */}
             {directRequests.map((job) => (
               <Link
                 key={job.id}
                 href={`/jobs/${job.id}`}
-                className="group flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-slate-50 sm:px-6"
+                className="group flex items-center justify-between gap-4 rounded-3xl border border-violet-100 bg-violet-50/60 px-5 py-4 shadow-xl shadow-violet-900/5 ring-1 ring-violet-200/50 transition-all hover:-translate-y-0.5 hover:border-violet-200 sm:px-6"
               >
-                <div className="min-w-0">
-                  <p className="truncate font-bold text-slate-950 transition-colors group-hover:text-blue-700">
-                    {job.title}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    {job.client?.full_name ?? "Client"} · £
-                    {Number(job.budget).toLocaleString()}{" "}
-                    {job.rate_type === "fixed"
-                      ? "fixed"
-                      : job.rate_type.replace("_", " ")}
-                  </p>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                    <Send size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-bold text-slate-950 group-hover:text-violet-700 transition-colors">
+                      {job.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {job.client?.full_name ?? "Client"} · £{Number(job.budget).toLocaleString()}{" "}
+                      {job.rate_type === "fixed" ? "fixed" : job.rate_type.replace("_", " ")}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <span className="hidden rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700 sm:inline">
+                  <span className="hidden rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700 sm:inline">
                     {job.direct_request_status === "accepted_pending_payment"
                       ? "Accepted"
                       : job.direct_request_status === "changes_requested"
                         ? "Changes requested"
                         : "New request"}
                   </span>
-                  <ChevronRight
-                    size={16}
-                    className="text-gray-300 transition-colors group-hover:text-blue-500"
-                  />
+                  <ChevronRight size={16} className="text-gray-300 group-hover:text-violet-500 transition-colors" />
                 </div>
               </Link>
             ))}
@@ -349,57 +329,12 @@ export default async function KinglancerDashboard() {
         </FadeIn>
       )}
 
-      {/* Stats */}
-      <Stagger
-        className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4"
-        staggerDelay={0.07}
-      >
-        {stats.map((stat) => (
-          <StaggerItem key={stat.label}>
-            {stat.href ? (
-              <Link
-                href={stat.href}
-                className="group block rounded-[1.5rem] border border-white bg-white/85 p-5 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur transition-all hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-950/10"
-              >
-                <div
-                  className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color} transition-transform group-hover:scale-105`}
-                >
-                  <stat.icon size={18} />
-                </div>
-                <p className="text-2xl font-black text-slate-950">
-                  {stat.value}
-                </p>
-                <p className="text-sm font-medium text-slate-500">
-                  {stat.label}
-                </p>
-              </Link>
-            ) : (
-              <div className="rounded-[1.5rem] border border-white bg-white/85 p-5 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">
-                <div
-                  className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color}`}
-                >
-                  <stat.icon size={18} />
-                </div>
-                <p className="text-2xl font-black text-slate-950">
-                  {stat.value}
-                </p>
-                <p className="text-sm font-medium text-slate-500">
-                  {stat.label}
-                </p>
-              </div>
-            )}
-          </StaggerItem>
-        ))}
-      </Stagger>
-
-      {/* Applications list */}
-      <FadeIn className="overflow-hidden rounded-[1.75rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">
+      {/* ── Applications ── */}
+      <FadeIn className="overflow-hidden rounded-3xl border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
           <div>
             <h2 className="font-black text-slate-950">My Applications</h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Recent applications and selection status
-            </p>
+            <p className="mt-0.5 text-xs text-slate-500">Recent applications and selection status</p>
           </div>
           <Link
             href="/jobs"
@@ -412,9 +347,7 @@ export default async function KinglancerDashboard() {
         {applications.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <DollarSign size={32} className="text-gray-200 mx-auto mb-3" />
-            <p className="text-sm font-medium text-slate-500">
-              No applications yet.
-            </p>
+            <p className="text-sm font-medium text-slate-500">No applications yet.</p>
             <Link
               href="/jobs"
               className="mt-4 inline-block rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-700"
@@ -451,18 +384,13 @@ export default async function KinglancerDashboard() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span
-                      className={`hidden sm:inline px-3 py-1 rounded-full text-xs font-medium ${s.color}`}
-                    >
+                    <span className={`hidden sm:inline px-3 py-1 rounded-full text-xs font-medium ${s.color}`}>
                       {s.label}
                     </span>
                     <span className="font-black text-slate-950">
                       £{Number(app.job.budget).toLocaleString()}
                     </span>
-                    <ChevronRight
-                      size={16}
-                      className="text-gray-300 group-hover:text-blue-500 transition-colors"
-                    />
+                    <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
                   </div>
                 </Link>
               );
@@ -470,6 +398,13 @@ export default async function KinglancerDashboard() {
           </div>
         )}
       </FadeIn>
+
+      {/* Payout connected — subtle footer link */}
+      {profile.stripe_onboarding_complete && (
+        <div className="flex justify-end">
+          <StripeLoginButton />
+        </div>
+      )}
     </div>
   );
 }

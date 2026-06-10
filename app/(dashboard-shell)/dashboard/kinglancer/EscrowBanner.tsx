@@ -68,22 +68,22 @@ export default function EscrowRow({
         </div>
       )}
 
-      <div className="flex items-center gap-4 px-5 py-4 hover:bg-white/5 transition-colors">
+      <div className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors">
         {/* Status dot */}
         <div
-          className={`w-2 h-2 rounded-full shrink-0 ${isDone ? "bg-green-400" : "bg-blue-400"}`}
+          className={`w-2 h-2 rounded-full shrink-0 ${isDone ? "bg-yellow-400" : "bg-blue-500"}`}
         />
 
         {/* Job info */}
         <div className="flex-1 min-w-0">
           <Link
             href={`/jobs/${jobId}`}
-            className="font-semibold text-white hover:text-blue-300 transition-colors truncate block text-sm"
+            className="font-semibold text-slate-950 hover:text-blue-600 transition-colors truncate block text-sm"
           >
             {jobTitle}
           </Link>
           {deadline && (
-            <p className="text-white/40 text-xs mt-0.5">
+            <p className="text-slate-400 text-xs mt-0.5">
               Due{" "}
               {new Date(deadline).toLocaleDateString("en-GB", {
                 day: "numeric",
@@ -94,13 +94,13 @@ export default function EscrowRow({
         </div>
 
         {/* Amount */}
-        <span className="text-white font-bold text-sm shrink-0">
+        <span className="text-slate-950 font-bold text-sm shrink-0">
           £{heldAmount.toFixed(2)}
         </span>
 
         {/* Action */}
         {isDone ? (
-          <div className="shrink-0 flex items-center gap-1.5 bg-green-500/20 text-green-300 rounded-lg px-3 py-1.5 text-xs font-semibold">
+          <div className="shrink-0 flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg px-3 py-1.5 text-xs font-semibold">
             <CheckCircle size={12} />
             Submitted
           </div>
@@ -108,7 +108,7 @@ export default function EscrowRow({
           <button
             onClick={() => setConfirmOpen(true)}
             disabled={loading}
-            className="shrink-0 flex items-center gap-1.5 bg-green-500 hover:bg-green-400 text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
+            className="shrink-0 flex items-center gap-1.5 bg-green-600 hover:bg-green-500 text-white rounded-lg px-3 py-1.5 text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
           >
             {loading ? "Submitting..." : "Mark as Done"}
             {!loading && <ChevronRight size={12} />}

@@ -11,6 +11,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getRoleHome } from "@/lib/roles";
+import ServicesSection from "./ServicesSection";
 
 export default async function KinglancerProfilePage({
   params,
@@ -42,6 +43,25 @@ export default async function KinglancerProfilePage({
   const { data: currentProfile } = user
     ? await supabase.from("profiles").select("role").eq("id", user.id).single()
     : { data: null };
+
+  // If the viewer is a client, find any jobs of theirs this kinglancer has applied for
+  let appliedToYourJobs: { jobId: string; jobTitle: string }[] = [];
+  if (user && currentProfile?.role === "client") {
+    const { data: applications } = await supabase
+      .from("applications")
+      .select("job_id, job:jobs!job_id(id, title, client_id)")
+      .eq("kinglancer_id", kinglancer.id)
+      .in("status", ["pending", "accepted"]);
+
+    type AppWithJob = {
+      job_id: string;
+      job: { id: string; title: string; client_id: string } | null;
+    };
+
+    appliedToYourJobs = ((applications ?? []) as unknown as AppWithJob[])
+      .filter((a) => a.job?.client_id === user.id)
+      .map((a) => ({ jobId: a.job!.id, jobTitle: a.job!.title }));
+  }
 
   const serviceNames =
     kinglancer.services
@@ -210,37 +230,26 @@ export default async function KinglancerProfilePage({
             </p>
           </Card>
 
+          {appliedToYourJobs.length > 0 && (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 space-y-1.5">
+              <p className="text-sm font-bold text-blue-900">
+                {kinglancer.full_name?.split(" ")[0]} has applied for your job
+                {appliedToYourJobs.length > 1 ? "s" : ""}
+              </p>
+              {appliedToYourJobs.map(({ jobId, jobTitle }) => (
+                <a
+                  key={jobId}
+                  href={`/jobs/${jobId}`}
+                  className="flex items-center gap-1.5 text-sm text-blue-700 hover:underline font-medium"
+                >
+                  &rarr; {jobTitle}
+                </a>
+              ))}
+            </div>
+          )}
+
           {(kinglancer.services?.length ?? 0) > 0 && (
-            <Card className="p-6">
-              <h2 className="text-lg font-black text-slate-950">Services</h2>
-              <div className="mt-4 divide-y divide-slate-100">
-                {kinglancer.services.map((service, index) => {
-                  const serviceRate = Number(service.rate);
-                  return (
-                    <div
-                      key={`${service.name}-${service.rate}-${index}`}
-                      className="flex items-center justify-between gap-4 py-3"
-                    >
-                      <p className="text-sm font-bold text-slate-800">
-                        {service.name}
-                      </p>
-                      <p className="text-sm font-black text-green-700">
-                        {serviceRate > 0 ? (
-                          <>
-                            £{serviceRate.toLocaleString()}{" "}
-                            <span className="font-semibold text-slate-400">
-                              {service.rate_type.replace("_", " ")}
-                            </span>
-                          </>
-                        ) : (
-                          "Discuss"
-                        )}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </Card>
+            <ServicesSection services={kinglancer.services} />
           )}
         </div>
 
