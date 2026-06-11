@@ -170,7 +170,6 @@ export default async function KinglancerDashboard() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10 space-y-6">
-
       {/* ── Hero ── */}
       <FadeIn className="relative overflow-hidden rounded-4xl bg-[#10234b] p-6 text-white shadow-2xl shadow-blue-950/15 sm:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.24),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.28),transparent_34%)]" />
@@ -199,7 +198,10 @@ export default async function KinglancerDashboard() {
       </FadeIn>
 
       {/* ── Stats ── */}
-      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4" staggerDelay={0.07}>
+      <Stagger
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+        staggerDelay={0.07}
+      >
         {stats.map((stat) => (
           <StaggerItem key={stat.label}>
             {stat.href ? (
@@ -207,19 +209,31 @@ export default async function KinglancerDashboard() {
                 href={stat.href}
                 className="group block rounded-3xl border border-white bg-white/85 p-5 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur transition-all hover:-translate-y-1 hover:border-blue-100 hover:shadow-xl hover:shadow-blue-950/10"
               >
-                <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color} transition-transform group-hover:scale-105`}>
+                <div
+                  className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color} transition-transform group-hover:scale-105`}
+                >
                   <stat.icon size={18} />
                 </div>
-                <p className="text-2xl font-black text-slate-950">{stat.value}</p>
-                <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+                <p className="text-2xl font-black text-slate-950">
+                  {stat.value}
+                </p>
+                <p className="text-sm font-medium text-slate-500">
+                  {stat.label}
+                </p>
               </Link>
             ) : (
               <div className="rounded-3xl border border-white bg-white/85 p-5 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">
-                <div className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color}`}>
+                <div
+                  className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${stat.color}`}
+                >
                   <stat.icon size={18} />
                 </div>
-                <p className="text-2xl font-black text-slate-950">{stat.value}</p>
-                <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+                <p className="text-2xl font-black text-slate-950">
+                  {stat.value}
+                </p>
+                <p className="text-sm font-medium text-slate-500">
+                  {stat.label}
+                </p>
               </div>
             )}
           </StaggerItem>
@@ -235,9 +249,12 @@ export default async function KinglancerDashboard() {
                 <AlertCircle size={20} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-black text-amber-950">Connect your bank account to receive earnings</p>
+                <p className="text-sm font-black text-amber-950">
+                  Connect your bank account to receive earnings
+                </p>
                 <p className="mt-0.5 text-sm text-amber-800">
-                  Set up your payout account once — every approved payment goes straight to your bank.
+                  Set up your payout account once — every approved payment goes
+                  straight to your bank.
                 </p>
               </div>
             </div>
@@ -253,7 +270,6 @@ export default async function KinglancerDashboard() {
             Needs your attention
           </h2>
           <div className="space-y-3">
-
             {/* Active contracts */}
             {escrowJobs.length > 0 && (
               <div className="overflow-hidden rounded-3xl border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
@@ -262,18 +278,31 @@ export default async function KinglancerDashboard() {
                     Active Contracts
                   </p>
                   <p className="text-xs text-slate-400">
-                    £{escrowJobs.reduce((sum, app) => {
-                      if (!app.job) return sum;
-                      const tx = transactions.find((t) => t.job_id === app.job!.id);
-                      return sum + (tx ? app.job.budget - tx.platform_fee_kinglancer : app.job.budget * 0.95);
-                    }, 0).toFixed(2)} in escrow
+                    £
+                    {escrowJobs
+                      .reduce((sum, app) => {
+                        if (!app.job) return sum;
+                        const tx = transactions.find(
+                          (t) => t.job_id === app.job!.id,
+                        );
+                        return (
+                          sum +
+                          (tx
+                            ? app.job.budget - tx.platform_fee_kinglancer
+                            : app.job.budget * 0.95)
+                        );
+                      }, 0)
+                      .toFixed(2)}{" "}
+                    in escrow
                   </p>
                 </div>
                 <div className="divide-y divide-slate-100">
                   {escrowJobs.map((app) => {
                     if (!app.job) return null;
                     const isDone = app.job.status === "completed";
-                    const escrowTx = transactions.find((t) => t.job_id === app.job!.id);
+                    const escrowTx = transactions.find(
+                      (t) => t.job_id === app.job!.id,
+                    );
                     const heldAmount = escrowTx
                       ? app.job.budget - escrowTx.platform_fee_kinglancer
                       : app.job.budget * 0.95;
@@ -308,8 +337,11 @@ export default async function KinglancerDashboard() {
                       {job.title}
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500">
-                      {job.client?.full_name ?? "Client"} · £{Number(job.budget).toLocaleString()}{" "}
-                      {job.rate_type === "fixed" ? "fixed" : job.rate_type.replace("_", " ")}
+                      {job.client?.full_name ?? "Client"} · £
+                      {Number(job.budget).toLocaleString()}{" "}
+                      {job.rate_type === "fixed"
+                        ? "fixed"
+                        : job.rate_type.replace("_", " ")}
                     </p>
                   </div>
                 </div>
@@ -321,7 +353,10 @@ export default async function KinglancerDashboard() {
                         ? "Changes requested"
                         : "New request"}
                   </span>
-                  <ChevronRight size={16} className="text-gray-300 group-hover:text-violet-500 transition-colors" />
+                  <ChevronRight
+                    size={16}
+                    className="text-gray-300 group-hover:text-violet-500 transition-colors"
+                  />
                 </div>
               </Link>
             ))}
@@ -334,7 +369,9 @@ export default async function KinglancerDashboard() {
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
           <div>
             <h2 className="font-black text-slate-950">My Applications</h2>
-            <p className="mt-0.5 text-xs text-slate-500">Recent applications and selection status</p>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Recent applications and selection status
+            </p>
           </div>
           <Link
             href="/jobs"
@@ -347,7 +384,9 @@ export default async function KinglancerDashboard() {
         {applications.length === 0 ? (
           <div className="px-6 py-12 text-center">
             <DollarSign size={32} className="text-gray-200 mx-auto mb-3" />
-            <p className="text-sm font-medium text-slate-500">No applications yet.</p>
+            <p className="text-sm font-medium text-slate-500">
+              No applications yet.
+            </p>
             <Link
               href="/jobs"
               className="mt-4 inline-block rounded-2xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-700"
@@ -384,13 +423,18 @@ export default async function KinglancerDashboard() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className={`hidden sm:inline px-3 py-1 rounded-full text-xs font-medium ${s.color}`}>
+                    <span
+                      className={`hidden sm:inline px-3 py-1 rounded-full text-xs font-medium ${s.color}`}
+                    >
                       {s.label}
                     </span>
                     <span className="font-black text-slate-950">
                       £{Number(app.job.budget).toLocaleString()}
                     </span>
-                    <ChevronRight size={16} className="text-gray-300 group-hover:text-blue-500 transition-colors" />
+                    <ChevronRight
+                      size={16}
+                      className="text-gray-300 group-hover:text-blue-500 transition-colors"
+                    />
                   </div>
                 </Link>
               );

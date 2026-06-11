@@ -176,14 +176,16 @@ export default async function JobDetailPage({
 
           {/* Payment failed: job is still in_progress pending cron cleanup,
               but show the applicants panel so the client can re-select */}
-          {isOwner && job.status === "in_progress" && payment_failed === "1" && (
-            <Card className={cardPadding}>
-              <h2 className="font-bold text-gray-900 mb-4">
-                Applicants ({applications.length})
-              </h2>
-              <ApplicantsList applications={applications} />
-            </Card>
-          )}
+          {isOwner &&
+            job.status === "in_progress" &&
+            payment_failed === "1" && (
+              <Card className={cardPadding}>
+                <h2 className="font-bold text-gray-900 mb-4">
+                  Applicants ({applications.length})
+                </h2>
+                <ApplicantsList applications={applications} />
+              </Card>
+            )}
 
           {isAssignedKinglancer && job.status === "in_progress" && (
             <Card className={cardPadding}>
@@ -207,16 +209,20 @@ export default async function JobDetailPage({
             </Card>
           )}
 
-          {isOwner && job.status === "in_progress" && payment_failed !== "1" && (
-            <Card className={cardPadding}>
-              <h2 className="font-bold text-gray-900 mb-1">Job in progress</h2>
-              <p className="text-sm text-gray-500 mb-4">
-                Waiting for the Kinglancer to complete the work and submit it
-                for review.
-              </p>
-              <ClientApproveActions jobId={id} showApprove={false} />
-            </Card>
-          )}
+          {isOwner &&
+            job.status === "in_progress" &&
+            payment_failed !== "1" && (
+              <Card className={cardPadding}>
+                <h2 className="font-bold text-gray-900 mb-1">
+                  Job in progress
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Waiting for the Kinglancer to complete the work and submit it
+                  for review.
+                </p>
+                <ClientApproveActions jobId={id} showApprove={false} />
+              </Card>
+            )}
 
           {isDirectRequest && job.status === "open" && (
             <Card className={cardPadding}>

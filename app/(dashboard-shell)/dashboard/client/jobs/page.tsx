@@ -11,7 +11,7 @@ import { getPageNumber, getPageRange } from "@/lib/pagination";
 
 const CLIENT_JOBS_PAGE_SIZE = 5;
 
-const ACTIVE_STATUSES = ["in_progress", "completed", "disputed"];
+const ACTIVE_STATUSES = ["in_progress", "completed", "disputed"] as const;
 
 const STATUS_CONFIG: Record<
   string,
@@ -119,7 +119,10 @@ export default async function MyJobsPage({
   // Get application counts for all jobs combined
   const allJobIds = [...activeJobs, ...jobs].map((j) => j.id);
   const { data: appCounts } = allJobIds.length
-    ? await supabase.from("applications").select("job_id").in("job_id", jobIds)
+    ? await supabase
+        .from("applications")
+        .select("job_id")
+        .in("job_id", allJobIds)
     : { data: [] };
 
   const countMap = (appCounts ?? []).reduce<Record<string, number>>(
