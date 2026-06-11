@@ -102,7 +102,7 @@ export default async function KinglancerDashboard() {
   }>;
 
   const transactions = transactionsResult.data ?? [];
-  const directRequests = (directRequestsResult.data ?? []) as Array<{
+  const allDirectRequests = (directRequestsResult.data ?? []) as Array<{
     id: string;
     title: string;
     budget: number;
@@ -116,6 +116,15 @@ export default async function KinglancerDashboard() {
     counter_deadline: string | null;
     client: { full_name: string } | null;
   }>;
+
+  const directRequests = allDirectRequests.filter(
+    (j) =>
+      j.direct_request_status === "pending" ||
+      j.direct_request_status === "changes_requested",
+  );
+  const acceptedPendingPayment = allDirectRequests.filter(
+    (j) => j.direct_request_status === "accepted_pending_payment",
+  );
 
   // Derived stats
   const totalEarned = transactions
@@ -264,7 +273,9 @@ export default async function KinglancerDashboard() {
       )}
 
       {/* ── Needs your attention ── */}
-      {(escrowJobs.length > 0 || directRequests.length > 0) && (
+      {(escrowJobs.length > 0 ||
+        directRequests.length > 0 ||
+        acceptedPendingPayment.length > 0) && (
         <FadeIn>
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
             Needs your attention
@@ -321,7 +332,7 @@ export default async function KinglancerDashboard() {
               </div>
             )}
 
-            {/* Direct requests */}
+            {/* Direct requests — unanswered */}
             {directRequests.map((job) => (
               <Link
                 key={job.id}
@@ -347,15 +358,47 @@ export default async function KinglancerDashboard() {
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <span className="hidden rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700 sm:inline">
-                    {job.direct_request_status === "accepted_pending_payment"
-                      ? "Accepted"
-                      : job.direct_request_status === "changes_requested"
-                        ? "Changes requested"
-                        : "New request"}
+                    {job.direct_request_status === "changes_requested"
+                      ? "Changes requested"
+                      : "New request"}
                   </span>
                   <ChevronRight
                     size={16}
                     className="text-gray-300 group-hover:text-violet-500 transition-colors"
+                  />
+                </div>
+              </Link>
+            ))}
+
+            {/* Direct requests — accepted, waiting for client payment */}
+            {acceptedPendingPayment.map((job) => (
+              <Link
+                key={job.id}
+                href={`/jobs/${job.id}`}
+                className="group flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white/80 px-5 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:px-6"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                    <Send size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">
+                      {job.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-400">
+                      {job.client?.full_name ?? "Client"} · £
+                      {Number(job.budget).toLocaleString()} · Waiting for client
+                      to pay
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="hidden rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 sm:inline">
+                    Awaiting payment
+                  </span>
+                  <ChevronRight
+                    size={16}
+                    className="text-gray-300 group-hover:text-blue-400 transition-colors"
                   />
                 </div>
               </Link>
