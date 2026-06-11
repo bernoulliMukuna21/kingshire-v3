@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   getOrCreateStripeAccount,
   createOnboardingLink,
+  syncStripePayoutStatus,
 } from "@/lib/stripe-connect";
 
 // POST /api/stripe/connect-onboard
@@ -39,6 +40,15 @@ export async function POST() {
     profile.stripe_account_id,
     profile.full_name,
   );
+
+  const payoutStatus = await syncStripePayoutStatus({
+    kinglancerId: user.id,
+    accountId,
+  });
+
+  if (payoutStatus.payoutsEnabled) {
+    return NextResponse.json({ alreadyConnected: true });
+  }
 
   const url = await createOnboardingLink(accountId);
 

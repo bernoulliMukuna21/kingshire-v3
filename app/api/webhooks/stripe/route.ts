@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { updateTransactionStatus } from "@/lib/db/transactions";
 import { createServiceClient } from "@/lib/supabase/service";
-import { fireTransfer } from "@/lib/stripe-connect";
+import { fireTransfer, isStripeAccountPayoutReady } from "@/lib/stripe-connect";
 import { notifyJobAwarded, notifyPaymentFailed } from "@/lib/notifications";
 
 export async function POST(request: Request) {
@@ -149,19 +149,22 @@ export async function POST(request: Request) {
       // ── Stripe Connect: kinglancer completed onboarding ──
       case "account.updated": {
         const account = event.data.object;
-        if (!account.charges_enabled) break; // not fully verified yet
+        const payoutsEnabled = isStripeAccountPayoutReady(account);
 
         const db = createServiceClient();
 
-        // Mark kinglancer as onboarded
+        // Keep local payout status in sync with Stripe. A returned onboarding
+        // flow can still be pending verification, so do not rely on
+        // charges_enabled alone.
         const { data: profile } = await db
           .from("profiles")
-          .update({ stripe_onboarding_complete: true })
+          .update({ stripe_onboarding_complete: payoutsEnabled })
           .eq("stripe_account_id", account.id)
           .select("id")
           .single();
 
         if (!profile) break; // unknown account — ignore
+        if (!payoutsEnabled) break;
 
         // Fire any released-but-untransferred transactions for this kinglancer
         const { data: pendingTx } = await db

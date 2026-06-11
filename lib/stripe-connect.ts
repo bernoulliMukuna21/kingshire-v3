@@ -1,5 +1,6 @@
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
+import type Stripe from "stripe";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -57,6 +58,44 @@ export async function createOnboardingLink(accountId: string): Promise<string> {
     type: "account_onboarding",
   });
   return link.url;
+}
+
+export function isStripeAccountPayoutReady(account: Stripe.Account) {
+  return (
+    account.payouts_enabled === true &&
+    account.capabilities?.transfers === "active"
+  );
+}
+
+export async function getStripePayoutStatus(accountId: string) {
+  const account = await stripe.accounts.retrieve(accountId);
+
+  return {
+    detailsSubmitted: account.details_submitted === true,
+    payoutsEnabled: isStripeAccountPayoutReady(account),
+    chargesEnabled: account.charges_enabled === true,
+    disabledReason: account.requirements?.disabled_reason ?? null,
+    currentlyDue: account.requirements?.currently_due ?? [],
+  };
+}
+
+export async function syncStripePayoutStatus({
+  kinglancerId,
+  accountId,
+}: {
+  kinglancerId: string;
+  accountId: string;
+}) {
+  const status = await getStripePayoutStatus(accountId);
+  const db = createServiceClient();
+
+  await db
+    .from("profiles")
+    .update({ stripe_onboarding_complete: status.payoutsEnabled })
+    .eq("id", kinglancerId)
+    .eq("stripe_account_id", accountId);
+
+  return status;
 }
 
 /**

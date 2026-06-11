@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
 import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
 import { getKinglancerActionCounts } from "@/lib/dashboard-action-rules";
+import { syncStripePayoutStatus } from "@/lib/stripe-connect";
 import PayoutSetupButton from "./PayoutSetupButton";
 import StripeLoginButton from "./StripeLoginButton";
 
@@ -92,6 +93,22 @@ export default async function KinglancerDashboard() {
   if (profile.role === "admin") redirect("/admin");
   if (profile.role === "client") redirect("/dashboard/client");
   if (profile.role !== "kinglancer") redirect("/onboarding");
+
+  let payoutStatus = {
+    detailsSubmitted: profile.stripe_onboarding_complete,
+    payoutsEnabled: profile.stripe_onboarding_complete,
+  };
+
+  if (!profile.stripe_onboarding_complete && profile.stripe_account_id) {
+    try {
+      payoutStatus = await syncStripePayoutStatus({
+        kinglancerId: user.id,
+        accountId: profile.stripe_account_id,
+      });
+    } catch (error) {
+      console.error("[kinglancer-dashboard] payout status refresh failed", error);
+    }
+  }
 
   const applications = (applicationsResult.data ?? []) as Array<{
     id: string;
@@ -241,7 +258,7 @@ export default async function KinglancerDashboard() {
       </Stagger>
 
       {/* ── Payout warning (only when not connected) ── */}
-      {!profile.stripe_onboarding_complete && (
+      {!payoutStatus.payoutsEnabled && (
         <FadeIn>
           <div className="flex flex-col gap-4 rounded-3xl border border-amber-200/80 bg-amber-50/90 p-5 shadow-lg shadow-amber-900/5 ring-1 ring-white sm:flex-row sm:items-center">
             <div className="flex min-w-0 flex-1 items-start gap-4">
@@ -250,15 +267,18 @@ export default async function KinglancerDashboard() {
               </div>
               <div className="min-w-0">
                 <p className="text-sm font-black text-amber-950">
-                  Connect your bank account to receive earnings
+                  {payoutStatus.detailsSubmitted
+                    ? "Stripe is verifying your payout account"
+                    : "Connect your bank account to receive earnings"}
                 </p>
                 <p className="mt-0.5 text-sm text-amber-800">
-                  Set up your payout account once — every approved payment goes
-                  straight to your bank.
+                  {payoutStatus.detailsSubmitted
+                    ? "Your bank details were submitted. Once Stripe enables payouts, approved payments will go straight to your bank."
+                    : "Set up your payout account once — every approved payment goes straight to your bank."}
                 </p>
               </div>
             </div>
-            <PayoutSetupButton />
+            {!payoutStatus.detailsSubmitted && <PayoutSetupButton />}
           </div>
         </FadeIn>
       )}
@@ -357,7 +377,7 @@ export default async function KinglancerDashboard() {
       </FadeIn>
 
       {/* Payout connected — subtle footer link */}
-      {profile.stripe_onboarding_complete && (
+      {payoutStatus.payoutsEnabled && (
         <div className="flex justify-end">
           <StripeLoginButton />
         </div>
