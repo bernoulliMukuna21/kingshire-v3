@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronRight, Clock3 } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -55,17 +55,41 @@ export function ActionSummary({
   actionCount: number;
   waitingCount?: number;
 }) {
+  const hasActions = actionCount > 0;
+  const hasWaiting = waitingCount > 0;
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Card className="p-5">
-        <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-          Needs action
-        </p>
-        <p className="mt-2 text-3xl font-black text-slate-950">
-          {actionCount}
-        </p>
+      <Card
+        className={cn(
+          "p-5",
+          hasActions &&
+            "border-amber-200 bg-amber-50/80 ring-amber-200/70 shadow-amber-900/5",
+        )}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              {hasActions ? "Needs action" : "No action needed"}
+            </p>
+            <p className="mt-2 text-3xl font-black text-slate-950">
+              {hasActions ? actionCount : "Clear"}
+            </p>
+          </div>
+          {!hasActions && (
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+              <CheckCircle2 size={18} />
+            </div>
+          )}
+        </div>
       </Card>
-      <Card className="p-5">
+      <Card
+        className={cn(
+          "p-5",
+          hasWaiting &&
+            "border-blue-100 bg-blue-50/60 ring-blue-100 shadow-blue-900/5",
+        )}
+      >
         <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
           Waiting on others
         </p>
@@ -74,6 +98,85 @@ export function ActionSummary({
         </p>
       </Card>
     </div>
+  );
+}
+
+export function ActionCentreSummaryCard({
+  actionCount,
+  waitingCount = 0,
+  waitingOnLabel = "others",
+  actionDescription = "Open Action Centre to review items that need a reply, decision, approval, or payment action.",
+  idleDescription = "Items that need your reply, approval, or payment action will appear here.",
+}: {
+  actionCount: number;
+  waitingCount?: number;
+  waitingOnLabel?: string;
+  actionDescription?: string;
+  idleDescription?: string;
+}) {
+  const hasActions = actionCount > 0;
+  const hasWaiting = !hasActions && waitingCount > 0;
+
+  const title = hasActions
+    ? `${actionCount} item${actionCount !== 1 ? "s" : ""} need action`
+    : hasWaiting
+      ? "No action needed from you"
+      : "You are all caught up";
+
+  const description = hasActions
+    ? actionDescription
+    : hasWaiting
+      ? `${waitingCount} item${waitingCount !== 1 ? "s are" : " is"} waiting on ${waitingOnLabel}.`
+      : idleDescription;
+
+  return (
+    <Link href="/dashboard/action-centre" className="group block">
+      <Card
+        interactive
+        className={cn(
+          "flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between",
+          hasActions &&
+            "border-amber-200 bg-amber-50/80 ring-amber-200/70 shadow-amber-900/5 hover:border-amber-300",
+          hasWaiting &&
+            "border-blue-100 bg-blue-50/60 ring-blue-100 shadow-blue-900/5 hover:border-blue-200",
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+              hasActions
+                ? "bg-amber-100 text-amber-700"
+                : hasWaiting
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-blue-50 text-blue-600",
+            )}
+          >
+            {hasActions ? (
+              <AlertCircle size={18} />
+            ) : hasWaiting ? (
+              <Clock3 size={18} />
+            ) : (
+              <CheckCircle2 size={18} />
+            )}
+          </div>
+          <div>
+            <p className="font-black text-slate-950">{title}</p>
+            <p className="mt-0.5 text-sm text-slate-500">{description}</p>
+          </div>
+        </div>
+        <span
+          className={cn(
+            "text-sm font-bold transition-colors",
+            hasActions
+              ? "text-amber-700 group-hover:text-amber-800"
+              : "text-blue-600 group-hover:text-blue-700",
+          )}
+        >
+          Open Action Centre
+        </span>
+      </Card>
+    </Link>
   );
 }
 

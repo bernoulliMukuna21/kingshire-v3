@@ -1,20 +1,14 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  CheckCircle,
-  TrendingUp,
-  Users,
-  ChevronRight,
-  Briefcase,
-} from "lucide-react";
+import { CheckCircle, TrendingUp, Users, ChevronRight, Briefcase } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { FadeIn } from "@/components/animations";
 import PageHeader from "@/components/ui/PageHeader";
-import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
 
 export default async function ClientDashboard() {
   const supabase = await createClient();
@@ -93,6 +87,9 @@ export default async function ClientDashboard() {
       j.direct_request_status ?? "",
     ),
   );
+  const directRequestsWaiting = jobs.filter(
+    (j) => j.direct_request_status === "pending",
+  );
   const actionCount =
     awaitingReview.length +
     jobsWithApplicants.length +
@@ -122,36 +119,12 @@ export default async function ClientDashboard() {
         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
           Action Centre
         </h2>
-        <Link href="/dashboard/action-centre" className="group block">
-          <Card
-            interactive
-            className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                {actionCount > 0 ? (
-                  <ChevronRight size={18} />
-                ) : (
-                  <CheckCircle size={18} />
-                )}
-              </div>
-              <div>
-                <p className="font-black text-slate-950">
-                  {actionCount > 0
-                    ? `${actionCount} item${actionCount !== 1 ? "s" : ""} need action`
-                    : "You are all caught up"}
-                </p>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  Review approvals, applicants, requested changes, and escrow
-                  payments from one structured page.
-                </p>
-              </div>
-            </div>
-            <span className="text-sm font-bold text-blue-600 transition-colors group-hover:text-blue-700">
-              Open Action Centre
-            </span>
-          </Card>
-        </Link>
+        <ActionCentreSummaryCard
+          actionCount={actionCount}
+          waitingCount={directRequestsWaiting.length}
+          waitingOnLabel="the Kinglancer"
+          actionDescription="Review approvals, applicants, requested changes, and escrow payments from one structured page."
+        />
       </FadeIn>
 
       {/* Active work */}

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
+import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
 import PayoutSetupButton from "./PayoutSetupButton";
 import StripeLoginButton from "./StripeLoginButton";
 
@@ -273,34 +274,13 @@ export default async function KinglancerDashboard() {
         <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
           Action Centre
         </h2>
-        <Link href="/dashboard/action-centre" className="group block">
-          <div className="flex flex-col gap-4 rounded-3xl border border-white bg-white/90 px-5 py-4 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-                {actionCount > 0 ? (
-                  <ChevronRight size={18} />
-                ) : (
-                  <CheckCircle size={18} />
-                )}
-              </div>
-              <div>
-                <p className="font-black text-slate-950">
-                  {actionCount > 0
-                    ? `${actionCount} direct request${actionCount !== 1 ? "s" : ""} need a reply`
-                    : "You are all caught up"}
-                </p>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  {waitingDirectRequests.length > 0
-                    ? `${waitingDirectRequests.length} item${waitingDirectRequests.length !== 1 ? "s are" : " is"} waiting on the client.`
-                    : "Direct requests that need a reply will appear in one structured page."}
-                </p>
-              </div>
-            </div>
-            <span className="text-sm font-bold text-blue-600 transition-colors group-hover:text-blue-700">
-              Open Action Centre
-            </span>
-          </div>
-        </Link>
+        <ActionCentreSummaryCard
+          actionCount={actionCount}
+          waitingCount={waitingDirectRequests.length}
+          waitingOnLabel="the client"
+          actionDescription="Reply to direct requests from one structured page."
+          idleDescription="Direct requests that need a reply will appear here."
+        />
       </FadeIn>
 
       {/* ── Applications ── */}
