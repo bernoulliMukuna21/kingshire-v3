@@ -93,10 +93,13 @@ function formatDate(value: string | null) {
 
 export default async function ClientJobWorkspacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ payment_failed?: string }>;
 }) {
   const { id } = await params;
+  const { payment_failed } = await searchParams;
   const supabase = await createClient();
 
   const [
@@ -126,7 +129,9 @@ export default async function ClientJobWorkspacePage({
   const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
 
   const [applications, kinglancerResult] = await Promise.all([
-    !isDirectRequest && job.status === "open"
+    !isDirectRequest &&
+    (job.status === "open" ||
+      (job.status === "in_progress" && payment_failed === "1"))
       ? getApplicationsByJob(id)
       : Promise.resolve([] as ApplicationWithKinglancer[]),
     kinglancerProfileId
@@ -157,6 +162,18 @@ export default async function ClientJobWorkspacePage({
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
+          {payment_failed === "1" && (
+            <Card className="border-amber-200 bg-amber-50 p-5">
+              <h2 className="text-sm font-black text-amber-900">
+                Payment unsuccessful
+              </h2>
+              <p className="mt-1 text-sm text-amber-700">
+                Your card was not charged. Review the job and restart the
+                escrow payment when ready.
+              </p>
+            </Card>
+          )}
+
           <Card className={cardPadding}>
             <div className="mb-4 flex flex-wrap items-center gap-2">
               {isDirectRequest && (
@@ -228,6 +245,20 @@ export default async function ClientJobWorkspacePage({
             </Card>
           )}
 
+          {!isDirectRequest &&
+            job.status === "in_progress" &&
+            payment_failed === "1" && (
+              <Card className={cardPadding}>
+                <h2 className="text-lg font-black text-slate-950">
+                  Restart payment
+                </h2>
+                <p className="mb-4 mt-1 text-sm text-slate-500">
+                  Select an applicant again to restart the escrow payment.
+                </p>
+                <ApplicantsList applications={applications} />
+              </Card>
+            )}
+
           {job.status === "completed" && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
@@ -241,7 +272,7 @@ export default async function ClientJobWorkspacePage({
             </Card>
           )}
 
-          {job.status === "in_progress" && (
+          {job.status === "in_progress" && payment_failed !== "1" && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
                 Job in progress

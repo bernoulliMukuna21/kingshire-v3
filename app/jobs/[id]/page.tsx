@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
@@ -81,6 +81,31 @@ export default async function JobDetailPage({
     applications = applicationsResult;
     alreadyApplied = appliedResult;
     invitedKinglancer = invitedKlResult.data as typeof invitedKinglancer;
+  }
+
+  if (isDirectRequest && !user) {
+    notFound();
+  }
+
+  if (profile?.role === "client" && isOwner) {
+    const failedParam = payment_failed === "1" ? "?payment_failed=1" : "";
+    redirect(`/dashboard/client/jobs/${id}${failedParam}`);
+  }
+
+  if (
+    profile?.role === "kinglancer" &&
+    (isAssignedKinglancer || isInvitedKinglancer)
+  ) {
+    redirect(`/dashboard/kinglancer/jobs/${id}`);
+  }
+
+  if (
+    isDirectRequest &&
+    !isOwner &&
+    !isInvitedKinglancer &&
+    profile?.role !== "admin"
+  ) {
+    notFound();
   }
 
   const canApply =
