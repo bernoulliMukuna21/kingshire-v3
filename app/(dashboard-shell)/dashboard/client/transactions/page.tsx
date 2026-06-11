@@ -146,7 +146,7 @@ export default async function TransactionsPage() {
                 >
                   <div className="min-w-0">
                     <Link
-                      href={`/jobs/${tx.job_id}`}
+                      href={`/dashboard/client/jobs/${tx.job_id}`}
                       className="font-semibold text-gray-900 hover:text-blue-700 transition-colors text-sm inline-flex items-center gap-1 group"
                     >
                       {tx.job?.title ?? "Deleted job"}

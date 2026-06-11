@@ -77,7 +77,7 @@ export default function EscrowRow({
         {/* Job info */}
         <div className="flex-1 min-w-0">
           <Link
-            href={`/jobs/${jobId}`}
+            href={`/dashboard/kinglancer/jobs/${jobId}`}
             className="font-semibold text-slate-950 hover:text-blue-600 transition-colors truncate block text-sm"
           >
             {jobTitle}

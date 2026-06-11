@@ -155,7 +155,7 @@ export default async function ClientDashboard() {
               return (
                 <Link
                   key={job.id}
-                  href={`/jobs/${job.id}`}
+                  href={`/dashboard/client/jobs/${job.id}`}
                   className="group flex items-center gap-4 rounded-[1.5rem] border border-white bg-white/90 px-5 py-4 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100 hover:shadow-blue-950/10"
                 >
                   <Avatar name={job.kinglancer?.full_name} tone="green" />

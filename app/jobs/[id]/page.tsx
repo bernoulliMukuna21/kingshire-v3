@@ -65,7 +65,7 @@ export default async function JobDetailPage({
           .select("id, role, full_name, avatar_url")
           .eq("id", user.id)
           .single(),
-        isOwner
+        isOwner && !isDirectRequest
           ? getApplicationsByJob(id)
           : Promise.resolve([] as ApplicationWithKinglancer[]),
         hasApplied(id, user.id),
@@ -165,7 +165,7 @@ export default async function JobDetailPage({
             )}
           </Card>
 
-          {isOwner && job.status === "open" && (
+          {isOwner && !isDirectRequest && job.status === "open" && (
             <Card className={cardPadding}>
               <h2 className="font-bold text-gray-900 mb-4">
                 Applicants ({applications.length})
@@ -177,6 +177,7 @@ export default async function JobDetailPage({
           {/* Payment failed: job is still in_progress pending cron cleanup,
               but show the applicants panel so the client can re-select */}
           {isOwner &&
+            !isDirectRequest &&
             job.status === "in_progress" &&
             payment_failed === "1" && (
               <Card className={cardPadding}>

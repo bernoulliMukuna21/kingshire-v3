@@ -226,7 +226,7 @@ function JobCard({
 
   return (
     <Link
-      href={`/jobs/${job.id}?ref=client-jobs`}
+      href={`/dashboard/client/jobs/${job.id}`}
       className={`group block rounded-3xl border p-5 shadow-xl transition-all hover:-translate-y-0.5 sm:p-6 ${
         highlight
           ? "border-blue-100 bg-blue-50/60 shadow-blue-900/5 ring-1 ring-blue-200/60 hover:border-blue-200"

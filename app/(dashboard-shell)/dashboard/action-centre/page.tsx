@@ -122,7 +122,7 @@ async function getClientActionData(
             description: `${
               job.invited_kinglancer?.full_name ?? "The Kinglancer"
             } requested changes. Review the proposed terms before funding escrow.`,
-            href: `/jobs/${job.id}`,
+            href: `/dashboard/client/jobs/${job.id}`,
             icon: <Send size={18} />,
             badge: "Review changes",
             tone: "purple",
@@ -137,7 +137,7 @@ async function getClientActionData(
             description: `${
               job.invited_kinglancer?.full_name ?? "The Kinglancer"
             } accepted your request. Fund escrow to start the job.`,
-            href: `/jobs/${job.id}`,
+            href: `/dashboard/client/jobs/${job.id}`,
             icon: <CreditCard size={18} />,
             badge: "Payment required",
             tone: "blue",
@@ -152,7 +152,7 @@ async function getClientActionData(
             description: `${
               job.kinglancer?.full_name ?? "Your Kinglancer"
             } submitted this work. Approve it to release payment.`,
-            href: `/jobs/${job.id}`,
+            href: `/dashboard/client/jobs/${job.id}`,
             icon: <CheckCircle2 size={18} />,
             badge: "Review work",
             tone: "amber",
@@ -172,7 +172,7 @@ async function getClientActionData(
             description: `${applicantCount} applicant${
               applicantCount !== 1 ? "s" : ""
             } waiting for your decision.`,
-            href: `/jobs/${job.id}`,
+            href: `/dashboard/client/jobs/${job.id}`,
             icon: <Users size={18} />,
             badge: "Review applicants",
             tone: "green",
@@ -193,7 +193,7 @@ async function getClientActionData(
       description: `Waiting for ${
         job.invited_kinglancer?.full_name ?? "the Kinglancer"
       } to respond to your direct request.`,
-      href: `/jobs/${job.id}`,
+      href: `/dashboard/client/jobs/${job.id}`,
       icon: <Send size={18} />,
       badge: "Waiting",
       tone: "slate",
