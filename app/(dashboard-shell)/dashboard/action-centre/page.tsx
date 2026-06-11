@@ -70,6 +70,10 @@ function uniqueActions(actions: ActionItem[]) {
   });
 }
 
+function actionCentreHref(href: string) {
+  return `${href}?from=action-centre`;
+}
+
 async function getClientActionData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -115,14 +119,17 @@ async function getClientActionData(
         const items: ActionItem[] = [];
         const budget = `${formatMoney(Number(job.budget))} ${formatRateType(job.rate_type)}`;
 
-        if (job.direct_request_status === "changes_requested") {
+        if (
+          job.status === "open" &&
+          job.direct_request_status === "changes_requested"
+        ) {
           items.push({
             id: `${job.id}:changes-requested`,
             title: job.title,
             description: `${
               job.invited_kinglancer?.full_name ?? "The Kinglancer"
             } requested changes. Review the proposed terms before funding escrow.`,
-            href: `/dashboard/client/jobs/${job.id}`,
+            href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
             icon: <Send size={18} />,
             badge: "Review changes",
             tone: "purple",
@@ -130,14 +137,17 @@ async function getClientActionData(
           });
         }
 
-        if (job.direct_request_status === "accepted_pending_payment") {
+        if (
+          job.status === "open" &&
+          job.direct_request_status === "accepted_pending_payment"
+        ) {
           items.push({
             id: `${job.id}:payment-required`,
             title: job.title,
             description: `${
               job.invited_kinglancer?.full_name ?? "The Kinglancer"
             } accepted your request. Fund escrow to start the job.`,
-            href: `/dashboard/client/jobs/${job.id}`,
+            href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
             icon: <CreditCard size={18} />,
             badge: "Payment required",
             tone: "blue",
@@ -152,7 +162,7 @@ async function getClientActionData(
             description: `${
               job.kinglancer?.full_name ?? "Your Kinglancer"
             } submitted this work. Approve it to release payment.`,
-            href: `/dashboard/client/jobs/${job.id}`,
+            href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
             icon: <CheckCircle2 size={18} />,
             badge: "Review work",
             tone: "amber",
@@ -172,7 +182,7 @@ async function getClientActionData(
             description: `${applicantCount} applicant${
               applicantCount !== 1 ? "s" : ""
             } waiting for your decision.`,
-            href: `/dashboard/client/jobs/${job.id}`,
+            href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
             icon: <Users size={18} />,
             badge: "Review applicants",
             tone: "green",
@@ -186,14 +196,17 @@ async function getClientActionData(
   );
 
   const waitingItems = jobs
-    .filter((job) => job.direct_request_status === "pending")
+    .filter(
+      (job) =>
+        job.status === "open" && job.direct_request_status === "pending",
+    )
     .map<ActionItem>((job) => ({
       id: `${job.id}:waiting-kinglancer`,
       title: job.title,
       description: `Waiting for ${
         job.invited_kinglancer?.full_name ?? "the Kinglancer"
       } to respond to your direct request.`,
-      href: `/dashboard/client/jobs/${job.id}`,
+      href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
       icon: <Send size={18} />,
       badge: "Waiting",
       tone: "slate",
@@ -224,14 +237,17 @@ async function getKinglancerActionData(
   const jobs = (jobsRaw ?? []) as unknown as KinglancerActionJob[];
 
   const actionItems = jobs
-    .filter((job) => job.direct_request_status === "pending")
+    .filter(
+      (job) =>
+        job.status === "open" && job.direct_request_status === "pending",
+    )
     .map<ActionItem>((job) => ({
       id: `${job.id}:respond`,
       title: job.title,
       description: `${
         job.client?.full_name ?? "A client"
       } sent you a direct request. Accept, decline, or request changes.`,
-      href: `/dashboard/kinglancer/jobs/${job.id}`,
+      href: actionCentreHref(`/dashboard/kinglancer/jobs/${job.id}`),
       icon: <Send size={18} />,
       badge: "Reply needed",
       tone: "purple",
@@ -240,9 +256,10 @@ async function getKinglancerActionData(
 
   const waitingItems = jobs
     .filter((job) =>
-      ["changes_requested", "accepted_pending_payment"].includes(
-        job.direct_request_status ?? "",
-      ),
+      job.status === "open" &&
+        ["changes_requested", "accepted_pending_payment"].includes(
+          job.direct_request_status ?? "",
+        ),
     )
     .map<ActionItem>((job) => ({
       id: `${job.id}:waiting`,
@@ -251,7 +268,7 @@ async function getKinglancerActionData(
         job.direct_request_status === "changes_requested"
           ? "Waiting for the client to review your requested changes."
           : "You accepted this request. Waiting for the client to fund escrow.",
-      href: `/dashboard/kinglancer/jobs/${job.id}`,
+      href: actionCentreHref(`/dashboard/kinglancer/jobs/${job.id}`),
       icon:
         job.direct_request_status === "changes_requested" ? (
           <AlertCircle size={18} />

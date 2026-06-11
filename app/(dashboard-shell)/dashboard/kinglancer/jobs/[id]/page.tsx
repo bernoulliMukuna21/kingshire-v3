@@ -1,15 +1,14 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   AlertTriangle,
   Briefcase,
   Calendar,
   CheckCircle2,
-  ChevronLeft,
   Clock,
   Tag,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -165,10 +164,13 @@ function nextAction({
 
 export default async function KinglancerJobWorkspacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const { from } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -236,13 +238,11 @@ export default async function KinglancerJobWorkspacePage({
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <Link
-        href="/dashboard/kinglancer/jobs"
-        className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 transition-colors hover:text-blue-700"
-      >
-        <ChevronLeft size={16} />
-        Back to active jobs
-      </Link>
+      <DashboardBackLink
+        source={from}
+        fallbackHref="/dashboard/kinglancer/jobs"
+        fallbackLabel="Back to Active Jobs"
+      />
 
       <Card className="overflow-hidden">
         <div className="relative bg-[#10234b] px-5 py-7 text-white sm:px-7">

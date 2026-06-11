@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
   Briefcase,
   Calendar,
-  ChevronLeft,
   CreditCard,
   Tag,
   UserRound,
@@ -21,6 +19,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 
 type Profile = {
   role: "client" | "kinglancer" | "admin" | null;
@@ -96,10 +95,10 @@ export default async function ClientJobWorkspacePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ payment_failed?: string }>;
+  searchParams: Promise<{ payment_failed?: string; from?: string }>;
 }) {
   const { id } = await params;
-  const { payment_failed } = await searchParams;
+  const { payment_failed, from } = await searchParams;
   const supabase = await createClient();
 
   const [
@@ -152,13 +151,11 @@ export default async function ClientJobWorkspacePage({
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <Link
-        href="/dashboard/client/jobs"
-        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 transition-colors hover:text-blue-600"
-      >
-        <ChevronLeft size={16} />
-        Back to My Jobs
-      </Link>
+      <DashboardBackLink
+        source={from}
+        fallbackHref="/dashboard/client/jobs"
+        fallbackLabel="Back to My Jobs"
+      />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
