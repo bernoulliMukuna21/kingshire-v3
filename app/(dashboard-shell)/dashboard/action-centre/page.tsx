@@ -17,6 +17,14 @@ import {
   WaitingItemCard,
   type ActionItem,
 } from "@/components/dashboard/ActionCentre";
+import {
+  isClientApplicantReviewAction,
+  isClientDirectRequestAction,
+  isClientDirectRequestWaiting,
+  isClientReviewWorkAction,
+  isKinglancerDirectRequestAction,
+  isKinglancerDirectRequestWaiting,
+} from "@/lib/dashboard-action-rules";
 
 type Profile = {
   role: "client" | "kinglancer" | "admin" | null;
@@ -120,7 +128,7 @@ async function getClientActionData(
         const budget = `${formatMoney(Number(job.budget))} ${formatRateType(job.rate_type)}`;
 
         if (
-          job.status === "open" &&
+          isClientDirectRequestAction(job) &&
           job.direct_request_status === "changes_requested"
         ) {
           items.push({
@@ -138,7 +146,7 @@ async function getClientActionData(
         }
 
         if (
-          job.status === "open" &&
+          isClientDirectRequestAction(job) &&
           job.direct_request_status === "accepted_pending_payment"
         ) {
           items.push({
@@ -155,7 +163,7 @@ async function getClientActionData(
           });
         }
 
-        if (job.status === "completed") {
+        if (isClientReviewWorkAction(job)) {
           items.push({
             id: `${job.id}:review-work`,
             title: job.title,
@@ -171,11 +179,7 @@ async function getClientActionData(
         }
 
         const applicantCount = applicationCountByJob[job.id] ?? 0;
-        if (
-          job.status === "open" &&
-          !job.invited_kinglancer_id &&
-          applicantCount > 0
-        ) {
+        if (isClientApplicantReviewAction(job, applicantCount)) {
           items.push({
             id: `${job.id}:applicants`,
             title: job.title,
@@ -197,8 +201,7 @@ async function getClientActionData(
 
   const waitingItems = jobs
     .filter(
-      (job) =>
-        job.status === "open" && job.direct_request_status === "pending",
+      (job) => isClientDirectRequestWaiting(job),
     )
     .map<ActionItem>((job) => ({
       id: `${job.id}:waiting-kinglancer`,
@@ -238,8 +241,7 @@ async function getKinglancerActionData(
 
   const actionItems = jobs
     .filter(
-      (job) =>
-        job.status === "open" && job.direct_request_status === "pending",
+      (job) => isKinglancerDirectRequestAction(job),
     )
     .map<ActionItem>((job) => ({
       id: `${job.id}:respond`,
@@ -256,10 +258,7 @@ async function getKinglancerActionData(
 
   const waitingItems = jobs
     .filter((job) =>
-      job.status === "open" &&
-        ["changes_requested", "accepted_pending_payment"].includes(
-          job.direct_request_status ?? "",
-        ),
+      isKinglancerDirectRequestWaiting(job),
     )
     .map<ActionItem>((job) => ({
       id: `${job.id}:waiting`,

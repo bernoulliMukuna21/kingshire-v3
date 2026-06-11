@@ -9,6 +9,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
+import { getClientActionCounts } from "@/lib/dashboard-action-rules";
 
 export default async function ClientDashboard() {
   const supabase = await createClient();
@@ -75,25 +76,10 @@ export default async function ClientDashboard() {
     0,
   );
 
-  const awaitingReview = jobs.filter((j) => j.status === "completed");
-  const jobsWithApplicants = jobs.filter(
-    (j) =>
-      j.status === "open" &&
-      !j.invited_kinglancer_id &&
-      (j.applications?.[0]?.count ?? 0) > 0,
+  const { actionCount, waitingCount } = getClientActionCounts(
+    jobs,
+    (job) => job.applications?.[0]?.count ?? 0,
   );
-  const directRequestsNeedingAction = jobs.filter((j) =>
-    ["changes_requested", "accepted_pending_payment"].includes(
-      j.direct_request_status ?? "",
-    ),
-  );
-  const directRequestsWaiting = jobs.filter(
-    (j) => j.direct_request_status === "pending",
-  );
-  const actionCount =
-    awaitingReview.length +
-    jobsWithApplicants.length +
-    directRequestsNeedingAction.length;
   const inProgressJobs = jobs.filter((j) => j.status === "in_progress");
 
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
@@ -121,7 +107,7 @@ export default async function ClientDashboard() {
         </h2>
         <ActionCentreSummaryCard
           actionCount={actionCount}
-          waitingCount={directRequestsWaiting.length}
+          waitingCount={waitingCount}
           waitingOnLabel="the Kinglancer"
           actionDescription="Review approvals, applicants, requested changes, and escrow payments from one structured page."
         />

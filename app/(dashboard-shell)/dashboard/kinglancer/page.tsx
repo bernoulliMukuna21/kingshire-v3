@@ -12,6 +12,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
 import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
+import { getKinglancerActionCounts } from "@/lib/dashboard-action-rules";
 import PayoutSetupButton from "./PayoutSetupButton";
 import StripeLoginButton from "./StripeLoginButton";
 
@@ -123,14 +124,8 @@ export default async function KinglancerDashboard() {
     client: { full_name: string } | null;
   }>;
 
-  const directRequests = allDirectRequests.filter(
-    (j) => j.direct_request_status === "pending",
-  );
-  const waitingDirectRequests = allDirectRequests.filter((j) =>
-    ["changes_requested", "accepted_pending_payment"].includes(
-      j.direct_request_status ?? "",
-    ),
-  );
+  const { actionCount, waitingCount } =
+    getKinglancerActionCounts(allDirectRequests);
 
   // Derived stats
   const totalEarned = transactions
@@ -138,7 +133,6 @@ export default async function KinglancerDashboard() {
     .reduce((sum, t) => sum + (t.amount - t.platform_fee_kinglancer), 0);
 
   const activeJobsCount = activeJobsResult.count ?? 0;
-  const actionCount = directRequests.length;
 
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
@@ -276,7 +270,7 @@ export default async function KinglancerDashboard() {
         </h2>
         <ActionCentreSummaryCard
           actionCount={actionCount}
-          waitingCount={waitingDirectRequests.length}
+          waitingCount={waitingCount}
           waitingOnLabel="the client"
           actionDescription="Reply to direct requests from one structured page."
           idleDescription="Direct requests that need a reply will appear here."
