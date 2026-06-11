@@ -14,15 +14,10 @@ type Props = {
     role: string | null;
     avatar_url: string | null;
   };
-  activeContracts?: { id: string; title: string; status: string }[];
   children: React.ReactNode;
 };
 
-export default function DashboardShell({
-  profile,
-  activeContracts = [],
-  children,
-}: Props) {
+export default function DashboardShell({ profile, children }: Props) {
   const pathname = usePathname();
   const navItems = getNavItems(profile.role, pathname);
   const isKinglancer = profile.role === "kinglancer";
@@ -85,33 +80,6 @@ export default function DashboardShell({
               {item.label}
             </Link>
           ))}
-
-          {/* Active contracts — kinglancer sidebar widget */}
-          {isKinglancer && activeContracts.length > 0 && (
-            <div className="pt-3">
-              <p className="px-4 pb-2 text-[10px] font-bold uppercase tracking-widest text-white/30">
-                Active Contracts
-              </p>
-              <div className="space-y-0.5">
-                {activeContracts.map((job) => (
-                  <Link
-                    key={job.id}
-                    href={`/jobs/${job.id}?ref=dashboard`}
-                    className="flex items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium text-white/55 transition-all hover:bg-white/10 hover:text-white"
-                  >
-                    <span
-                      className={`h-2 w-2 shrink-0 rounded-full ${
-                        job.status === "completed"
-                          ? "bg-yellow-400"
-                          : "bg-blue-400"
-                      }`}
-                    />
-                    <span className="truncate">{job.title}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
         </nav>
 
         <div className="relative p-4 border-t border-white/10 space-y-3">

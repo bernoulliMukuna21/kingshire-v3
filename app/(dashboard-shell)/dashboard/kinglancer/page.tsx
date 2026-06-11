@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
-import EscrowRow from "./EscrowBanner";
 import PayoutSetupButton from "./PayoutSetupButton";
 import StripeLoginButton from "./StripeLoginButton";
 
@@ -40,6 +39,7 @@ export default async function KinglancerDashboard() {
     applicationsResult,
     transactionsResult,
     directRequestsResult,
+    activeJobsResult,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -78,6 +78,12 @@ export default async function KinglancerDashboard() {
       ])
       .order("created_at", { ascending: false })
       .limit(10),
+
+    supabase
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("kinglancer_id", user.id)
+      .in("status", ["in_progress", "completed", "disputed"]),
   ]);
 
   const profile = profileResult.data;
@@ -131,17 +137,7 @@ export default async function KinglancerDashboard() {
     .filter((t) => t.status === "released")
     .reduce((sum, t) => sum + (t.amount - t.platform_fee_kinglancer), 0);
 
-  const activeJobsCount = applications.filter(
-    (a) => a.status === "accepted" && a.job?.status === "in_progress",
-  ).length;
-
-  // Active in_progress jobs with held escrow — show as banner(s)
-  const escrowJobs = applications.filter(
-    (a) =>
-      a.status === "accepted" &&
-      a.job &&
-      ["in_progress", "completed"].includes(a.job.status),
-  );
+  const activeJobsCount = activeJobsResult.count ?? 0;
 
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
@@ -158,7 +154,7 @@ export default async function KinglancerDashboard() {
       value: String(activeJobsCount),
       icon: Briefcase,
       color: "bg-blue-50 text-blue-600",
-      href: "/jobs",
+      href: "/dashboard/kinglancer/jobs",
     },
     {
       label: "Completed",
@@ -273,70 +269,17 @@ export default async function KinglancerDashboard() {
       )}
 
       {/* ── Needs your attention ── */}
-      {(escrowJobs.length > 0 ||
-        directRequests.length > 0 ||
-        acceptedPendingPayment.length > 0) && (
+      {(directRequests.length > 0 || acceptedPendingPayment.length > 0) && (
         <FadeIn>
           <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
             Needs your attention
           </h2>
           <div className="space-y-3">
-            {/* Active contracts */}
-            {escrowJobs.length > 0 && (
-              <div className="overflow-hidden rounded-3xl border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
-                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                    Active Contracts
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    £
-                    {escrowJobs
-                      .reduce((sum, app) => {
-                        if (!app.job) return sum;
-                        const tx = transactions.find(
-                          (t) => t.job_id === app.job!.id,
-                        );
-                        return (
-                          sum +
-                          (tx
-                            ? app.job.budget - tx.platform_fee_kinglancer
-                            : app.job.budget * 0.95)
-                        );
-                      }, 0)
-                      .toFixed(2)}{" "}
-                    in escrow
-                  </p>
-                </div>
-                <div className="divide-y divide-slate-100">
-                  {escrowJobs.map((app) => {
-                    if (!app.job) return null;
-                    const isDone = app.job.status === "completed";
-                    const escrowTx = transactions.find(
-                      (t) => t.job_id === app.job!.id,
-                    );
-                    const heldAmount = escrowTx
-                      ? app.job.budget - escrowTx.platform_fee_kinglancer
-                      : app.job.budget * 0.95;
-                    return (
-                      <EscrowRow
-                        key={app.id}
-                        jobId={app.job.id}
-                        jobTitle={app.job.title}
-                        heldAmount={heldAmount}
-                        deadline={app.job.deadline}
-                        isDone={isDone}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* Direct requests — unanswered */}
             {directRequests.map((job) => (
               <Link
                 key={job.id}
-                href={`/jobs/${job.id}?ref=dashboard`}
+                href={`/dashboard/kinglancer/jobs/${job.id}`}
                 className="group flex items-center justify-between gap-4 rounded-3xl border border-violet-100 bg-violet-50/60 px-5 py-4 shadow-xl shadow-violet-900/5 ring-1 ring-violet-200/50 transition-all hover:-translate-y-0.5 hover:border-violet-200 sm:px-6"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -374,7 +317,7 @@ export default async function KinglancerDashboard() {
             {acceptedPendingPayment.map((job) => (
               <Link
                 key={job.id}
-                href={`/jobs/${job.id}?ref=dashboard`}
+                href={`/dashboard/kinglancer/jobs/${job.id}`}
                 className="group flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white/80 px-5 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:px-6"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -448,7 +391,7 @@ export default async function KinglancerDashboard() {
               return (
                 <Link
                   key={app.id}
-                  href={`/jobs/${app.job.id}?ref=dashboard`}
+                  href={`/dashboard/kinglancer/jobs/${app.job.id}`}
                   className="group flex items-center justify-between px-5 py-4 transition-colors hover:bg-slate-50 sm:px-6"
                 >
                   <div className="flex-1 min-w-0 pr-4">
