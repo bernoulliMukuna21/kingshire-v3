@@ -8,7 +8,6 @@ import {
   Briefcase,
   DollarSign,
   AlertCircle,
-  Send,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
@@ -124,12 +123,12 @@ export default async function KinglancerDashboard() {
   }>;
 
   const directRequests = allDirectRequests.filter(
-    (j) =>
-      j.direct_request_status === "pending" ||
-      j.direct_request_status === "changes_requested",
+    (j) => j.direct_request_status === "pending",
   );
-  const acceptedPendingPayment = allDirectRequests.filter(
-    (j) => j.direct_request_status === "accepted_pending_payment",
+  const waitingDirectRequests = allDirectRequests.filter((j) =>
+    ["changes_requested", "accepted_pending_payment"].includes(
+      j.direct_request_status ?? "",
+    ),
   );
 
   // Derived stats
@@ -138,6 +137,7 @@ export default async function KinglancerDashboard() {
     .reduce((sum, t) => sum + (t.amount - t.platform_fee_kinglancer), 0);
 
   const activeJobsCount = activeJobsResult.count ?? 0;
+  const actionCount = directRequests.length;
 
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
@@ -268,87 +268,40 @@ export default async function KinglancerDashboard() {
         </FadeIn>
       )}
 
-      {/* ── Needs your attention ── */}
-      {(directRequests.length > 0 || acceptedPendingPayment.length > 0) && (
-        <FadeIn>
-          <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
-            Needs your attention
-          </h2>
-          <div className="space-y-3">
-            {/* Direct requests — unanswered */}
-            {directRequests.map((job) => (
-              <Link
-                key={job.id}
-                href={`/dashboard/kinglancer/jobs/${job.id}`}
-                className="group flex items-center justify-between gap-4 rounded-3xl border border-violet-100 bg-violet-50/60 px-5 py-4 shadow-xl shadow-violet-900/5 ring-1 ring-violet-200/50 transition-all hover:-translate-y-0.5 hover:border-violet-200 sm:px-6"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
-                    <Send size={14} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-slate-950 group-hover:text-violet-700 transition-colors">
-                      {job.title}
-                    </p>
-                    <p className="mt-0.5 text-xs text-slate-500">
-                      {job.client?.full_name ?? "Client"} · £
-                      {Number(job.budget).toLocaleString()}{" "}
-                      {job.rate_type === "fixed"
-                        ? "fixed"
-                        : job.rate_type.replace("_", " ")}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="hidden rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700 sm:inline">
-                    {job.direct_request_status === "changes_requested"
-                      ? "Changes requested"
-                      : "New request"}
-                  </span>
-                  <ChevronRight
-                    size={16}
-                    className="text-gray-300 group-hover:text-violet-500 transition-colors"
-                  />
-                </div>
-              </Link>
-            ))}
-
-            {/* Direct requests — accepted, waiting for client payment */}
-            {acceptedPendingPayment.map((job) => (
-              <Link
-                key={job.id}
-                href={`/dashboard/kinglancer/jobs/${job.id}`}
-                className="group flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white/80 px-5 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:px-6"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
-                    <Send size={14} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-slate-700 group-hover:text-blue-700 transition-colors">
-                      {job.title}
-                    </p>
-                    <p className="mt-0.5 text-xs text-slate-400">
-                      {job.client?.full_name ?? "Client"} · £
-                      {Number(job.budget).toLocaleString()} · Waiting for client
-                      to pay
-                    </p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="hidden rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600 sm:inline">
-                    Awaiting payment
-                  </span>
-                  <ChevronRight
-                    size={16}
-                    className="text-gray-300 group-hover:text-blue-400 transition-colors"
-                  />
-                </div>
-              </Link>
-            ))}
+      {/* ── Action Centre ── */}
+      <FadeIn>
+        <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-3">
+          Action Centre
+        </h2>
+        <Link href="/dashboard/action-centre" className="group block">
+          <div className="flex flex-col gap-4 rounded-3xl border border-white bg-white/90 px-5 py-4 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                {actionCount > 0 ? (
+                  <ChevronRight size={18} />
+                ) : (
+                  <CheckCircle size={18} />
+                )}
+              </div>
+              <div>
+                <p className="font-black text-slate-950">
+                  {actionCount > 0
+                    ? `${actionCount} direct request${actionCount !== 1 ? "s" : ""} need a reply`
+                    : "You are all caught up"}
+                </p>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  {waitingDirectRequests.length > 0
+                    ? `${waitingDirectRequests.length} item${waitingDirectRequests.length !== 1 ? "s are" : " is"} waiting on the client.`
+                    : "Direct requests that need a reply will appear in one structured page."}
+                </p>
+              </div>
+            </div>
+            <span className="text-sm font-bold text-blue-600 transition-colors group-hover:text-blue-700">
+              Open Action Centre
+            </span>
           </div>
-        </FadeIn>
-      )}
+        </Link>
+      </FadeIn>
 
       {/* ── Applications ── */}
       <FadeIn className="overflow-hidden rounded-3xl border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">

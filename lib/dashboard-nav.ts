@@ -7,6 +7,7 @@ export type DashboardNavItem = {
 
 const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
   { label: "Dashboard", icon: "⬛", href: "/dashboard/client" },
+  { label: "Action Centre", icon: "⚡", href: "/dashboard/action-centre" },
   { label: "My Jobs", icon: "💼", href: "/dashboard/client/jobs" },
   { label: "Transactions", icon: "💳", href: "/dashboard/client/transactions" },
   { label: "Post a Job", icon: "➕", href: "/jobs/post" },
@@ -16,6 +17,7 @@ const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
 
 const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
   { label: "Dashboard", icon: "⬛", href: "/dashboard/kinglancer" },
+  { label: "Action Centre", icon: "⚡", href: "/dashboard/action-centre" },
   { label: "Active Jobs", icon: "💼", href: "/dashboard/kinglancer/jobs" },
   { label: "Browse Jobs", icon: "🔎", href: "/jobs" },
   { label: "My Profile", icon: "👤", href: "/dashboard/profile" },
@@ -36,11 +38,16 @@ export function getNavItems(
       : role === "kinglancer"
         ? KINGLANCER_NAV
         : CLIENT_NAV;
+
+  const activeHref = base.reduce((best, item) => {
+    const matches =
+      pathname === item.href || pathname.startsWith(`${item.href}/`);
+    if (!matches) return best;
+    return item.href.length > best.length ? item.href : best;
+  }, "");
+
   return base.map((item) => ({
     ...item,
-    active:
-      pathname === item.href ||
-      (item.href !== "/dashboard/kinglancer" &&
-        pathname.startsWith(`${item.href}/`)),
+    active: item.href === activeHref,
   }));
 }

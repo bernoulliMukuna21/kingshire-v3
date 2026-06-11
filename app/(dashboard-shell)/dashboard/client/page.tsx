@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   CheckCircle,
-  AlertCircle,
   TrendingUp,
   Users,
   ChevronRight,
@@ -35,7 +34,7 @@ export default async function ClientDashboard() {
     supabase
       .from("jobs")
       .select(
-        "id, title, status, budget, kinglancer_id, kinglancer:profiles!kinglancer_id(full_name), applications:applications(count)",
+        "id, title, status, budget, kinglancer_id, invited_kinglancer_id, direct_request_status, kinglancer:profiles!kinglancer_id(full_name), applications:applications(count)",
         { count: "exact" },
       )
       .eq("client_id", user.id)
@@ -62,6 +61,8 @@ export default async function ClientDashboard() {
     status: string;
     budget: number;
     kinglancer_id: string | null;
+    invited_kinglancer_id: string | null;
+    direct_request_status: string | null;
     kinglancer: { full_name: string } | null;
     applications: [{ count: number }] | null;
   }>;
@@ -82,11 +83,21 @@ export default async function ClientDashboard() {
 
   const awaitingReview = jobs.filter((j) => j.status === "completed");
   const jobsWithApplicants = jobs.filter(
-    (j) => j.status === "open" && (j.applications?.[0]?.count ?? 0) > 0,
+    (j) =>
+      j.status === "open" &&
+      !j.invited_kinglancer_id &&
+      (j.applications?.[0]?.count ?? 0) > 0,
   );
+  const directRequestsNeedingAction = jobs.filter((j) =>
+    ["changes_requested", "accepted_pending_payment"].includes(
+      j.direct_request_status ?? "",
+    ),
+  );
+  const actionCount =
+    awaitingReview.length +
+    jobsWithApplicants.length +
+    directRequestsNeedingAction.length;
   const inProgressJobs = jobs.filter((j) => j.status === "in_progress");
-  const hasPendingActions =
-    awaitingReview.length > 0 || jobsWithApplicants.length > 0;
 
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
@@ -106,76 +117,41 @@ export default async function ClientDashboard() {
         />
       </FadeIn>
 
-      {/* Needs your attention */}
+      {/* Action Centre */}
       <FadeIn>
         <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
-          Needs your attention
+          Action Centre
         </h2>
-        {hasPendingActions ? (
-          <div className="space-y-3">
-            {awaitingReview.map((job) => (
-              <div
-                key={job.id}
-                className="flex flex-col gap-4 rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 shadow-lg shadow-amber-900/5 sm:flex-row sm:items-start"
-              >
-                <AlertCircle
-                  size={20}
-                  className="text-yellow-600 shrink-0 mt-0.5"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-yellow-800">
-                    Review completed work
-                  </p>
-                  <p className="text-yellow-700 text-sm mt-0.5">
-                    {job.kinglancer?.full_name ?? "Your Kinglancer"} has marked
-                    &quot;{job.title}&quot; as complete. Approve to release
-                    payment.
-                  </p>
-                </div>
-                <Link
-                  href={`/jobs/${job.id}`}
-                  className="shrink-0 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-emerald-700"
-                >
-                  Review
-                </Link>
+        <Link href="/dashboard/action-centre" className="group block">
+          <Card
+            interactive
+            className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+                {actionCount > 0 ? (
+                  <ChevronRight size={18} />
+                ) : (
+                  <CheckCircle size={18} />
+                )}
               </div>
-            ))}
-            {jobsWithApplicants.map((job) => {
-              const count = job.applications?.[0]?.count ?? 0;
-              return (
-                <div
-                  key={job.id}
-                  className="flex flex-col gap-4 rounded-[1.5rem] border border-blue-200 bg-blue-50 p-5 shadow-lg shadow-blue-900/5 sm:flex-row sm:items-start"
-                >
-                  <Users size={20} className="text-blue-600 shrink-0 mt-0.5" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-blue-800">
-                      {count} applicant {count !== 1 ? "s" : ""} on &quot;
-                      {job.title}&quot;
-                    </p>
-                    <p className="text-blue-700 text-sm mt-0.5">
-                      Review their proposals and select the best fit.
-                    </p>
-                  </div>
-                  <Link
-                    href={`/jobs/${job.id}`}
-                    className="shrink-0 rounded-2xl bg-blue-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-blue-700"
-                  >
-                    View applicants
-                  </Link>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="flex items-center gap-3 px-5 py-4">
-            <CheckCircle size={18} className="text-green-500 shrink-0" />
-            <p className="text-sm text-slate-500">
-              You&apos;re all caught up — nothing needs your attention right
-              now.
-            </p>
+              <div>
+                <p className="font-black text-slate-950">
+                  {actionCount > 0
+                    ? `${actionCount} item${actionCount !== 1 ? "s" : ""} need action`
+                    : "You are all caught up"}
+                </p>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  Review approvals, applicants, requested changes, and escrow
+                  payments from one structured page.
+                </p>
+              </div>
+            </div>
+            <span className="text-sm font-bold text-blue-600 transition-colors group-hover:text-blue-700">
+              Open Action Centre
+            </span>
           </Card>
-        )}
+        </Link>
       </FadeIn>
 
       {/* Active work */}
