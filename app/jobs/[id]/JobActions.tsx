@@ -304,120 +304,139 @@ export function DirectRequestActions({
         </div>
       )}
 
-      {isInvitedKinglancer && status !== "accepted_pending_payment" && (
-        <>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => submitAction("accept")}
-              disabled={loadingAction !== null}
-              className="rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-green-700 disabled:opacity-50"
-            >
-              {loadingAction === "accept" ? "Accepting..." : "Accept request"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCounter((value) => !value)}
-              disabled={loadingAction !== null}
-              className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100 disabled:opacity-50"
-            >
-              Request changes
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => submitAction("decline")}
-            disabled={loadingAction !== null}
-            className="w-full rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 transition-all hover:bg-red-100 disabled:opacity-50"
-          >
-            {loadingAction === "decline" ? "Declining..." : "Decline request"}
-          </button>
+      {isInvitedKinglancer && status === "changes_requested" && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-800">
+          <p className="font-bold">Waiting for the client to respond</p>
+          <p className="mt-0.5 text-blue-700/80">
+            You&apos;ve sent your proposed changes. Once the client reviews
+            them, you&apos;ll be able to take further action.
+          </p>
+        </div>
+      )}
 
-          {showCounter && (
-            <form
-              className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-4"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submitAction("request_changes", {
-                  proposed_budget: proposedBudget,
-                  proposed_rate_type: proposedRateType,
-                  proposed_deadline: proposedDeadline || null,
-                  message: counterMessage,
-                });
-              }}
+      {isInvitedKinglancer &&
+        status !== "accepted_pending_payment" &&
+        status !== "changes_requested" && (
+          <>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => submitAction("accept")}
+                disabled={loadingAction !== null}
+                className="rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-green-700 disabled:opacity-50"
+              >
+                {loadingAction === "accept" ? "Accepting..." : "Accept request"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowCounter((value) => !value)}
+                disabled={loadingAction !== null}
+                className="rounded-xl bg-blue-50 px-4 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-100 disabled:opacity-50"
+              >
+                Request changes
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => submitAction("decline")}
+              disabled={loadingAction !== null}
+              className="w-full rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700 transition-all hover:bg-red-100 disabled:opacity-50"
             >
-              <div className="grid gap-3 sm:grid-cols-2">
+              {loadingAction === "decline" ? "Declining..." : "Decline request"}
+            </button>
+
+            {showCounter && (
+              <form
+                className="space-y-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-4"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitAction("request_changes", {
+                    proposed_budget: proposedBudget,
+                    proposed_rate_type: proposedRateType,
+                    proposed_deadline: proposedDeadline || null,
+                    message: counterMessage,
+                  });
+                }}
+              >
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-500">
+                      Proposed budget
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={proposedBudget}
+                      onChange={(event) =>
+                        setProposedBudget(event.target.value)
+                      }
+                      className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                      placeholder="e.g. 150"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-500">
+                      Rate type
+                    </label>
+                    <select
+                      value={proposedRateType}
+                      onChange={(event) =>
+                        setProposedRateType(
+                          event.target.value as
+                            | "fixed"
+                            | "per_hour"
+                            | "per_day",
+                        )
+                      }
+                      className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      <option value="fixed">Fixed</option>
+                      <option value="per_hour">Per hour</option>
+                      <option value="per_day">Per day</option>
+                    </select>
+                  </div>
+                </div>
                 <div>
                   <label className="mb-1 block text-xs font-bold text-slate-500">
-                    Proposed budget
+                    Proposed deadline
                   </label>
                   <input
-                    type="number"
-                    min="5"
-                    step="0.01"
-                    inputMode="decimal"
-                    value={proposedBudget}
-                    onChange={(event) => setProposedBudget(event.target.value)}
+                    type="date"
+                    value={proposedDeadline}
+                    onChange={(event) =>
+                      setProposedDeadline(event.target.value)
+                    }
                     className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-                    placeholder="e.g. 150"
                   />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-bold text-slate-500">
-                    Rate type
+                    Message to client
                   </label>
-                  <select
-                    value={proposedRateType}
-                    onChange={(event) =>
-                      setProposedRateType(
-                        event.target.value as "fixed" | "per_hour" | "per_day",
-                      )
-                    }
-                    className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-                  >
-                    <option value="fixed">Fixed</option>
-                    <option value="per_hour">Per hour</option>
-                    <option value="per_day">Per day</option>
-                  </select>
+                  <textarea
+                    value={counterMessage}
+                    onChange={(event) => setCounterMessage(event.target.value)}
+                    rows={3}
+                    maxLength={1000}
+                    className="w-full resize-none rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="Explain why the request needs changing..."
+                  />
                 </div>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-500">
-                  Proposed deadline
-                </label>
-                <input
-                  type="date"
-                  value={proposedDeadline}
-                  onChange={(event) => setProposedDeadline(event.target.value)}
-                  className="w-full rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-bold text-slate-500">
-                  Message to client
-                </label>
-                <textarea
-                  value={counterMessage}
-                  onChange={(event) => setCounterMessage(event.target.value)}
-                  rows={3}
-                  maxLength={1000}
-                  className="w-full resize-none rounded-xl border border-blue-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-400"
-                  placeholder="Explain why the request needs changing..."
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loadingAction !== null}
-                className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loadingAction === "request_changes"
-                  ? "Sending..."
-                  : "Send requested changes"}
-              </button>
-            </form>
-          )}
-        </>
-      )}
+                <button
+                  type="submit"
+                  disabled={loadingAction !== null}
+                  className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white transition-all hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {loadingAction === "request_changes"
+                    ? "Sending..."
+                    : "Send requested changes"}
+                </button>
+              </form>
+            )}
+          </>
+        )}
 
       {isInvitedKinglancer && status === "accepted_pending_payment" && (
         <p className="rounded-2xl bg-green-50 p-4 text-sm font-semibold text-green-700">

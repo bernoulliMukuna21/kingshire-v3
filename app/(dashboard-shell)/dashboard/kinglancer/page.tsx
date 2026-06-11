@@ -336,7 +336,7 @@ export default async function KinglancerDashboard() {
             {directRequests.map((job) => (
               <Link
                 key={job.id}
-                href={`/jobs/${job.id}`}
+                href={`/jobs/${job.id}?ref=dashboard`}
                 className="group flex items-center justify-between gap-4 rounded-3xl border border-violet-100 bg-violet-50/60 px-5 py-4 shadow-xl shadow-violet-900/5 ring-1 ring-violet-200/50 transition-all hover:-translate-y-0.5 hover:border-violet-200 sm:px-6"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -374,7 +374,7 @@ export default async function KinglancerDashboard() {
             {acceptedPendingPayment.map((job) => (
               <Link
                 key={job.id}
-                href={`/jobs/${job.id}`}
+                href={`/jobs/${job.id}?ref=dashboard`}
                 className="group flex items-center justify-between gap-4 rounded-3xl border border-slate-200 bg-white/80 px-5 py-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-100 sm:px-6"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -448,7 +448,7 @@ export default async function KinglancerDashboard() {
               return (
                 <Link
                   key={app.id}
-                  href={`/jobs/${app.job.id}`}
+                  href={`/jobs/${app.job.id}?ref=dashboard`}
                   className="group flex items-center justify-between px-5 py-4 transition-colors hover:bg-slate-50 sm:px-6"
                 >
                   <div className="flex-1 min-w-0 pr-4">
