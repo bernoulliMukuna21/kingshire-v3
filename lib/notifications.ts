@@ -226,7 +226,7 @@ export async function notifyDisputeRaised({
     userId: recipientId,
     type: "dispute_raised",
     title: "A dispute has been raised",
-    body: `The ${raisedBy} has raised a dispute on "${jobTitle}". Our team will review it shortly.`,
+    body: `The ${raisedBy} has raised a dispute on "${jobTitle}". Our team will review it shortly.<br><br>If you have any questions or evidence to share, please email us directly at <a href="mailto:kingshirecompany@gmail.com" style="color:#2563eb">kingshirecompany@gmail.com</a> — include the job title in your message.`,
     link: `/dashboard/${raisedBy === "client" ? "kinglancer" : "client"}`,
     email: {
       to: recipientEmail,
@@ -418,7 +418,8 @@ function emailTemplate({
         </tr>
         <tr>
           <td style="padding:16px 32px;border-top:1px solid #f1f5f9;text-align:center">
-            <p style="margin:0;color:#94a3b8;font-size:12px">© 2026 KingsHire · <a href="${appUrl}" style="color:#94a3b8">kingshire.uk</a></p>
+            <p style="margin:0 0 4px;color:#94a3b8;font-size:12px">© 2026 KingsHire · <a href="${appUrl}" style="color:#94a3b8">kingshire.uk</a></p>
+            <p style="margin:0;color:#94a3b8;font-size:12px">Need help? Email us at <a href="mailto:kingshirecompany@gmail.com" style="color:#94a3b8">kingshirecompany@gmail.com</a></p>
           </td>
         </tr>
       </table>
