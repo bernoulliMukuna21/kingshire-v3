@@ -38,6 +38,7 @@ type ClientActionJob = {
   rate_type: string;
   invited_kinglancer_id: string | null;
   direct_request_status: string | null;
+  has_funded_transaction?: boolean;
   counter_budget: number | null;
   counter_rate_type: string | null;
   counter_deadline: string | null;
@@ -52,6 +53,7 @@ type KinglancerActionJob = {
   budget: number;
   rate_type: string;
   direct_request_status: string | null;
+  has_funded_transaction?: boolean;
   client: { full_name: string | null } | null;
 };
 
@@ -82,6 +84,21 @@ function actionCentreHref(href: string) {
   return `${href}?from=action-centre`;
 }
 
+async function getFundedJobIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobIds: string[],
+) {
+  if (jobIds.length === 0) return new Set<string>();
+
+  const { data } = await supabase
+    .from("transactions")
+    .select("job_id")
+    .in("job_id", jobIds)
+    .in("status", ["held", "released", "disputed"]);
+
+  return new Set((data ?? []).map((transaction) => transaction.job_id));
+}
+
 async function getClientActionData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -106,13 +123,21 @@ async function getClientActionData(
 
   const jobs = (jobsRaw ?? []) as unknown as ClientActionJob[];
   const jobIds = jobs.map((job) => job.id);
-  const { data: applicationsRaw } = jobIds.length
-    ? await supabase
-        .from("applications")
-        .select("job_id")
-        .in("job_id", jobIds)
-        .eq("status", "pending")
-    : { data: [] };
+  const [applicationsResult, fundedJobIds] = await Promise.all([
+    jobIds.length
+      ? supabase
+          .from("applications")
+          .select("job_id")
+          .in("job_id", jobIds)
+          .eq("status", "pending")
+      : Promise.resolve({ data: [] }),
+    getFundedJobIds(supabase, jobIds),
+  ]);
+  const applicationsRaw = applicationsResult.data ?? [];
+  const jobsWithFunding = jobs.map((job) => ({
+    ...job,
+    has_funded_transaction: fundedJobIds.has(job.id),
+  }));
 
   const applicationCountByJob = (applicationsRaw ?? []).reduce<
     Record<string, number>
@@ -122,7 +147,7 @@ async function getClientActionData(
   }, {});
 
   const actionItems = uniqueActions(
-    jobs
+    jobsWithFunding
       .flatMap<ActionItem>((job) => {
         const items: ActionItem[] = [];
         const budget = `${formatMoney(Number(job.budget))} ${formatRateType(job.rate_type)}`;
@@ -199,7 +224,7 @@ async function getClientActionData(
       .sort((a, b) => a.title.localeCompare(b.title)),
   );
 
-  const waitingItems = jobs
+  const waitingItems = jobsWithFunding
     .filter(
       (job) => isClientDirectRequestWaiting(job),
     )
@@ -238,8 +263,16 @@ async function getKinglancerActionData(
     .limit(100);
 
   const jobs = (jobsRaw ?? []) as unknown as KinglancerActionJob[];
+  const fundedJobIds = await getFundedJobIds(
+    supabase,
+    jobs.map((job) => job.id),
+  );
+  const jobsWithFunding = jobs.map((job) => ({
+    ...job,
+    has_funded_transaction: fundedJobIds.has(job.id),
+  }));
 
-  const actionItems = jobs
+  const actionItems = jobsWithFunding
     .filter(
       (job) => isKinglancerDirectRequestAction(job),
     )
@@ -256,7 +289,7 @@ async function getKinglancerActionData(
       meta: `${formatMoney(Number(job.budget))} ${formatRateType(job.rate_type)}`,
     }));
 
-  const waitingItems = jobs
+  const waitingItems = jobsWithFunding
     .filter((job) =>
       isKinglancerDirectRequestWaiting(job),
     )

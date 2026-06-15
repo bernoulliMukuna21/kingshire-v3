@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
 import { stripe, calculateFees } from "@/lib/stripe";
-import { createTransaction } from "@/lib/db/transactions";
+import {
+  createPaymentAttempt,
+  finalizePaymentAttempt,
+  getPendingPaymentAttemptByJob,
+  isCancellablePaymentIntentStatus,
+  updatePaymentAttemptStatus,
+} from "@/lib/db/payment-attempts";
 
 type DirectPayJob = {
   id: string;
@@ -64,6 +69,71 @@ export async function POST(
     const { clientChargePence, platformFeeClient, platformFeeKinglancer } =
       calculateFees(job.budget);
 
+    const existingAttempt = await getPendingPaymentAttemptByJob(job.id);
+
+    if (existingAttempt) {
+      if (
+        existingAttempt.attempt_type !== "direct_request" ||
+        existingAttempt.kinglancer_id !== job.invited_kinglancer_id
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "A payment is already pending for this job. Cancel it before starting another payment.",
+          },
+          { status: 409 },
+        );
+      }
+
+      try {
+        const existingPaymentIntent = await stripe.paymentIntents.retrieve(
+          existingAttempt.stripe_payment_intent_id,
+        );
+
+        if (
+          isCancellablePaymentIntentStatus(existingPaymentIntent.status) &&
+          existingPaymentIntent.client_secret
+        ) {
+          return NextResponse.json({
+            success: true,
+            jobId: job.id,
+            clientSecret: existingPaymentIntent.client_secret,
+          });
+        }
+
+        if (existingPaymentIntent.status === "succeeded") {
+          await finalizePaymentAttempt(existingPaymentIntent.id);
+          return NextResponse.json(
+            { error: "Payment has already completed for this job." },
+            { status: 409 },
+          );
+        }
+
+        if (existingPaymentIntent.status === "processing") {
+          return NextResponse.json(
+            { error: "Payment is still processing. Please wait." },
+            { status: 409 },
+          );
+        }
+
+        if (existingPaymentIntent.status === "canceled") {
+          await updatePaymentAttemptStatus(existingPaymentIntent.id, "cancelled");
+        } else {
+          await updatePaymentAttemptStatus(existingPaymentIntent.id, "failed");
+        }
+      } catch (err: unknown) {
+        const stripeError = err as { code?: string };
+        if (stripeError.code === "resource_missing") {
+          await updatePaymentAttemptStatus(
+            existingAttempt.stripe_payment_intent_id,
+            "failed",
+          );
+        } else {
+          throw err;
+        }
+      }
+    }
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: clientChargePence,
       currency: "gbp",
@@ -71,59 +141,25 @@ export async function POST(
         job_id: job.id,
         client_id: user.id,
         kinglancer_id: job.invited_kinglancer_id,
+        attempt_type: "direct_request",
       },
       description: `KingsHire — ${job.title}`,
     });
 
-    const db = createServiceClient();
-
-    const { data: reservedJob, error: jobError } = await db
-      .from("jobs")
-      .update({
-        status: "in_progress",
-        kinglancer_id: job.invited_kinglancer_id,
-      })
-      .eq("id", job.id)
-      .eq("client_id", user.id)
-      .eq("status", "open")
-      .eq("direct_request_status", "accepted_pending_payment")
-      .select("id")
-      .maybeSingle();
-
-    if (jobError) {
-      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
-      throw jobError;
-    }
-
-    if (!reservedJob) {
-      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
-      return NextResponse.json(
-        { error: "This request is no longer ready for payment." },
-        { status: 409 },
-      );
-    }
-
     try {
-      await createTransaction({
+      await createPaymentAttempt({
         job_id: job.id,
+        application_id: null,
         client_id: user.id,
         kinglancer_id: job.invited_kinglancer_id,
         amount: job.budget,
         platform_fee_client: platformFeeClient,
         platform_fee_kinglancer: platformFeeKinglancer,
         stripe_payment_intent_id: paymentIntent.id,
-        status: "pending",
+        attempt_type: "direct_request",
       });
     } catch (err) {
-      await Promise.all([
-        stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {}),
-        db
-          .from("jobs")
-          .update({ status: "open", kinglancer_id: null })
-          .eq("id", job.id)
-          .eq("status", "in_progress")
-          .eq("direct_request_status", "accepted_pending_payment"),
-      ]);
+      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
       throw err;
     }
 

@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
+import {
+  finalizePaymentAttempt,
+  isCancellablePaymentIntentStatus,
+  updatePaymentAttemptStatus,
+} from "@/lib/db/payment-attempts";
 
 // GET /api/cron/cleanup-abandoned-checkouts
-// Finds transactions stuck in "pending" for more than 1 hour (client opened
-// the payment page but never completed it) and rolls back the job so other
-// kinglancers can still be considered.
+// Finds payment attempts stuck in "pending" after the client opened the
+// payment page but never completed it.
 // Secured via the same CRON_SECRET as auto-release.
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -25,8 +29,80 @@ export async function GET(request: Request) {
 
   const db = createServiceClient();
 
-  // Find pending transactions older than 15 minutes
   const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+  const { data: stuckAttempts, error: attemptsError } = await db
+    .from("payment_attempts")
+    .select("id, job_id, stripe_payment_intent_id")
+    .eq("status", "pending")
+    .lt("created_at", cutoff);
+
+  if (attemptsError) {
+    console.error(
+      "[cleanup-abandoned-checkouts] payment attempts query error:",
+      attemptsError,
+    );
+    return NextResponse.json({ error: "DB error" }, { status: 500 });
+  }
+
+  let cleanedAttempts = 0;
+  for (const attempt of stuckAttempts ?? []) {
+    try {
+      let piStatus: string | null = null;
+      try {
+        const pi = await stripe.paymentIntents.retrieve(
+          attempt.stripe_payment_intent_id,
+        );
+        piStatus = pi.status;
+      } catch (stripeErr: unknown) {
+        const code = (stripeErr as { code?: string })?.code;
+        if (code === "resource_missing") {
+          piStatus = "not_found";
+        } else {
+          throw stripeErr;
+        }
+      }
+
+      if (piStatus === "succeeded") {
+        await finalizePaymentAttempt(attempt.stripe_payment_intent_id);
+        cleanedAttempts++;
+        continue;
+      }
+
+      if (piStatus === "processing") {
+        console.warn(
+          `[cleanup-abandoned-checkouts] PI ${attempt.stripe_payment_intent_id} is processing; skipping attempt ${attempt.id}`,
+        );
+        continue;
+      }
+
+      if (isCancellablePaymentIntentStatus(piStatus ?? "")) {
+        await stripe.paymentIntents.cancel(attempt.stripe_payment_intent_id);
+        await updatePaymentAttemptStatus(
+          attempt.stripe_payment_intent_id,
+          "expired",
+        );
+        cleanedAttempts++;
+        continue;
+      }
+
+      if (piStatus === "canceled" || piStatus === "not_found") {
+        await updatePaymentAttemptStatus(
+          attempt.stripe_payment_intent_id,
+          "expired",
+        );
+        cleanedAttempts++;
+      }
+    } catch (err) {
+      console.error(
+        `[cleanup-abandoned-checkouts] Failed to clean payment attempt ${attempt.id}:`,
+        err,
+      );
+    }
+  }
+
+  // Legacy cleanup for pending transaction rows created before payment_attempts
+  // existed. New flows do not create transactions until payment succeeds.
   const { data: stuckTxns, error } = await db
     .from("transactions")
     .select("id, job_id, stripe_payment_intent_id, kinglancer_id")
@@ -38,22 +114,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
 
-  if (!stuckTxns?.length) {
+  if (!stuckAttempts?.length && !stuckTxns?.length) {
     console.log(
-      "[cleanup-abandoned-checkouts] No pending transactions found older than cutoff:",
+      "[cleanup-abandoned-checkouts] No pending attempts or transactions found older than cutoff:",
       cutoff,
     );
-    return NextResponse.json({ cleaned: 0 });
+    return NextResponse.json({ cleaned: 0, attempts: 0, legacyTransactions: 0 });
   }
 
-  console.log(
-    `[cleanup-abandoned-checkouts] Found ${stuckTxns.length} pending txn(s):`,
-    stuckTxns.map((t) => ({
-      id: t.id,
-      pi: t.stripe_payment_intent_id,
-      job_id: t.job_id,
-    })),
-  );
+  if (stuckTxns?.length) {
+    console.log(
+      `[cleanup-abandoned-checkouts] Found ${stuckTxns.length} legacy pending txn(s):`,
+      stuckTxns.map((t) => ({
+        id: t.id,
+        pi: t.stripe_payment_intent_id,
+        job_id: t.job_id,
+      })),
+    );
+  }
 
   let cleaned = 0;
   for (const txn of stuckTxns) {
@@ -160,7 +238,11 @@ export async function GET(request: Request) {
   }
 
   console.log(
-    `[cleanup-abandoned-checkouts] Cleaned ${cleaned} abandoned checkouts`,
+    `[cleanup-abandoned-checkouts] Cleaned ${cleanedAttempts} payment attempt(s) and ${cleaned} legacy transaction(s)`,
   );
-  return NextResponse.json({ cleaned });
+  return NextResponse.json({
+    cleaned: cleanedAttempts + cleaned,
+    attempts: cleanedAttempts,
+    legacyTransactions: cleaned,
+  });
 }

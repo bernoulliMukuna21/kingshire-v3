@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import {
+  AlertCircle,
   Briefcase,
   Calendar,
   CreditCard,
@@ -10,6 +11,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
+import { stripe } from "@/lib/stripe";
+import {
+  getPendingPaymentAttemptByJob,
+  isCancellablePaymentIntentStatus,
+} from "@/lib/db/payment-attempts";
 import {
   ApplicantsList,
   ClientApproveActions,
@@ -20,6 +26,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
+import CancelPaymentButton from "./CancelPaymentButton";
 
 type Profile = {
   role: "client" | "kinglancer" | "admin" | null;
@@ -125,12 +132,33 @@ export default async function ClientJobWorkspacePage({
 
   const isDirectRequest = !!job.invited_kinglancer_id;
   const statusConfig = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.open;
-  const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
+  const pendingAttempt =
+    job.status === "open" ? await getPendingPaymentAttemptByJob(id) : null;
+  const kinglancerProfileId =
+    job.kinglancer_id ??
+    job.invited_kinglancer_id ??
+    pendingAttempt?.kinglancer_id;
+
+  let pendingClientSecret: string | null = null;
+  const hasPendingPayment = Boolean(pendingAttempt);
+
+  if (pendingAttempt?.stripe_payment_intent_id) {
+    try {
+      const pi = await stripe.paymentIntents.retrieve(
+        pendingAttempt.stripe_payment_intent_id,
+      );
+      if (pi.client_secret && isCancellablePaymentIntentStatus(pi.status)) {
+        pendingClientSecret = pi.client_secret;
+      }
+    } catch {
+      // PI not found (e.g. key mismatch after switching Stripe mode) — still show cancel.
+    }
+  }
 
   const [applications, kinglancerResult] = await Promise.all([
     !isDirectRequest &&
-    (job.status === "open" ||
-      (job.status === "in_progress" && payment_failed === "1"))
+    job.status === "open" &&
+    !hasPendingPayment
       ? getApplicationsByJob(id)
       : Promise.resolve([] as ApplicationWithKinglancer[]),
     kinglancerProfileId
@@ -204,7 +232,7 @@ export default async function ClientJobWorkspacePage({
             )}
           </Card>
 
-          {isDirectRequest && job.status === "open" && (
+          {isDirectRequest && job.status === "open" && !hasPendingPayment && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
                 Direct request
@@ -229,7 +257,7 @@ export default async function ClientJobWorkspacePage({
             </Card>
           )}
 
-          {!isDirectRequest && job.status === "open" && (
+          {!isDirectRequest && job.status === "open" && !hasPendingPayment && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
                 Applicants ({applications.length})
@@ -241,20 +269,6 @@ export default async function ClientJobWorkspacePage({
               <ApplicantsList applications={applications} />
             </Card>
           )}
-
-          {!isDirectRequest &&
-            job.status === "in_progress" &&
-            payment_failed === "1" && (
-              <Card className={cardPadding}>
-                <h2 className="text-lg font-black text-slate-950">
-                  Restart payment
-                </h2>
-                <p className="mb-4 mt-1 text-sm text-slate-500">
-                  Select an applicant again to restart the escrow payment.
-                </p>
-                <ApplicantsList applications={applications} />
-              </Card>
-            )}
 
           {job.status === "completed" && (
             <Card className={cardPadding}>
@@ -269,7 +283,40 @@ export default async function ClientJobWorkspacePage({
             </Card>
           )}
 
-          {job.status === "in_progress" && payment_failed !== "1" && (
+          {hasPendingPayment && (
+            <Card className="border-amber-200 bg-amber-50 p-5">
+              <div className="flex items-start gap-3">
+                <AlertCircle
+                  size={18}
+                  className="mt-0.5 shrink-0 text-amber-600"
+                />
+                <div>
+                  <h2 className="text-sm font-black text-amber-900">
+                    Payment not completed
+                  </h2>
+                  <p className="mt-1 text-sm text-amber-700">
+                    Your escrow payment was started but not finished. Resume
+                    to lock in your Kinglancer, or cancel it to change your
+                    decision.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {pendingClientSecret && (
+                  <ButtonLink
+                    href={`/jobs/${id}/pay?cs=${pendingClientSecret}`}
+                  >
+                    Resume payment
+                  </ButtonLink>
+                )}
+                <CancelPaymentButton jobId={id} />
+              </div>
+            </Card>
+          )}
+
+          {job.status === "in_progress" &&
+            payment_failed !== "1" &&
+            !hasPendingPayment && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
                 Job in progress

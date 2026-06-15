@@ -147,7 +147,9 @@ function OnboardingContent() {
     }
 
     if (role === "kinglancer" && namedServices.length === 0) {
-      setError("Please add at least one service you offer (e.g. Cleaning, Gardening).");
+      setError(
+        "Please add at least one service you offer (e.g. Cleaning, Gardening).",
+      );
       return;
     }
     if (role === "kinglancer" && invalidServiceRate) {
@@ -184,8 +186,10 @@ function OnboardingContent() {
     }
 
     const safeNext = nextParam?.startsWith("/") ? nextParam : null;
-    const destination = safeNext ?? (role === "client" ? "/dashboard/client" : "/dashboard/kinglancer");
-    router.push(destination.split("?")[0]);
+    router.push(
+      safeNext ??
+        (role === "client" ? "/dashboard/client" : "/dashboard/kinglancer"),
+    );
   };
 
   if (initialLoading) {

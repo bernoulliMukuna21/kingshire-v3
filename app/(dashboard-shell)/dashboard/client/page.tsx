@@ -38,7 +38,7 @@ export default async function ClientDashboard() {
 
     supabase
       .from("transactions")
-      .select("amount, platform_fee_client, status")
+      .select("job_id, amount, platform_fee_client, status")
       .eq("client_id", user.id)
       .order("created_at", { ascending: false })
       .limit(200),
@@ -63,6 +63,13 @@ export default async function ClientDashboard() {
   }>;
 
   const transactions = transactionsResult.data ?? [];
+  const fundedJobIds = new Set(
+    transactions
+      .filter((transaction) =>
+        ["held", "released", "disputed"].includes(transaction.status),
+      )
+      .map((transaction) => transaction.job_id),
+  );
 
   const totalSpent = transactions
     .filter((t) => ["held", "released"].includes(t.status))
@@ -76,8 +83,13 @@ export default async function ClientDashboard() {
     0,
   );
 
+  const jobsWithFunding = jobs.map((job) => ({
+    ...job,
+    has_funded_transaction: fundedJobIds.has(job.id),
+  }));
+
   const { actionCount, waitingCount } = getClientActionCounts(
-    jobs,
+    jobsWithFunding,
     (job) => job.applications?.[0]?.count ?? 0,
   );
   const inProgressJobs = jobs.filter((j) => j.status === "in_progress");

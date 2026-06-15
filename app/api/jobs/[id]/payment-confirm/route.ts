@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
-import { updateTransactionStatus } from "@/lib/db/transactions";
+import { finalizePaymentAttempt } from "@/lib/db/payment-attempts";
 
 // POST /api/jobs/[id]/payment-confirm
 // Called by the pay page after stripe.confirmPayment() succeeds.
-// Verifies the PaymentIntent status with Stripe and marks the transaction as "held".
+// Verifies the PaymentIntent status with Stripe and finalizes escrow.
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -49,7 +49,7 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  await updateTransactionStatus(paymentIntentId, "held");
+  await finalizePaymentAttempt(paymentIntentId);
 
   return NextResponse.json({ success: true });
 }

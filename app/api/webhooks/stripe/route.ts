@@ -2,7 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { updateTransactionStatus } from "@/lib/db/transactions";
+import {
+  finalizePaymentAttempt,
+  updatePaymentAttemptStatus,
+} from "@/lib/db/payment-attempts";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fireTransfer, isStripeAccountPayoutReady } from "@/lib/stripe-connect";
 import { notifyJobAwarded, notifyPaymentFailed } from "@/lib/notifications";
@@ -46,7 +49,7 @@ export async function POST(request: Request) {
     switch (event.type) {
       case "payment_intent.succeeded": {
         const pi = event.data.object;
-        await updateTransactionStatus(pi.id, "held");
+        await finalizePaymentAttempt(pi.id);
 
         // Now that payment is confirmed, notify the kinglancer they got the job
         const kinglancerId = pi.metadata?.kinglancer_id;
@@ -71,7 +74,6 @@ export async function POST(request: Request) {
       case "payment_intent.payment_failed": {
         const pi = event.data.object;
         const jobId = pi.metadata?.job_id;
-        const kinglancerId = pi.metadata?.kinglancer_id;
         const clientId = pi.metadata?.client_id;
 
         console.error(
@@ -83,27 +85,9 @@ export async function POST(request: Request) {
 
         const db = createServiceClient();
 
-        // 1. Delete the pending transaction — no money was ever captured
-        await db
-          .from("transactions")
-          .delete()
-          .eq("stripe_payment_intent_id", pi.id);
-
-        // 2. Reset job back to open and clear the kinglancer assignment
-        await db
-          .from("jobs")
-          .update({ status: "open", kinglancer_id: null })
-          .eq("id", jobId);
-
-        // 3. Reset accepted/rejected applications to pending so the client can rehire.
-        // selectApplicant() rejects other pending applicants before payment succeeds.
-        await db
-          .from("applications")
-          .update({ status: "pending" })
-          .eq("job_id", jobId)
-          .in("status", ["accepted", "rejected"]);
-
-        // 4. Fetch job title once for notifications
+        // Do not mutate jobs/applications here. A failed PaymentIntent can often
+        // be retried with the same client secret, and the Kinglancer has not
+        // been assigned until payment_intent.succeeded finalizes the attempt.
         const { data: failedJob } = await db
           .from("jobs")
           .select("title")
@@ -127,21 +111,17 @@ export async function POST(request: Request) {
           }
         }
 
-        // 6. Notify kinglancer — selection is on hold
-        if (kinglancerId) {
-          const { data: kinglancerProfile } = await db
-            .from("profiles")
-            .select("email")
-            .eq("id", kinglancerId)
-            .single();
-          if (kinglancerProfile?.email) {
-            notifyPaymentFailed({
-              role: "kinglancer",
-              email: kinglancerProfile.email,
-              jobTitle,
-            }).catch(() => {});
-          }
-        }
+        break;
+      }
+
+      case "payment_intent.canceled": {
+        const pi = event.data.object;
+        await updatePaymentAttemptStatus(pi.id, "cancelled").catch((err) =>
+          console.error(
+            `[webhook] Could not mark PaymentIntent ${pi.id} cancelled:`,
+            err,
+          ),
+        );
 
         break;
       }

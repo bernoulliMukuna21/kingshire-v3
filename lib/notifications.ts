@@ -202,10 +202,10 @@ export async function notifyPaymentFailed({
     subject: `Payment failed for "${jobTitle}"`,
     title: isClient
       ? "Your payment didn't go through"
-      : "Job selection cancelled",
+      : "Payment did not complete",
     body: isClient
-      ? `Your card payment for <strong>${jobTitle}</strong> failed. The job is back to open — you can retry hiring a kinglancer from the job page.`
-      : `The client's payment for <strong>${jobTitle}</strong> was declined. The job has been reopened and your application is back to pending. We'll notify you if the client retries.`,
+      ? `Your card payment for <strong>${jobTitle}</strong> failed. No one has been hired yet. Please retry or cancel the pending payment from your dashboard.`
+      : `The client's payment for <strong>${jobTitle}</strong> did not complete. We'll notify you if the client completes escrow.`,
     link: isClient ? `/dashboard/client` : `/dashboard/kinglancer`,
     ctaLabel: isClient ? "View dashboard →" : "View dashboard →",
   });

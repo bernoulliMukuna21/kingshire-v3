@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getJobById } from "@/lib/db/jobs";
-import { getTransactionByJob } from "@/lib/db/transactions";
+import {
+  getPaymentAttemptByPaymentIntent,
+  getPaymentIntentIdFromClientSecret,
+} from "@/lib/db/payment-attempts";
+import { getTransactionByPaymentIntent } from "@/lib/db/transactions";
 import PaymentForm from "./PaymentForm";
 
 interface Props {
@@ -14,6 +18,8 @@ export default async function PayPage({ params, searchParams }: Props) {
   const { cs: clientSecret } = await searchParams;
 
   if (!clientSecret) redirect(`/jobs/${id}`);
+  const paymentIntentId = getPaymentIntentIdFromClientSecret(clientSecret);
+  if (!paymentIntentId) redirect(`/jobs/${id}`);
 
   const supabase = await createClient();
   const {
@@ -25,7 +31,35 @@ export default async function PayPage({ params, searchParams }: Props) {
   const job = await getJobById(id);
   if (!job) redirect("/jobs");
 
-  const transaction = await getTransactionByJob(id);
+  const paymentAttempt =
+    await getPaymentAttemptByPaymentIntent(paymentIntentId);
+  const legacyTransaction =
+    paymentAttempt === null
+      ? await getTransactionByPaymentIntent(paymentIntentId)
+      : null;
+
+  if (paymentAttempt) {
+    if (
+      paymentAttempt.job_id !== id ||
+      paymentAttempt.client_id !== user.id ||
+      paymentAttempt.status !== "pending"
+    ) {
+      redirect(`/jobs/${id}`);
+    }
+  } else if (
+    !legacyTransaction ||
+    legacyTransaction.job_id !== id ||
+    legacyTransaction.client_id !== user.id ||
+    legacyTransaction.status !== "pending"
+  ) {
+    redirect(`/jobs/${id}`);
+  }
+
+  const amount = paymentAttempt?.amount ?? legacyTransaction?.amount ?? job.budget;
+  const platformFee =
+    paymentAttempt?.platform_fee_client ??
+    legacyTransaction?.platform_fee_client ??
+    amount * 0.05;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-start justify-center py-16 px-4">
@@ -49,23 +83,16 @@ export default async function PayPage({ params, searchParams }: Props) {
             <div className="flex justify-between text-gray-700">
               <span className="truncate pr-4">{job.title}</span>
               <span className="font-medium shrink-0">
-                £{job.budget.toFixed(2)}
+                £{amount.toFixed(2)}
               </span>
             </div>
-            {transaction && (
-              <div className="flex justify-between text-gray-500">
-                <span>Platform fee (5%)</span>
-                <span>£{transaction.platform_fee_client.toFixed(2)}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-gray-500">
+              <span>Platform fee (5%)</span>
+              <span>£{platformFee.toFixed(2)}</span>
+            </div>
             <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900">
               <span>Total charged today</span>
-              <span>
-                £
-                {transaction
-                  ? (job.budget + transaction.platform_fee_client).toFixed(2)
-                  : (job.budget * 1.05).toFixed(2)}
-              </span>
+              <span>£{(amount + platformFee).toFixed(2)}</span>
             </div>
           </div>
           <p className="text-xs text-gray-400 border-t border-gray-50 pt-3">

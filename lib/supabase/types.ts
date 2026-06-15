@@ -195,6 +195,7 @@ export type Database = {
         Row: {
           id: string;
           job_id: string;
+          application_id: string | null;
           client_id: string;
           kinglancer_id: string;
           amount: number;
@@ -208,6 +209,7 @@ export type Database = {
         };
         Insert: {
           job_id: string;
+          application_id?: string | null;
           client_id: string;
           kinglancer_id: string;
           amount: number;
@@ -219,10 +221,45 @@ export type Database = {
           released_at?: string | null;
         };
         Update: {
+          application_id?: string | null;
           stripe_payment_intent_id?: string | null;
           stripe_transfer_id?: string | null;
           status?: "pending" | "held" | "released" | "refunded" | "disputed";
           released_at?: string | null;
+        };
+        Relationships: [];
+      };
+      payment_attempts: {
+        Row: {
+          id: string;
+          job_id: string;
+          application_id: string | null;
+          client_id: string;
+          kinglancer_id: string;
+          amount: number;
+          platform_fee_client: number;
+          platform_fee_kinglancer: number;
+          stripe_payment_intent_id: string;
+          attempt_type: "application" | "direct_request";
+          status: "pending" | "succeeded" | "cancelled" | "failed" | "expired";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          job_id: string;
+          application_id?: string | null;
+          client_id: string;
+          kinglancer_id: string;
+          amount: number;
+          platform_fee_client: number;
+          platform_fee_kinglancer: number;
+          stripe_payment_intent_id: string;
+          attempt_type?: "application" | "direct_request";
+          status?: "pending" | "succeeded" | "cancelled" | "failed" | "expired";
+        };
+        Update: {
+          application_id?: string | null;
+          status?: "pending" | "succeeded" | "cancelled" | "failed" | "expired";
         };
         Relationships: [];
       };

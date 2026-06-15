@@ -140,9 +140,20 @@ export default async function KinglancerDashboard() {
     counter_deadline: string | null;
     client: { full_name: string } | null;
   }>;
+  const fundedJobIds = new Set(
+    transactions
+      .filter((transaction) =>
+        ["held", "released", "disputed"].includes(transaction.status),
+      )
+      .map((transaction) => transaction.job_id),
+  );
+  const directRequestsWithFunding = allDirectRequests.map((job) => ({
+    ...job,
+    has_funded_transaction: fundedJobIds.has(job.id),
+  }));
 
   const { actionCount, waitingCount } =
-    getKinglancerActionCounts(allDirectRequests);
+    getKinglancerActionCounts(directRequestsWithFunding);
 
   // Derived stats
   const totalEarned = transactions

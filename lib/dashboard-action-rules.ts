@@ -2,6 +2,7 @@ type JobActionState = {
   status: string;
   invited_kinglancer_id?: string | null;
   direct_request_status?: string | null;
+  has_funded_transaction?: boolean;
 };
 
 export function isClientReviewWorkAction(job: JobActionState) {
@@ -22,6 +23,7 @@ export function isClientApplicantReviewAction(
 export function isClientDirectRequestAction(job: JobActionState) {
   return (
     job.status === "open" &&
+    !job.has_funded_transaction &&
     ["changes_requested", "accepted_pending_payment"].includes(
       job.direct_request_status ?? "",
     )
@@ -29,16 +31,25 @@ export function isClientDirectRequestAction(job: JobActionState) {
 }
 
 export function isClientDirectRequestWaiting(job: JobActionState) {
-  return job.status === "open" && job.direct_request_status === "pending";
+  return (
+    job.status === "open" &&
+    !job.has_funded_transaction &&
+    job.direct_request_status === "pending"
+  );
 }
 
 export function isKinglancerDirectRequestAction(job: JobActionState) {
-  return job.status === "open" && job.direct_request_status === "pending";
+  return (
+    job.status === "open" &&
+    !job.has_funded_transaction &&
+    job.direct_request_status === "pending"
+  );
 }
 
 export function isKinglancerDirectRequestWaiting(job: JobActionState) {
   return (
     job.status === "open" &&
+    !job.has_funded_transaction &&
     ["changes_requested", "accepted_pending_payment"].includes(
       job.direct_request_status ?? "",
     )

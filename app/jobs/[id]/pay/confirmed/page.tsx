@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { CheckCircle } from "lucide-react";
 import { stripe } from "@/lib/stripe";
-import { updateTransactionStatus } from "@/lib/db/transactions";
+import { finalizePaymentAttempt } from "@/lib/db/payment-attempts";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -23,11 +23,11 @@ export default async function PayConfirmedPage({
   let success = false;
 
   if (redirect_status === "succeeded" && payment_intent) {
-    // Verify with Stripe and mark the transaction as held
+    // Verify with Stripe and finalize escrow
     try {
       const pi = await stripe.paymentIntents.retrieve(payment_intent);
       if (pi.status === "succeeded" && pi.metadata.job_id === id) {
-        await updateTransactionStatus(payment_intent, "held");
+        await finalizePaymentAttempt(payment_intent);
         success = true;
       }
     } catch {

@@ -28,6 +28,19 @@ export async function getTransactionByJob(jobId: string) {
   return data as TransactionRow;
 }
 
+export async function getTransactionByPaymentIntent(
+  stripePaymentIntentId: string,
+) {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("transactions")
+    .select("*")
+    .eq("stripe_payment_intent_id", stripePaymentIntentId)
+    .maybeSingle();
+  if (error) return null;
+  return data as TransactionRow | null;
+}
+
 export async function updateTransactionStatus(
   stripePaymentIntentId: string,
   status: TransactionRow["status"],

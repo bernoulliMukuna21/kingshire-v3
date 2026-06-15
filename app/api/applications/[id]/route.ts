@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
-import {
-  ApplicantSelectionConflictError,
-  selectApplicant,
-} from "@/lib/db/applications";
 import { stripe, calculateFees } from "@/lib/stripe";
-import { createTransaction } from "@/lib/db/transactions";
+import {
+  createPaymentAttempt,
+  finalizePaymentAttempt,
+  getPendingPaymentAttemptByJob,
+  isCancellablePaymentIntentStatus,
+  updatePaymentAttemptStatus,
+} from "@/lib/db/payment-attempts";
 
 type ApplicationRow = {
   id: string;
@@ -80,9 +81,75 @@ export async function PATCH(
   }
 
   try {
-    // 1. Create Stripe PaymentIntent first — if this fails, nothing in the DB changes
     const { clientChargePence, platformFeeClient, platformFeeKinglancer } =
       calculateFees(job.budget);
+
+    const existingAttempt = await getPendingPaymentAttemptByJob(
+      application.job_id,
+    );
+
+    if (existingAttempt) {
+      if (
+        existingAttempt.application_id !== applicationId ||
+        existingAttempt.kinglancer_id !== application.kinglancer_id
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "A payment is already pending for this job. Cancel it before selecting someone else.",
+          },
+          { status: 409 },
+        );
+      }
+
+      try {
+        const existingPaymentIntent = await stripe.paymentIntents.retrieve(
+          existingAttempt.stripe_payment_intent_id,
+        );
+
+        if (
+          isCancellablePaymentIntentStatus(existingPaymentIntent.status) &&
+          existingPaymentIntent.client_secret
+        ) {
+          return NextResponse.json({
+            success: true,
+            jobId: application.job_id,
+            clientSecret: existingPaymentIntent.client_secret,
+          });
+        }
+
+        if (existingPaymentIntent.status === "succeeded") {
+          await finalizePaymentAttempt(existingPaymentIntent.id);
+          return NextResponse.json(
+            { error: "Payment has already completed for this job." },
+            { status: 409 },
+          );
+        }
+
+        if (existingPaymentIntent.status === "processing") {
+          return NextResponse.json(
+            { error: "Payment is still processing. Please wait." },
+            { status: 409 },
+          );
+        }
+
+        if (existingPaymentIntent.status === "canceled") {
+          await updatePaymentAttemptStatus(existingPaymentIntent.id, "cancelled");
+        } else {
+          await updatePaymentAttemptStatus(existingPaymentIntent.id, "failed");
+        }
+      } catch (err: unknown) {
+        const stripeError = err as { code?: string };
+        if (stripeError.code === "resource_missing") {
+          await updatePaymentAttemptStatus(
+            existingAttempt.stripe_payment_intent_id,
+            "failed",
+          );
+        } else {
+          throw err;
+        }
+      }
+    }
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: clientChargePence,
@@ -91,56 +158,29 @@ export async function PATCH(
         job_id: application.job_id,
         client_id: user.id,
         kinglancer_id: application.kinglancer_id,
+        application_id: applicationId,
+        attempt_type: "application",
       },
       description: `KingsHire — ${job.title}`,
     });
 
-    // 2. Update DB: accept application, reject others, set job in_progress
     try {
-      await selectApplicant(
-        application.job_id,
-        applicationId,
-        application.kinglancer_id,
-      );
-    } catch (err) {
-      // selectApplicant failed — void the PaymentIntent so the client is never charged
-      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
-      throw err;
-    }
-
-    // 3. Record transaction in DB
-    try {
-      await createTransaction({
+      await createPaymentAttempt({
         job_id: application.job_id,
+        application_id: applicationId,
         client_id: user.id,
         kinglancer_id: application.kinglancer_id,
         amount: job.budget,
         platform_fee_client: platformFeeClient,
         platform_fee_kinglancer: platformFeeKinglancer,
         stripe_payment_intent_id: paymentIntent.id,
+        attempt_type: "application",
         status: "pending",
       });
     } catch (err) {
-      // Transaction insert failed after job was already moved to in_progress.
-      // Compensate: cancel PI + revert job and application state.
-      const db = createServiceClient();
-      await Promise.all([
-        stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {}),
-        db
-          .from("jobs")
-          .update({ status: "open", kinglancer_id: null })
-          .eq("id", application.job_id),
-        db
-          .from("applications")
-          .update({ status: "pending" })
-          .eq("job_id", application.job_id)
-          .in("status", ["accepted", "rejected"]),
-      ]);
+      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
       throw err;
     }
-
-    // 4. Notify kinglancer — deferred to payment_intent.succeeded webhook
-    //    so the email only fires after the client's card is actually charged.
 
     return NextResponse.json({
       success: true,
@@ -148,13 +188,7 @@ export async function PATCH(
       clientSecret: paymentIntent.client_secret,
     });
   } catch (err) {
-    console.error("[SELECT APPLICANT] failed:", err);
-    if (err instanceof ApplicantSelectionConflictError) {
-      return NextResponse.json(
-        { error: "A kinglancer has already been selected for this job" },
-        { status: 409 },
-      );
-    }
+    console.error("[START APPLICANT PAYMENT] failed:", err);
     return NextResponse.json(
       { error: "Failed to select applicant" },
       { status: 500 },

@@ -73,6 +73,7 @@ create table public.applications (
 create table public.transactions (
   id                        uuid primary key default uuid_generate_v4(),
   job_id                    uuid not null references public.jobs(id),
+  application_id            uuid references public.applications(id) on delete set null,
   client_id                 uuid not null references public.profiles(id),
   kinglancer_id             uuid not null references public.profiles(id),
   amount                    numeric(10,2) not null,
@@ -84,6 +85,24 @@ create table public.transactions (
   released_at               timestamptz,
   created_at                timestamptz not null default now(),
   unique(job_id)
+);
+
+-- ── PAYMENT ATTEMPTS ──────────────────────────────────────
+-- Started Stripe PaymentIntents that are not confirmed escrow yet.
+create table public.payment_attempts (
+  id                        uuid primary key default uuid_generate_v4(),
+  job_id                    uuid not null references public.jobs(id) on delete cascade,
+  application_id            uuid references public.applications(id) on delete set null,
+  client_id                 uuid not null references public.profiles(id) on delete cascade,
+  kinglancer_id             uuid not null references public.profiles(id) on delete cascade,
+  amount                    numeric(10,2) not null,
+  platform_fee_client       numeric(10,2) not null,
+  platform_fee_kinglancer   numeric(10,2) not null,
+  stripe_payment_intent_id  text not null unique,
+  attempt_type              text not null default 'application' check (attempt_type in ('application','direct_request')),
+  status                    text not null default 'pending' check (status in ('pending','succeeded','cancelled','failed','expired')),
+  created_at                timestamptz not null default now(),
+  updated_at                timestamptz not null default now()
 );
 
 -- ── REVIEWS ───────────────────────────────────────────────
@@ -174,6 +193,9 @@ create trigger on_profiles_updated before update on public.profiles
 create trigger on_jobs_updated before update on public.jobs
   for each row execute function public.handle_updated_at();
 
+create trigger on_payment_attempts_updated before update on public.payment_attempts
+  for each row execute function public.handle_updated_at();
+
 -- ============================================================
 -- AUTO-CREATE PROFILE ON SIGN-UP
 -- ============================================================
@@ -209,6 +231,7 @@ create trigger on_auth_user_created after insert on auth.users
 alter table public.profiles     enable row level security;
 alter table public.jobs         enable row level security;
 alter table public.applications enable row level security;
+alter table public.payment_attempts enable row level security;
 alter table public.transactions enable row level security;
 alter table public.reviews      enable row level security;
 alter table public.disputes     enable row level security;
@@ -267,6 +290,9 @@ create policy "Kinglancers can apply" on public.applications
 -- Transactions: only parties involved can view.
 -- All inserts and updates go through server routes that use the service role.
 -- No insert or update RLS policy is needed — service role bypasses RLS.
+create policy "Parties can view own payment attempts" on public.payment_attempts
+  for select using (auth.uid() = client_id or auth.uid() = kinglancer_id);
+
 create policy "Parties can view own transactions" on public.transactions
   for select using (auth.uid() = client_id or auth.uid() = kinglancer_id);
 
@@ -353,6 +379,20 @@ create index if not exists applications_kinglancer_created_at_idx
 
 create index if not exists applications_job_status_idx
   on public.applications(job_id, status);
+
+create unique index if not exists payment_attempts_one_pending_per_job_idx
+  on public.payment_attempts(job_id)
+  where status = 'pending';
+
+create index if not exists payment_attempts_pi_idx
+  on public.payment_attempts(stripe_payment_intent_id);
+
+create index if not exists payment_attempts_client_status_created_at_idx
+  on public.payment_attempts(client_id, status, created_at desc);
+
+create index if not exists payment_attempts_pending_created_at_idx
+  on public.payment_attempts(created_at)
+  where status = 'pending';
 
 create index if not exists transactions_client_created_at_idx
   on public.transactions(client_id, created_at desc);
