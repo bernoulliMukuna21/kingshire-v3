@@ -196,9 +196,7 @@ export function ActionSection({
           {title}
         </h2>
         {description && (
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            {description}
-          </p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
         )}
       </div>
       <div className="space-y-3">{children}</div>

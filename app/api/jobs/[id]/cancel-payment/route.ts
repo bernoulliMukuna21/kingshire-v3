@@ -72,7 +72,10 @@ export async function POST(
     }
   }
 
-  await updatePaymentAttemptStatus(attempt.stripe_payment_intent_id, "cancelled");
+  await updatePaymentAttemptStatus(
+    attempt.stripe_payment_intent_id,
+    "cancelled",
+  );
 
   return NextResponse.json({ success: true });
 }

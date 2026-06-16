@@ -106,7 +106,10 @@ export default async function KinglancerDashboard() {
         accountId: profile.stripe_account_id,
       });
     } catch (error) {
-      console.error("[kinglancer-dashboard] payout status refresh failed", error);
+      console.error(
+        "[kinglancer-dashboard] payout status refresh failed",
+        error,
+      );
     }
   }
 
@@ -152,8 +155,9 @@ export default async function KinglancerDashboard() {
     has_funded_transaction: fundedJobIds.has(job.id),
   }));
 
-  const { actionCount, waitingCount } =
-    getKinglancerActionCounts(directRequestsWithFunding);
+  const { actionCount, waitingCount } = getKinglancerActionCounts(
+    directRequestsWithFunding,
+  );
 
   // Derived stats
   const totalEarned = transactions

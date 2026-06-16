@@ -134,7 +134,10 @@ export async function PATCH(
         }
 
         if (existingPaymentIntent.status === "canceled") {
-          await updatePaymentAttemptStatus(existingPaymentIntent.id, "cancelled");
+          await updatePaymentAttemptStatus(
+            existingPaymentIntent.id,
+            "cancelled",
+          );
         } else {
           await updatePaymentAttemptStatus(existingPaymentIntent.id, "failed");
         }

@@ -55,7 +55,8 @@ export default async function PayPage({ params, searchParams }: Props) {
     redirect(`/jobs/${id}`);
   }
 
-  const amount = paymentAttempt?.amount ?? legacyTransaction?.amount ?? job.budget;
+  const amount =
+    paymentAttempt?.amount ?? legacyTransaction?.amount ?? job.budget;
   const platformFee =
     paymentAttempt?.platform_fee_client ??
     legacyTransaction?.platform_fee_client ??
@@ -82,9 +83,7 @@ export default async function PayPage({ params, searchParams }: Props) {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between text-gray-700">
               <span className="truncate pr-4">{job.title}</span>
-              <span className="font-medium shrink-0">
-                £{amount.toFixed(2)}
-              </span>
+              <span className="font-medium shrink-0">£{amount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-gray-500">
               <span>Platform fee (5%)</span>

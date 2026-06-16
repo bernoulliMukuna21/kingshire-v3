@@ -14,9 +14,7 @@ export function isClientApplicantReviewAction(
   applicantCount: number,
 ) {
   return (
-    job.status === "open" &&
-    !job.invited_kinglancer_id &&
-    applicantCount > 0
+    job.status === "open" && !job.invited_kinglancer_id && applicantCount > 0
   );
 }
 

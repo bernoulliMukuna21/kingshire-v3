@@ -1,4 +1,7 @@
-import { ApplicantSelectionConflictError, selectApplicant } from "@/lib/db/applications";
+import {
+  ApplicantSelectionConflictError,
+  selectApplicant,
+} from "@/lib/db/applications";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 
@@ -136,7 +139,10 @@ export async function finalizePaymentAttempt(
     await Promise.all([
       db
         .from("transactions")
-        .update({ status: "held", stripe_payment_intent_id: stripePaymentIntentId })
+        .update({
+          status: "held",
+          stripe_payment_intent_id: stripePaymentIntentId,
+        })
         .eq("id", existingTransaction.id),
       updatePaymentAttemptStatus(stripePaymentIntentId, "succeeded"),
     ]);

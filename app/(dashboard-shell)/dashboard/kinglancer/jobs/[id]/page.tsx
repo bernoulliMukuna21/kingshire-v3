@@ -23,7 +23,13 @@ type JobWorkspace = {
   description: string;
   budget: number;
   rate_type: "fixed" | "per_hour" | "per_day";
-  status: "open" | "in_progress" | "completed" | "cancelled" | "disputed" | "approved";
+  status:
+    | "open"
+    | "in_progress"
+    | "completed"
+    | "cancelled"
+    | "disputed"
+    | "approved";
   deadline: string | null;
   categories: string[];
   client_id: string;
@@ -128,7 +134,8 @@ function nextAction({
   if (job.status === "approved" || transaction?.status === "released") {
     return {
       title: "Payment released",
-      description: "The client approved this job and payment has been released.",
+      description:
+        "The client approved this job and payment has been released.",
       icon: <CheckCircle2 size={18} />,
       action: null,
     };
@@ -217,12 +224,16 @@ export default async function KinglancerJobWorkspacePage({
   const job = (jobResult as unknown as { data: JobWorkspace | null }).data;
   if (!job) notFound();
 
-  const application = (applicationResult as unknown as {
-    data: Application | null;
-  }).data;
-  const transaction = (transactionResult as unknown as {
-    data: Transaction | null;
-  }).data;
+  const application = (
+    applicationResult as unknown as {
+      data: Application | null;
+    }
+  ).data;
+  const transaction = (
+    transactionResult as unknown as {
+      data: Transaction | null;
+    }
+  ).data;
   const isAssigned = job.kinglancer_id === user.id;
   const isInvited = job.invited_kinglancer_id === user.id;
   const canViewWorkspace = isAssigned || isInvited || !!application;

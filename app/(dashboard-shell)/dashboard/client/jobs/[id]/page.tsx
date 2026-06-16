@@ -156,9 +156,7 @@ export default async function ClientJobWorkspacePage({
   }
 
   const [applications, kinglancerResult] = await Promise.all([
-    !isDirectRequest &&
-    job.status === "open" &&
-    !hasPendingPayment
+    !isDirectRequest && job.status === "open" && !hasPendingPayment
       ? getApplicationsByJob(id)
       : Promise.resolve([] as ApplicationWithKinglancer[]),
     kinglancerProfileId
@@ -193,8 +191,8 @@ export default async function ClientJobWorkspacePage({
                 Payment unsuccessful
               </h2>
               <p className="mt-1 text-sm text-amber-700">
-                Your card was not charged. Review the job and restart the
-                escrow payment when ready.
+                Your card was not charged. Review the job and restart the escrow
+                payment when ready.
               </p>
             </Card>
           )}
@@ -239,8 +237,8 @@ export default async function ClientJobWorkspacePage({
               </h2>
               <p className="mb-4 mt-1 text-sm text-slate-500">
                 This request is private between you and{" "}
-                {kinglancer?.full_name ?? "the Kinglancer"}. Review
-                terms, accept changes, fund escrow, or cancel from here.
+                {kinglancer?.full_name ?? "the Kinglancer"}. Review terms,
+                accept changes, fund escrow, or cancel from here.
               </p>
               <DirectRequestActions
                 jobId={id}
@@ -295,8 +293,8 @@ export default async function ClientJobWorkspacePage({
                     Payment not completed
                   </h2>
                   <p className="mt-1 text-sm text-amber-700">
-                    Your escrow payment was started but not finished. Resume
-                    to lock in your Kinglancer, or cancel it to change your
+                    Your escrow payment was started but not finished. Resume to
+                    lock in your Kinglancer, or cancel it to change your
                     decision.
                   </p>
                 </div>
@@ -317,17 +315,17 @@ export default async function ClientJobWorkspacePage({
           {job.status === "in_progress" &&
             payment_failed !== "1" &&
             !hasPendingPayment && (
-            <Card className={cardPadding}>
-              <h2 className="text-lg font-black text-slate-950">
-                Job in progress
-              </h2>
-              <p className="mb-4 mt-1 text-sm text-slate-500">
-                Waiting for the Kinglancer to mark the work as done. You can
-                raise a dispute if something has gone wrong.
-              </p>
-              <ClientApproveActions jobId={id} showApprove={false} />
-            </Card>
-          )}
+              <Card className={cardPadding}>
+                <h2 className="text-lg font-black text-slate-950">
+                  Job in progress
+                </h2>
+                <p className="mb-4 mt-1 text-sm text-slate-500">
+                  Waiting for the Kinglancer to mark the work as done. You can
+                  raise a dispute if something has gone wrong.
+                </p>
+                <ClientApproveActions jobId={id} showApprove={false} />
+              </Card>
+            )}
 
           {job.status === "approved" && (
             <Card className={cardPadding}>
@@ -375,7 +373,11 @@ export default async function ClientJobWorkspacePage({
             )}
             <div className="flex items-center gap-3 text-sm text-slate-600">
               <Tag size={16} className="shrink-0 text-slate-400" />
-              <span>{categories.length > 0 ? categories.join(", ") : "No services tagged"}</span>
+              <span>
+                {categories.length > 0
+                  ? categories.join(", ")
+                  : "No services tagged"}
+              </span>
             </div>
             <div className="flex items-center gap-3 text-sm text-slate-600">
               <Briefcase size={16} className="shrink-0 text-slate-400" />
@@ -401,9 +403,7 @@ export default async function ClientJobWorkspacePage({
                   tone="green"
                 />
                 <div>
-                  <p className="font-bold text-slate-950">
-                    {kinglancerName}
-                  </p>
+                  <p className="font-bold text-slate-950">{kinglancerName}</p>
                   <p className="text-sm text-slate-500">
                     {job.kinglancer_id ? "Assigned" : "Invited"}
                   </p>

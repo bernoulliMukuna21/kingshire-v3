@@ -119,7 +119,11 @@ export async function GET(request: Request) {
       "[cleanup-abandoned-checkouts] No pending attempts or transactions found older than cutoff:",
       cutoff,
     );
-    return NextResponse.json({ cleaned: 0, attempts: 0, legacyTransactions: 0 });
+    return NextResponse.json({
+      cleaned: 0,
+      attempts: 0,
+      legacyTransactions: 0,
+    });
   }
 
   if (stuckTxns?.length) {
