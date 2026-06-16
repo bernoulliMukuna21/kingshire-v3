@@ -7,6 +7,7 @@ import NotificationBell from "@/components/NotificationBell";
 import SignOutButton from "@/components/SignOutButton";
 import { getInitials } from "@/lib/utils";
 import { getNavItems } from "@/lib/dashboard-nav";
+import MobileNav from "@/components/MobileNav";
 
 type Props = {
   profile: {
@@ -111,45 +112,11 @@ export default function DashboardShell({ profile, children }: Props) {
         </div>
       </div>
 
-      {/* Mobile top bar */}
-      <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between bg-[#10234b]/95 px-4 py-3 shadow-xl shadow-slate-950/15 backdrop-blur-md">
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/logo.png"
-            alt="KingsHire"
-            width={122}
-            height={32}
-            className="h-8 w-auto brightness-0 invert"
-            priority
-          />
-        </Link>
-        <SignOutButton className="px-4 py-2 text-xs shadow-red-500/20" />
-      </div>
+      {/* Mobile nav (top bar + drawer) */}
+      <MobileNav profile={profile} />
 
-      {/* Main */}
-      <div className="lg:pl-72 pb-24 lg:pb-0">{children}</div>
-
-      {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/10 bg-[#10234b]/95 shadow-[0_-18px_50px_rgba(15,23,42,0.22)] backdrop-blur-md">
-        {navItems.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className={`flex-1 flex flex-col items-center gap-1 py-3 text-[10px] font-semibold transition-colors ${
-              item.active ? "text-sky-300" : "text-white/45"
-            }`}
-          >
-            <span
-              className={`text-lg leading-none ${item.active ? "drop-shadow-[0_0_12px_rgba(125,211,252,0.55)]" : ""}`}
-            >
-              {item.icon}
-            </span>
-            <span className="truncate w-full text-center px-0.5">
-              {item.label}
-            </span>
-          </Link>
-        ))}
-      </nav>
+      {/* Main content */}
+      <div className="lg:pl-72">{children}</div>
     </div>
   );
 }

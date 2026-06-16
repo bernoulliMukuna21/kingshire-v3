@@ -1,5 +1,6 @@
 export type DashboardNavItem = {
   label: string;
+  mobileLabel?: string;
   icon: string;
   href: string;
   active: boolean;
@@ -7,20 +8,55 @@ export type DashboardNavItem = {
 
 const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
   { label: "Dashboard", icon: "⬛", href: "/dashboard/client" },
-  { label: "Action Centre", icon: "⚡", href: "/dashboard/action-centre" },
-  { label: "My Jobs", icon: "💼", href: "/dashboard/client/jobs" },
-  { label: "Transactions", icon: "💳", href: "/dashboard/client/transactions" },
-  { label: "Post a Job", icon: "➕", href: "/jobs/post" },
-  { label: "My Profile", icon: "👤", href: "/dashboard/profile" },
+  {
+    label: "Action Centre",
+    mobileLabel: "Action",
+    icon: "⚡",
+    href: "/dashboard/action-centre",
+  },
+  {
+    label: "My Jobs",
+    mobileLabel: "Jobs",
+    icon: "💼",
+    href: "/dashboard/client/jobs",
+  },
+  {
+    label: "Transactions",
+    mobileLabel: "Payouts",
+    icon: "💳",
+    href: "/dashboard/client/transactions",
+  },
+  { label: "Post a Job", mobileLabel: "Post", icon: "➕", href: "/jobs/post" },
+  {
+    label: "My Profile",
+    mobileLabel: "Profile",
+    icon: "👤",
+    href: "/dashboard/profile",
+  },
   { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
 ];
 
 const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
   { label: "Dashboard", icon: "⬛", href: "/dashboard/kinglancer" },
-  { label: "Action Centre", icon: "⚡", href: "/dashboard/action-centre" },
-  { label: "Active Jobs", icon: "💼", href: "/dashboard/kinglancer/jobs" },
-  { label: "Browse Jobs", icon: "🔎", href: "/jobs" },
-  { label: "My Profile", icon: "👤", href: "/dashboard/profile" },
+  {
+    label: "Action Centre",
+    mobileLabel: "Action",
+    icon: "⚡",
+    href: "/dashboard/action-centre",
+  },
+  {
+    label: "Active Jobs",
+    mobileLabel: "Active",
+    icon: "💼",
+    href: "/dashboard/kinglancer/jobs",
+  },
+  { label: "Browse Jobs", mobileLabel: "Browse", icon: "🔎", href: "/jobs" },
+  {
+    label: "My Profile",
+    mobileLabel: "Profile",
+    icon: "👤",
+    href: "/dashboard/profile",
+  },
   { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
 ];
 

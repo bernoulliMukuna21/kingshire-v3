@@ -17,6 +17,15 @@ const iconToneClasses: Record<Tone, string> = {
   purple: "bg-purple-50 text-purple-700",
 };
 
+const ctaStripClasses: Record<Tone, string> = {
+  blue: "bg-blue-50 text-blue-700 border-t border-blue-100",
+  green: "bg-emerald-50 text-emerald-700 border-t border-emerald-100",
+  amber: "bg-amber-50 text-amber-700 border-t border-amber-100",
+  red: "bg-red-50 text-red-700 border-t border-red-100",
+  slate: "bg-slate-50 text-slate-600 border-t border-slate-100",
+  purple: "bg-purple-50 text-purple-700 border-t border-purple-100",
+};
+
 export type ActionItem = {
   id: string;
   title: string;
@@ -207,38 +216,75 @@ export function ActionSection({
 export function ActionItemCard({ item }: { item: ActionItem }) {
   return (
     <Link href={item.href} className="group block">
-      <Card
-        interactive
-        className="grid gap-4 p-5 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-6"
-      >
-        <div
-          className={cn(
-            "flex h-11 w-11 items-center justify-center rounded-2xl",
-            iconToneClasses[item.tone],
-          )}
-        >
-          {item.icon}
-        </div>
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-base font-black text-slate-950 transition-colors group-hover:text-blue-700">
-              {item.title}
-            </h3>
-            <StatusBadge tone={item.tone}>{item.badge}</StatusBadge>
+      <Card interactive className="overflow-hidden p-0">
+        {/* ── Mobile layout ── */}
+        <div className="sm:hidden">
+          <div className="flex items-start gap-3 p-4">
+            <div
+              className={cn(
+                "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl",
+                iconToneClasses[item.tone],
+              )}
+            >
+              {item.icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="font-black leading-tight text-slate-950">
+                {item.title}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                {item.description}
+              </p>
+              {item.meta && (
+                <p className="mt-1.5 text-xs font-semibold text-slate-400">
+                  {item.meta}
+                </p>
+              )}
+            </div>
           </div>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            {item.description}
-          </p>
-          {item.meta && (
-            <p className="mt-2 text-xs font-semibold text-slate-400">
-              {item.meta}
-            </p>
-          )}
+          {/* Tap-target CTA strip */}
+          <div
+            className={cn(
+              "flex items-center justify-between rounded-b-3xl px-4 py-3",
+              ctaStripClasses[item.tone],
+            )}
+          >
+            <span className="text-sm font-bold">{item.badge}</span>
+            <ChevronRight size={16} className="shrink-0" />
+          </div>
         </div>
-        <ChevronRight
-          size={18}
-          className="hidden text-slate-300 transition-colors group-hover:text-blue-500 sm:block"
-        />
+
+        {/* ── Desktop layout ── */}
+        <div className="hidden sm:grid sm:grid-cols-[auto_1fr_auto] sm:items-center sm:gap-6 sm:p-6">
+          <div
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-2xl",
+              iconToneClasses[item.tone],
+            )}
+          >
+            {item.icon}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-base font-black text-slate-950 transition-colors group-hover:text-blue-700">
+                {item.title}
+              </h3>
+              <StatusBadge tone={item.tone}>{item.badge}</StatusBadge>
+            </div>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              {item.description}
+            </p>
+            {item.meta && (
+              <p className="mt-2 text-xs font-semibold text-slate-400">
+                {item.meta}
+              </p>
+            )}
+          </div>
+          <ChevronRight
+            size={18}
+            className="text-slate-300 transition-colors group-hover:text-blue-500"
+          />
+        </div>
       </Card>
     </Link>
   );

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
+  ExpressCheckoutElement,
   PaymentElement,
   useStripe,
   useElements,
@@ -23,6 +24,20 @@ function CheckoutForm({ jobId }: { jobId: string }) {
   const [processing, setProcessing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [succeeded, setSucceeded] = useState(false);
+  const [walletsVisible, setWalletsVisible] = useState(false);
+
+  const returnUrl = `${window.location.origin}/jobs/${jobId}/pay/confirmed`;
+
+  const confirmCurrentElementsPayment = async () => {
+    if (!stripe || !elements) return { error: { message: "Payment is not ready yet." } };
+
+    return stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: returnUrl,
+      },
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,12 +46,7 @@ function CheckoutForm({ jobId }: { jobId: string }) {
     setProcessing(true);
     setErrorMessage(null);
 
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/jobs/${jobId}/pay/confirmed`,
-      },
-    });
+    const { error } = await confirmCurrentElementsPayment();
 
     // Only reached if there is an immediate error (card declined, etc.)
     // On success, Stripe redirects to return_url
@@ -62,6 +72,89 @@ function CheckoutForm({ jobId }: { jobId: string }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-900">Pay faster</p>
+          <p className="mt-1 text-xs text-gray-500">
+            Apple Pay and Google Pay appear automatically on supported devices and browsers.
+          </p>
+        </div>
+
+        <div className={walletsVisible ? "block" : "hidden"}>
+          <ExpressCheckoutElement
+            options={{
+              business: { name: "KingsHire" },
+              buttonHeight: 48,
+              buttonTheme: {
+                applePay: "black",
+                googlePay: "black",
+              },
+              buttonType: {
+                applePay: "check-out",
+                googlePay: "checkout",
+              },
+              layout: {
+                maxColumns: 2,
+                maxRows: 1,
+                overflow: "auto",
+              },
+              paymentMethods: {
+                applePay: "always",
+                googlePay: "always",
+              },
+            }}
+            onConfirm={async (event) => {
+              if (!elements) {
+                event.paymentFailed({
+                  reason: "fail",
+                  message: "Payment is not ready yet.",
+                });
+                return;
+              }
+
+              setProcessing(true);
+              setErrorMessage(null);
+
+              const { error: submitError } = await elements.submit();
+              if (submitError) {
+                const message =
+                  submitError.message ?? "Could not prepare wallet payment.";
+                setErrorMessage(message);
+                setProcessing(false);
+                event.paymentFailed({ reason: "fail", message });
+                return;
+              }
+
+              const { error } = await confirmCurrentElementsPayment();
+              if (error) {
+                const message =
+                  error.message ?? "Wallet payment failed. Please try again.";
+                setErrorMessage(message);
+                setProcessing(false);
+                event.paymentFailed({ reason: "fail", message });
+                return;
+              }
+
+              setSucceeded(true);
+            }}
+            onAvailablePaymentMethodsChange={(event) => {
+              setWalletsVisible(Boolean(event.paymentMethods));
+            }}
+          />
+        </div>
+      </div>
+
+      {walletsVisible && (
+        <div className="relative py-1">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase tracking-wide text-gray-400">
+            <span className="bg-white px-3">or pay by card</span>
+          </div>
+        </div>
+      )}
+
       <PaymentElement />
 
       {errorMessage && (

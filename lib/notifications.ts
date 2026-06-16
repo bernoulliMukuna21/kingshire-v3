@@ -420,9 +420,7 @@ function emailTemplate({
     : "";
 
   const firstName = getPreferredFirstName(recipientName, recipientEmail);
-  const greeting = firstName
-    ? `Dear ${firstName},`
-    : "Dear there,";
+  const greeting = firstName ? `Dear ${firstName},` : "Dear there,";
 
   return `<!DOCTYPE html>
 <html lang="en">
