@@ -18,6 +18,7 @@ interface NotifyParams {
   email?: {
     to: string;
     subject: string;
+    recipientName?: string;
     ctaLabel?: string;
   };
 }
@@ -57,6 +58,7 @@ export async function notify({
     await sendEmail({
       to: email.to,
       subject: email.subject,
+      recipientName: email.recipientName,
       title,
       body,
       link,
@@ -332,6 +334,7 @@ export async function notifyDisputeResolved({
 async function sendEmail({
   to,
   subject,
+  recipientName,
   title,
   body,
   link,
@@ -339,6 +342,7 @@ async function sendEmail({
 }: {
   to: string;
   subject: string;
+  recipientName?: string;
   title: string;
   body: string;
   link?: string;
@@ -372,7 +376,14 @@ async function sendEmail({
       },
       to: [{ email: to }],
       subject,
-      htmlContent: emailTemplate({ title, body, link, ctaLabel }),
+      htmlContent: emailTemplate({
+        recipientName,
+        recipientEmail: to,
+        title,
+        body,
+        link,
+        ctaLabel,
+      }),
     }),
   });
 
@@ -383,11 +394,15 @@ async function sendEmail({
 }
 
 function emailTemplate({
+  recipientName,
+  recipientEmail,
   title,
   body,
   link,
   ctaLabel = "View Details →",
 }: {
+  recipientName?: string;
+  recipientEmail: string;
   title: string;
   body: string;
   link?: string;
@@ -404,6 +419,11 @@ function emailTemplate({
     ? `<a href="${ctaUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">${ctaLabel}</a>`
     : "";
 
+  const firstName = getPreferredFirstName(recipientName, recipientEmail);
+  const greeting = firstName
+    ? `Dear ${firstName},`
+    : "Dear there,";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -418,6 +438,7 @@ function emailTemplate({
         </tr>
         <tr>
           <td style="padding:32px">
+            <p style="margin:0 0 10px;color:#0f172a;line-height:1.6;font-size:15px">${greeting}</p>
             <h2 style="margin:0 0 12px;font-size:20px;color:#0f172a;font-weight:700">${title}</h2>
             <p style="margin:0 0 28px;color:#64748b;line-height:1.7;font-size:15px">${body}</p>
             ${ctaButton}
@@ -434,4 +455,26 @@ function emailTemplate({
   </table>
 </body>
 </html>`;
+}
+
+function getPreferredFirstName(
+  recipientName: string | undefined,
+  recipientEmail: string,
+) {
+  const trimmed = recipientName?.trim();
+  if (trimmed) return trimmed.split(/\s+/)[0];
+
+  const localPart = recipientEmail.split("@")[0]?.trim();
+  if (!localPart) return null;
+
+  const cleaned = localPart
+    .replace(/[._-]+/g, " ")
+    .replace(/\d+/g, "")
+    .trim();
+
+  if (!cleaned) return null;
+  const firstToken = cleaned.split(/\s+/)[0];
+  if (!firstToken) return null;
+
+  return firstToken.charAt(0).toUpperCase() + firstToken.slice(1).toLowerCase();
 }

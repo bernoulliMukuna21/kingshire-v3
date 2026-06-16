@@ -21,24 +21,49 @@ export default async function PayConfirmedPage({
   const { payment_intent, redirect_status } = await searchParams;
 
   let success = false;
+  let explicitFailure = false;
 
-  if (redirect_status === "succeeded" && payment_intent) {
-    // Verify with Stripe and finalize escrow
+  // Never rely only on redirect_status. Depending on payment method/browser
+  // timing, Stripe can redirect before the backend has finalized state.
+  if (payment_intent) {
     try {
       const pi = await stripe.paymentIntents.retrieve(payment_intent);
-      if (pi.status === "succeeded" && pi.metadata.job_id === id) {
-        await finalizePaymentAttempt(payment_intent);
+
+      if (pi.metadata.job_id !== id) {
+        explicitFailure = true;
+      } else if (pi.status === "succeeded") {
+        // Treat a verified succeeded PI as success even if finalization races
+        // with the webhook and throws an idempotency conflict.
+        try {
+          await finalizePaymentAttempt(payment_intent);
+        } catch (err) {
+          console.warn("[pay/confirmed] finalizePaymentAttempt race:", err);
+        }
         success = true;
+      } else if (
+        pi.status === "canceled" ||
+        pi.status === "requires_payment_method"
+      ) {
+        explicitFailure = true;
       }
-    } catch {
-      // leave success = false
+    } catch (err) {
+      console.warn("[pay/confirmed] Could not retrieve PaymentIntent:", err);
     }
   }
 
-  // Payment failed or was cancelled — redirect back to the job page with a
-  // banner param so the client knows they need to try again.
-  if (!success) {
+  // Stripe can still signal explicit failure via redirect status.
+  if (redirect_status === "failed") {
+    explicitFailure = true;
+  }
+
+  if (explicitFailure && !success) {
     redirect(`/jobs/${id}?payment_failed=1`);
+  }
+
+  // Unknown/pending callback state: return to job without a false failure
+  // banner. The webhook/confirmation endpoint will converge state.
+  if (!success) {
+    redirect(`/jobs/${id}`);
   }
 
   return (
