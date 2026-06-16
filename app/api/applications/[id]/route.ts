@@ -157,6 +157,9 @@ export async function PATCH(
     const paymentIntent = await stripe.paymentIntents.create({
       amount: clientChargePence,
       currency: "gbp",
+      automatic_payment_methods: {
+        enabled: true,
+      },
       metadata: {
         job_id: application.job_id,
         client_id: user.id,
