@@ -25,9 +25,7 @@ function getProfileHeadline(kinglancer: Kinglancer) {
       .filter((name) => name.trim().length > 0) ?? [];
 
   return (
-    kinglancer.tagline ||
-    serviceNames.slice(0, 2).join(" · ") ||
-    "Kinglancer"
+    kinglancer.tagline || serviceNames.slice(0, 2).join(" · ") || "Kinglancer"
   );
 }
 

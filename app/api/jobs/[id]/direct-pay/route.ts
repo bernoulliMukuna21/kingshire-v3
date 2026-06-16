@@ -117,7 +117,10 @@ export async function POST(
         }
 
         if (existingPaymentIntent.status === "canceled") {
-          await updatePaymentAttemptStatus(existingPaymentIntent.id, "cancelled");
+          await updatePaymentAttemptStatus(
+            existingPaymentIntent.id,
+            "cancelled",
+          );
         } else {
           await updatePaymentAttemptStatus(existingPaymentIntent.id, "failed");
         }
@@ -137,6 +140,9 @@ export async function POST(
     const paymentIntent = await stripe.paymentIntents.create({
       amount: clientChargePence,
       currency: "gbp",
+      automatic_payment_methods: {
+        enabled: true,
+      },
       metadata: {
         job_id: job.id,
         client_id: user.id,

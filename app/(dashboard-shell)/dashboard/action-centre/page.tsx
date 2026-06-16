@@ -225,9 +225,7 @@ async function getClientActionData(
   );
 
   const waitingItems = jobsWithFunding
-    .filter(
-      (job) => isClientDirectRequestWaiting(job),
-    )
+    .filter((job) => isClientDirectRequestWaiting(job))
     .map<ActionItem>((job) => ({
       id: `${job.id}:waiting-kinglancer`,
       title: job.title,
@@ -273,9 +271,7 @@ async function getKinglancerActionData(
   }));
 
   const actionItems = jobsWithFunding
-    .filter(
-      (job) => isKinglancerDirectRequestAction(job),
-    )
+    .filter((job) => isKinglancerDirectRequestAction(job))
     .map<ActionItem>((job) => ({
       id: `${job.id}:respond`,
       title: job.title,
@@ -290,9 +286,7 @@ async function getKinglancerActionData(
     }));
 
   const waitingItems = jobsWithFunding
-    .filter((job) =>
-      isKinglancerDirectRequestWaiting(job),
-    )
+    .filter((job) => isKinglancerDirectRequestWaiting(job))
     .map<ActionItem>((job) => ({
       id: `${job.id}:waiting`,
       title: job.title,

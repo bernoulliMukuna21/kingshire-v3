@@ -134,7 +134,10 @@ export async function PATCH(
         }
 
         if (existingPaymentIntent.status === "canceled") {
-          await updatePaymentAttemptStatus(existingPaymentIntent.id, "cancelled");
+          await updatePaymentAttemptStatus(
+            existingPaymentIntent.id,
+            "cancelled",
+          );
         } else {
           await updatePaymentAttemptStatus(existingPaymentIntent.id, "failed");
         }
@@ -154,6 +157,9 @@ export async function PATCH(
     const paymentIntent = await stripe.paymentIntents.create({
       amount: clientChargePence,
       currency: "gbp",
+      automatic_payment_methods: {
+        enabled: true,
+      },
       metadata: {
         job_id: application.job_id,
         client_id: user.id,

@@ -1,6 +1,12 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, TrendingUp, Users, ChevronRight, Briefcase } from "lucide-react";
+import {
+  CheckCircle,
+  TrendingUp,
+  Users,
+  ChevronRight,
+  Briefcase,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { FadeIn } from "@/components/animations";
 import PageHeader from "@/components/ui/PageHeader";
