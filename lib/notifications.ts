@@ -352,6 +352,13 @@ async function sendEmail({
     return;
   }
 
+  if (process.env.ENABLE_EMAIL !== "true") {
+    console.log(
+      `[sendEmail] ENABLE_EMAIL is not true — skipping email to ${to} (subject: ${subject})`,
+    );
+    return;
+  }
+
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
