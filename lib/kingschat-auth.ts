@@ -261,11 +261,14 @@ export async function handleKingsChatCallback(
 
     const destination = getRoleHome(profile?.role);
 
-    // Validate `origin` from KingsChat to prevent open redirect.
+    // If the user has no role they must complete onboarding — don't let
+    // `origin` from KingsChat (typically "/" from the sign-in page) override that.
     const safeNext =
-      origin && origin.startsWith("/") && !origin.startsWith("//")
-        ? origin
-        : destination;
+      !profile?.role
+        ? "/onboarding"
+        : origin && origin.startsWith("/") && !origin.startsWith("//") && origin !== "/"
+          ? origin
+          : destination;
 
     const { data: linkData, error: linkError } =
       await db.auth.admin.generateLink({
