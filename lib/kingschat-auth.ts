@@ -46,9 +46,30 @@ export async function handleKingsChatCallback(
   let origin: string | undefined;
 
   try {
-    const body = await request.json();
+    const contentType = request.headers.get("content-type") ?? "";
+    let body: Record<string, unknown>;
+
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      // KingsChat may POST as form-encoded rather than JSON
+      const text = await request.text();
+      const params = new URLSearchParams(text);
+      body = Object.fromEntries(params.entries());
+    } else if (contentType.includes("application/json")) {
+      body = await request.json();
+    } else {
+      // Try JSON first, fall back to form-encoded
+      const text = await request.text();
+      try {
+        body = JSON.parse(text);
+      } catch {
+        const params = new URLSearchParams(text);
+        body = Object.fromEntries(params.entries());
+      }
+    }
+
     code = typeof body.code === "string" ? body.code : undefined;
     origin = typeof body.origin === "string" ? body.origin : undefined;
+    log("info", "parsed_payload", { contentType, hasCode: Boolean(code), hasOrigin: Boolean(origin) });
   } catch {
     log("error", "invalid_payload", {});
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
