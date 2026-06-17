@@ -243,9 +243,12 @@ export async function handleKingsChatCallback(
   }
 
   // ── 5. Issue a Supabase session via magic-link ───────────────────────────
-  // generateLink returns an action_link that, when visited by the browser,
-  // exchanges the OTP for a real Supabase session and redirects to our
-  // /auth/callback GET handler with the session cookies attached.
+  // generateLink returns a hashed_token we pass to our own /auth/callback as
+  // ?token_hash=...&type=magiclink. That route calls supabase.auth.verifyOtp()
+  // server-side — the correct SSR approach.
+  //
+  // We do NOT redirect the browser to action_link (Supabase's /auth/v1/verify)
+  // because newer GoTrue requires a POST+JSON body for that endpoint, not a GET.
   try {
     const { data: profile } = await db
       .from("profiles")
@@ -266,12 +269,9 @@ export async function handleKingsChatCallback(
       await db.auth.admin.generateLink({
         type: "magiclink",
         email: normalizedEmail,
-        options: {
-          redirectTo: `${appUrl}/auth/callback?next=${encodeURIComponent(safeNext)}`,
-        },
       });
 
-    if (linkError || !linkData?.properties?.action_link) {
+    if (linkError || !linkData?.properties?.hashed_token) {
       log("error", "generate_link_failed", { error: linkError?.message });
       return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
     }
@@ -281,7 +281,13 @@ export async function handleKingsChatCallback(
       destination: safeNext,
     });
 
-    return NextResponse.redirect(linkData.properties.action_link);
+    // Redirect to our own callback which verifies the token server-side
+    const callbackUrl = new URL(`${appUrl}/auth/callback`);
+    callbackUrl.searchParams.set("token_hash", linkData.properties.hashed_token);
+    callbackUrl.searchParams.set("type", "magiclink");
+    callbackUrl.searchParams.set("next", safeNext);
+
+    return NextResponse.redirect(callbackUrl.toString());
   } catch (err) {
     log("error", "session_issue_exception", { err: String(err) });
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
