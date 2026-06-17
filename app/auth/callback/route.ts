@@ -3,6 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRoleHome } from "@/lib/roles";
+import { handleKingsChatCallback } from "@/lib/kingschat-auth";
 
 function getGoogleProfileMetadata(metadata: Record<string, unknown>) {
   const fullName =
@@ -237,4 +238,13 @@ export async function GET(request: NextRequest) {
     ),
   );
   return response;
+}
+
+// POST /auth/callback
+// KingsChat POSTs the OAuth authorization code here because this is the
+// redirect_url registered in the KingsChat developer portal.
+// Once the redirect_url is updated to /api/auth/kingschat/callback after
+// portal approval, this handler can be removed.
+export async function POST(request: Request) {
+  return handleKingsChatCallback(request);
 }
