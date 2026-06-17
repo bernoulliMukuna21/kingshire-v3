@@ -226,8 +226,9 @@ export async function handleKingsChatCallback(
       supabaseUserId = newUser.user.id;
       log("info", "new_user_created", { userId: supabaseUserId });
 
-      // Create the profile row — role is null so they go through onboarding
-      await db.from("profiles").upsert(
+      // The on_auth_user_created trigger already inserted the profiles row.
+      // We upsert here only to backfill avatar_url which the trigger doesn't set.
+      const { error: upsertError } = await db.from("profiles").upsert(
         {
           id: supabaseUserId,
           email: normalizedEmail,
@@ -237,6 +238,10 @@ export async function handleKingsChatCallback(
         },
         { onConflict: "id" },
       );
+      if (upsertError) {
+        log("error", "profile_upsert_failed", { error: upsertError.message });
+        // Non-fatal: trigger already created the row, avatar will just be missing
+      }
     }
   } catch (err) {
     log("error", "user_lookup_exception", { err: String(err) });
