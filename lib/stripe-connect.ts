@@ -25,6 +25,7 @@ export async function getOrCreateStripeAccount(
     email,
     business_type: "individual",
     business_profile: {
+      url: "https://kingshire.uk",
       ...(fullName ? { name: fullName } : {}),
     },
     individual: {
