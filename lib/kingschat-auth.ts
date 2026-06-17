@@ -1,3 +1,4 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRoleHome } from "@/lib/roles";
@@ -242,13 +243,10 @@ export async function handleKingsChatCallback(
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
   }
 
-  // ── 5. Issue a Supabase session via magic-link ───────────────────────────
-  // generateLink returns a hashed_token we pass to our own /auth/callback as
-  // ?token_hash=...&type=magiclink. That route calls supabase.auth.verifyOtp()
-  // server-side — the correct SSR approach.
-  //
-  // We do NOT redirect the browser to action_link (Supabase's /auth/v1/verify)
-  // because newer GoTrue requires a POST+JSON body for that endpoint, not a GET.
+  // ── 5. Issue a Supabase session directly in this request ─────────────────
+  // Generate a magic-link OTP, then immediately verify it server-side using
+  // the raw email_otp code. The SSR client writes the session cookies onto
+  // the redirect response — no extra browser round-trip required.
   try {
     const { data: profile } = await db
       .from("profiles")
@@ -258,8 +256,7 @@ export async function handleKingsChatCallback(
 
     const destination = getRoleHome(profile?.role);
 
-    // `origin` from KingsChat carries the `next` path we embedded in step 1.
-    // Validate it is an internal path before trusting it to prevent open redirect.
+    // Validate `origin` from KingsChat to prevent open redirect.
     const safeNext =
       origin && origin.startsWith("/") && !origin.startsWith("//")
         ? origin
@@ -271,23 +268,60 @@ export async function handleKingsChatCallback(
         email: normalizedEmail,
       });
 
-    if (linkError || !linkData?.properties?.hashed_token) {
+    if (linkError || !linkData?.properties?.email_otp) {
       log("error", "generate_link_failed", { error: linkError?.message });
       return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
     }
 
-    log("info", "redirecting_to_supabase_auth", {
-      userId: supabaseUserId,
-      destination: safeNext,
+    // Verify the OTP server-side immediately — no redirect to /auth/callback.
+    // The SSR client captures the resulting session cookies.
+    const pendingCookies: Array<{
+      name: string;
+      value: string;
+      options: Record<string, unknown>;
+    }> = [];
+
+    const ssrClient = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        cookies: {
+          getAll: () => [],
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              pendingCookies.push({ name, value, options });
+            });
+          },
+        },
+      },
+    );
+
+    const { error: otpError } = await ssrClient.auth.verifyOtp({
+      email: normalizedEmail,
+      token: linkData.properties.email_otp,
+      type: "magiclink",
     });
 
-    // Redirect to our own callback which verifies the token server-side
-    const callbackUrl = new URL(`${appUrl}/auth/callback`);
-    callbackUrl.searchParams.set("token_hash", linkData.properties.hashed_token);
-    callbackUrl.searchParams.set("type", "magiclink");
-    callbackUrl.searchParams.set("next", safeNext);
+    if (otpError) {
+      log("error", "otp_verify_failed", { error: otpError.message });
+      return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+    }
 
-    return NextResponse.redirect(callbackUrl.toString());
+    log("info", "session_established", {
+      userId: supabaseUserId,
+      destination: safeNext,
+      cookieCount: pendingCookies.length,
+    });
+
+    const response = NextResponse.redirect(`${appUrl}${safeNext}`);
+    pendingCookies.forEach(({ name, value, options }) => {
+      response.cookies.set(
+        name,
+        value,
+        options as Parameters<typeof response.cookies.set>[2],
+      );
+    });
+    return response;
   } catch (err) {
     log("error", "session_issue_exception", { err: String(err) });
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
