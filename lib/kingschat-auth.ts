@@ -14,12 +14,12 @@ type KingsChatProfile = {
 };
 
 function log(
-  level: "info" | "error",
+  level: "info" | "error" | "warn",
   event: string,
   details: Record<string, unknown> = {},
 ) {
-  if (level === "info" && process.env.AUTH_DEBUG_LOGS !== "true") return;
-  console[level]("[kingschat/callback]", event, details);
+  // Always log during KingsChat auth — remove gate once flow is stable
+  console[level]("[kingschat/callback]", event, JSON.stringify(details));
 }
 
 /**
@@ -268,8 +268,21 @@ export async function handleKingsChatCallback(
         email: normalizedEmail,
       });
 
+    // Log the full shape of what generateLink returned so we know exactly
+    // which properties are present (email_otp, hashed_token, action_link, etc.)
+    log("info", "generate_link_result", {
+      hasError: Boolean(linkError),
+      errorMessage: linkError?.message ?? null,
+      propertiesKeys: linkData?.properties
+        ? Object.keys(linkData.properties)
+        : null,
+      hasEmailOtp: Boolean(linkData?.properties?.email_otp),
+      hasHashedToken: Boolean(linkData?.properties?.hashed_token),
+      hasActionLink: Boolean(linkData?.properties?.action_link),
+    });
+
     if (linkError || !linkData?.properties?.email_otp) {
-      log("error", "generate_link_failed", { error: linkError?.message });
+      log("error", "generate_link_failed", { error: linkError?.message ?? "no email_otp in properties" });
       return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
     }
 
@@ -296,24 +309,40 @@ export async function handleKingsChatCallback(
       },
     );
 
-    const { error: otpError } = await ssrClient.auth.verifyOtp({
+    log("info", "otp_verify_attempt", {
+      email: normalizedEmail,
+      tokenLength: linkData.properties.email_otp.length,
+    });
+
+    const { data: otpData, error: otpError } = await ssrClient.auth.verifyOtp({
       email: normalizedEmail,
       token: linkData.properties.email_otp,
       type: "magiclink",
     });
 
     if (otpError) {
-      log("error", "otp_verify_failed", { error: otpError.message });
+      log("error", "otp_verify_failed", {
+        errorMessage: otpError.message,
+        errorCode: (otpError as { code?: string }).code ?? null,
+        errorStatus: (otpError as { status?: number }).status ?? null,
+      });
       return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
     }
+
+    log("info", "otp_verify_success", {
+      hasSession: Boolean(otpData?.session),
+      hasUser: Boolean(otpData?.user),
+    });
 
     log("info", "session_established", {
       userId: supabaseUserId,
       destination: safeNext,
       cookieCount: pendingCookies.length,
+      cookieNames: pendingCookies.map((c) => c.name),
     });
 
     const response = NextResponse.redirect(`${appUrl}${safeNext}`);
+    log("info", "redirect_target", { url: `${appUrl}${safeNext}` });
     pendingCookies.forEach(({ name, value, options }) => {
       response.cookies.set(
         name,
