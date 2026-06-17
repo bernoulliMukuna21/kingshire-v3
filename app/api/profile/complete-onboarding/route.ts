@@ -78,7 +78,14 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
+    error: getUserError,
   } = await supabase.auth.getUser();
+
+  console.info("[complete-onboarding] getUser", {
+    hasUser: Boolean(user),
+    userId: user?.id ?? null,
+    errorMessage: getUserError?.message ?? null,
+  });
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
@@ -86,6 +93,13 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const { role, phone, service_tags, services, portfolio_url, cv_url } = body;
+
+  console.info("[complete-onboarding] payload", {
+    userId: user.id,
+    role,
+    hasPhone: Boolean(phone),
+    serviceCount: Array.isArray(services) ? services.length : 0,
+  });
 
   if (role !== "client" && role !== "kinglancer") {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
@@ -104,7 +118,7 @@ export async function POST(request: Request) {
   }
 
   const db = createServiceClient();
-  const { error } = await db
+  const { error, count } = await db
     .from("profiles")
     .update({
       role,
@@ -114,7 +128,16 @@ export async function POST(request: Request) {
       portfolio_url: portfolio_url || null,
       cv_url: cv_url || null,
     })
-    .eq("id", user.id);
+    .eq("id", user.id)
+    .select("id, role");
+
+  console.info("[complete-onboarding] db update result", {
+    userId: user.id,
+    hasError: Boolean(error),
+    errorMessage: error?.message ?? null,
+    errorCode: error?.code ?? null,
+    count,
+  });
 
   if (error) {
     console.error("[complete-onboarding]", error);
