@@ -174,16 +174,15 @@ export async function handleKingsChatCallback(
     hasAvatar: Boolean(kcProfile.avatar),
   });
 
-  // ── 4. Find or create Supabase user ─────────────────────────────────────
-  // Link by email — the standard practice for SSO providers.
-  // An existing KingsHire account (password or Google) with the same email is
-  // silently reused; no duplicate accounts are created.
+  // ── 4. Ensure Supabase auth user exists ──────────────────────────────────
+  // We only need to create the user if they're brand new. If they already
+  // exist in auth.users (regardless of whether a profiles row exists), the
+  // generateLink call in step 5 will work fine — it looks up by email.
+  // We therefore only call createUser when there's no profile row AND there's
+  // no auth user (the error from createUser will tell us which case we're in).
   const db = createServiceClient();
   const normalizedEmail = kcProfile.email.trim().toLowerCase();
-  const displayName =
-    kcProfile.name?.trim() || normalizedEmail.split("@")[0];
-
-  let supabaseUserId: string;
+  const displayName = kcProfile.name?.trim() || normalizedEmail.split("@")[0];
 
   try {
     const { data: existingProfile } = await db
@@ -193,20 +192,16 @@ export async function handleKingsChatCallback(
       .maybeSingle();
 
     if (existingProfile) {
-      supabaseUserId = existingProfile.id;
-      log("info", "existing_user_found", { userId: supabaseUserId });
-
-      // Backfill avatar if they signed up via email and have none
+      log("info", "existing_user_found", { userId: existingProfile.id });
+      // Backfill avatar if missing
       if (kcProfile.avatar && !existingProfile.avatar_url) {
         await db
           .from("profiles")
           .update({ avatar_url: kcProfile.avatar })
-          .eq("id", supabaseUserId);
+          .eq("id", existingProfile.id);
       }
     } else {
-      // New user — create the Supabase auth entry.
-      // email_confirm: true skips the verification email; identity was
-      // already proven by KingsChat's OAuth flow.
+      // No profile row. Try to create the auth user.
       const { data: newUser, error: createError } =
         await db.auth.admin.createUser({
           email: normalizedEmail,
@@ -218,29 +213,40 @@ export async function handleKingsChatCallback(
           },
         });
 
-      if (createError || !newUser?.user) {
-        log("error", "create_user_failed", { error: createError?.message });
-        return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
-      }
+      if (createError) {
+        // "User already registered" means an auth user exists but has no profile.
+        // That's fine — generateLink in step 5 will still work by email.
+        // Any other error is fatal.
+        const isAlreadyExists =
+          createError.message.toLowerCase().includes("already") ||
+          createError.message.toLowerCase().includes("duplicate") ||
+          createError.message.toLowerCase().includes("registered");
 
-      supabaseUserId = newUser.user.id;
-      log("info", "new_user_created", { userId: supabaseUserId });
+        log(isAlreadyExists ? "info" : "error", "create_user_result", {
+          alreadyExists: isAlreadyExists,
+          error: createError.message,
+        });
 
-      // The on_auth_user_created trigger already inserted the profiles row.
-      // We upsert here only to backfill avatar_url which the trigger doesn't set.
-      const { error: upsertError } = await db.from("profiles").upsert(
-        {
-          id: supabaseUserId,
-          email: normalizedEmail,
-          full_name: displayName,
-          avatar_url: kcProfile.avatar ?? null,
-          role: null,
-        },
-        { onConflict: "id" },
-      );
-      if (upsertError) {
-        log("error", "profile_upsert_failed", { error: upsertError.message });
-        // Non-fatal: trigger already created the row, avatar will just be missing
+        if (!isAlreadyExists) {
+          return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+        }
+        // If already exists: continue — generateLink will still work.
+      } else if (newUser?.user) {
+        log("info", "new_user_created", { userId: newUser.user.id });
+        // Trigger already inserted the profile row; upsert only to add avatar_url.
+        const { error: upsertError } = await db.from("profiles").upsert(
+          {
+            id: newUser.user.id,
+            email: normalizedEmail,
+            full_name: displayName,
+            avatar_url: kcProfile.avatar ?? null,
+            role: null,
+          },
+          { onConflict: "id" },
+        );
+        if (upsertError) {
+          log("error", "profile_upsert_failed", { error: upsertError.message });
+        }
       }
     }
   } catch (err) {
@@ -249,53 +255,34 @@ export async function handleKingsChatCallback(
   }
 
   // ── 5. Issue a Supabase session directly in this request ─────────────────
-  // Generate a magic-link OTP, then immediately verify it server-side using
-  // the raw email_otp code. The SSR client writes the session cookies onto
-  // the redirect response — no extra browser round-trip required.
+  // Generate a magic-link OTP for the email, verify it server-side, collect
+  // the session cookies, and attach them to the redirect response.
+  //
+  // IMPORTANT: we use otpData.user.id (the session user) as the canonical ID,
+  // NOT the ID we may have computed in step 4. If duplicate auth users existed
+  // from earlier failed attempts, generateLink will resolve to one of them —
+  // using the session user ensures the profile and session are always in sync.
   try {
-    const { data: profile } = await db
-      .from("profiles")
-      .select("role")
-      .eq("id", supabaseUserId)
-      .single();
-
-    const destination = getRoleHome(profile?.role);
-
-    // If the user has no role they must complete onboarding — don't let
-    // `origin` from KingsChat (typically "/" from the sign-in page) override that.
-    const safeNext =
-      !profile?.role
-        ? "/onboarding"
-        : origin && origin.startsWith("/") && !origin.startsWith("//") && origin !== "/"
-          ? origin
-          : destination;
-
     const { data: linkData, error: linkError } =
       await db.auth.admin.generateLink({
         type: "magiclink",
         email: normalizedEmail,
       });
 
-    // Log the full shape of what generateLink returned so we know exactly
-    // which properties are present (email_otp, hashed_token, action_link, etc.)
     log("info", "generate_link_result", {
       hasError: Boolean(linkError),
       errorMessage: linkError?.message ?? null,
-      propertiesKeys: linkData?.properties
-        ? Object.keys(linkData.properties)
-        : null,
+      propertiesKeys: linkData?.properties ? Object.keys(linkData.properties) : null,
       hasEmailOtp: Boolean(linkData?.properties?.email_otp),
-      hasHashedToken: Boolean(linkData?.properties?.hashed_token),
-      hasActionLink: Boolean(linkData?.properties?.action_link),
     });
 
     if (linkError || !linkData?.properties?.email_otp) {
-      log("error", "generate_link_failed", { error: linkError?.message ?? "no email_otp in properties" });
+      log("error", "generate_link_failed", {
+        error: linkError?.message ?? "no email_otp in properties",
+      });
       return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
     }
 
-    // Verify the OTP server-side immediately — no redirect to /auth/callback.
-    // The SSR client captures the resulting session cookies.
     const pendingCookies: Array<{
       name: string;
       value: string;
@@ -328,22 +315,57 @@ export async function handleKingsChatCallback(
       type: "magiclink",
     });
 
-    if (otpError) {
+    if (otpError || !otpData?.user) {
       log("error", "otp_verify_failed", {
-        errorMessage: otpError.message,
-        errorCode: (otpError as { code?: string }).code ?? null,
-        errorStatus: (otpError as { status?: number }).status ?? null,
+        errorMessage: otpError?.message ?? "no user in otp response",
+        errorCode: (otpError as { code?: string })?.code ?? null,
+        errorStatus: (otpError as { status?: number })?.status ?? null,
       });
       return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
     }
 
+    // Use the session user's ID as canonical — not the pre-computed one.
+    const sessionUserId = otpData.user.id;
     log("info", "otp_verify_success", {
-      hasSession: Boolean(otpData?.session),
-      hasUser: Boolean(otpData?.user),
+      sessionUserId,
+      hasSession: Boolean(otpData.session),
     });
 
+    // Ensure profile row exists for the session user and get their role.
+    // This is the safety net for orphaned auth users (auth user exists, no profile).
+    const { data: sessionProfile } = await db
+      .from("profiles")
+      .select("role")
+      .eq("id", sessionUserId)
+      .maybeSingle();
+
+    if (!sessionProfile) {
+      log("info", "creating_missing_profile", { sessionUserId });
+      await db.from("profiles").upsert(
+        {
+          id: sessionUserId,
+          email: normalizedEmail,
+          full_name: displayName,
+          avatar_url: kcProfile.avatar ?? null,
+          role: null,
+        },
+        { onConflict: "id" },
+      );
+    }
+
+    const destination = getRoleHome(sessionProfile?.role ?? null);
+    const safeNext =
+      !sessionProfile?.role
+        ? "/onboarding"
+        : origin &&
+            origin.startsWith("/") &&
+            !origin.startsWith("//") &&
+            origin !== "/"
+          ? origin
+          : destination;
+
     log("info", "session_established", {
-      userId: supabaseUserId,
+      sessionUserId,
       destination: safeNext,
       cookieCount: pendingCookies.length,
       cookieNames: pendingCookies.map((c) => c.name),
