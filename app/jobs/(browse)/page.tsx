@@ -1,10 +1,28 @@
+import { unstable_cache } from "next/cache";
 import { FadeIn } from "@/components/animations";
-import { getOpenJobs } from "@/lib/db/jobs";
+import type { JobWithClient } from "@/lib/db/jobs";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
 import JobsList from "../JobsList";
 import PublicHero from "@/components/ui/PublicHero";
 import PublicShell from "@/components/ui/PublicShell";
+
+const getCachedOpenJobs = unstable_cache(
+  async (): Promise<JobWithClient[]> => {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from("jobs")
+      .select("*, client:profiles!client_id(full_name, avatar_url)")
+      .eq("status", "open")
+      .is("invited_kinglancer_id", null)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    return (data ?? []) as unknown as JobWithClient[];
+  },
+  ["open-jobs"],
+  { revalidate: 300, tags: ["open-jobs"] },
+);
 
 export default async function JobsPage() {
   const supabase = await createClient();
@@ -24,7 +42,7 @@ export default async function JobsPage() {
     }
   }
 
-  const jobs = await getOpenJobs();
+  const jobs = await getCachedOpenJobs();
   const visibleJobs = user
     ? jobs.filter((job) => job.client_id !== user.id)
     : jobs;

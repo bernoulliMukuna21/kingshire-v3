@@ -196,6 +196,7 @@ export async function finalizePaymentAttempt(
         .update({
           status: "in_progress",
           kinglancer_id: attempt.kinglancer_id,
+          direct_request_status: null,
         })
         .eq("id", attempt.job_id)
         .eq("status", "open")

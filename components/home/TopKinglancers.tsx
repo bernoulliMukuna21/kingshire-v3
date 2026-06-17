@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { Star, ArrowRight } from "lucide-react";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 const GRADIENT_CYCLE = [
   "from-purple-500 to-pink-500",
@@ -12,19 +13,25 @@ const GRADIENT_CYCLE = [
   "from-red-500 to-orange-500",
 ];
 
+const getTopKinglancers = unstable_cache(
+  async () => {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select(
+        "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services",
+      )
+      .eq("role", "kinglancer")
+      .order("jobs_completed", { ascending: false })
+      .limit(6);
+    return data ?? [];
+  },
+  ["top-kinglancers"],
+  { revalidate: 86400 }, // 24 hours — ranking changes very slowly
+);
+
 export default async function TopKinglancers() {
-  const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("profiles")
-    .select(
-      "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services",
-    )
-    .eq("role", "kinglancer")
-    .order("jobs_completed", { ascending: false })
-    .limit(6);
-
-  const kinglancers = data ?? [];
+  const kinglancers = await getTopKinglancers();
 
   return (
     <section className="py-16 md:py-24 px-6 bg-gray-50">
@@ -61,7 +68,7 @@ export default async function TopKinglancers() {
             {kinglancers.map((k, i) => {
               const color = GRADIENT_CYCLE[i % GRADIENT_CYCLE.length];
               const serviceNames =
-                k.services
+                (k.services as { name: string }[] | null)
                   ?.map((service) => service.name)
                   .filter((name) => name.trim().length > 0) ?? [];
               const headline =

@@ -67,7 +67,6 @@ type Transaction = {
 };
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  open: { label: "Direct request", className: "bg-violet-100 text-violet-700" },
   in_progress: { label: "In progress", className: "bg-blue-100 text-blue-700" },
   completed: {
     label: "Awaiting approval",
@@ -240,7 +239,10 @@ export default async function KinglancerJobWorkspacePage({
 
   if (!canViewWorkspace) redirect(`/jobs/${id}`);
 
-  const status = statusConfig[job.status] ?? statusConfig.open;
+  const openStatus = isInvited
+    ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
+    : { label: "Open", className: "bg-green-100 text-green-700" };
+  const status = statusConfig[job.status] ?? openStatus;
   const action = nextAction({ job, application, transaction });
   const netHeld =
     transaction && transaction.status === "held"
