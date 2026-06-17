@@ -7,7 +7,6 @@ import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import GoogleButton from "@/components/auth/GoogleButton";
-import KingsChatButton from "@/components/auth/KingsChatButton";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { getRoleHome } from "@/lib/roles";
@@ -104,7 +103,6 @@ function SignInContent() {
         <p className="text-gray-500 mb-8 text-sm">Enter your details below.</p>
 
         <GoogleButton onClick={handleGoogleSignIn} />
-        <KingsChatButton />
 
         {authSuccess === "password_reset" && (
           <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
