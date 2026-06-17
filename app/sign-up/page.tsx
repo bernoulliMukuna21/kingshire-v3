@@ -8,6 +8,7 @@ import { Eye, EyeOff, CheckCircle, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import GoogleButton from "@/components/auth/GoogleButton";
+import KingsChatButton from "@/components/auth/KingsChatButton";
 import {
   EMAIL_VALIDATION_MESSAGE,
   isValidEmailAddress,
@@ -165,6 +166,7 @@ export default function SignUpPage() {
               </p>
 
               <GoogleButton onClick={handleGoogleSignUp} />
+              <KingsChatButton label="Sign up with KingsChat" />
 
               {error && (
                 <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
