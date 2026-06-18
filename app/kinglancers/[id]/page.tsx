@@ -1,17 +1,22 @@
-export const dynamic = "force-dynamic";
-
+import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Briefcase, ExternalLink, MapPin, Star } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import PublicShell from "@/components/ui/PublicShell";
 import PublicHero from "@/components/ui/PublicHero";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { getRoleHome } from "@/lib/roles";
 import ServicesSection from "./ServicesSection";
+import {
+  BookingCard,
+  BookingCardWrapper,
+  AppliedToYourJobsBanner,
+} from "./BookingCard";
+
+export const revalidate = 3600;
 
 export default async function KinglancerProfilePage({
   params,
@@ -19,59 +24,40 @@ export default async function KinglancerProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const [
-    { data: kinglancer },
-    {
-      data: { user },
+  const getKinglancerProfile = unstable_cache(
+    async () => {
+      const supabase = createServiceClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select(
+          "id, full_name, avatar_url, role, bio, location, service_tags, rating, total_reviews, jobs_completed, tagline, hourly_rate, rate_type, services, portfolio_url, is_verified",
+        )
+        .eq("id", id)
+        .eq("role", "kinglancer")
+        .single();
+      return data ?? null;
     },
-  ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select(
-        "id, full_name, avatar_url, role, bio, location, service_tags, rating, total_reviews, jobs_completed, tagline, hourly_rate, rate_type, services, portfolio_url, is_verified",
-      )
-      .eq("id", id)
-      .eq("role", "kinglancer")
-      .single(),
-    supabase.auth.getUser(),
-  ]);
+    [`kinglancer-profile-${id}`],
+    {
+      revalidate: 3600,
+      tags: [`kinglancer-profile-${id}`, "kinglancer-profiles"],
+    },
+  );
+
+  const kinglancer = await getKinglancerProfile();
 
   if (!kinglancer) notFound();
 
-  const { data: currentProfile } = user
-    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
-    : { data: null };
-
-  // If the viewer is a client, find any jobs of theirs this kinglancer has applied for
-  let appliedToYourJobs: { jobId: string; jobTitle: string }[] = [];
-  if (user && currentProfile?.role === "client") {
-    const { data: applications } = await supabase
-      .from("applications")
-      .select("job_id, job:jobs!job_id(id, title, client_id)")
-      .eq("kinglancer_id", kinglancer.id)
-      .in("status", ["pending", "accepted"]);
-
-    type AppWithJob = {
-      job_id: string;
-      job: { id: string; title: string; client_id: string } | null;
-    };
-
-    appliedToYourJobs = ((applications ?? []) as unknown as AppWithJob[])
-      .filter((a) => a.job?.client_id === user.id)
-      .map((a) => ({ jobId: a.job!.id, jobTitle: a.job!.title }));
-  }
-
-  const serviceNames =
-    kinglancer.services
-      ?.map((service) => service.name)
-      .filter((name) => name.trim().length > 0) ?? [];
-  const pricedServices =
-    kinglancer.services?.filter((service) => Number(service.rate) > 0) ?? [];
+  type Service = { name: string; rate: number; rate_type: string };
+  const services = (kinglancer.services as Service[] | null) ?? [];
+  const serviceNames = services
+    .map((s) => s.name)
+    .filter((n) => n.trim().length > 0);
+  const pricedServices = services.filter((s) => Number(s.rate) > 0);
   const lowestServiceRate =
     pricedServices.length > 0
-      ? Math.min(...pricedServices.map((service) => Number(service.rate)))
+      ? Math.min(...pricedServices.map((s) => Number(s.rate)))
       : null;
   const profileHeadline =
     kinglancer.tagline || serviceNames.slice(0, 2).join(" · ") || "Kinglancer";
@@ -84,54 +70,7 @@ export default async function KinglancerProfilePage({
       ? Number(kinglancer.rating).toFixed(1)
       : "New";
   const bookingHref = `/jobs/request/${kinglancer.id}`;
-
-  const bookingCta =
-    currentProfile?.role === "admin" ? (
-      <p className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-        Admin accounts can inspect profiles but cannot book marketplace work.
-      </p>
-    ) : user?.id === kinglancer.id ? (
-      <ButtonLink href="/dashboard/profile" className="w-full sm:w-auto">
-        Edit your profile
-      </ButtonLink>
-    ) : currentProfile?.role === "client" ? (
-      <ButtonLink href={bookingHref} className="w-full sm:w-auto">
-        Request this Kinglancer
-      </ButtonLink>
-    ) : currentProfile?.role === "kinglancer" ? (
-      <div className="space-y-3">
-        <p className="text-sm text-slate-500">
-          Switch to a client account before requesting another Kinglancer.
-        </p>
-        <ButtonLink
-          href="/dashboard/settings"
-          variant="secondary"
-          className="w-full sm:w-auto"
-        >
-          Go to settings
-        </ButtonLink>
-      </div>
-    ) : user ? (
-      <ButtonLink
-        href={getRoleHome(currentProfile?.role)}
-        className="w-full sm:w-auto"
-      >
-        Complete client setup
-      </ButtonLink>
-    ) : (
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <ButtonLink href="/sign-up" className="w-full sm:w-auto">
-          Sign up to request
-        </ButtonLink>
-        <ButtonLink
-          href="/sign-in"
-          variant="secondary"
-          className="w-full sm:w-auto"
-        >
-          Sign in
-        </ButtonLink>
-      </div>
-    );
+  const firstName = kinglancer.full_name?.split(" ")[0] || "this Kinglancer";
 
   return (
     <PublicShell>
@@ -148,18 +87,11 @@ export default async function KinglancerProfilePage({
         </div>
       </PublicHero>
 
-      <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6 lg:hidden">
-        <Card className="p-6">
-          <h2 className="text-lg font-black text-slate-950">
-            Work with {kinglancer.full_name?.split(" ")[0] || "this Kinglancer"}
-          </h2>
-          <p className="mb-5 mt-2 text-sm leading-6 text-slate-500">
-            Send a private job request. They can accept, decline, or suggest
-            changes before you fund escrow.
-          </p>
-          {bookingCta}
-        </Card>
-      </div>
+      <BookingCardWrapper
+        kinglancerId={kinglancer.id}
+        kinglancerFirstName={firstName}
+        bookingHref={bookingHref}
+      />
 
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
@@ -230,25 +162,12 @@ export default async function KinglancerProfilePage({
             </p>
           </Card>
 
-          {appliedToYourJobs.length > 0 && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 space-y-1.5">
-              <p className="text-sm font-bold text-blue-900">
-                {kinglancer.full_name?.split(" ")[0]} has applied for your job
-                {appliedToYourJobs.length > 1 ? "s" : ""}
-              </p>
-              {appliedToYourJobs.map(({ jobId, jobTitle }) => (
-                <a
-                  key={jobId}
-                  href={`/jobs/${jobId}`}
-                  className="flex items-center gap-1.5 text-sm text-blue-700 hover:underline font-medium"
-                >
-                  &rarr; {jobTitle}
-                </a>
-              ))}
-            </div>
-          )}
+          <AppliedToYourJobsBanner
+            kinglancerId={kinglancer.id}
+            kinglancerFirstName={firstName}
+          />
 
-          {(kinglancer.services?.length ?? 0) > 0 && (
+          {services.length > 0 && (
             <ServicesSection services={kinglancer.services} />
           )}
         </div>
@@ -256,14 +175,17 @@ export default async function KinglancerProfilePage({
         <aside className="space-y-6">
           <Card className="hidden p-6 lg:block">
             <h2 className="text-lg font-black text-slate-950">
-              Work with{" "}
-              {kinglancer.full_name?.split(" ")[0] || "this Kinglancer"}
+              Work with {firstName}
             </h2>
             <p className="mb-5 mt-2 text-sm leading-6 text-slate-500">
               Send a private job request. They can accept, decline, or suggest
               changes before you fund escrow.
             </p>
-            {bookingCta}
+            <BookingCard
+              kinglancerId={kinglancer.id}
+              kinglancerFirstName={firstName}
+              bookingHref={bookingHref}
+            />
           </Card>
 
           <Card className="p-6">
@@ -272,7 +194,7 @@ export default async function KinglancerProfilePage({
             </h2>
             <div className="mt-4 flex flex-wrap gap-2">
               {(kinglancer.service_tags ?? []).length > 0 ? (
-                kinglancer.service_tags.map((service) => (
+                (kinglancer.service_tags as string[]).map((service) => (
                   <span
                     key={service}
                     className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700"
@@ -303,7 +225,7 @@ export default async function KinglancerProfilePage({
               </p>
             ) : kinglancer.hourly_rate ? (
               <p className="mt-1 text-sm font-semibold text-slate-400">
-                {kinglancer.rate_type.replace("_", " ")}
+                {(kinglancer.rate_type as string).replace("_", " ")}
               </p>
             ) : null}
           </Card>
@@ -311,7 +233,7 @@ export default async function KinglancerProfilePage({
           {kinglancer.portfolio_url && (
             <Card className="p-6">
               <Link
-                href={kinglancer.portfolio_url}
+                href={kinglancer.portfolio_url as string}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:underline"

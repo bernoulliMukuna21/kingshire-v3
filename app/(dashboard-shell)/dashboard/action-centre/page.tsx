@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import {
   AlertCircle,
   CheckCircle2,
@@ -7,6 +6,7 @@ import {
   Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getDashboardContext } from "@/lib/dashboard-context";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import {
@@ -25,10 +25,6 @@ import {
   isKinglancerDirectRequestAction,
   isKinglancerDirectRequestWaiting,
 } from "@/lib/dashboard-action-rules";
-
-type Profile = {
-  role: "client" | "kinglancer" | "admin" | null;
-};
 
 type ClientActionJob = {
   id: string;
@@ -313,22 +309,7 @@ async function getKinglancerActionData(
 }
 
 export default async function ActionCentrePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/sign-in");
-
-  const { data: profile } = (await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()) as { data: Profile | null };
-
-  if (!profile) redirect("/onboarding");
-  if (profile.role === "admin") redirect("/admin");
-  if (!profile.role) redirect("/onboarding");
+  const { supabase, user, profile } = await getDashboardContext();
 
   const { actionItems, waitingItems } =
     profile.role === "client"

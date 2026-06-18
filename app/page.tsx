@@ -1,5 +1,4 @@
-export const dynamic = "force-dynamic";
-
+import { unstable_cache } from "next/cache";
 import HeroSection from "@/components/home/HeroSection";
 import ServicesMarquee from "@/components/home/ServicesMarquee";
 import HowItWorks from "@/components/home/HowItWorks";
@@ -10,23 +9,35 @@ import PublicShell from "@/components/ui/PublicShell";
 import { formatMilestoneCount } from "@/lib/format-stats";
 import { createServiceClient } from "@/lib/supabase/service";
 
-export default async function HomePage() {
-  const serviceDb = createServiceClient();
-  const [profilesResult, jobsResult, kinglancersResult] = await Promise.all([
-    serviceDb
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .or("role.is.null,role.neq.admin"),
-    serviceDb.from("jobs").select("id", { count: "exact", head: true }),
-    serviceDb
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "kinglancer"),
-  ]);
+// Revalidate the whole page at most every 5 minutes
+export const revalidate = 3600; // 1 hour — social proof stats, staleness is invisible
 
-  const peopleCount = profilesResult.count ?? 0;
-  const jobsCount = jobsResult.count ?? 0;
-  const kinglancersCount = kinglancersResult.count ?? 0;
+const getHomepageStats = unstable_cache(
+  async () => {
+    const serviceDb = createServiceClient();
+    const [profilesResult, jobsResult, kinglancersResult] = await Promise.all([
+      serviceDb
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .or("role.is.null,role.neq.admin"),
+      serviceDb.from("jobs").select("id", { count: "exact", head: true }),
+      serviceDb
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("role", "kinglancer"),
+    ]);
+    return {
+      peopleCount: profilesResult.count ?? 0,
+      jobsCount: jobsResult.count ?? 0,
+      kinglancersCount: kinglancersResult.count ?? 0,
+    };
+  },
+  ["homepage-stats"],
+  { revalidate: 3600 },
+);
+
+export default async function HomePage() {
+  const { peopleCount, jobsCount, kinglancersCount } = await getHomepageStats();
 
   return (
     <PublicShell>

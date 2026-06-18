@@ -1,6 +1,8 @@
+"use client";
+
 import { ChevronRight } from "lucide-react";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
-import { createClient } from "@/lib/supabase/server";
+import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
 
 const CLIENT_STEPS = [
   {
@@ -48,21 +50,8 @@ const KINGLANCER_STEPS = [
   },
 ];
 
-export default async function HowItWorks() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  let role: string | null = null;
-  if (user) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    role = data?.role ?? null;
-  }
+export default function HowItWorks() {
+  const { role } = usePublicAuth();
 
   const steps = role === "kinglancer" ? KINGLANCER_STEPS : CLIENT_STEPS;
   const subtitle =

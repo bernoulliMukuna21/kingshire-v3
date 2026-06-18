@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 
@@ -37,29 +37,62 @@ const TYPE_ICON: Record<string, string> = {
 
 export default function NotificationBell() {
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<Notification[] | null>(
+    null,
+  );
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingList, setLoadingList] = useState(false);
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Fetch on mount and poll every 30 s
+  // Poll only the unread count; load full notification bodies when opened.
   useEffect(() => {
-    let cancelled = false;
-
-    const fetchNotifications = async () => {
+    async function fetchSummary() {
       try {
-        const res = await fetch("/api/notifications");
-        if (res.ok && !cancelled) setNotifications(await res.json());
+        const res = await fetch("/api/notifications?summary=1", {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { unread?: number };
+        setUnreadCount(data.unread ?? 0);
       } catch {}
-    };
+    }
 
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30_000);
+    fetchSummary();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") fetchSummary();
+    }, 60_000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") fetchSummary();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
-      cancelled = true;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    if (!open || notifications !== null) return;
+
+    async function fetchNotificationList() {
+      setLoadingList(true);
+      try {
+        const res = await fetch("/api/notifications", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as Notification[];
+        setNotifications(data);
+        setUnreadCount(data.filter((n) => !n.read).length);
+      } catch {
+      } finally {
+        setLoadingList(false);
+      }
+    }
+
+    fetchNotificationList();
+  }, [open, notifications]);
 
   // Close panel on outside click
   useEffect(() => {
@@ -72,18 +105,26 @@ export default function NotificationBell() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = unreadCount;
 
   async function markAllRead() {
     await fetch("/api/notifications", { method: "PATCH" });
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    setNotifications((prev) =>
+      prev ? prev.map((n) => ({ ...n, read: true })) : prev,
+    );
   }
 
   async function handleClick(n: Notification) {
     if (!n.read) {
       await fetch(`/api/notifications/${n.id}/read`, { method: "PATCH" });
+      setUnreadCount((prev) => Math.max(0, prev - 1));
       setNotifications((prev) =>
-        prev.map((item) => (item.id === n.id ? { ...item, read: true } : item)),
+        prev
+          ? prev.map((item) =>
+              item.id === n.id ? { ...item, read: true } : item,
+            )
+          : prev,
       );
     }
     setOpen(false);
@@ -124,7 +165,11 @@ export default function NotificationBell() {
 
           {/* List */}
           <div className="max-h-96 overflow-y-auto">
-            {notifications.length === 0 ? (
+            {loadingList && notifications === null ? (
+              <div className="px-4 py-8 text-center text-white/30 text-sm">
+                Loading notifications…
+              </div>
+            ) : !notifications || notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-white/30 text-sm">
                 No notifications yet
               </div>

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOpenJobs, createJob } from "@/lib/db/jobs";
@@ -171,6 +172,10 @@ export async function POST(request: Request) {
           })),
         )
         .then(() => null);
+    }
+
+    if (!invitedKinglancerId) {
+      revalidateTag("open-jobs", "max");
     }
 
     return NextResponse.json(job, { status: 201 });

@@ -221,6 +221,9 @@ export default function ProfileForm({ profile }: Props) {
     if (updateError) {
       setError("Failed to save changes. Please try again.");
     } else {
+      // Purge the ISR cache for public kinglancer pages so visitors
+      // see the updated profile immediately (fire-and-forget).
+      fetch("/api/profile/revalidate", { method: "POST" }).catch(() => {});
       setSuccess(true);
       router.refresh();
     }

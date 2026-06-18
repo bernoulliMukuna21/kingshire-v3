@@ -26,11 +26,7 @@ export const proxy = async (request: NextRequest) => {
   }
 
   const { supabase, ctx } = createProxyClient(request);
-  const { user, authError } = await getProxyUser(supabase, pathname);
-
-  if (authError) {
-    clearSupabaseAuthCookies(ctx.response, request);
-  }
+  const { user } = await getProxyUser(supabase, pathname);
 
   // Logged-in users visiting auth pages → send to their dashboard
   if (user && onAuthPage) {
@@ -61,34 +57,14 @@ const getProxyUser = async (supabase: SupabaseClient, pathname: string) => {
       }
     }
 
-    return { user: data.user, authError: error };
+    return { user: data.user };
   } catch (error) {
     console.warn("[proxy/auth]", "get_user_threw", {
       pathname,
       message: error instanceof Error ? error.message : "Unknown auth error",
     });
-    return { user: null, authError: error };
+    return { user: null };
   }
-};
-
-const clearSupabaseAuthCookies = (
-  response: NextResponse,
-  request: NextRequest,
-) => {
-  request.cookies
-    .getAll()
-    .filter(
-      (cookie) =>
-        cookie.name.startsWith("sb-") &&
-        cookie.name.includes("auth-token") &&
-        !cookie.name.endsWith("-code-verifier"),
-    )
-    .forEach((cookie) => {
-      response.cookies.set(cookie.name, "", {
-        maxAge: 0,
-        path: "/",
-      });
-    });
 };
 
 const createProxyClient = (request: NextRequest) => {
