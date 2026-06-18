@@ -16,6 +16,8 @@ const GRADIENT_CYCLE = [
 const getTopKinglancers = unstable_cache(
   async () => {
     const supabase = createServiceClient();
+    // Order by jobs_completed desc first, then by created_at asc as tiebreaker
+    // so that until reviews exist, the earliest members are shown.
     const { data } = await supabase
       .from("profiles")
       .select(
@@ -23,6 +25,7 @@ const getTopKinglancers = unstable_cache(
       )
       .eq("role", "kinglancer")
       .order("jobs_completed", { ascending: false })
+      .order("created_at", { ascending: true })
       .limit(6);
     return data ?? [];
   },
@@ -61,79 +64,81 @@ export default async function TopKinglancers() {
             </Link>
           </FadeIn>
         ) : (
-          <Stagger
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-            staggerDelay={0.08}
-          >
-            {kinglancers.map((k, i) => {
-              const color = GRADIENT_CYCLE[i % GRADIENT_CYCLE.length];
-              const serviceNames =
-                (k.services as { name: string }[] | null)
-                  ?.map((service) => service.name)
-                  .filter((name) => name.trim().length > 0) ?? [];
-              const headline =
-                k.tagline ||
-                serviceNames.slice(0, 2).join(" · ") ||
-                "Kinglancer";
-              const initials = k.full_name
-                .split(" ")
-                .map((n: string) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2);
+          <>
+            {/* Mobile: horizontal scroll carousel */}
+            <div className="sm:hidden -mx-6 px-6">
+              <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide">
+                {kinglancers.map((k, i) => {
+                  const color = GRADIENT_CYCLE[i % GRADIENT_CYCLE.length];
+                  const serviceNames =
+                    (k.services as { name: string }[] | null)
+                      ?.map((service) => service.name)
+                      .filter((name) => name.trim().length > 0) ?? [];
+                  const headline =
+                    k.tagline ||
+                    serviceNames.slice(0, 2).join(" · ") ||
+                    "Kinglancer";
+                  const initials = k.full_name
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2);
 
-              return (
-                <StaggerItem key={k.id}>
-                  <Link
-                    href={`/kinglancers/${k.id}`}
-                    className="group block cursor-pointer rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50"
-                  >
-                    <div className="flex items-start gap-4 mb-4">
-                      <div
-                        className={`w-12 h-12 rounded-2xl bg-linear-to-br ${color} flex items-center justify-center text-white font-bold text-lg shrink-0 overflow-hidden`}
-                      >
-                        {k.avatar_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={k.avatar_url}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          initials
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-bold text-gray-900 truncate">
-                          {k.full_name}
-                        </p>
-                        <p className="text-gray-500 text-sm">{headline}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                      <div className="flex items-center gap-1">
-                        <Star
-                          size={14}
-                          className="text-yellow-400 fill-yellow-400"
-                        />
-                        <span className="text-sm font-semibold text-gray-700">
-                          {k.jobs_completed > 0
-                            ? Number(k.rating).toFixed(1)
-                            : "New"}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-400">
-                        {k.jobs_completed} jobs completed
-                      </span>
-                      <span className="text-xs text-blue-600 font-medium group-hover:underline">
-                        View profile →
-                      </span>
-                    </div>
-                  </Link>
-                </StaggerItem>
-              );
-            })}
-          </Stagger>
+                  return (
+                    <Link
+                      key={k.id}
+                      href={`/kinglancers/${k.id}`}
+                      className="group shrink-0 w-[72vw] max-w-[280px] snap-start block rounded-2xl border border-gray-100 bg-white p-5 transition-all duration-300 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50"
+                    >
+                      <KinglancerCardContent k={k} color={color} initials={initials} headline={headline} />
+                    </Link>
+                  );
+                })}
+              </div>
+              {/* Scroll hint dots */}
+              <div className="flex justify-center gap-1.5 mt-3">
+                {kinglancers.map((_, i) => (
+                  <div key={i} className={`h-1.5 rounded-full bg-gray-300 ${i === 0 ? "w-4" : "w-1.5"}`} />
+                ))}
+              </div>
+            </div>
+
+            {/* Tablet + desktop: grid */}
+            <Stagger
+              className="hidden sm:grid grid-cols-2 lg:grid-cols-3 gap-6"
+              staggerDelay={0.08}
+            >
+              {kinglancers.map((k, i) => {
+                const color = GRADIENT_CYCLE[i % GRADIENT_CYCLE.length];
+                const serviceNames =
+                  (k.services as { name: string }[] | null)
+                    ?.map((service) => service.name)
+                    .filter((name) => name.trim().length > 0) ?? [];
+                const headline =
+                  k.tagline ||
+                  serviceNames.slice(0, 2).join(" · ") ||
+                  "Kinglancer";
+                const initials = k.full_name
+                  .split(" ")
+                  .map((n: string) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2);
+
+                return (
+                  <StaggerItem key={k.id}>
+                    <Link
+                      href={`/kinglancers/${k.id}`}
+                      className="group block cursor-pointer rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50"
+                    >
+                      <KinglancerCardContent k={k} color={color} initials={initials} headline={headline} />
+                    </Link>
+                  </StaggerItem>
+                );
+              })}
+            </Stagger>
+          </>
         )}
 
         <FadeIn className="text-center mt-10">
@@ -146,5 +151,62 @@ export default async function TopKinglancers() {
         </FadeIn>
       </div>
     </section>
+  );
+}
+
+type KinglancerProfile = {
+  full_name: string;
+  avatar_url: string | null;
+  jobs_completed: number;
+  rating: number | null;
+};
+
+function KinglancerCardContent({
+  k,
+  color,
+  initials,
+  headline,
+}: {
+  k: KinglancerProfile;
+  color: string;
+  initials: string;
+  headline: string;
+}) {
+  return (
+    <>
+      <div className="flex items-start gap-4 mb-4">
+        <div
+          className={`w-12 h-12 rounded-2xl bg-linear-to-br ${color} flex items-center justify-center text-white font-bold text-lg shrink-0 overflow-hidden`}
+        >
+          {k.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={k.avatar_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-0.5">
+            <p className="font-bold text-gray-900 truncate">{k.full_name}</p>
+            <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+              Featured
+            </span>
+          </div>
+          <p className="text-gray-500 text-sm truncate">{headline}</p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between pt-4 border-t border-gray-50">
+        <div className="flex items-center gap-1">
+          <Star size={14} className="text-yellow-400 fill-yellow-400" />
+          <span className="text-sm font-semibold text-gray-700">
+            {k.jobs_completed > 0 ? Number(k.rating).toFixed(1) : "New"}
+          </span>
+        </div>
+        <span className="text-xs text-gray-400">{k.jobs_completed} jobs completed</span>
+        <span className="text-xs text-blue-600 font-medium group-hover:underline">
+          View profile →
+        </span>
+      </div>
+    </>
   );
 }
