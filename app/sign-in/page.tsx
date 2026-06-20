@@ -21,6 +21,7 @@ function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authError = searchParams.get("error");
+  const authReason = searchParams.get("reason");
   const authSuccess = searchParams.get("success");
 
   const [showPassword, setShowPassword] = useState(false);
@@ -114,7 +115,10 @@ function SignInContent() {
 
         {(error || authError === "auth_failed") && (
           <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-            {error ?? "Authentication failed. Please try signing in again."}
+            {error ??
+              (authReason === "email_unverified"
+                ? "Your KingsChat email isn't verified. Verify it in KingsChat, or sign in with Google or your password instead."
+                : "Authentication failed. Please try signing in again.")}
           </div>
         )}
 
