@@ -11,13 +11,6 @@ export const config = {
 
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
-  const kcTrace = request.cookies.get("kc_trace")?.value ?? null;
-  const hasAuthCookie = request.cookies
-    .getAll()
-    .some(
-      (cookie) =>
-        cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"),
-    );
   const onAuthPage = pathname === "/sign-in" || pathname === "/sign-up";
   const protectedPrefixes = [
     "/dashboard",
@@ -32,51 +25,23 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.next({ request });
   }
 
-  if (kcTrace || pathname === "/onboarding" || pathname === "/sign-in") {
-    console.info("[proxy/auth] request", {
-      pathname,
-      kcTrace,
-      onAuthPage,
-      isProtected,
-      hasAuthCookie,
-    });
-  }
-
   const { supabase, ctx } = createProxyClient(request);
-  const { user } = await getProxyUser(supabase, pathname, kcTrace);
+  const { user } = await getProxyUser(supabase, pathname);
 
   // Logged-in users visiting auth pages → send to their dashboard
   if (user && onAuthPage) {
-    if (kcTrace) {
-      console.info("[proxy/auth] redirect_logged_in_user", {
-        pathname,
-        kcTrace,
-        userId: user.id,
-      });
-    }
     return redirectLoggedInUser(supabase, user.id, request);
   }
 
   // Protected routes → must be logged in
   if (!user && isProtected) {
-    if (kcTrace || pathname === "/onboarding") {
-      console.warn("[proxy/auth] redirect_to_sign_in", {
-        pathname,
-        kcTrace,
-        hasAuthCookie,
-      });
-    }
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
 
   return ctx.response;
 };
 
-const getProxyUser = async (
-  supabase: SupabaseClient,
-  pathname: string,
-  kcTrace: string | null,
-) => {
+const getProxyUser = async (supabase: SupabaseClient, pathname: string) => {
   try {
     const { data, error } = await supabase.auth.getUser();
 
@@ -85,7 +50,6 @@ const getProxyUser = async (
       if (!isMissingSession) {
         console.warn("[proxy/auth]", "get_user_failed", {
           pathname,
-          kcTrace,
           code: "code" in error ? error.code : undefined,
           status: "status" in error ? error.status : undefined,
           message: error.message,
@@ -93,21 +57,10 @@ const getProxyUser = async (
       }
     }
 
-    if (kcTrace || pathname === "/onboarding" || pathname === "/sign-in") {
-      console.info("[proxy/auth] get_user_result", {
-        pathname,
-        kcTrace,
-        hasUser: Boolean(data.user),
-        userId: data.user?.id ?? null,
-        errorMessage: error?.message ?? null,
-      });
-    }
-
     return { user: data.user };
   } catch (error) {
     console.warn("[proxy/auth]", "get_user_threw", {
       pathname,
-      kcTrace,
       message: error instanceof Error ? error.message : "Unknown auth error",
     });
     return { user: null };

@@ -21,8 +21,8 @@ function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const authError = searchParams.get("error");
+  const authReason = searchParams.get("reason");
   const authSuccess = searchParams.get("success");
-  const showKingsChat = searchParams.get("kc") === "1";
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -69,7 +69,7 @@ function SignInContent() {
         signInError.message.toLowerCase().includes("credentials");
       setError(
         isCredentialsError
-          ? "Invalid email or password. If you signed up with Google, use Continue with Google instead."
+          ? "Invalid email or password. If you signed up with Google or KingsChat, use that same option to sign in instead."
           : signInError.message,
       );
       setLoading(false);
@@ -104,8 +104,8 @@ function SignInContent() {
         </h1>
         <p className="text-gray-500 mb-8 text-sm">Enter your details below.</p>
 
-        <GoogleButton onClick={handleGoogleSignIn} />
-        {showKingsChat && <KingsChatButton />}
+        <GoogleButton onClick={handleGoogleSignIn} showDivider={false} />
+        <KingsChatButton />
 
         {authSuccess === "password_reset" && (
           <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
@@ -115,7 +115,10 @@ function SignInContent() {
 
         {(error || authError === "auth_failed") && (
           <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-            {error ?? "Authentication failed. Please try signing in again."}
+            {error ??
+              (authReason === "email_unverified"
+                ? "Your KingsChat email isn't verified. Verify it in KingsChat, or sign in with Google or your password instead."
+                : "Authentication failed. Please try signing in again.")}
           </div>
         )}
 

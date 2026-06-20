@@ -18,7 +18,6 @@ function log(
   event: string,
   details: Record<string, unknown> = {},
 ) {
-  // Always log during KingsChat auth — remove gate once flow is stable
   console[level]("[kingschat/callback]", event, JSON.stringify(details));
 }
 
@@ -135,18 +134,19 @@ export async function handleKingsChatCallback(
     );
 
     if (!tokenRes.ok) {
-      const body = await tokenRes.text();
       log("error", "token_exchange_failed", {
         traceId,
         status: tokenRes.status,
-        body,
       });
       return authFailedRedirect(appUrl);
     }
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      log("error", "no_access_token", { traceId, tokenData });
+      log("error", "no_access_token", {
+        traceId,
+        responseKeys: Object.keys(tokenData ?? {}),
+      });
       return authFailedRedirect(appUrl);
     }
 
@@ -173,11 +173,9 @@ export async function handleKingsChatCallback(
     );
 
     if (!profileRes.ok) {
-      const body = await profileRes.text();
       log("error", "profile_fetch_failed", {
         traceId,
         status: profileRes.status,
-        body,
       });
       return authFailedRedirect(appUrl);
     }
@@ -187,9 +185,28 @@ export async function handleKingsChatCallback(
 
     if (!kcProfile?.email) {
       // Without an email we cannot link to a Supabase user.
-      log("error", "profile_missing_email", { traceId, kcId: kcProfile?.id });
+      log("error", "profile_missing_email", { traceId });
       return NextResponse.redirect(
         `${appUrl}/sign-in?error=auth_failed&reason=no_email`,
+        303,
+      );
+    }
+
+    // Temporary diagnostic: confirm KingsChat reliably returns the verified
+    // flag. Remove once a real login has confirmed it is `true`.
+    log("info", "email_verification_status", {
+      traceId,
+      isVerified: kcProfile.is_email_verified,
+    });
+
+    // Strict account-takeover guard. We link KingsChat to a Supabase account
+    // purely by email, so the email MUST be proven to belong to this user.
+    // Without this, anyone holding a KingsChat account that reports an
+    // unverified email could be signed in as the KingsHire user who owns it.
+    if (kcProfile.is_email_verified !== true) {
+      log("warn", "email_unverified", { traceId });
+      return NextResponse.redirect(
+        `${appUrl}/sign-in?error=auth_failed&reason=email_unverified`,
         303,
       );
     }
@@ -200,8 +217,6 @@ export async function handleKingsChatCallback(
 
   log("info", "kc_profile_received", {
     traceId,
-    kcId: kcProfile.id,
-    email: kcProfile.email,
     hasAvatar: Boolean(kcProfile.avatar),
   });
 
@@ -223,10 +238,7 @@ export async function handleKingsChatCallback(
       .maybeSingle();
 
     if (existingProfile) {
-      log("info", "existing_user_found", {
-        traceId,
-        userId: existingProfile.id,
-      });
+      log("info", "existing_user_found", { traceId });
       // Backfill avatar if missing
       if (kcProfile.avatar && !existingProfile.avatar_url) {
         await db
@@ -267,10 +279,7 @@ export async function handleKingsChatCallback(
         }
         // If already exists: continue — generateLink will still work.
       } else if (newUser?.user) {
-        log("info", "new_user_created", {
-          traceId,
-          userId: newUser.user.id,
-        });
+        log("info", "new_user_created", { traceId });
         // Trigger already inserted the profile row; upsert only to add avatar_url.
         const { error: upsertError } = await db.from("profiles").upsert(
           {
@@ -349,7 +358,6 @@ export async function handleKingsChatCallback(
 
     log("info", "otp_verify_attempt", {
       traceId,
-      email: normalizedEmail,
       tokenLength: linkData.properties.email_otp.length,
     });
 
@@ -373,7 +381,6 @@ export async function handleKingsChatCallback(
     const sessionUserId = otpData.user.id;
     log("info", "otp_verify_success", {
       traceId,
-      sessionUserId,
       hasSession: Boolean(otpData.session),
     });
 
@@ -386,7 +393,7 @@ export async function handleKingsChatCallback(
       .maybeSingle();
 
     if (!sessionProfile) {
-      log("info", "creating_missing_profile", { traceId, sessionUserId });
+      log("info", "creating_missing_profile", { traceId });
       const { error: missingProfileUpsertError } = await db.from("profiles").upsert(
         {
           id: sessionUserId,
@@ -400,7 +407,6 @@ export async function handleKingsChatCallback(
       if (missingProfileUpsertError) {
         log("error", "creating_missing_profile_failed", {
           traceId,
-          sessionUserId,
           error: missingProfileUpsertError.message,
         });
         return authFailedRedirect(appUrl);
@@ -420,10 +426,8 @@ export async function handleKingsChatCallback(
 
     log("info", "session_established", {
       traceId,
-      sessionUserId,
       destination: safeNext,
       cookieCount: pendingCookies.length,
-      cookieNames: pendingCookies.map((c) => c.name),
       elapsedMs: Date.now() - startedAt,
     });
 
@@ -433,13 +437,6 @@ export async function handleKingsChatCallback(
     // POST navigations — so the session would be invisible to middleware and
     // the user bounced to /sign-in. A GET navigation carries the Lax cookies.
     const response = NextResponse.redirect(`${appUrl}${safeNext}`, 303);
-    response.cookies.set("kc_trace", traceId, {
-      path: "/",
-      secure: true,
-      httpOnly: false,
-      sameSite: "lax",
-      maxAge: 60 * 10,
-    });
 
     log("info", "redirect_target", {
       traceId,
