@@ -14,6 +14,13 @@ type ServiceInput = {
 
 const VALID_SERVICE_RATE_TYPES = ["per_hour", "per_day", "per_project"];
 
+function getCookieValue(cookieHeader: string | null, name: string) {
+  if (!cookieHeader) return null;
+  const parts = cookieHeader.split(";").map((part) => part.trim());
+  const match = parts.find((part) => part.startsWith(`${name}=`));
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : null;
+}
+
 function normalizeServices(services: unknown, serviceTags: unknown) {
   const rawServices = Array.isArray(services)
     ? services
@@ -75,6 +82,7 @@ function normalizeServices(services: unknown, serviceTags: unknown) {
 // trigger does not revert the `role` field (the trigger blocks authenticated-
 // role writes to system-managed columns, but service role bypasses it).
 export async function POST(request: Request) {
+  const kcTrace = getCookieValue(request.headers.get("cookie"), "kc_trace");
   const supabase = await createClient();
   const {
     data: { user },
@@ -82,6 +90,7 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   console.info("[complete-onboarding] getUser", {
+    kcTrace,
     hasUser: Boolean(user),
     userId: user?.id ?? null,
     errorMessage: getUserError?.message ?? null,
@@ -95,6 +104,7 @@ export async function POST(request: Request) {
   const { role, phone, service_tags, services, portfolio_url, cv_url } = body;
 
   console.info("[complete-onboarding] payload", {
+    kcTrace,
     userId: user.id,
     role,
     hasPhone: Boolean(phone),
@@ -132,6 +142,7 @@ export async function POST(request: Request) {
     .select("id, role");
 
   console.info("[complete-onboarding] db update result", {
+    kcTrace,
     userId: user.id,
     hasError: Boolean(error),
     errorMessage: error?.message ?? null,
