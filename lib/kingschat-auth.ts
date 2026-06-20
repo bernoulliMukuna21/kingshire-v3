@@ -22,6 +22,10 @@ function log(
   console[level]("[kingschat/callback]", event, JSON.stringify(details));
 }
 
+function createTraceId() {
+  return `kc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 /**
  * Core KingsChat OAuth callback handler.
  *
@@ -38,9 +42,18 @@ function log(
 export async function handleKingsChatCallback(
   request: Request,
 ): Promise<NextResponse> {
+  const traceId = createTraceId();
+  const startedAt = Date.now();
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
     new URL(request.url).origin;
+
+  log("info", "start", {
+    traceId,
+    method: request.method,
+    url: request.url,
+    appUrl,
+  });
 
   // ── 1. Parse incoming payload ────────────────────────────────────────────
   let code: string | undefined;
@@ -70,14 +83,20 @@ export async function handleKingsChatCallback(
 
     code = typeof body.code === "string" ? body.code : undefined;
     origin = typeof body.origin === "string" ? body.origin : undefined;
-    log("info", "parsed_payload", { contentType, hasCode: Boolean(code), hasOrigin: Boolean(origin) });
+    log("info", "parsed_payload", {
+      traceId,
+      contentType,
+      hasCode: Boolean(code),
+      hasOrigin: Boolean(origin),
+      origin,
+    });
   } catch {
-    log("error", "invalid_payload", {});
+    log("error", "invalid_payload", { traceId });
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
   }
 
   if (!code) {
-    log("error", "missing_code", {});
+    log("error", "missing_code", { traceId });
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
   }
 
@@ -111,6 +130,7 @@ export async function handleKingsChatCallback(
     if (!tokenRes.ok) {
       const body = await tokenRes.text();
       log("error", "token_exchange_failed", {
+        traceId,
         status: tokenRes.status,
         body,
       });
@@ -119,7 +139,7 @@ export async function handleKingsChatCallback(
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      log("error", "no_access_token", { tokenData });
+      log("error", "no_access_token", { traceId, tokenData });
       return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
     }
 
@@ -127,7 +147,7 @@ export async function handleKingsChatCallback(
     // refresh_token and expires_in_millis are intentionally discarded.
     // Supabase owns the session lifecycle from this point forward.
   } catch (err) {
-    log("error", "token_exchange_exception", { err: String(err) });
+    log("error", "token_exchange_exception", { traceId, err: String(err) });
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
   }
 
@@ -148,6 +168,7 @@ export async function handleKingsChatCallback(
     if (!profileRes.ok) {
       const body = await profileRes.text();
       log("error", "profile_fetch_failed", {
+        traceId,
         status: profileRes.status,
         body,
       });
@@ -159,18 +180,20 @@ export async function handleKingsChatCallback(
 
     if (!kcProfile?.email) {
       // Without an email we cannot link to a Supabase user.
-      log("error", "profile_missing_email", { kcId: kcProfile?.id });
+      log("error", "profile_missing_email", { traceId, kcId: kcProfile?.id });
       return NextResponse.redirect(
         `${appUrl}/sign-in?error=auth_failed&reason=no_email`,
       );
     }
   } catch (err) {
-    log("error", "profile_fetch_exception", { err: String(err) });
+    log("error", "profile_fetch_exception", { traceId, err: String(err) });
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
   }
 
   log("info", "kc_profile_received", {
+    traceId,
     kcId: kcProfile.id,
+    email: kcProfile.email,
     hasAvatar: Boolean(kcProfile.avatar),
   });
 
@@ -192,7 +215,10 @@ export async function handleKingsChatCallback(
       .maybeSingle();
 
     if (existingProfile) {
-      log("info", "existing_user_found", { userId: existingProfile.id });
+      log("info", "existing_user_found", {
+        traceId,
+        userId: existingProfile.id,
+      });
       // Backfill avatar if missing
       if (kcProfile.avatar && !existingProfile.avatar_url) {
         await db
@@ -223,6 +249,7 @@ export async function handleKingsChatCallback(
           createError.message.toLowerCase().includes("registered");
 
         log(isAlreadyExists ? "info" : "error", "create_user_result", {
+          traceId,
           alreadyExists: isAlreadyExists,
           error: createError.message,
         });
@@ -232,7 +259,10 @@ export async function handleKingsChatCallback(
         }
         // If already exists: continue — generateLink will still work.
       } else if (newUser?.user) {
-        log("info", "new_user_created", { userId: newUser.user.id });
+        log("info", "new_user_created", {
+          traceId,
+          userId: newUser.user.id,
+        });
         // Trigger already inserted the profile row; upsert only to add avatar_url.
         const { error: upsertError } = await db.from("profiles").upsert(
           {
@@ -245,12 +275,15 @@ export async function handleKingsChatCallback(
           { onConflict: "id" },
         );
         if (upsertError) {
-          log("error", "profile_upsert_failed", { error: upsertError.message });
+          log("error", "profile_upsert_failed", {
+            traceId,
+            error: upsertError.message,
+          });
         }
       }
     }
   } catch (err) {
-    log("error", "user_lookup_exception", { err: String(err) });
+    log("error", "user_lookup_exception", { traceId, err: String(err) });
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
   }
 
@@ -270,6 +303,7 @@ export async function handleKingsChatCallback(
       });
 
     log("info", "generate_link_result", {
+      traceId,
       hasError: Boolean(linkError),
       errorMessage: linkError?.message ?? null,
       propertiesKeys: linkData?.properties ? Object.keys(linkData.properties) : null,
@@ -278,6 +312,7 @@ export async function handleKingsChatCallback(
 
     if (linkError || !linkData?.properties?.email_otp) {
       log("error", "generate_link_failed", {
+        traceId,
         error: linkError?.message ?? "no email_otp in properties",
       });
       return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
@@ -305,6 +340,7 @@ export async function handleKingsChatCallback(
     );
 
     log("info", "otp_verify_attempt", {
+      traceId,
       email: normalizedEmail,
       tokenLength: linkData.properties.email_otp.length,
     });
@@ -317,6 +353,7 @@ export async function handleKingsChatCallback(
 
     if (otpError || !otpData?.user) {
       log("error", "otp_verify_failed", {
+        traceId,
         errorMessage: otpError?.message ?? "no user in otp response",
         errorCode: (otpError as { code?: string })?.code ?? null,
         errorStatus: (otpError as { status?: number })?.status ?? null,
@@ -327,6 +364,7 @@ export async function handleKingsChatCallback(
     // Use the session user's ID as canonical — not the pre-computed one.
     const sessionUserId = otpData.user.id;
     log("info", "otp_verify_success", {
+      traceId,
       sessionUserId,
       hasSession: Boolean(otpData.session),
     });
@@ -340,8 +378,8 @@ export async function handleKingsChatCallback(
       .maybeSingle();
 
     if (!sessionProfile) {
-      log("info", "creating_missing_profile", { sessionUserId });
-      await db.from("profiles").upsert(
+      log("info", "creating_missing_profile", { traceId, sessionUserId });
+      const { error: missingProfileUpsertError } = await db.from("profiles").upsert(
         {
           id: sessionUserId,
           email: normalizedEmail,
@@ -351,6 +389,14 @@ export async function handleKingsChatCallback(
         },
         { onConflict: "id" },
       );
+      if (missingProfileUpsertError) {
+        log("error", "creating_missing_profile_failed", {
+          traceId,
+          sessionUserId,
+          error: missingProfileUpsertError.message,
+        });
+        return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+      }
     }
 
     const destination = getRoleHome(sessionProfile?.role ?? null);
@@ -365,14 +411,27 @@ export async function handleKingsChatCallback(
           : destination;
 
     log("info", "session_established", {
+      traceId,
       sessionUserId,
       destination: safeNext,
       cookieCount: pendingCookies.length,
       cookieNames: pendingCookies.map((c) => c.name),
+      elapsedMs: Date.now() - startedAt,
     });
 
     const response = NextResponse.redirect(`${appUrl}${safeNext}`);
-    log("info", "redirect_target", { url: `${appUrl}${safeNext}` });
+    response.cookies.set("kc_trace", traceId, {
+      path: "/",
+      secure: true,
+      httpOnly: false,
+      sameSite: "lax",
+      maxAge: 60 * 10,
+    });
+
+    log("info", "redirect_target", {
+      traceId,
+      url: `${appUrl}${safeNext}`,
+    });
     pendingCookies.forEach(({ name, value, options }) => {
       response.cookies.set(
         name,
@@ -382,7 +441,7 @@ export async function handleKingsChatCallback(
     });
     return response;
   } catch (err) {
-    log("error", "session_issue_exception", { err: String(err) });
+    log("error", "session_issue_exception", { traceId, err: String(err) });
     return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
   }
 }
