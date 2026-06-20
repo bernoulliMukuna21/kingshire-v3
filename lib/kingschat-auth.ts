@@ -192,13 +192,6 @@ export async function handleKingsChatCallback(
       );
     }
 
-    // Temporary diagnostic: confirm KingsChat reliably returns the verified
-    // flag. Remove once a real login has confirmed it is `true`.
-    log("info", "email_verification_status", {
-      traceId,
-      isVerified: kcProfile.is_email_verified,
-    });
-
     // Strict account-takeover guard. We link KingsChat to a Supabase account
     // purely by email, so the email MUST be proven to belong to this user.
     // Without this, anyone holding a KingsChat account that reports an
