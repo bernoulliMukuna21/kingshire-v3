@@ -22,7 +22,6 @@ function SignInContent() {
   const searchParams = useSearchParams();
   const authError = searchParams.get("error");
   const authSuccess = searchParams.get("success");
-  const showKingsChat = searchParams.get("kc") === "1";
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -104,8 +103,8 @@ function SignInContent() {
         </h1>
         <p className="text-gray-500 mb-8 text-sm">Enter your details below.</p>
 
-        <GoogleButton onClick={handleGoogleSignIn} />
-        {showKingsChat && <KingsChatButton />}
+        <GoogleButton onClick={handleGoogleSignIn} showDivider={false} />
+        <KingsChatButton />
 
         {authSuccess === "password_reset" && (
           <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">

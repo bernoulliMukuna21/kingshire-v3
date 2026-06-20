@@ -1,11 +1,13 @@
 interface GoogleButtonProps {
   onClick: () => void;
   label?: string;
+  showDivider?: boolean;
 }
 
 export default function GoogleButton({
   onClick,
   label = "Continue with Google",
+  showDivider = true,
 }: GoogleButtonProps) {
   return (
     <>
@@ -35,11 +37,13 @@ export default function GoogleButton({
         {label}
       </button>
 
-      <div className="flex items-center gap-3 mb-4">
-        <div className="flex-1 h-px bg-gray-200" />
-        <span className="text-xs text-gray-400">or</span>
-        <div className="flex-1 h-px bg-gray-200" />
-      </div>
+      {showDivider && (
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px bg-gray-200" />
+          <span className="text-xs text-gray-400">or</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
+      )}
     </>
   );
 }
