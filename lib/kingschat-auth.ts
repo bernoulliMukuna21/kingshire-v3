@@ -26,6 +26,13 @@ function createTraceId() {
   return `kc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+// This handler is reached via a cross-site POST. Redirects must use 303 So the
+// browser follows them with a GET — otherwise the default 307 preserves POST,
+// which both re-POSTs the target page (405) and drops SameSite=Lax cookies.
+function authFailedRedirect(appUrl: string) {
+  return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`, 303);
+}
+
 /**
  * Core KingsChat OAuth callback handler.
  *
@@ -92,12 +99,12 @@ export async function handleKingsChatCallback(
     });
   } catch {
     log("error", "invalid_payload", { traceId });
-    return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+    return authFailedRedirect(appUrl);
   }
 
   if (!code) {
     log("error", "missing_code", { traceId });
-    return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+    return authFailedRedirect(appUrl);
   }
 
   const clientId = process.env.KINGSCHAT_CLIENT_ID;
@@ -107,7 +114,7 @@ export async function handleKingsChatCallback(
     console.error(
       "[kingschat/callback] Missing KingsChat environment variables",
     );
-    return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+    return authFailedRedirect(appUrl);
   }
 
   // ── 2. Exchange code for access token ────────────────────────────────────
@@ -134,13 +141,13 @@ export async function handleKingsChatCallback(
         status: tokenRes.status,
         body,
       });
-      return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+      return authFailedRedirect(appUrl);
     }
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
       log("error", "no_access_token", { traceId, tokenData });
-      return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+      return authFailedRedirect(appUrl);
     }
 
     accessToken = tokenData.access_token;
@@ -148,7 +155,7 @@ export async function handleKingsChatCallback(
     // Supabase owns the session lifecycle from this point forward.
   } catch (err) {
     log("error", "token_exchange_exception", { traceId, err: String(err) });
-    return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+    return authFailedRedirect(appUrl);
   }
 
   // ── 3. Fetch KingsChat profile ───────────────────────────────────────────
@@ -172,7 +179,7 @@ export async function handleKingsChatCallback(
         status: profileRes.status,
         body,
       });
-      return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+      return authFailedRedirect(appUrl);
     }
 
     const profileData = await profileRes.json();
@@ -183,11 +190,12 @@ export async function handleKingsChatCallback(
       log("error", "profile_missing_email", { traceId, kcId: kcProfile?.id });
       return NextResponse.redirect(
         `${appUrl}/sign-in?error=auth_failed&reason=no_email`,
+        303,
       );
     }
   } catch (err) {
     log("error", "profile_fetch_exception", { traceId, err: String(err) });
-    return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+    return authFailedRedirect(appUrl);
   }
 
   log("info", "kc_profile_received", {
@@ -255,7 +263,7 @@ export async function handleKingsChatCallback(
         });
 
         if (!isAlreadyExists) {
-          return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+          return authFailedRedirect(appUrl);
         }
         // If already exists: continue — generateLink will still work.
       } else if (newUser?.user) {
@@ -284,7 +292,7 @@ export async function handleKingsChatCallback(
     }
   } catch (err) {
     log("error", "user_lookup_exception", { traceId, err: String(err) });
-    return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+    return authFailedRedirect(appUrl);
   }
 
   // ── 5. Issue a Supabase session directly in this request ─────────────────
@@ -315,7 +323,7 @@ export async function handleKingsChatCallback(
         traceId,
         error: linkError?.message ?? "no email_otp in properties",
       });
-      return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+      return authFailedRedirect(appUrl);
     }
 
     const pendingCookies: Array<{
@@ -358,7 +366,7 @@ export async function handleKingsChatCallback(
         errorCode: (otpError as { code?: string })?.code ?? null,
         errorStatus: (otpError as { status?: number })?.status ?? null,
       });
-      return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+      return authFailedRedirect(appUrl);
     }
 
     // Use the session user's ID as canonical — not the pre-computed one.
@@ -395,7 +403,7 @@ export async function handleKingsChatCallback(
           sessionUserId,
           error: missingProfileUpsertError.message,
         });
-        return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+        return authFailedRedirect(appUrl);
       }
     }
 
@@ -419,7 +427,12 @@ export async function handleKingsChatCallback(
       elapsedMs: Date.now() - startedAt,
     });
 
-    const response = NextResponse.redirect(`${appUrl}${safeNext}`);
+    // 303 See Other forces the browser to follow the redirect with a GET.
+    // KingsChat hits this handler via a cross-site POST; the default 307 would
+    // preserve the POST method, and SameSite=Lax auth cookies are NOT sent on
+    // POST navigations — so the session would be invisible to middleware and
+    // the user bounced to /sign-in. A GET navigation carries the Lax cookies.
+    const response = NextResponse.redirect(`${appUrl}${safeNext}`, 303);
     response.cookies.set("kc_trace", traceId, {
       path: "/",
       secure: true,
@@ -442,6 +455,6 @@ export async function handleKingsChatCallback(
     return response;
   } catch (err) {
     log("error", "session_issue_exception", { traceId, err: String(err) });
-    return NextResponse.redirect(`${appUrl}/sign-in?error=auth_failed`);
+    return authFailedRedirect(appUrl);
   }
 }
