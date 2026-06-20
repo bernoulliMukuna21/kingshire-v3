@@ -117,7 +117,7 @@ export default function SignUpPage() {
 
     if (emailAlreadyRegistered) {
       setError(
-        "This email is already registered. If you signed up with Google, use Continue with Google. Otherwise reset your password and sign in.",
+        "This email is already registered. If you signed up with Google or KingsChat, use that same option to sign in. Otherwise reset your password and sign in.",
       );
       setLoading(false);
       return;

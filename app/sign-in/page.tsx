@@ -69,7 +69,7 @@ function SignInContent() {
         signInError.message.toLowerCase().includes("credentials");
       setError(
         isCredentialsError
-          ? "Invalid email or password. If you signed up with Google, use Continue with Google instead."
+          ? "Invalid email or password. If you signed up with Google or KingsChat, use that same option to sign in instead."
           : signInError.message,
       );
       setLoading(false);
