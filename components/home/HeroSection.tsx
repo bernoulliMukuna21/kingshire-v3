@@ -58,7 +58,7 @@ const trustBadges = [
   "Stripe-secured payments",
   "Community verified",
   "Free to join",
-  "5% platform fee",
+  "Low platform fees",
 ];
 
 type HeroStat = {

@@ -91,7 +91,12 @@ export default async function TopKinglancers() {
                       href={`/kinglancers/${k.id}`}
                       className="group shrink-0 w-[72vw] max-w-[280px] snap-start block rounded-2xl border border-gray-100 bg-white p-5 transition-all duration-300 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50"
                     >
-                      <KinglancerCardContent k={k} color={color} initials={initials} headline={headline} />
+                      <KinglancerCardContent
+                        k={k}
+                        color={color}
+                        initials={initials}
+                        headline={headline}
+                      />
                     </Link>
                   );
                 })}
@@ -99,7 +104,10 @@ export default async function TopKinglancers() {
               {/* Scroll hint dots */}
               <div className="flex justify-center gap-1.5 mt-3">
                 {kinglancers.map((_, i) => (
-                  <div key={i} className={`h-1.5 rounded-full bg-gray-300 ${i === 0 ? "w-4" : "w-1.5"}`} />
+                  <div
+                    key={i}
+                    className={`h-1.5 rounded-full bg-gray-300 ${i === 0 ? "w-4" : "w-1.5"}`}
+                  />
                 ))}
               </div>
             </div>
@@ -132,7 +140,12 @@ export default async function TopKinglancers() {
                       href={`/kinglancers/${k.id}`}
                       className="group block cursor-pointer rounded-2xl border border-gray-100 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-50"
                     >
-                      <KinglancerCardContent k={k} color={color} initials={initials} headline={headline} />
+                      <KinglancerCardContent
+                        k={k}
+                        color={color}
+                        initials={initials}
+                        headline={headline}
+                      />
                     </Link>
                   </StaggerItem>
                 );
@@ -180,7 +193,11 @@ function KinglancerCardContent({
         >
           {k.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={k.avatar_url} alt="" className="w-full h-full object-cover" />
+            <img
+              src={k.avatar_url}
+              alt=""
+              className="w-full h-full object-cover"
+            />
           ) : (
             initials
           )}
@@ -202,7 +219,9 @@ function KinglancerCardContent({
             {k.jobs_completed > 0 ? Number(k.rating).toFixed(1) : "New"}
           </span>
         </div>
-        <span className="text-xs text-gray-400">{k.jobs_completed} jobs completed</span>
+        <span className="text-xs text-gray-400">
+          {k.jobs_completed} jobs completed
+        </span>
         <span className="text-xs text-blue-600 font-medium group-hover:underline">
           View profile →
         </span>

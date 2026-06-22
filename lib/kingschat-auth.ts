@@ -316,7 +316,9 @@ export async function handleKingsChatCallback(
       traceId,
       hasError: Boolean(linkError),
       errorMessage: linkError?.message ?? null,
-      propertiesKeys: linkData?.properties ? Object.keys(linkData.properties) : null,
+      propertiesKeys: linkData?.properties
+        ? Object.keys(linkData.properties)
+        : null,
       hasEmailOtp: Boolean(linkData?.properties?.email_otp),
     });
 
@@ -387,16 +389,18 @@ export async function handleKingsChatCallback(
 
     if (!sessionProfile) {
       log("info", "creating_missing_profile", { traceId });
-      const { error: missingProfileUpsertError } = await db.from("profiles").upsert(
-        {
-          id: sessionUserId,
-          email: normalizedEmail,
-          full_name: displayName,
-          avatar_url: kcProfile.avatar ?? null,
-          role: null,
-        },
-        { onConflict: "id" },
-      );
+      const { error: missingProfileUpsertError } = await db
+        .from("profiles")
+        .upsert(
+          {
+            id: sessionUserId,
+            email: normalizedEmail,
+            full_name: displayName,
+            avatar_url: kcProfile.avatar ?? null,
+            role: null,
+          },
+          { onConflict: "id" },
+        );
       if (missingProfileUpsertError) {
         log("error", "creating_missing_profile_failed", {
           traceId,
@@ -407,15 +411,14 @@ export async function handleKingsChatCallback(
     }
 
     const destination = getRoleHome(sessionProfile?.role ?? null);
-    const safeNext =
-      !sessionProfile?.role
-        ? "/onboarding"
-        : origin &&
-            origin.startsWith("/") &&
-            !origin.startsWith("//") &&
-            origin !== "/"
-          ? origin
-          : destination;
+    const safeNext = !sessionProfile?.role
+      ? "/onboarding"
+      : origin &&
+          origin.startsWith("/") &&
+          !origin.startsWith("//") &&
+          origin !== "/"
+        ? origin
+        : destination;
 
     log("info", "session_established", {
       traceId,

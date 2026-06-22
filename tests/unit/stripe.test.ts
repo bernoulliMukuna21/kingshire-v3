@@ -1,17 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { calculateFees, PLATFORM_FEE_RATE } from "@/lib/stripe";
+import {
+  calculateFees,
+  PLATFORM_FEE_RATE_CLIENT,
+  PLATFORM_FEE_RATE_KINGLANCER,
+} from "@/lib/stripe";
 
-describe("PLATFORM_FEE_RATE", () => {
-  it("is 5%", () => {
-    expect(PLATFORM_FEE_RATE).toBe(0.05);
+describe("platform fee rates", () => {
+  it("client rate is 2.5%", () => {
+    expect(PLATFORM_FEE_RATE_CLIENT).toBe(0.025);
+  });
+  it("kinglancer rate is 5%", () => {
+    expect(PLATFORM_FEE_RATE_KINGLANCER).toBe(0.05);
   });
 });
 
 describe("calculateFees", () => {
-  it("charges client budget + 5% on top", () => {
+  it("charges client budget + 2.5% on top", () => {
     const { platformFeeClient, clientChargeGBP } = calculateFees(100);
-    expect(platformFeeClient).toBe(5);
-    expect(clientChargeGBP).toBe(105);
+    expect(platformFeeClient).toBe(2.5);
+    expect(clientChargeGBP).toBe(102.5);
   });
 
   it("deducts 5% from kinglancer side", () => {
@@ -21,20 +28,20 @@ describe("calculateFees", () => {
 
   it("converts GBP to pence correctly", () => {
     const { clientChargePence } = calculateFees(100);
-    expect(clientChargePence).toBe(10500);
+    expect(clientChargePence).toBe(10250);
   });
 
   it("handles non-round budgets", () => {
     const { platformFeeClient, clientChargeGBP } = calculateFees(250);
-    expect(platformFeeClient).toBe(12.5);
-    expect(clientChargeGBP).toBe(262.5);
-    expect(calculateFees(250).clientChargePence).toBe(26250);
+    expect(platformFeeClient).toBe(6.25);
+    expect(clientChargeGBP).toBe(256.25);
+    expect(calculateFees(250).clientChargePence).toBe(25625);
   });
 
   it("rounds fee to 2 decimal places", () => {
-    // £33.33 × 5% = £1.6665 → rounded to £1.67
+    // £33.33 × 2.5% = £0.83325 → rounded to £0.83
     const { platformFeeClient } = calculateFees(33.33);
-    expect(platformFeeClient).toBe(1.67);
+    expect(platformFeeClient).toBe(0.83);
   });
 
   it("handles zero budget", () => {
@@ -45,11 +52,16 @@ describe("calculateFees", () => {
     expect(result.clientChargePence).toBe(0);
   });
 
-  it("client fee and kinglancer fee are always equal", () => {
+  it("each side matches its own rate", () => {
     [10, 99.99, 1500, 0.5].forEach((budget) => {
       const { platformFeeClient, platformFeeKinglancer } =
         calculateFees(budget);
-      expect(platformFeeClient).toBe(platformFeeKinglancer);
+      expect(platformFeeClient).toBe(
+        Math.round(budget * PLATFORM_FEE_RATE_CLIENT * 100) / 100,
+      );
+      expect(platformFeeKinglancer).toBe(
+        Math.round(budget * PLATFORM_FEE_RATE_KINGLANCER * 100) / 100,
+      );
     });
   });
 
