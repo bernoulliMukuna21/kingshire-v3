@@ -5,7 +5,13 @@ type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type JobInsert = Database["public"]["Tables"]["jobs"]["Insert"];
 
 export type JobWithClient = Job & {
-  client: { full_name: string; avatar_url: string | null };
+  client: {
+    id: string;
+    full_name: string;
+    avatar_url: string | null;
+    rating: number;
+    total_reviews: number;
+  };
   application_count?: number;
 };
 
@@ -15,7 +21,9 @@ export async function getOpenJobs(): Promise<JobWithClient[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("jobs")
-    .select("*, client:profiles!client_id(full_name, avatar_url)")
+    .select(
+      "*, client:profiles!client_id(id, full_name, avatar_url, rating, total_reviews)",
+    )
     .eq("status", "open")
     .is("invited_kinglancer_id", null)
     .order("created_at", { ascending: false })
@@ -29,7 +37,9 @@ export async function getJobById(id: string): Promise<JobWithClient | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("jobs")
-    .select("*, client:profiles!client_id(full_name, avatar_url)")
+    .select(
+      "*, client:profiles!client_id(id, full_name, avatar_url, rating, total_reviews)",
+    )
     .eq("id", id)
     .single();
 

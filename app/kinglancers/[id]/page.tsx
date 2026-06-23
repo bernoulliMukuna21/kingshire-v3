@@ -9,6 +9,8 @@ import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import ReviewsList from "@/components/reviews/ReviewsList";
+import { getPublishedReviewsForUser } from "@/lib/db/reviews";
 import ServicesSection from "./ServicesSection";
 import {
   BookingCard,
@@ -48,6 +50,16 @@ export default async function KinglancerProfilePage({
   const kinglancer = await getKinglancerProfile();
 
   if (!kinglancer) notFound();
+
+  const getReviews = unstable_cache(
+    async () => getPublishedReviewsForUser(id, 30),
+    [`kinglancer-reviews-${id}`],
+    {
+      revalidate: 3600,
+      tags: [`kinglancer-reviews-${id}`, "kinglancer-reviews"],
+    },
+  );
+  const reviews = await getReviews();
 
   type Service = { name: string; rate: number; rate_type: string };
   const services = (kinglancer.services as Service[] | null) ?? [];
@@ -160,6 +172,22 @@ export default async function KinglancerProfilePage({
               {kinglancer.bio ||
                 "This Kinglancer has not added a full bio yet."}
             </p>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-black text-slate-950">Reviews</h2>
+              {reviews.length > 0 && (
+                <span className="flex items-center gap-1.5 text-sm font-bold text-slate-600">
+                  <Star size={15} className="fill-yellow-400 text-yellow-400" />
+                  {Number(kinglancer.rating).toFixed(1)} · {reviews.length}{" "}
+                  {reviews.length === 1 ? "review" : "reviews"}
+                </span>
+              )}
+            </div>
+            <div className="mt-4">
+              <ReviewsList reviews={reviews} emptyName={firstName} />
+            </div>
           </Card>
 
           <AppliedToYourJobsBanner

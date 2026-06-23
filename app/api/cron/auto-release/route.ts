@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   notifyPaymentReleased,
   notifyPayoutClaimReady,
+  notifyReviewRequestsForJob,
 } from "@/lib/notifications";
 import {
   createOnboardingLink,
@@ -157,6 +158,9 @@ export async function GET(request: Request) {
     }
 
     released++;
+
+    // Both parties can now review each other (double-blind, 7-day window).
+    notifyReviewRequestsForJob(job.id, job.title).catch(() => {});
 
     // 3. Mirror manual approval side effects after the release is committed.
     if (job.kinglancer_id) {

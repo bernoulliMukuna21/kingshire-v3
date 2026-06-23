@@ -186,7 +186,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
           transition={{ duration: 0.7, delay: 0.3 }}
           className="text-4xl sm:text-5xl md:text-7xl font-black text-white leading-tight tracking-tight"
         >
-          Hire from your{" "}
+          Hired for your{" "}
           <span className="relative">
             <span className="text-gradient">talent.</span>
             <motion.span
@@ -197,7 +197,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
             />
           </span>
           <br />
-          <span className="text-white/80">Earn from your services.</span>
+          <span className="text-white/80">Paid for your work.</span>
         </motion.h1>
 
         <motion.p
