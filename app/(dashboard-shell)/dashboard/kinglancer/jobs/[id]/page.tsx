@@ -8,10 +8,13 @@ import {
   Tag,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getJobReviewState, isReviewWindowClosed } from "@/lib/db/reviews";
+import { getTransactionByJob } from "@/lib/db/transactions";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import ReviewPanel from "@/components/jobs/ReviewPanel";
 import {
   DirectRequestActions,
   KinglancerCompleteButton,
@@ -249,6 +252,19 @@ export default async function KinglancerJobWorkspacePage({
       ? transaction.amount - transaction.platform_fee_kinglancer
       : null;
 
+  // Review state for approved jobs (double-blind, 7-day window).
+  let reviewState: Awaited<ReturnType<typeof getJobReviewState>> | null = null;
+  let reviewWindowClosed = false;
+  if (job.status === "approved") {
+    const [state, tx] = await Promise.all([
+      getJobReviewState(id, user.id),
+      getTransactionByJob(id),
+    ]);
+    reviewState = state;
+    reviewWindowClosed = isReviewWindowClosed(tx?.released_at ?? null);
+  }
+  const clientFirstName = job.client?.full_name?.split(" ")[0] ?? "the client";
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <DashboardBackLink
@@ -383,9 +399,29 @@ export default async function KinglancerJobWorkspacePage({
               </p>
             </Card>
           )}
+
+          {job.status === "approved" && (
+            <Card className={cardPadding}>
+              <h2 className="text-lg font-black text-slate-950">
+                Rate {clientFirstName}
+              </h2>
+              <p className="mb-4 mt-1 text-sm leading-6 text-slate-500">
+                Your feedback builds trust across the KingsHire community.
+              </p>
+              <ReviewPanel
+                jobId={id}
+                counterpartName={clientFirstName}
+                counterpartRole="client"
+                myReview={reviewState?.myReview ?? null}
+                counterpartReview={reviewState?.counterpartReview ?? null}
+                windowClosed={reviewWindowClosed}
+              />
+            </Card>
+          )}
         </div>
 
         <aside className="space-y-5">
+          {" "}
           <Card className={cardPadding}>
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
@@ -400,7 +436,6 @@ export default async function KinglancerJobWorkspacePage({
             </div>
             {action.action && <div className="mt-5">{action.action}</div>}
           </Card>
-
           <Card className={cardPadding}>
             <h2 className="text-xs font-bold uppercase tracking-widest text-slate-400">
               Job details

@@ -18,21 +18,23 @@ export const stripe: Stripe = new Proxy({} as Stripe, {
   },
 });
 
-// Fee config — 5% from each side (10% total)
-export const PLATFORM_FEE_RATE = 0.05;
+// Fee config — industry-standard split: the earner (kinglancer) carries the
+// larger cut, the buyer (client) a smaller one. Total platform take = 7.5%.
+export const PLATFORM_FEE_RATE_CLIENT = 0.025;
+export const PLATFORM_FEE_RATE_KINGLANCER = 0.05;
 
 /**
  * Calculates the Stripe charge amount (in pence) and fee breakdown
  * for a given job budget in £.
  *
- * Client pays: budget + 5% on top
+ * Client pays: budget + 2.5% on top
  * Kinglancer receives: budget − 5%
  */
 export function calculateFees(budgetGBP: number) {
   const platformFeeClient =
-    Math.round(budgetGBP * PLATFORM_FEE_RATE * 100) / 100;
+    Math.round(budgetGBP * PLATFORM_FEE_RATE_CLIENT * 100) / 100;
   const platformFeeKinglancer =
-    Math.round(budgetGBP * PLATFORM_FEE_RATE * 100) / 100;
+    Math.round(budgetGBP * PLATFORM_FEE_RATE_KINGLANCER * 100) / 100;
   const clientChargeGBP = budgetGBP + platformFeeClient;
   const clientChargePence = Math.round(clientChargeGBP * 100);
   return {

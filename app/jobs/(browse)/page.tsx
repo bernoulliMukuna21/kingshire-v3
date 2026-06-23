@@ -13,7 +13,9 @@ const getCachedOpenJobs = unstable_cache(
     const supabase = createServiceClient();
     const { data } = await supabase
       .from("jobs")
-      .select("*, client:profiles!client_id(full_name, avatar_url)")
+      .select(
+        "*, client:profiles!client_id(id, full_name, avatar_url, rating, total_reviews)",
+      )
       .eq("status", "open")
       .is("invited_kinglancer_id", null)
       .order("created_at", { ascending: false })

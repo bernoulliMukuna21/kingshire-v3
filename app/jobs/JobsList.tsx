@@ -8,6 +8,7 @@ import {
   Clock,
   Briefcase,
   CheckCircle,
+  Star,
 } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/animations";
 import type { JobWithClient } from "@/lib/db/jobs";
@@ -103,64 +104,83 @@ export default function JobsList({
         >
           {filtered.map((job) => (
             <StaggerItem key={job.id}>
-              <Link href={`/jobs/${job.id}`}>
-                <Card interactive className="group cursor-pointer p-6">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex-1">
-                      <h3 className="text-base font-black leading-snug text-slate-950 transition-colors group-hover:text-blue-700">
-                        {job.title}
-                      </h3>
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5 shrink-0">
-                      <span className="text-lg font-black text-green-600">
-                        £{Number(job.budget).toLocaleString()}
+              <Card interactive className="group relative p-6">
+                <Link
+                  href={`/jobs/${job.id}`}
+                  aria-label={job.title}
+                  className="absolute inset-0 z-0 rounded-[inherit]"
+                />
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1">
+                    <h3 className="text-base font-black leading-snug text-slate-950 transition-colors group-hover:text-blue-700">
+                      {job.title}
+                    </h3>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <span className="text-lg font-black text-green-600">
+                      £{Number(job.budget).toLocaleString()}
+                    </span>
+                    {appliedJobIds.includes(job.id) && (
+                      <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
+                        <CheckCircle size={11} />
+                        Applied
                       </span>
-                      {appliedJobIds.includes(job.id) && (
-                        <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">
-                          <CheckCircle size={11} />
-                          Applied
-                        </span>
-                      )}
-                    </div>
+                    )}
                   </div>
+                </div>
 
-                  {(job.categories ?? []).length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {job.categories.map((s) => (
-                        <span
-                          key={s}
-                          className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400">
-                    <div className="flex items-center gap-3">
-                      {job.deadline && (
-                        <span className="flex items-center gap-1">
-                          <Clock size={12} />
-                          {new Date(job.deadline).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                          })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Avatar
-                        name={job.client.full_name}
-                        src={job.client.avatar_url}
-                        className="h-5 w-5 rounded-full text-[10px]"
-                      />
-                      <span>{job.client.full_name.split(" ")[0]}</span>
-                      <span>· {timeAgo(job.created_at)}</span>
-                    </div>
+                {(job.categories ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {job.categories.map((s) => (
+                      <span
+                        key={s}
+                        className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-bold text-blue-700"
+                      >
+                        {s}
+                      </span>
+                    ))}
                   </div>
-                </Card>
-              </Link>
+                )}
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-400">
+                  <div className="flex items-center gap-3">
+                    {job.deadline && (
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} />
+                        {new Date(job.deadline).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                        })}
+                      </span>
+                    )}
+                    <span>{timeAgo(job.created_at)}</span>
+                  </div>
+                  <Link
+                    href={`/clients/${job.client.id}`}
+                    className="relative z-10 flex items-center gap-1.5 rounded-full px-1 py-0.5 transition-colors hover:text-blue-700"
+                  >
+                    <Avatar
+                      name={job.client.full_name}
+                      src={job.client.avatar_url}
+                      className="h-5 w-5 rounded-full text-[10px]"
+                    />
+                    <span className="font-medium text-slate-500">
+                      {job.client.full_name.split(" ")[0]}
+                    </span>
+                    {job.client.total_reviews > 0 ? (
+                      <span className="flex items-center gap-0.5 text-slate-500">
+                        <Star
+                          size={11}
+                          className="fill-yellow-400 text-yellow-400"
+                        />
+                        {Number(job.client.rating).toFixed(1)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">· New</span>
+                    )}
+                  </Link>
+                </div>
+              </Card>
             </StaggerItem>
           ))}
         </Stagger>

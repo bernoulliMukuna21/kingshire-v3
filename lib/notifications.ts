@@ -7,7 +7,9 @@ export type NotificationType =
   | "payment_released"
   | "dispute_raised"
   | "new_job"
-  | "payout_ready";
+  | "payout_ready"
+  | "review_request"
+  | "review_received";
 
 interface NotifyParams {
   userId: string;
@@ -327,6 +329,117 @@ export async function notifyDisputeResolved({
       ctaLabel: claimUrl ? "Set up payouts →" : "View dashboard →",
     },
   });
+}
+
+function dashboardJobLink(role: "client" | "kinglancer", jobId: string) {
+  return `/dashboard/${role}/jobs/${jobId}`;
+}
+
+export async function notifyReviewRequest({
+  userId,
+  userEmail,
+  role,
+  jobId,
+  jobTitle,
+  counterpartName,
+}: {
+  userId: string;
+  userEmail: string;
+  role: "client" | "kinglancer";
+  jobId: string;
+  jobTitle: string;
+  counterpartName: string;
+}) {
+  await notify({
+    userId,
+    type: "review_request",
+    title: "Leave a review",
+    body: `"${jobTitle}" is complete. Share your honest feedback on working with ${counterpartName} — reviews stay hidden until you both submit or the 7-day window closes.`,
+    link: dashboardJobLink(role, jobId),
+    email: {
+      to: userEmail,
+      subject: `How was working on "${jobTitle}"?`,
+      ctaLabel: "Leave a review →",
+    },
+  });
+}
+
+export async function notifyReviewReceived({
+  userId,
+  userEmail,
+  role,
+  jobId,
+  jobTitle,
+}: {
+  userId: string;
+  userEmail: string;
+  role: "client" | "kinglancer";
+  jobId: string;
+  jobTitle: string;
+}) {
+  await notify({
+    userId,
+    type: "review_received",
+    title: "You received a review",
+    body: `Your review for "${jobTitle}" is now public. See what was said and how it affects your KingsHire reputation.`,
+    link: dashboardJobLink(role, jobId),
+    email: {
+      to: userEmail,
+      subject: `You received a review for "${jobTitle}"`,
+      ctaLabel: "View your review →",
+    },
+  });
+}
+
+/**
+ * Sends a "leave a review" prompt to BOTH parties of a completed job.
+ * Safe to call fire-and-forget; resolves quietly if data is missing.
+ */
+export async function notifyReviewRequestsForJob(
+  jobId: string,
+  jobTitle: string,
+) {
+  const db = createServiceClient();
+  const { data: job } = await db
+    .from("jobs")
+    .select("client_id, kinglancer_id")
+    .eq("id", jobId)
+    .single();
+
+  if (!job?.client_id || !job?.kinglancer_id) return;
+
+  const { data: profiles } = await db
+    .from("profiles")
+    .select("id, full_name, email")
+    .in("id", [job.client_id, job.kinglancer_id]);
+
+  const client = profiles?.find((p) => p.id === job.client_id);
+  const kinglancer = profiles?.find((p) => p.id === job.kinglancer_id);
+  const clientName = client?.full_name ?? "the client";
+  const kinglancerName = kinglancer?.full_name ?? "the kinglancer";
+
+  await Promise.all([
+    client?.email
+      ? notifyReviewRequest({
+          userId: job.client_id,
+          userEmail: client.email,
+          role: "client",
+          jobId,
+          jobTitle,
+          counterpartName: kinglancerName,
+        })
+      : Promise.resolve(),
+    kinglancer?.email
+      ? notifyReviewRequest({
+          userId: job.kinglancer_id,
+          userEmail: kinglancer.email,
+          role: "kinglancer",
+          jobId,
+          jobTitle,
+          counterpartName: clientName,
+        })
+      : Promise.resolve(),
+  ]);
 }
 
 // ── Email delivery ─────────────────────────────────────────

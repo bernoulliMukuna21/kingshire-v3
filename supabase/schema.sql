@@ -106,16 +106,24 @@ create table public.payment_attempts (
 );
 
 -- ── REVIEWS ───────────────────────────────────────────────
+-- Two-sided double-blind: reviews are created hidden and become public
+-- (is_published) once both parties review or the 7-day window elapses.
 create table public.reviews (
-  id           uuid primary key default uuid_generate_v4(),
-  job_id       uuid not null references public.jobs(id),
-  reviewer_id  uuid not null references public.profiles(id),
-  reviewee_id  uuid not null references public.profiles(id),
-  rating       integer not null check (rating between 1 and 5),
-  comment      text,
-  created_at   timestamptz not null default now(),
+  id            uuid primary key default uuid_generate_v4(),
+  job_id        uuid not null references public.jobs(id),
+  reviewer_id   uuid not null references public.profiles(id),
+  reviewee_id   uuid not null references public.profiles(id),
+  rating        integer not null check (rating between 1 and 5),
+  comment       text,
+  is_published  boolean not null default false,
+  published_at  timestamptz,
+  created_at    timestamptz not null default now(),
   unique(job_id, reviewer_id)
 );
+create index if not exists idx_reviews_reviewee_published
+  on public.reviews (reviewee_id) where is_published;
+create index if not exists idx_reviews_job_published
+  on public.reviews (job_id, is_published);
 
 -- ── DISPUTES ──────────────────────────────────────────────
 create table public.disputes (
@@ -300,9 +308,11 @@ create policy "Parties can view own transactions" on public.transactions
 -- No RLS update policy needed — service role bypasses RLS.
 -- This prevents any client-side actor from forging a status change.
 
--- Reviews: anyone can read, only reviewer can insert
-create policy "Reviews are public" on public.reviews
-  for select using (true);
+-- Reviews: published reviews are public; a party can read their own hidden
+-- review. Only the reviewer can insert (defence-in-depth alongside the
+-- service-role submission route).
+create policy "Published reviews are public" on public.reviews
+  for select using (is_published or auth.uid() = reviewer_id);
 create policy "Users can leave a review" on public.reviews
   for insert with check (
     auth.uid() = reviewer_id
@@ -351,7 +361,9 @@ create table if not exists public.notifications (
                 'dispute_raised',
                 'new_job',
                 'payout_ready',
-                'direct_request'
+                'direct_request',
+                'review_request',
+                'review_received'
               )),
   title       text not null,
   body        text not null,

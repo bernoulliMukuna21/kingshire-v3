@@ -271,6 +271,8 @@ export type Database = {
           reviewee_id: string;
           rating: number;
           comment: string | null;
+          is_published: boolean;
+          published_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -279,10 +281,14 @@ export type Database = {
           reviewee_id: string;
           rating: number;
           comment?: string | null;
+          is_published?: boolean;
+          published_at?: string | null;
         };
         Update: {
           rating?: number;
           comment?: string | null;
+          is_published?: boolean;
+          published_at?: string | null;
         };
         Relationships: [];
       };

@@ -1,0 +1,29 @@
+# Railway config for CRON WORKER services (auto-release, reveal-reviews,
+# cleanup-abandoned-checkouts).
+#
+# A cron worker is NOT the web app: its only job is to call a protected
+# /api/cron/* endpoint on the already-deployed app (see scripts/run-cron.mjs,
+# which uses Node's built-in fetch and needs no app build, no Next, and no
+# Supabase secrets).
+#
+# Point each cron service at this file via:
+#   Railway → service → Settings → Config-as-code → Config File Path
+#     => railway.cron.toml
+#
+# The per-service start command stays in each service's RAILWAY_START_COMMAND
+# (e.g. `npm run cron:reveal-reviews`), so one config file serves all crons.
+
+[build]
+builder = "NIXPACKS"
+# Skip `next build` entirely — a worker has nothing to compile. Nixpacks still
+# provisions Node and the repo checkout, which is all run-cron.mjs needs.
+buildCommand = "echo 'cron worker: no app build required'"
+
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+
+[deploy]
+# No healthcheck: a cron container runs once and exits, it is not a server.
+# Do not auto-restart — the schedule re-runs it, and our endpoints are
+# idempotent, so we avoid surprise duplicate runs on a transient failure.
+restartPolicyType = "NEVER"

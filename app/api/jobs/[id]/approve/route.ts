@@ -8,6 +8,7 @@ import {
 import {
   notifyPaymentReleased,
   notifyPayoutClaimReady,
+  notifyReviewRequestsForJob,
 } from "@/lib/notifications";
 import {
   getOrCreateStripeAccount,
@@ -159,6 +160,9 @@ export async function POST(
       onboardingUrl,
     }).catch(() => {});
   }
+
+  // Both parties can now review each other (double-blind, 7-day window).
+  notifyReviewRequestsForJob(jobId, job.title).catch(() => {});
 
   return NextResponse.json({ success: true });
 }
