@@ -1,8 +1,22 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
 import { notifyReviewReceived } from "@/lib/notifications";
 
 type RevealedRow = { review_id: string; reviewee_id: string; job_id: string };
+
+function revalidateReputation(userId: string, role: "client" | "kinglancer") {
+  if (role === "kinglancer") {
+    revalidateTag(`kinglancer-profile-${userId}`, { expire: 0 });
+    revalidateTag(`kinglancer-reviews-${userId}`, { expire: 0 });
+    revalidateTag("kinglancer-profiles", { expire: 0 });
+    revalidatePath(`/kinglancers/${userId}`);
+  } else {
+    revalidateTag(`client-reputation-${userId}`, { expire: 0 });
+    revalidateTag(`client-reviews-${userId}`, { expire: 0 });
+    revalidatePath(`/clients/${userId}`);
+  }
+}
 
 // GET /api/cron/reveal-reviews
 // Publishes reviews whose 7-day double-blind window has elapsed and notifies
@@ -63,6 +77,7 @@ export async function GET(request: Request) {
       if (!profile?.email || (role !== "client" && role !== "kinglancer")) {
         return Promise.resolve();
       }
+      revalidateReputation(row.reviewee_id, role);
       return notifyReviewReceived({
         userId: row.reviewee_id,
         userEmail: profile.email,

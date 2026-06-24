@@ -3,6 +3,7 @@ import { AlertCircle } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
 import { getKinglancerActionCounts } from "@/lib/dashboard-action-rules";
+import { getPendingReviewJobs } from "@/lib/db/reviews";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
 import PayoutSetupButton from "../PayoutSetupButton";
 import StripeLoginButton from "../StripeLoginButton";
@@ -179,6 +180,8 @@ export async function KinglancerActionCentreSection() {
     .eq("kinglancer_id", user.id)
     .in("status", ["held", "released", "disputed"]);
 
+  const pendingReviews = await getPendingReviewJobs(user.id, "kinglancer");
+
   const fundedJobIds = new Set(
     (transactionsResult.data ?? []).map((t) => t.job_id),
   );
@@ -187,7 +190,9 @@ export async function KinglancerActionCentreSection() {
     has_funded_transaction: fundedJobIds.has(job.id),
   }));
 
-  const { actionCount, waitingCount } = getKinglancerActionCounts(jobs);
+  const counts = getKinglancerActionCounts(jobs);
+  const actionCount = counts.actionCount + pendingReviews.length;
+  const waitingCount = counts.waitingCount;
 
   return (
     <div>

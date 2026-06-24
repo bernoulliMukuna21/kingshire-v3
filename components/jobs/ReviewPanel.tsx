@@ -24,6 +24,8 @@ export type ReviewPanelProps = {
   counterpartReview: ReviewData | null;
   /** True once the 7-day review window has elapsed. */
   windowClosed: boolean;
+  /** Time-left label for the open window, e.g. "4 days left". */
+  remaining?: { label: string; urgent: boolean } | null;
 };
 
 function StarsDisplay({ value }: { value: number }) {
@@ -124,6 +126,7 @@ export default function ReviewPanel({
   myReview,
   counterpartReview,
   windowClosed,
+  remaining,
 }: ReviewPanelProps) {
   const router = useRouter();
   const { loading, error, setError, run } = useAsyncAction();
@@ -209,6 +212,23 @@ export default function ReviewPanel({
 
   return (
     <div className="space-y-4">
+      {remaining && (
+        <div
+          className={cn(
+            "flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-bold",
+            remaining.urgent
+              ? "bg-red-50 text-red-700"
+              : "bg-amber-50 text-amber-700",
+          )}
+        >
+          <Clock size={16} className="shrink-0" />
+          <span>
+            {remaining.urgent ? "Last chance — " : ""}
+            {remaining.label} to leave your review
+          </span>
+        </div>
+      )}
+
       <p className="text-sm text-slate-500">
         How was working with {counterpartName}? Your review stays hidden until
         the {roleLabel} reviews you too, or the 7-day window closes.

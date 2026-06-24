@@ -13,6 +13,31 @@ export function isReviewWindowClosed(releasedAt: string | null): boolean {
   return Date.now() - new Date(releasedAt).getTime() > windowMs;
 }
 
+/**
+ * Human label + urgency for how long is left to leave a review. Returns null
+ * when there is no deadline (e.g. payment not yet released). Kept out of
+ * component render bodies because it reads `Date.now()`.
+ */
+export function reviewWindowRemaining(
+  closesAt: string | null,
+): { label: string; urgent: boolean } | null {
+  if (!closesAt) return null;
+  const msLeft = new Date(closesAt).getTime() - Date.now();
+  if (msLeft <= 0) return null;
+
+  const hoursLeft = msLeft / (60 * 60 * 1000);
+  if (hoursLeft <= 24) {
+    const hours = Math.max(1, Math.round(hoursLeft));
+    return {
+      label: hours <= 1 ? "Closes within the hour" : `${hours} hours left`,
+      urgent: true,
+    };
+  }
+
+  const days = Math.ceil(hoursLeft / 24);
+  return { label: `${days} days left`, urgent: false };
+}
+
 export type PublicReview = {
   id: string;
   rating: number;
@@ -78,6 +103,81 @@ export async function getJobReviewState(
           }
         : null,
   };
+}
+
+export type PendingReviewJob = {
+  jobId: string;
+  jobTitle: string;
+  counterpartName: string | null;
+  counterpartRole: "client" | "kinglancer";
+  /** ISO timestamp when the 7-day window closes, or null if not yet released. */
+  closesAt: string | null;
+};
+
+/**
+ * Jobs for which `userId` (acting as `role`) still owes a review: the job is
+ * approved, the review window is still open, and they have not yet submitted
+ * one. Used to surface "Leave a review" as an Action Centre item.
+ */
+export async function getPendingReviewJobs(
+  userId: string,
+  role: "client" | "kinglancer",
+): Promise<PendingReviewJob[]> {
+  const db = createServiceClient();
+  const ownerColumn = role === "client" ? "client_id" : "kinglancer_id";
+  const counterpartColumn = role === "client" ? "kinglancer_id" : "client_id";
+
+  const { data: jobsRaw } = await db
+    .from("jobs")
+    .select(`id, title, counterpart:profiles!${counterpartColumn}(full_name)`)
+    .eq(ownerColumn, userId)
+    .eq("status", "approved")
+    .limit(100);
+
+  const jobs = jobsRaw ?? [];
+  if (jobs.length === 0) return [];
+  const jobIds = jobs.map((job) => job.id);
+
+  const [txResult, reviewResult] = await Promise.all([
+    db.from("transactions").select("job_id, released_at").in("job_id", jobIds),
+    db
+      .from("reviews")
+      .select("job_id")
+      .in("job_id", jobIds)
+      .eq("reviewer_id", userId),
+  ]);
+
+  const releasedAtByJob = new Map(
+    (txResult.data ?? []).map((tx) => [tx.job_id, tx.released_at]),
+  );
+  const reviewedJobIds = new Set(
+    (reviewResult.data ?? []).map((review) => review.job_id),
+  );
+
+  return jobs
+    .filter((job) => {
+      if (reviewedJobIds.has(job.id)) return false;
+      return !isReviewWindowClosed(releasedAtByJob.get(job.id) ?? null);
+    })
+    .map((job) => {
+      const counterpart = Array.isArray(job.counterpart)
+        ? job.counterpart[0]
+        : job.counterpart;
+      const releasedAt = releasedAtByJob.get(job.id) ?? null;
+      const closesAt = releasedAt
+        ? new Date(
+            new Date(releasedAt).getTime() +
+              REVIEW_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+          ).toISOString()
+        : null;
+      return {
+        jobId: job.id,
+        jobTitle: job.title,
+        counterpartName: counterpart?.full_name ?? null,
+        counterpartRole: role === "client" ? "kinglancer" : "client",
+        closesAt,
+      };
+    });
 }
 
 /** Published reviews written ABOUT a user, newest first, with reviewer info. */
