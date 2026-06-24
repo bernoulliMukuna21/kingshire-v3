@@ -760,8 +760,8 @@ export function KinglancerCompleteButton({ jobId }: { jobId: string }) {
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirm}
         title="Mark work as done?"
-        message="This tells the client you've completed the work. They'll be asked to review and approve — releasing payment to you. You can't undo this once submitted."
-        confirmLabel="Yes, submit for review"
+        message="This tells the client you've completed the work. They'll check it and approve — releasing payment to you. You can't undo this once submitted."
+        confirmLabel="Yes, mark as done"
         variant="success"
         loading={loading}
       />

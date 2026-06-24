@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getTransactionByJob } from "@/lib/db/transactions";
@@ -6,6 +7,23 @@ import { isReviewWindowClosed } from "@/lib/db/reviews";
 import { notifyReviewReceived } from "@/lib/notifications";
 
 const MAX_COMMENT_LENGTH = 2000;
+
+/**
+ * Invalidate the cached public reputation pages for a user once a review
+ * about them goes live, so the new review and rating appear immediately.
+ */
+function revalidateReputation(userId: string, role: "client" | "kinglancer") {
+  if (role === "kinglancer") {
+    revalidateTag(`kinglancer-profile-${userId}`, { expire: 0 });
+    revalidateTag(`kinglancer-reviews-${userId}`, { expire: 0 });
+    revalidateTag("kinglancer-profiles", { expire: 0 });
+    revalidatePath(`/kinglancers/${userId}`);
+  } else {
+    revalidateTag(`client-reputation-${userId}`, { expire: 0 });
+    revalidateTag(`client-reviews-${userId}`, { expire: 0 });
+    revalidatePath(`/clients/${userId}`);
+  }
+}
 
 // POST /api/jobs/[id]/review — submit a review of the counterparty.
 // Reviews are created hidden (double-blind). A DB trigger reveals both
@@ -136,13 +154,17 @@ export async function POST(
   const revealed = Boolean(myReview?.is_published);
 
   if (revealed) {
+    // Both reviews are now public — refresh each party's reputation pages.
+    const counterpartRole = reviewerRole === "client" ? "kinglancer" : "client";
+    revalidateReputation(user.id, reviewerRole);
+    revalidateReputation(revieweeId, counterpartRole);
+
     const { data: people } = await serviceDb
       .from("profiles")
       .select("id, email")
       .in("id", [user.id, revieweeId]);
     const reviewerEmail = people?.find((p) => p.id === user.id)?.email;
     const revieweeEmail = people?.find((p) => p.id === revieweeId)?.email;
-    const counterpartRole = reviewerRole === "client" ? "kinglancer" : "client";
 
     await Promise.all([
       revieweeEmail

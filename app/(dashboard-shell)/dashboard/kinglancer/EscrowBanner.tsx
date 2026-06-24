@@ -52,11 +52,12 @@ export default function EscrowRow({
         message={
           <>
             This tells the client you&apos;ve completed &quot;
-            <strong>{jobTitle}</strong>&quot;. They&apos;ll review and approve —
-            releasing £{heldAmount.toFixed(2)} to you. You can&apos;t undo this.
+            <strong>{jobTitle}</strong>&quot;. They&apos;ll check it and approve
+            — releasing £{heldAmount.toFixed(2)} to you. You can&apos;t undo
+            this.
           </>
         }
-        confirmLabel="Yes, submit for review"
+        confirmLabel="Yes, mark as done"
         variant="success"
         loading={loading}
       />

@@ -1,12 +1,13 @@
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
 import { getClientActionCounts } from "@/lib/dashboard-action-rules";
+import { getPendingReviewJobs } from "@/lib/db/reviews";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
 
 export async function ClientActionCentreSection() {
   const { supabase, user } = await getDashboardContext();
 
-  const [jobsResult, transactionsResult] = await Promise.all([
+  const [jobsResult, transactionsResult, pendingReviews] = await Promise.all([
     supabase
       .from("jobs")
       .select(
@@ -20,6 +21,7 @@ export async function ClientActionCentreSection() {
       .select("job_id")
       .eq("client_id", user.id)
       .in("status", ["held", "released", "disputed"]),
+    getPendingReviewJobs(user.id, "client"),
   ]);
 
   const fundedJobIds = new Set(
@@ -37,10 +39,12 @@ export async function ClientActionCentreSection() {
     has_funded_transaction: fundedJobIds.has(job.id),
   }));
 
-  const { actionCount, waitingCount } = getClientActionCounts(
+  const counts = getClientActionCounts(
     jobs,
     (job) => (job.applications as [{ count: number }] | null)?.[0]?.count ?? 0,
   );
+  const actionCount = counts.actionCount + pendingReviews.length;
+  const waitingCount = counts.waitingCount;
 
   return (
     <div>

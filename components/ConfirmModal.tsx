@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { X, Loader2 } from "lucide-react";
 
 interface ConfirmModalProps {
@@ -31,6 +32,14 @@ export default function ConfirmModal({
     onCloseRef.current = onClose;
   });
 
+  // Portals require the DOM, so only render on the client (avoids SSR
+  // mismatch) without calling setState inside an effect.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
@@ -40,7 +49,17 @@ export default function ConfirmModal({
     return () => window.removeEventListener("keydown", handler);
   }, [isOpen, loading]);
 
-  if (!isOpen) return null;
+  // Lock body scroll while the modal is open.
+  useEffect(() => {
+    if (!isOpen) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
 
   const btnColors = {
     primary: "bg-blue-600 hover:bg-blue-700",
@@ -48,7 +67,7 @@ export default function ConfirmModal({
     danger: "bg-red-600 hover:bg-red-700",
   }[variant];
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={() => {
@@ -96,6 +115,7 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

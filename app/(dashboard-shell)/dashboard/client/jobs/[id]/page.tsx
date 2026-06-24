@@ -11,7 +11,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
-import { getJobReviewState, isReviewWindowClosed } from "@/lib/db/reviews";
+import {
+  getJobReviewState,
+  isReviewWindowClosed,
+  reviewWindowRemaining,
+  REVIEW_WINDOW_DAYS,
+} from "@/lib/db/reviews";
 import { getTransactionByJob } from "@/lib/db/transactions";
 import { stripe } from "@/lib/stripe";
 import {
@@ -181,6 +186,7 @@ export default async function ClientJobWorkspacePage({
   // Review state for approved jobs (double-blind, 7-day window).
   let reviewState: Awaited<ReturnType<typeof getJobReviewState>> | null = null;
   let reviewWindowClosed = false;
+  let reviewRemaining: ReturnType<typeof reviewWindowRemaining> = null;
   if (job.status === "approved") {
     const [state, tx] = await Promise.all([
       getJobReviewState(id, user.id),
@@ -188,6 +194,13 @@ export default async function ClientJobWorkspacePage({
     ]);
     reviewState = state;
     reviewWindowClosed = isReviewWindowClosed(tx?.released_at ?? null);
+    const closesAt = tx?.released_at
+      ? new Date(
+          new Date(tx.released_at).getTime() +
+            REVIEW_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+        ).toISOString()
+      : null;
+    reviewRemaining = reviewWindowRemaining(closesAt);
   }
   const kinglancerFirstName =
     kinglancer?.full_name?.split(" ")[0] ?? "the Kinglancer";
@@ -356,7 +369,7 @@ export default async function ClientJobWorkspacePage({
           )}
 
           {job.status === "approved" && (
-            <Card className={cardPadding}>
+            <Card id="leave-review" className={`${cardPadding} scroll-mt-24`}>
               <h2 className="text-lg font-black text-slate-950">
                 Rate {kinglancerFirstName}
               </h2>
@@ -370,6 +383,7 @@ export default async function ClientJobWorkspacePage({
                 myReview={reviewState?.myReview ?? null}
                 counterpartReview={reviewState?.counterpartReview ?? null}
                 windowClosed={reviewWindowClosed}
+                remaining={reviewRemaining}
               />
             </Card>
           )}

@@ -3,10 +3,12 @@ import {
   CheckCircle2,
   CreditCard,
   Send,
+  Star,
   Users,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardContext } from "@/lib/dashboard-context";
+import { getPendingReviewJobs, reviewWindowRemaining } from "@/lib/db/reviews";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import {
@@ -78,6 +80,29 @@ function uniqueActions(actions: ActionItem[]) {
 
 function actionCentreHref(href: string) {
   return `${href}?from=action-centre`;
+}
+
+async function getPendingReviewItems(
+  userId: string,
+  role: "client" | "kinglancer",
+): Promise<ActionItem[]> {
+  const pending = await getPendingReviewJobs(userId, role);
+  return pending.map((job) => {
+    const name =
+      job.counterpartName ??
+      (role === "client" ? "your Kinglancer" : "the client");
+    const remaining = reviewWindowRemaining(job.closesAt);
+    return {
+      id: `${job.jobId}:leave-review`,
+      title: job.jobTitle,
+      description: `This job is complete. Share your honest feedback on working with ${name}.`,
+      href: `${actionCentreHref(`/dashboard/${role}/jobs/${job.jobId}`)}#leave-review`,
+      icon: <Star size={18} />,
+      badge: remaining?.urgent ? "Closes soon" : "Leave a review",
+      tone: remaining?.urgent ? "red" : "amber",
+      meta: remaining?.label,
+    };
+  });
 }
 
 async function getFundedJobIds(
@@ -311,10 +336,16 @@ async function getKinglancerActionData(
 export default async function ActionCentrePage() {
   const { supabase, user, profile } = await getDashboardContext();
 
-  const { actionItems, waitingItems } =
-    profile.role === "client"
-      ? await getClientActionData(supabase, user.id)
-      : await getKinglancerActionData(supabase, user.id);
+  const role = profile.role === "client" ? "client" : "kinglancer";
+  const [{ actionItems: roleActions, waitingItems }, reviewItems] =
+    await Promise.all([
+      role === "client"
+        ? getClientActionData(supabase, user.id)
+        : getKinglancerActionData(supabase, user.id),
+      getPendingReviewItems(user.id, role),
+    ]);
+
+  const actionItems = [...roleActions, ...reviewItems];
 
   const roleLabel = profile.role === "client" ? "Client" : "Kinglancer";
 
