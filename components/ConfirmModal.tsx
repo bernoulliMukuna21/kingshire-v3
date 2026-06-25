@@ -13,6 +13,7 @@ interface ConfirmModalProps {
   confirmLabel?: string;
   loading?: boolean;
   variant?: "primary" | "success" | "danger";
+  error?: string;
 }
 
 export default function ConfirmModal({
@@ -24,6 +25,7 @@ export default function ConfirmModal({
   confirmLabel = "Confirm",
   loading = false,
   variant = "primary",
+  error,
 }: ConfirmModalProps) {
   // Keep a ref to the latest onClose so the keydown listener never needs to
   // be torn down and re-registered just because the parent re-renders.
@@ -93,6 +95,12 @@ export default function ConfirmModal({
         </div>
 
         <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+
+        {error && (
+          <p className="rounded-xl bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700">
+            {error}
+          </p>
+        )}
 
         <div className="flex gap-3 pt-1">
           <button

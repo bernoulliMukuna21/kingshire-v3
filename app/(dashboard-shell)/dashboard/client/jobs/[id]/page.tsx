@@ -35,6 +35,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import ReviewPanel from "@/components/jobs/ReviewPanel";
 import CancelPaymentButton from "./CancelPaymentButton";
+import CancelJobButton from "./CancelJobButton";
 
 type Profile = {
   role: "client" | "kinglancer" | "admin" | null;
@@ -298,6 +299,16 @@ export default async function ClientJobWorkspacePage({
             </Card>
           )}
 
+          {job.status === "open" && !hasPendingPayment && (
+            <div className="flex justify-end">
+              <CancelJobButton
+                jobId={id}
+                status="open"
+                hasApplications={applications.length > 0}
+              />
+            </div>
+          )}
+
           {job.status === "completed" && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
@@ -353,7 +364,10 @@ export default async function ClientJobWorkspacePage({
                   Waiting for the Kinglancer to mark the work as done. You can
                   raise a dispute if something has gone wrong.
                 </p>
-                <ClientApproveActions jobId={id} showApprove={false} />
+                <div className="flex flex-wrap items-center gap-3">
+                  <ClientApproveActions jobId={id} showApprove={false} />
+                  <CancelJobButton jobId={id} status="in_progress" />
+                </div>
               </Card>
             )}
 

@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { AlertCircle, ChevronRight } from "lucide-react";
 import { FadeIn } from "@/components/animations";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import {
@@ -24,8 +24,40 @@ export default async function KinglancerDashboard() {
 
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
+  const services = (profile.services ?? []) as Array<{
+    name: string;
+    rate: number;
+    rate_type: string;
+  }>;
+  const isProfileComplete =
+    !!profile.bio?.trim() && services.some((s) => Number(s.rate) > 0);
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10 space-y-6">
+      {!isProfileComplete && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <AlertCircle
+            size={18}
+            className="mt-0.5 shrink-0 text-amber-600"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-black text-amber-900">
+              Your profile is not visible to clients yet
+            </p>
+            <p className="mt-0.5 text-sm text-amber-700">
+              Add an &ldquo;About you&rdquo; section and set a rate on at least
+              one service to appear in the Kinglancers directory and receive
+              direct requests.
+            </p>
+            <Link
+              href="/dashboard/profile"
+              className="mt-2 inline-block text-sm font-bold text-amber-800 underline underline-offset-2 hover:text-amber-900"
+            >
+              Complete your profile →
+            </Link>
+          </div>
+        </div>
+      )}
       <FadeIn className="relative overflow-hidden rounded-4xl bg-[#10234b] p-6 text-white shadow-2xl shadow-blue-950/15 sm:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.24),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.28),transparent_34%)]" />
         <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">

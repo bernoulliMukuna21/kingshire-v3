@@ -13,12 +13,20 @@ const getKinglancers = unstable_cache(
     const { data } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services",
+        "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services, bio",
       )
       .eq("role", "kinglancer")
       .order("jobs_completed", { ascending: false })
       .limit(60);
-    return data ?? [];
+
+    // Only surface profiles that have an about section and at least one priced
+    // service — the minimum a client needs to make a booking decision.
+    return (data ?? []).filter((k) => {
+      const hasBio = !!k.bio?.trim();
+      const hasPricedService = Array.isArray(k.services) &&
+        (k.services as { rate: number }[]).some((s) => Number(s.rate) > 0);
+      return hasBio && hasPricedService;
+    });
   },
   ["kinglancers-listing"],
   { revalidate: 3600, tags: ["kinglancer-profiles"] },

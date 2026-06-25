@@ -72,6 +72,7 @@ function OnboardingContent() {
     { name: "", rate: "", rate_type: "per_hour" },
   ]);
   const [phone, setPhone] = useState("");
+  const [bio, setBio] = useState("");
   const [portfolioUrl, setPortfolioUrl] = useState("");
   const [cvUrl, setCvUrl] = useState("");
   const [loading, setLoading] = useState(false);
@@ -146,6 +147,12 @@ function OnboardingContent() {
       return;
     }
 
+    if (role === "kinglancer" && !bio.trim()) {
+      setError(
+        "Please add an 'About you' section so clients know what you offer.",
+      );
+      return;
+    }
     if (role === "kinglancer" && namedServices.length === 0) {
       setError(
         "Please add at least one service you offer (e.g. Cleaning, Gardening).",
@@ -154,6 +161,17 @@ function OnboardingContent() {
     }
     if (role === "kinglancer" && invalidServiceRate) {
       setError(CURRENCY_VALIDATION_MESSAGE);
+      return;
+    }
+    if (
+      role === "kinglancer" &&
+      !namedServices.some(
+        (s) => s.rate.trim() && Number(s.rate) > 0,
+      )
+    ) {
+      setError(
+        "Please set a rate for at least one of your services so clients know your price.",
+      );
       return;
     }
 
@@ -171,6 +189,7 @@ function OnboardingContent() {
       body: JSON.stringify({
         role,
         phone: phone.trim(),
+        bio: bio.trim() || null,
         services: servicePayload,
         service_tags: servicePayload.map((service) => service.name),
         portfolio_url: portfolioUrl || null,
@@ -314,10 +333,30 @@ function OnboardingContent() {
 
           {role === "kinglancer" && (
             <div className="space-y-3">
+              {/* About you */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  About you <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  required
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={3}
+                  maxLength={500}
+                  className="w-full rounded-xl border border-gray-200 px-3.5 py-2.5 text-sm outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none"
+                  placeholder="Tell clients what you do, your experience, and why they should hire you..."
+                />
+                <p className="text-right text-xs text-gray-400 mt-1">
+                  {bio.length}/500
+                </p>
+              </div>
+
               <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Your services{" "}
+                <span className="text-red-500">*</span>{" "}
                 <span className="text-gray-400 font-normal">
-                  (add rates now or leave blank to discuss)
+                  (at least one rate required)
                 </span>
               </label>
               <datalist id="onboarding-service-suggestions">
