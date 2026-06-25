@@ -85,6 +85,7 @@ export async function POST(request: Request) {
         clientId: job.client_id,
         clientEmail: clientProfile.email,
         jobTitle: job.title,
+        jobId: job_id,
       }).catch(() => {});
     }
 

@@ -82,20 +82,23 @@ export async function notifyNewApplication({
   clientId,
   clientEmail,
   jobTitle,
+  jobId,
 }: {
   clientId: string;
   clientEmail: string;
   jobTitle: string;
+  jobId: string;
 }) {
   await notify({
     userId: clientId,
     type: "new_application",
     title: "New application received",
     body: `Someone applied to your job "${jobTitle}". Review their application and decide whether to hire them.`,
-    link: `/dashboard/client`,
+    link: `/dashboard/client/jobs/${jobId}`,
     email: {
       to: clientEmail,
       subject: `New application for "${jobTitle}"`,
+      ctaLabel: "Review application →",
     },
   });
 }
@@ -440,6 +443,35 @@ export async function notifyReviewRequestsForJob(
         })
       : Promise.resolve(),
   ]);
+}
+
+/**
+ * Sends a job-alert email only — does not create an in-app notification
+ * record. Call this after the bulk in-app insert in the job creation route.
+ */
+export async function emailJobAlert({
+  to,
+  jobTitle,
+  jobId,
+  isDirect = false,
+}: {
+  to: string;
+  jobTitle: string;
+  jobId: string;
+  isDirect?: boolean;
+}) {
+  await sendEmail({
+    to,
+    subject: isDirect
+      ? `Direct job request: "${jobTitle}"`
+      : `New job posted: "${jobTitle}"`,
+    title: isDirect ? "New direct job request" : "New job posted",
+    body: isDirect
+      ? `You have received a direct job request: <strong>${jobTitle}</strong>. Log in to review and respond.`
+      : `A new job has just been posted: <strong>${jobTitle}</strong>. Be one of the first to apply!`,
+    link: `/jobs/${jobId}`,
+    ctaLabel: isDirect ? "View request →" : "View job →",
+  });
 }
 
 // ── Email delivery ─────────────────────────────────────────
