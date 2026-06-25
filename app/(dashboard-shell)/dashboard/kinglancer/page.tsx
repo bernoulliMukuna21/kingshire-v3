@@ -35,23 +35,20 @@ export default async function KinglancerDashboard() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10 space-y-6">
       {!isProfileComplete && (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <AlertCircle
-            size={18}
-            className="mt-0.5 shrink-0 text-amber-600"
-          />
+        <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-600" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-black text-amber-900">
+            <p className="text-sm font-black text-red-900">
               Your profile is not visible to clients yet
             </p>
-            <p className="mt-0.5 text-sm text-amber-700">
+            <p className="mt-0.5 text-sm text-red-700">
               Add an &ldquo;About you&rdquo; section and set a rate on at least
               one service to appear in the Kinglancers directory and receive
               direct requests.
             </p>
             <Link
               href="/dashboard/profile"
-              className="mt-2 inline-block text-sm font-bold text-amber-800 underline underline-offset-2 hover:text-amber-900"
+              className="mt-2 inline-block text-sm font-bold text-red-800 underline underline-offset-2 hover:text-red-900"
             >
               Complete your profile →
             </Link>

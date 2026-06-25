@@ -21,13 +21,20 @@ const getTopKinglancers = unstable_cache(
     const { data } = await supabase
       .from("profiles")
       .select(
-        "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services",
+        "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services, bio",
       )
       .eq("role", "kinglancer")
       .order("jobs_completed", { ascending: false })
       .order("created_at", { ascending: true })
       .limit(6);
-    return data ?? [];
+
+    // Only surface complete profiles (bio + at least one priced service).
+    return (data ?? []).filter((k) => {
+      const hasBio = !!k.bio?.trim();
+      const hasPricedService = Array.isArray(k.services) &&
+        (k.services as { rate: number }[]).some((s) => Number(s.rate) > 0);
+      return hasBio && hasPricedService;
+    });
   },
   ["top-kinglancers"],
   { revalidate: 86400 }, // 24 hours — ranking changes very slowly
