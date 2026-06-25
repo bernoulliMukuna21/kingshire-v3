@@ -8,6 +8,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { emailJobAlert } from "@/lib/notifications";
 
 export async function GET() {
   try {
@@ -145,12 +146,12 @@ export async function POST(request: Request) {
     const { data: kinglancers } = invitedKinglancerId
       ? await supabase
           .from("profiles")
-          .select("id")
+          .select("id, email")
           .eq("id", invitedKinglancerId)
           .limit(1)
       : await supabase
           .from("profiles")
-          .select("id")
+          .select("id, email")
           .eq("role", "kinglancer")
           .order("jobs_completed", { ascending: false })
           .limit(50);
@@ -172,6 +173,23 @@ export async function POST(request: Request) {
           })),
         )
         .then(() => null);
+    }
+
+    // Fire-and-forget email fan-out — does not block the HTTP response.
+    // ENABLE_EMAIL must be true in the environment for emails to actually send.
+    if (kinglancers?.length) {
+      Promise.allSettled(
+        kinglancers
+          .filter((k) => k.email)
+          .map((k) =>
+            emailJobAlert({
+              to: k.email as string,
+              jobTitle: job.title,
+              jobId: job.id,
+              isDirect: !!invitedKinglancerId,
+            }),
+          ),
+      ).catch(() => {});
     }
 
     if (!invitedKinglancerId) {

@@ -442,6 +442,35 @@ export async function notifyReviewRequestsForJob(
   ]);
 }
 
+/**
+ * Sends a job-alert email only — does not create an in-app notification
+ * record. Call this after the bulk in-app insert in the job creation route.
+ */
+export async function emailJobAlert({
+  to,
+  jobTitle,
+  jobId,
+  isDirect = false,
+}: {
+  to: string;
+  jobTitle: string;
+  jobId: string;
+  isDirect?: boolean;
+}) {
+  await sendEmail({
+    to,
+    subject: isDirect
+      ? `Direct job request: "${jobTitle}"`
+      : `New job posted: "${jobTitle}"`,
+    title: isDirect ? "New direct job request" : "New job posted",
+    body: isDirect
+      ? `You have received a direct job request: <strong>${jobTitle}</strong>. Log in to review and respond.`
+      : `A new job has just been posted: <strong>${jobTitle}</strong>. Be one of the first to apply!`,
+    link: `/jobs/${jobId}`,
+    ctaLabel: isDirect ? "View request →" : "View job →",
+  });
+}
+
 // ── Email delivery ─────────────────────────────────────────
 
 async function sendEmail({
