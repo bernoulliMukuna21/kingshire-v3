@@ -51,6 +51,18 @@ export default async function KinglancerProfilePage({
 
   if (!kinglancer) notFound();
 
+  // Profiles without an about section and at least one priced service are not
+  // yet public — same rules as the listing filter. Enforced here too so direct
+  // URL access is also blocked.
+  const rawServices =
+    (kinglancer.services as Array<{ rate: number }> | null) ?? [];
+  if (
+    !kinglancer.bio?.trim() ||
+    !rawServices.some((s) => Number(s.rate) > 0)
+  ) {
+    notFound();
+  }
+
   const getReviews = unstable_cache(
     async () => getPublishedReviewsForUser(id, 30),
     [`kinglancer-reviews-${id}`],
