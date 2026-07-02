@@ -39,12 +39,12 @@ export default async function KinglancerDashboard() {
           <AlertCircle size={18} className="mt-0.5 shrink-0 text-red-600" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-black text-red-900">
-              Your profile is not visible to clients yet
+              Complete your profile to apply for jobs
             </p>
             <p className="mt-0.5 text-sm text-red-700">
               Add an &ldquo;About you&rdquo; section and set a rate on at least
-              one service to appear in the Kinglancers directory and receive
-              direct requests.
+              one service before you can apply to jobs or receive direct
+              requests.
             </p>
             <Link
               href="/dashboard/profile"
