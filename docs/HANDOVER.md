@@ -9,11 +9,11 @@
 
 **KingsHire** is a community-first freelance marketplace for members of Believer's Love World / Christ Embassy.
 
-- **Live URL:** https://kingshire.uk  
-- **Staging URL:** Railway staging environment (auto-deploys from `staging` branch)  
+- **Live URL:** https://kingshire.uk
+- **Staging URL:** Railway staging environment (auto-deploys from `staging` branch)
 - **Two primary user roles:**
-  - **Client** — Posts jobs, hires workers, pays via escrow  
-  - **Kinglancer** — The worker/freelancer who applies for and completes jobs  
+  - **Client** — Posts jobs, hires workers, pays via escrow
+  - **Kinglancer** — The worker/freelancer who applies for and completes jobs
   - A user can hold both roles simultaneously
 - **Admin panel:** `/admin` — protected by `ADMIN_PASSCODE` env var + HTTP-only cookie session
 
@@ -21,19 +21,19 @@
 
 ## 2. Tech Stack
 
-| Layer | Technology | Version |
-|---|---|---|
-| Framework | Next.js (App Router) | 16.2.4 |
-| UI | React | 19.2.4 |
-| Language | TypeScript | ~5.x |
-| Styling | Tailwind CSS | v4 (breaking: use `bg-linear-to-*` NOT `bg-gradient-to-*`) |
-| Animations | Framer Motion | ^12 |
-| Database | Supabase (PostgreSQL) | `@supabase/ssr` 0.10.3 |
-| Auth | Supabase Auth (PKCE) + KingsChat SSO + Google OAuth | — |
-| Payments | Stripe Connect (separate charges/transfers) | — |
-| Email | Brevo (formerly Sendinblue) | REST API via `BREVO_API_KEY` |
-| Hosting | Railway (persistent server, NOT serverless/edge) | — |
-| Icons | lucide-react | ^1.8 |
+| Layer      | Technology                                          | Version                                                    |
+| ---------- | --------------------------------------------------- | ---------------------------------------------------------- |
+| Framework  | Next.js (App Router)                                | 16.2.4                                                     |
+| UI         | React                                               | 19.2.4                                                     |
+| Language   | TypeScript                                          | ~5.x                                                       |
+| Styling    | Tailwind CSS                                        | v4 (breaking: use `bg-linear-to-*` NOT `bg-gradient-to-*`) |
+| Animations | Framer Motion                                       | ^12                                                        |
+| Database   | Supabase (PostgreSQL)                               | `@supabase/ssr` 0.10.3                                     |
+| Auth       | Supabase Auth (PKCE) + KingsChat SSO + Google OAuth | —                                                          |
+| Payments   | Stripe Connect (separate charges/transfers)         | —                                                          |
+| Email      | Brevo (formerly Sendinblue)                         | REST API via `BREVO_API_KEY`                               |
+| Hosting    | Railway (persistent server, NOT serverless/edge)    | —                                                          |
+| Icons      | lucide-react                                        | ^1.8                                                       |
 
 ### Key architectural notes
 
@@ -49,32 +49,36 @@
 ## 3. Supabase Database
 
 ### Project
-- **URL:** https://mdzousozzrnggtblusws.supabase.co  
+
+- **URL:** https://mdzousozzrnggtblusws.supabase.co
 - **Project ref:** `mdzousozzrnggtblusws`
 - **Service role key:** stored as `SUPABASE_SECRET_KEY` env var
 
 ### Tables
 
-| Table | Purpose |
-|---|---|
-| `profiles` | One per auth user. Role, bio, services (JSONB), stripe info, rating, avatar, etc. |
-| `jobs` | Job postings. Statuses: `open`, `in_progress`, `completed`, `cancelled`, `disputed`, `approved`. |
-| `applications` | Kinglancer applications to open jobs. |
-| `transactions` | Escrow records. One per job (`transactions_job_id_unique` unique constraint). Statuses: `held`, `released`, `refunded`, `transferred`. |
-| `payment_attempts` | Tracks Stripe PaymentIntents before finalization. Replaces older "legacy" direct transactions. |
-| `notifications` | In-app notifications. Read via `NotificationBell` component polling. |
-| `reviews` | Double-blind review system (both parties submit; revealed simultaneously after both submit OR after 14-day timeout). |
-| `disputes` | Disputes raised on `in_progress`/`completed` jobs. |
+| Table              | Purpose                                                                                                                                |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `profiles`         | One per auth user. Role, bio, services (JSONB), stripe info, rating, avatar, etc.                                                      |
+| `jobs`             | Job postings. Statuses: `open`, `in_progress`, `completed`, `cancelled`, `disputed`, `approved`.                                       |
+| `applications`     | Kinglancer applications to open jobs.                                                                                                  |
+| `transactions`     | Escrow records. One per job (`transactions_job_id_unique` unique constraint). Statuses: `held`, `released`, `refunded`, `transferred`. |
+| `payment_attempts` | Tracks Stripe PaymentIntents before finalization. Replaces older "legacy" direct transactions.                                         |
+| `notifications`    | In-app notifications. Read via `NotificationBell` component polling.                                                                   |
+| `reviews`          | Double-blind review system (both parties submit; revealed simultaneously after both submit OR after 14-day timeout).                   |
+| `disputes`         | Disputes raised on `in_progress`/`completed` jobs.                                                                                     |
 
 ### Important DB constraints
+
 - `transactions_job_id_unique` — only ONE transaction per job (prevents double-charging). This is intentional.
 - RLS enabled on all tables.
 - Service role client (`createServiceClient()` from `lib/supabase/service.ts`) bypasses RLS — used in all API routes and webhook handlers.
 
 ### Migrations
+
 Files in `supabase/migrations/` — numbered `002` through `026`. **These are NOT auto-applied.** Each must be run manually in the Supabase SQL Editor.
 
 **Migration 027 (`supabase/migrations/027_review_query_indexes.sql`) has been created but NOT yet run on staging or production.** It adds two performance indexes:
+
 ```sql
 create index if not exists idx_reviews_reviewer_job
   on public.reviews (reviewer_id, job_id);
@@ -83,6 +87,7 @@ create index if not exists idx_reviews_reviewee_published_at
   on public.reviews (reviewee_id, published_at desc)
   where is_published;
 ```
+
 **Action required:** Run this SQL manually in Supabase SQL editor for both staging and production.
 
 ---
@@ -91,38 +96,40 @@ create index if not exists idx_reviews_reviewee_published_at
 
 All must be set in Railway service environment settings.
 
-| Variable | Required | Description |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅ | Supabase anon/publishable key (new format) |
-| `SUPABASE_SECRET_KEY` | ✅ | Supabase service role key |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | ✅ | Stripe publishable key |
-| `STRIPE_SECRET_KEY` | ✅ | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | ✅ | Stripe webhook signing secret |
-| `NEXT_PUBLIC_APP_URL` | ✅ | Full base URL (e.g. `https://kingshire.uk`) |
-| `BREVO_API_KEY` | ✅ for email | Brevo (email provider) API key |
-| `BREVO_SENDER_EMAIL` | ✅ for email | From address (e.g. `noreply@kingshire.uk`) |
-| `BREVO_SENDER_NAME` | optional | Display name (e.g. `KingsHire`) |
-| `ENABLE_EMAIL` | ✅ for email | Must be `true` to send any emails |
-| `ADMIN_PASSCODE` | ✅ | Password for admin panel login |
-| `ADMIN_SESSION_SECRET` | ✅ | Secret for signing admin HTTP-only cookie |
-| `ADMIN_NOTIFICATION_EMAIL` | optional | Admin email for dispute notifications |
-| `CRON_SECRET` | ✅ | Bearer token for cron job endpoints |
-| `KINGSCHAT_CLIENT_ID` | ✅ | KingsChat OAuth client ID |
-| `KINGSCHAT_API_KEY` | ✅ | KingsChat API key |
-| `APP_ENV` | optional | `staging` or `production` |
+| Variable                               | Required     | Description                                 |
+| -------------------------------------- | ------------ | ------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`             | ✅           | Supabase project URL                        |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅           | Supabase anon/publishable key (new format)  |
+| `SUPABASE_SECRET_KEY`                  | ✅           | Supabase service role key                   |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`   | ✅           | Stripe publishable key                      |
+| `STRIPE_SECRET_KEY`                    | ✅           | Stripe secret key                           |
+| `STRIPE_WEBHOOK_SECRET`                | ✅           | Stripe webhook signing secret               |
+| `NEXT_PUBLIC_APP_URL`                  | ✅           | Full base URL (e.g. `https://kingshire.uk`) |
+| `BREVO_API_KEY`                        | ✅ for email | Brevo (email provider) API key              |
+| `BREVO_SENDER_EMAIL`                   | ✅ for email | From address (e.g. `noreply@kingshire.uk`)  |
+| `BREVO_SENDER_NAME`                    | optional     | Display name (e.g. `KingsHire`)             |
+| `ENABLE_EMAIL`                         | ✅ for email | Must be `true` to send any emails           |
+| `ADMIN_PASSCODE`                       | ✅           | Password for admin panel login              |
+| `ADMIN_SESSION_SECRET`                 | ✅           | Secret for signing admin HTTP-only cookie   |
+| `ADMIN_NOTIFICATION_EMAIL`             | optional     | Admin email for dispute notifications       |
+| `CRON_SECRET`                          | ✅           | Bearer token for cron job endpoints         |
+| `KINGSCHAT_CLIENT_ID`                  | ✅           | KingsChat OAuth client ID                   |
+| `KINGSCHAT_API_KEY`                    | ✅           | KingsChat API key                           |
+| `APP_ENV`                              | optional     | `staging` or `production`                   |
 
 ---
 
 ## 5. Branch / Deployment State
 
-| Branch | Railway Service | Current State |
-|---|---|---|
-| `main` | Production (kingshire.uk) | At commit `7756485` — does NOT include email fixes or webhook idempotency fix |
-| `staging` | Staging | At commit `458019a` — includes email fixes + webhook idempotency fix |
+| Branch    | Railway Service           | Current State                                                                 |
+| --------- | ------------------------- | ----------------------------------------------------------------------------- |
+| `main`    | Production (kingshire.uk) | At commit `7756485` — does NOT include email fixes or webhook idempotency fix |
+| `staging` | Staging                   | At commit `458019a` — includes email fixes + webhook idempotency fix          |
 
 ### Staging-only commits (not yet on `main`)
+
 In order (oldest first):
+
 1. `97c332b` — "Surface pending reviews as Action Centre items with countdown"
 2. `523087a` — **fix: send email notifications when a job is posted**
 3. `ef5fbee` — **fix: client application notification links directly to the job**
@@ -131,7 +138,9 @@ In order (oldest first):
 **All 4 commits need to be merged to `main` for production.** Commit `458019a` is the most urgent (active production bug).
 
 ### Feature work NOT on any branch
+
 The following features were built in a previous session, then the staging branch was hard-reset to match production. These changes exist only in the previous session's git history and need to be **re-applied**:
+
 - Profile completeness gating (onboarding bio requirement, listing filters, home page filter, direct URL blocking)
 - Job cancellation feature (grace period refunds for `in_progress` jobs)
 - Kinglancer dashboard incomplete-profile banner
@@ -142,7 +151,7 @@ The following features were built in a previous session, then the staging branch
 ## 6. Platform Fees
 
 - **Client pays:** budget + 2.5% platform fee
-- **Kinglancer receives:** budget − 5% platform fee  
+- **Kinglancer receives:** budget − 5% platform fee
 - **Total platform take:** 7.5% of job budget
 - Constants in `lib/stripe.ts`: `PLATFORM_FEE_RATE_CLIENT = 0.025`, `PLATFORM_FEE_RATE_KINGLANCER = 0.05`
 - Auto-release: **5 working days** after work marked complete with no client response
@@ -152,6 +161,7 @@ The following features were built in a previous session, then the staging branch
 ## 7. Feature Status — Complete Inventory
 
 ### ✅ Authentication
+
 - Email/password sign-up (multi-step: role → details → verify email)
 - Google OAuth sign-in
 - KingsChat SSO (cross-site POST → 303 redirect fix — see security notes)
@@ -160,6 +170,7 @@ The following features were built in a previous session, then the staging branch
 - Onboarding page: role, bio (kinglancer required), services (at least one priced), phone, portfolio_url, cv_url
 
 ### ✅ Kinglancer Public Profile
+
 - Route: `/kinglancers/[id]`
 - **Completeness gate:** profiles are only visible if `bio.trim()` is non-empty AND at least one service has `rate > 0`. Incomplete profiles return 404 on direct URL access.
 - Listing page (`/kinglancers`) also filters out incomplete profiles in JS.
@@ -167,24 +178,28 @@ The following features were built in a previous session, then the staging branch
 - Kinglancer dashboard shows a red banner if profile is incomplete.
 
 ### ✅ Job Posting
+
 - Clients can post public jobs or send direct requests to specific kinglancers.
 - Categories, deadline, budget, rate type (fixed/hourly/daily).
 - On post: bulk in-app notifications sent to top 50 matching kinglancers + email fan-out via `emailJobAlert`.
 - For direct requests: only the invited kinglancer is notified.
 
 ### ✅ Job Application Flow
+
 - Kinglancers apply to open jobs.
 - Client receives in-app notification + email linking directly to `/dashboard/client/jobs/[jobId]`.
 - Client can accept/reject applications.
 - Accepted kinglancer receives "job awarded" notification.
 
 ### ✅ Direct Request Flow
+
 - Client can invite a specific kinglancer.
 - Kinglancer can accept/decline/counter-propose.
 - On accept: status becomes `accepted_pending_payment`.
 - Client pays → job goes `in_progress`.
 
 ### ✅ Payment Flow (Stripe Connect)
+
 - Separate charges/transfers model.
 - `payment_attempts` table tracks the PaymentIntent before finalization.
 - On `payment_intent.succeeded` webhook: `finalizePaymentAttempt()` called.
@@ -195,11 +210,13 @@ The following features were built in a previous session, then the staging branch
 - Express checkout (Apple Pay / Google Pay) — on `feat/express-checkout-wallets` branch, merged to `main`.
 
 ### ✅ Escrow / Release Flow
+
 - Work submitted → client approves → `fireTransfer()` to kinglancer's Stripe Connect account.
 - Auto-release cron: `/api/cron/auto-release` — runs via Railway cron service.
 - `GRACE_PERIOD_MS = 2 * 60 * 60 * 1000` (2 hours) for in-progress job cancellation.
 
 ### ✅ Review System (Double-Blind)
+
 - Both client and kinglancer submit reviews independently after job completion.
 - Reviews are hidden until **both** submit, or after a 14-day timeout.
 - Cron: `/api/cron/reveal-reviews` — reveals timed-out reviews.
@@ -207,16 +224,19 @@ The following features were built in a previous session, then the staging branch
 - Dashboard performance indexes in migration 025/026.
 
 ### ✅ Dispute System
+
 - Client or kinglancer can raise a dispute on an `in_progress` or `completed` job.
 - Admin receives notification.
 - Admin resolves via `/admin/disputes`.
 
 ### ✅ Admin Panel
+
 - Route: `/admin` (protected by passcode + HTTP-only cookie)
 - Pages: `/admin/users`, `/admin/jobs`, `/admin/disputes`
 - Pagination, search.
 
 ### ✅ Notification System
+
 - In-app: `notifications` table, `NotificationBell` component polls for unread count.
 - Email: via Brevo. Only fires when `ENABLE_EMAIL=true` AND `BREVO_API_KEY` AND `BREVO_SENDER_EMAIL` are set.
 - Email helper functions in `lib/notifications.ts`:
@@ -226,6 +246,7 @@ The following features were built in a previous session, then the staging branch
   - `notifyJobAwarded()`, `notifyWorkSubmitted()`, `notifyPaymentReleased()`, `notifyDisputeRaised()`, `notifyPayoutReady()`, `notifyJobCancelled()`
 
 ### ✅ Job Cancellation
+
 - Route: `POST /api/jobs/[id]/cancel`
 - **`open` jobs:** bulk-rejects all applications + marks cancelled + notifies invited kinglancer (if direct request).
 - **`in_progress` jobs:** checks transaction `created_at` within 2-hour grace period. If within: Stripe refund + update tx to `refunded` + cancel job + notify kinglancer. If outside: 409 `GRACE_PERIOD_EXPIRED`.
@@ -233,18 +254,21 @@ The following features were built in a previous session, then the staging branch
 - **Note:** This feature was built but is currently NOT on the staging or main branches (was reset). Needs to be re-applied.
 
 ### ✅ KingsChat SSO
+
 - Cross-site POST from KingsChat hits `/auth/callback`.
 - **Critical fix:** uses 303 redirect (not 307) so SameSite=Lax session cookies survive.
 - **Security:** strictly requires `kcProfile.is_email_verified === true` before linking — prevents account takeover.
 - Links KingsChat accounts to Supabase by email match.
 
 ### ✅ Stripe Connect Onboarding
+
 - Kinglancers must complete Stripe Connect onboarding before receiving payouts.
 - `stripe_onboarding_complete` boolean on profile.
 - Webhook `account.updated` syncs payout status.
 - After onboarding completes, automatically fires any pending unreleased transfers.
 
 ### ❌ Organisation Feature (PLANNED, NOT STARTED)
+
 See Section 9 below.
 
 ---
@@ -252,43 +276,46 @@ See Section 9 below.
 ## 8. Key File Locations
 
 ### API Routes
-| Route | File | Description |
-|---|---|---|
-| `POST /api/jobs` | `app/api/jobs/route.ts` | Create job + fan-out notifications/emails |
-| `POST /api/jobs/[id]/cancel` | `app/api/jobs/[id]/cancel/route.ts` | Cancel job with optional refund |
-| `POST /api/applications` | `app/api/applications/route.ts` | Submit application |
-| `POST /api/profile/complete-onboarding` | `app/api/profile/complete-onboarding/route.ts` | Save onboarding data |
-| `POST /api/webhooks/stripe` | `app/api/webhooks/stripe/route.ts` | Stripe webhook handler |
-| `GET /api/health` | `app/api/health/route.ts` | Health check |
-| `GET /api/cron/auto-release` | `app/api/cron/auto-release/route.ts` | Auto-release escrow |
-| `GET /api/cron/reveal-reviews` | `app/api/cron/reveal-reviews/route.ts` | Reveal timed-out reviews |
-| `GET /api/cron/cleanup-abandoned-checkouts` | `app/api/cron/cleanup-abandoned-checkouts/route.ts` | Cancel stale PaymentIntents |
+
+| Route                                       | File                                                | Description                               |
+| ------------------------------------------- | --------------------------------------------------- | ----------------------------------------- |
+| `POST /api/jobs`                            | `app/api/jobs/route.ts`                             | Create job + fan-out notifications/emails |
+| `POST /api/jobs/[id]/cancel`                | `app/api/jobs/[id]/cancel/route.ts`                 | Cancel job with optional refund           |
+| `POST /api/applications`                    | `app/api/applications/route.ts`                     | Submit application                        |
+| `POST /api/profile/complete-onboarding`     | `app/api/profile/complete-onboarding/route.ts`      | Save onboarding data                      |
+| `POST /api/webhooks/stripe`                 | `app/api/webhooks/stripe/route.ts`                  | Stripe webhook handler                    |
+| `GET /api/health`                           | `app/api/health/route.ts`                           | Health check                              |
+| `GET /api/cron/auto-release`                | `app/api/cron/auto-release/route.ts`                | Auto-release escrow                       |
+| `GET /api/cron/reveal-reviews`              | `app/api/cron/reveal-reviews/route.ts`              | Reveal timed-out reviews                  |
+| `GET /api/cron/cleanup-abandoned-checkouts` | `app/api/cron/cleanup-abandoned-checkouts/route.ts` | Cancel stale PaymentIntents               |
 
 ### Library Files
-| File | Description |
-|---|---|
-| `lib/notifications.ts` | All notification + email helpers |
+
+| File                         | Description                                               |
+| ---------------------------- | --------------------------------------------------------- |
+| `lib/notifications.ts`       | All notification + email helpers                          |
 | `lib/db/payment-attempts.ts` | PaymentAttempt DB operations + `finalizePaymentAttempt()` |
-| `lib/db/applications.ts` | Application DB operations + `selectApplicant()` |
-| `lib/db/jobs.ts` | Job DB operations |
-| `lib/db/transactions.ts` | Transaction DB operations |
-| `lib/stripe.ts` | Stripe helpers, fee constants, `fireTransfer()` |
-| `lib/stripe-connect.ts` | Stripe Connect account creation |
-| `lib/admin-auth.ts` | Admin passcode auth |
-| `lib/roles.ts` | Role check helpers |
-| `lib/pagination.ts` | Shared pagination utility |
-| `lib/supabase/service.ts` | `createServiceClient()` — service role, bypasses RLS |
-| `lib/supabase/server.ts` | `createServerClient()` — user session, respects RLS |
-| `lib/supabase/client.ts` | Browser Supabase client |
+| `lib/db/applications.ts`     | Application DB operations + `selectApplicant()`           |
+| `lib/db/jobs.ts`             | Job DB operations                                         |
+| `lib/db/transactions.ts`     | Transaction DB operations                                 |
+| `lib/stripe.ts`              | Stripe helpers, fee constants, `fireTransfer()`           |
+| `lib/stripe-connect.ts`      | Stripe Connect account creation                           |
+| `lib/admin-auth.ts`          | Admin passcode auth                                       |
+| `lib/roles.ts`               | Role check helpers                                        |
+| `lib/pagination.ts`          | Shared pagination utility                                 |
+| `lib/supabase/service.ts`    | `createServiceClient()` — service role, bypasses RLS      |
+| `lib/supabase/server.ts`     | `createServerClient()` — user session, respects RLS       |
+| `lib/supabase/client.ts`     | Browser Supabase client                                   |
 
 ### Dashboard Pages
-| Route | File |
-|---|---|
-| `/dashboard` (shell) | `app/(dashboard-shell)/layout.tsx` |
-| Client dashboard | `app/(dashboard-shell)/dashboard/` |
+
+| Route                | File                                                        |
+| -------------------- | ----------------------------------------------------------- |
+| `/dashboard` (shell) | `app/(dashboard-shell)/layout.tsx`                          |
+| Client dashboard     | `app/(dashboard-shell)/dashboard/`                          |
 | Client job workspace | `app/(dashboard-shell)/dashboard/client/jobs/[id]/page.tsx` |
-| Kinglancer dashboard | `app/(dashboard-shell)/dashboard/kinglancer/page.tsx` |
-| Profile edit | `app/(dashboard-shell)/dashboard/profile/page.tsx` |
+| Kinglancer dashboard | `app/(dashboard-shell)/dashboard/kinglancer/page.tsx`       |
+| Profile edit         | `app/(dashboard-shell)/dashboard/profile/page.tsx`          |
 
 ---
 
@@ -299,6 +326,7 @@ See Section 9 below.
 **Problem:** The webhook idempotency fix (commit `458019a`) is on `staging` but NOT on `main` (production). Production is currently in a Stripe webhook retry loop every time a payment succeeds.
 
 **Action:**
+
 ```bash
 git checkout main
 git merge staging --no-edit
@@ -312,6 +340,7 @@ git push origin main
 ### HIGH PRIORITY — Test email notifications on staging
 
 **What to test:**
+
 1. Set `ENABLE_EMAIL=true` in Railway staging environment (and redeploy if not done already).
 2. Post a new job as a client → check that kinglancers receive an email.
 3. Apply to a job → check that the client receives an email with a direct link to the job page (`/dashboard/client/jobs/[jobId]`).
@@ -348,33 +377,40 @@ The following features were built but then the staging branch was hard-reset (`g
 **Changes needed:**
 
 **`app/onboarding/page.tsx`**
+
 - Add `bio` state (string, required for kinglancers, max 500 chars)
 - Add "About you" textarea section before the services section (kinglancer-only)
 - Validation: bio required + at least one service with `rate > 0`
 - Pass `bio` in the API body
 
 **`app/api/profile/complete-onboarding/route.ts`**
+
 - Accept `bio` in request body
 - Validate: bio not empty and <= 500 chars for kinglancers
 - Validate: at least one service has `rate > 0` for kinglancers
 - Include `bio` in the DB update for kinglancer role
 
 **`app/kinglancers/page.tsx`**
+
 - `getKinglancers()` must select `bio`
 - Filter results: `filter(k => k.bio?.trim() && rawServices.some(s => Number(s.rate) > 0))`
 
 **`app/kinglancers/[id]/page.tsx`**
+
 - After `notFound()` check, add completeness check:
   ```ts
-  if (!kinglancer.bio?.trim() || !rawServices.some(s => Number(s.rate) > 0)) notFound();
+  if (!kinglancer.bio?.trim() || !rawServices.some((s) => Number(s.rate) > 0))
+    notFound();
   ```
 
 **`components/home/TopKinglancers.tsx`**
+
 - Fetch `bio` in select
 - Filter out incomplete profiles with same rule
 - Cache tag: `top-kinglancers`, 24h TTL
 
 **`app/(dashboard-shell)/dashboard/kinglancer/page.tsx`**
+
 - Compute `isProfileComplete = !!profile.bio?.trim() && services.some(s => Number(s.rate) > 0)`
 - Show red banner when incomplete: `border-red-200 bg-red-50`
 - Banner text: "Your profile is not visible to clients yet" + "Complete your profile →" link
@@ -382,11 +418,14 @@ The following features were built but then the staging branch was hard-reset (`g
 #### 2. Job Cancellation
 
 **New file: `app/api/jobs/[id]/cancel/route.ts`**
+
 ```
 POST /api/jobs/[id]/cancel
 Auth: required, must be job owner (client_id)
 ```
+
 Logic:
+
 - If `status === 'open'`: bulk-reject applications + mark cancelled + notify invited kinglancer (direct request only)
 - If `status === 'in_progress'`:
   - Get transaction → check `stripe_payment_intent_id` not null
@@ -396,6 +435,7 @@ Logic:
 - Other statuses: 400
 
 **New file: `app/(dashboard-shell)/dashboard/client/jobs/[id]/CancelJobButton.tsx`**
+
 - Client component
 - Props: `jobId: string`, `status: "open" | "in_progress"`, `hasApplications?: boolean`
 - Uses `ConfirmModal` with state-appropriate copy
@@ -403,10 +443,12 @@ Logic:
 - On grace period expired: shows inline error in modal
 
 **`app/(dashboard-shell)/dashboard/client/jobs/[id]/page.tsx`**
+
 - For `open` jobs: render `<CancelJobButton jobId={id} status="open" hasApplications={applications.length > 0} />` below applicants section
 - For `in_progress` jobs: render `<CancelJobButton jobId={id} status="in_progress" />` in job workspace card
 
 **`components/ConfirmModal.tsx`**
+
 - Add optional `error?: string` prop
 - Render red alert box inside modal above action buttons when `error` is set
 
@@ -417,6 +459,7 @@ Logic:
 This is a planned new user type. Team message has been sent; waiting for responses.
 
 **Key agreed decisions so far:**
+
 - New role type named **"Organisation"** (not "Company", not "Business")
 - Monthly subscription fee for access to the volunteer pool
 - Verification against Companies House or Charity Commission register (admin manually certifies)
@@ -435,10 +478,12 @@ This is a planned new user type. Team message has been sent; waiting for respons
 ## 10. Known Bugs / Issues
 
 ### Active Production Bug
+
 - **Stripe webhook retry loop:** `payment_intent.succeeded` delivered twice concurrently → second delivery hits `transactions_job_id_unique` (23505) → webhook returns 500 → Stripe retries infinitely. **Fix is on staging (`458019a`), not yet on production.**
 - **Impact:** Noisy logs, Stripe dashboard shows webhook failures. No double-charging occurs (constraint prevents it). The correct transaction record IS created.
 
 ### Non-critical / Known
+
 - Migration `027` not yet applied to any database — missing review query indexes. Queries still work, just slower at scale.
 - Profile completeness feature was reset from staging — incomplete kinglancer profiles are currently visible on the listing and home page.
 - Job cancellation feature was reset from staging — clients have no way to cancel jobs via UI.
@@ -483,11 +528,11 @@ This is a planned new user type. Team message has been sent; waiting for respons
 
 Configured in `railway.toml` as separate Railway services.
 
-| Cron | Schedule | Route | Description |
-|---|---|---|---|
-| auto-release | Every hour | `/api/cron/auto-release` | Releases escrow after 5 working days |
-| reveal-reviews | Daily | `/api/cron/reveal-reviews` | Reveals reviews after 14-day timeout |
-| cleanup-abandoned-checkouts | Every 30 min | `/api/cron/cleanup-abandoned-checkouts` | Cancels stale PaymentIntents |
+| Cron                        | Schedule     | Route                                   | Description                          |
+| --------------------------- | ------------ | --------------------------------------- | ------------------------------------ |
+| auto-release                | Every hour   | `/api/cron/auto-release`                | Releases escrow after 5 working days |
+| reveal-reviews              | Daily        | `/api/cron/reveal-reviews`              | Reveals reviews after 14-day timeout |
+| cleanup-abandoned-checkouts | Every 30 min | `/api/cron/cleanup-abandoned-checkouts` | Cancels stale PaymentIntents         |
 
 All cron endpoints require `Authorization: Bearer ${CRON_SECRET}` header.
 
@@ -496,15 +541,18 @@ All cron endpoints require `Authorization: Bearer ${CRON_SECRET}` header.
 ## 13. Security Notes
 
 ### KingsChat SSO
+
 - Callback uses **303 redirect** (not 307). 307 preserves the POST method, which blocks SameSite=Lax cookies. This fix is in `lib/kingschat-auth.ts`. Any future cross-site POST handlers must also use 303.
 - **Email verification required:** `kcProfile.is_email_verified` must be `true` before linking accounts. Prevents account takeover where someone with an unverified KingsChat account could hijack a KingsHire account.
 
 ### RLS
+
 - All Supabase tables have Row Level Security enabled.
 - Service role client (`createServiceClient()`) bypasses RLS — only used in server-side API routes, never exposed to client.
 - Browser client uses `createBrowserClient()` which respects RLS.
 
 ### Admin
+
 - `/admin` routes protected by `ADMIN_PASSCODE` + HTTP-only cookie (signed with `ADMIN_SESSION_SECRET`).
 - Admin routes in `app/admin/(protected)/` — layout checks cookie on every request.
 

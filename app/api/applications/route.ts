@@ -30,8 +30,7 @@ export async function POST(request: Request) {
 
   const profileServices = (profile.services ?? []) as Array<{ rate: number }>;
   const isProfileComplete =
-    !!profile.bio?.trim() &&
-    profileServices.some((s) => Number(s.rate) > 0);
+    !!profile.bio?.trim() && profileServices.some((s) => Number(s.rate) > 0);
 
   if (!isProfileComplete) {
     return NextResponse.json(

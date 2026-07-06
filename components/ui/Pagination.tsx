@@ -6,7 +6,18 @@ type Props = {
   total: number;
   pageSize: number;
   itemLabel?: string;
+  /** Extra query params to preserve in pagination links (e.g. search query). */
+  params?: Record<string, string>;
 };
+
+function pageHref(
+  basePath: string,
+  page: number,
+  extra?: Record<string, string>,
+) {
+  const p = new URLSearchParams({ ...extra, page: String(page) });
+  return `${basePath}?${p}`;
+}
 
 export default function Pagination({
   basePath,
@@ -14,6 +25,7 @@ export default function Pagination({
   total,
   pageSize,
   itemLabel = "records",
+  params,
 }: Props) {
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);
   const previousPage = page - 1;
@@ -31,7 +43,7 @@ export default function Pagination({
     <div className="flex items-center justify-between gap-3 border-t border-gray-50 px-5 py-4 sm:px-6">
       {previousPage >= 1 ? (
         <ButtonLink
-          href={`${basePath}?page=${previousPage}`}
+          href={pageHref(basePath, previousPage, params)}
           variant="secondary"
           size="sm"
         >
@@ -46,7 +58,7 @@ export default function Pagination({
       </p>
 
       {nextPage <= totalPages ? (
-        <ButtonLink href={`${basePath}?page=${nextPage}`} size="sm">
+        <ButtonLink href={pageHref(basePath, nextPage, params)} size="sm">
           Next
         </ButtonLink>
       ) : (

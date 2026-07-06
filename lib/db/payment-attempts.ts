@@ -232,9 +232,10 @@ export async function finalizePaymentAttempt(
     // A concurrent webhook delivery already inserted this transaction.
     // Treat as idempotent success so Stripe stops retrying.
     if (transactionError.code === "23505") {
-      await updatePaymentAttemptStatus(stripePaymentIntentId, "succeeded").catch(
-        () => {},
-      );
+      await updatePaymentAttemptStatus(
+        stripePaymentIntentId,
+        "succeeded",
+      ).catch(() => {});
       return { attempt, finalizedNow: false };
     }
     throw transactionError;
