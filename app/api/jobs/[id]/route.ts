@@ -92,7 +92,7 @@ export async function DELETE(
       { status: 500 },
     );
 
-  revalidateTag("open-jobs");
+  revalidateTag("open-jobs", { expire: 0 });
 
   return NextResponse.json({ deleted: true });
 }
