@@ -18,7 +18,7 @@ const CLIENT_JOBS_PAGE_SIZE = 5;
 // Derived directly from the Supabase schema so it stays in sync automatically.
 type JobStatus = Database["public"]["Tables"]["jobs"]["Row"]["status"];
 
-type Tab = "all" | "open" | "active" | "closed";
+type Tab = "all" | "open" | "active" | "completed" | "cancelled";
 
 // JobStatus[] satisfies Supabase's .in() (needs the exact status union) AND
 // Array.prototype.includes() (needs the argument to be assignable to the
@@ -27,18 +27,20 @@ const TAB_STATUSES: Record<Tab, JobStatus[]> = {
   all: [],
   open: ["open"],
   active: ["in_progress", "completed", "disputed"],
-  closed: ["approved", "cancelled"],
+  completed: ["approved"],
+  cancelled: ["cancelled"],
 };
 
 const TAB_LABELS: Record<Tab, string> = {
   all: "All",
   open: "Open",
   active: "Active",
-  closed: "Closed",
+  completed: "Completed",
+  cancelled: "Cancelled",
 };
 
 function parseTab(raw: string | undefined): Tab {
-  if (raw === "all" || raw === "open" || raw === "closed") return raw;
+  if (raw === "all" || raw === "open" || raw === "completed" || raw === "cancelled") return raw;
   return "active";
 }
 
@@ -151,8 +153,11 @@ export default async function MyJobsPage({
     active: statusRows.filter((r) =>
       TAB_STATUSES.active.includes(r.status),
     ).length,
-    closed: statusRows.filter((r) =>
-      TAB_STATUSES.closed.includes(r.status),
+    completed: statusRows.filter((r) =>
+      TAB_STATUSES.completed.includes(r.status),
+    ).length,
+    cancelled: statusRows.filter((r) =>
+      TAB_STATUSES.cancelled.includes(r.status),
     ).length,
   };
 
@@ -187,7 +192,7 @@ export default async function MyJobsPage({
     {},
   );
 
-  const tabs: Tab[] = ["active", "open", "closed", "all"];
+  const tabs: Tab[] = ["active", "open", "completed", "cancelled", "all"];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
