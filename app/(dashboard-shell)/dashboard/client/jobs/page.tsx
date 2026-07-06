@@ -158,7 +158,17 @@ export default async function MyJobsPage({
     .range(from, to);
 
   if (TAB_STATUSES[tab].length > 0) {
-    query = query.in("status", TAB_STATUSES[tab]);
+    query = query.in(
+      "status",
+      TAB_STATUSES[tab] as (
+        | "open"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "disputed"
+        | "approved"
+      )[],
+    );
   }
 
   const { data: jobsRaw, count } = await query;
