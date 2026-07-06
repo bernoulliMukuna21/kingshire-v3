@@ -23,6 +23,7 @@ import {
   getPendingPaymentAttemptByJob,
   isCancellablePaymentIntentStatus,
 } from "@/lib/db/payment-attempts";
+import { formatMoney, formatRateType } from "@/lib/utils";
 import {
   ApplicantsList,
   ClientApproveActions,
@@ -75,20 +76,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     color: "bg-slate-100 text-slate-500 ring-slate-200",
   },
 };
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
-}
-
-function formatRateType(rateType: string | null) {
-  if (rateType === "per_hour") return "per hour";
-  if (rateType === "per_day") return "per day";
-  return "fixed";
-}
 
 function getCounterRateType(value: string | null): RateType | null {
   if (value === "fixed" || value === "per_hour" || value === "per_day") {

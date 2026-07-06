@@ -20,6 +20,32 @@ import {
 
 export const revalidate = 3600;
 
+// Defined outside the page function so the wrapper is created once, not on
+// every render. Next.js builds the full cache key from the static prefix +
+// serialised arguments automatically.
+const getKinglancerProfile = unstable_cache(
+  async (id: string) => {
+    const supabase = createServiceClient();
+    const { data } = await supabase
+      .from("profiles")
+      .select(
+        "id, full_name, avatar_url, role, bio, location, service_tags, rating, total_reviews, jobs_completed, tagline, hourly_rate, rate_type, services, portfolio_url, is_verified",
+      )
+      .eq("id", id)
+      .eq("role", "kinglancer")
+      .single();
+    return data ?? null;
+  },
+  ["kinglancer-profile"],
+  { revalidate: 3600, tags: ["kinglancer-profiles"] },
+);
+
+const getKinglancerReviews = unstable_cache(
+  async (id: string) => getPublishedReviewsForUser(id, 30),
+  ["kinglancer-reviews"],
+  { revalidate: 3600, tags: ["kinglancer-reviews"] },
+);
+
 export default async function KinglancerProfilePage({
   params,
 }: {
@@ -27,42 +53,14 @@ export default async function KinglancerProfilePage({
 }) {
   const { id } = await params;
 
-  const getKinglancerProfile = unstable_cache(
-    async () => {
-      const supabase = createServiceClient();
-      const { data } = await supabase
-        .from("profiles")
-        .select(
-          "id, full_name, avatar_url, role, bio, location, service_tags, rating, total_reviews, jobs_completed, tagline, hourly_rate, rate_type, services, portfolio_url, is_verified",
-        )
-        .eq("id", id)
-        .eq("role", "kinglancer")
-        .single();
-      return data ?? null;
-    },
-    [`kinglancer-profile-${id}`],
-    {
-      revalidate: 3600,
-      tags: [`kinglancer-profile-${id}`, "kinglancer-profiles"],
-    },
-  );
-
-  const kinglancer = await getKinglancerProfile();
+  const kinglancer = await getKinglancerProfile(id);
 
   if (!kinglancer) notFound();
 
   const rawServices =
     (kinglancer.services as Array<{ rate: number }> | null) ?? [];
 
-  const getReviews = unstable_cache(
-    async () => getPublishedReviewsForUser(id, 30),
-    [`kinglancer-reviews-${id}`],
-    {
-      revalidate: 3600,
-      tags: [`kinglancer-reviews-${id}`, "kinglancer-reviews"],
-    },
-  );
-  const reviews = await getReviews();
+  const reviews = await getKinglancerReviews(id);
 
   type Service = { name: string; rate: number; rate_type: string };
   const services = (kinglancer.services as Service[] | null) ?? [];

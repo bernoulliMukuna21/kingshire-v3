@@ -357,6 +357,28 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      increment_jobs_completed: {
+        Args: { user_id: string };
+        Returns: void;
+      };
+      get_client_stats: {
+        Args: { p_client_id: string };
+        Returns: Array<{
+          total_spent: number;
+          total_jobs: number;
+          open_jobs: number;
+          completed_jobs: number;
+          total_applicants: number;
+        }>;
+      };
+      get_kinglancer_stats: {
+        Args: { p_kinglancer_id: string };
+        Returns: Array<{
+          total_earned: number;
+          total_held: number;
+        }>;
+      };
+    };
   };
 };

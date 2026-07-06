@@ -47,18 +47,6 @@ export async function getJobById(id: string): Promise<JobWithClient | null> {
   return data as unknown as JobWithClient;
 }
 
-export async function getJobsByClient(clientId: string): Promise<Job[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("jobs")
-    .select("*")
-    .eq("client_id", clientId)
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return data ?? [];
-}
-
 export async function createJob(data: JobInsert): Promise<Job> {
   const supabase = await createClient();
   const { data: job, error } = await supabase

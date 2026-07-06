@@ -15,6 +15,7 @@ import {
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
 import { getTransactionByJob } from "@/lib/db/transactions";
+import { formatMoney, formatRateType } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
@@ -84,20 +85,6 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   approved: { label: "Approved", className: "bg-green-100 text-green-700" },
   cancelled: { label: "Cancelled", className: "bg-slate-100 text-slate-500" },
 };
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
-}
-
-function formatRateType(rateType: JobWorkspace["rate_type"]) {
-  if (rateType === "per_hour") return "/hr";
-  if (rateType === "per_day") return "/day";
-  return "fixed";
-}
 
 function nextAction({
   job,

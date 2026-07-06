@@ -13,62 +13,53 @@ import EmptyState from "@/components/ui/EmptyState";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
 import { getDashboardContext } from "@/lib/dashboard-context";
 
-type JobRow = {
+type InProgressJob = {
   id: string;
   title: string;
-  status: string;
   budget: number;
-  kinglancer_id: string | null;
-  invited_kinglancer_id: string | null;
-  direct_request_status: string | null;
   kinglancer: { full_name: string } | null;
-  applications: [{ count: number }] | null;
 };
 
-type TransactionRow = {
-  job_id: string;
-  amount: number;
-  platform_fee_client: number;
-  status: string;
+type ClientStats = {
+  total_spent: number;
+  total_jobs: number;
+  open_jobs: number;
+  completed_jobs: number;
+  total_applicants: number;
+};
+
+const EMPTY_STATS: ClientStats = {
+  total_spent: 0,
+  total_jobs: 0,
+  open_jobs: 0,
+  completed_jobs: 0,
+  total_applicants: 0,
 };
 
 export async function ClientMainSection() {
   const { supabase, user, profile } = await getDashboardContext();
 
-  const [jobsResult, transactionsResult] = await Promise.all([
+  // Two targeted queries in parallel:
+  // 1. In-progress jobs only — for the "Active work" card list (bounded to 10)
+  // 2. Aggregate stats RPC — DB-level computation, no row limit, always accurate
+  const [inProgressResult, statsResult] = await Promise.all([
     supabase
       .from("jobs")
-      .select(
-        "id, title, status, budget, kinglancer_id, invited_kinglancer_id, direct_request_status, kinglancer:profiles!kinglancer_id(full_name), applications:applications(count)",
-        { count: "exact" },
-      )
+      .select("id, title, budget, kinglancer:profiles!kinglancer_id(full_name)")
       .eq("client_id", user.id)
+      .eq("status", "in_progress")
       .order("created_at", { ascending: false })
-      .limit(50),
-    supabase
-      .from("transactions")
-      .select("job_id, amount, platform_fee_client, status")
-      .eq("client_id", user.id)
-      .in("status", ["held", "released", "disputed"])
-      .order("created_at", { ascending: false })
-      .limit(200),
+      .limit(10),
+    supabase.rpc("get_client_stats", { p_client_id: user.id }),
   ]);
 
-  const jobs = (jobsResult.data ?? []) as JobRow[];
-  const transactions = (transactionsResult.data ?? []) as TransactionRow[];
+  const inProgressJobs = (inProgressResult.data ?? []) as unknown as InProgressJob[];
+  const stats: ClientStats =
+    ((statsResult.data as ClientStats[] | null) ?? [])[0] ?? EMPTY_STATS;
 
-  const totalSpent = transactions
-    .filter((t) => ["held", "released"].includes(t.status))
-    .reduce((sum, t) => sum + t.amount + t.platform_fee_client, 0);
-
-  const completedCount = jobs.filter((j) => j.status === "approved").length;
-  const postedJobsCount = jobsResult.count ?? jobs.length;
-  const openJobsCount = jobs.filter((j) => j.status === "open").length;
-  const totalApplicantCount = jobs.reduce(
-    (sum, job) => sum + (job.applications?.[0]?.count ?? 0),
-    0,
-  );
-  const inProgressJobs = jobs.filter((j) => j.status === "in_progress");
+  const { total_spent: totalSpent, total_jobs: postedJobsCount,
+          open_jobs: openJobsCount, completed_jobs: completedCount,
+          total_applicants: totalApplicantCount } = stats;
 
   return (
     <div className="space-y-8">
@@ -80,14 +71,14 @@ export async function ClientMainSection() {
         {inProgressJobs.length === 0 ? (
           <EmptyState
             icon={<Briefcase size={22} />}
-            title={jobs.length === 0 ? "No jobs posted yet" : "No active work"}
+            title={postedJobsCount === 0 ? "No jobs posted yet" : "No active work"}
             description={
-              jobs.length === 0
+              postedJobsCount === 0
                 ? "Post your first job to start receiving proposals from Kinglancers."
                 : "Hire a Kinglancer to get the work moving."
             }
             action={
-              jobs.length === 0 ? (
+              postedJobsCount === 0 ? (
                 <ButtonLink href="/jobs/post" size="sm">
                   Post a job
                 </ButtonLink>
@@ -210,7 +201,7 @@ export async function ClientMainSection() {
       </div>
 
       {/* Prompt to post if no jobs */}
-      {jobs.length === 0 && profile.role === "client" && (
+      {postedJobsCount === 0 && profile.role === "client" && (
         <div className="text-center pt-2">
           <ButtonLink href="/jobs/post">Post your first job</ButtonLink>
         </div>

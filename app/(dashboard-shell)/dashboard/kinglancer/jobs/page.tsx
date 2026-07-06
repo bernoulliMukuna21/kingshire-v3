@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { type JobStatus, JOBS_PAGE_SIZE } from "@/lib/jobs";
+import { formatMoney, formatRateType } from "@/lib/utils";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
@@ -100,21 +101,6 @@ type Transaction = {
   status: string;
 };
 
-// ── Helpers ───────────────────────────────────────────────
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
-}
-
-function formatRateType(rateType: JobRow["rate_type"]) {
-  if (rateType === "per_hour") return "/hr";
-  if (rateType === "per_day") return "/day";
-  return "fixed";
-}
 
 // ── Page ──────────────────────────────────────────────────
 
