@@ -96,9 +96,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid category." }, { status: 400 });
   if (deadline) {
     const d = new Date(deadline);
-    if (isNaN(d.getTime()) || d <= new Date())
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (isNaN(d.getTime()) || d < today)
       return NextResponse.json(
-        { error: "Deadline must be a future date." },
+        { error: "Deadline must be today or a future date." },
         { status: 400 },
       );
   }

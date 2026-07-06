@@ -75,7 +75,6 @@ export default function PostJobForm({
 
   // Minimum deadline is tomorrow
   const minDate = new Date();
-  minDate.setDate(minDate.getDate() + 1);
   const minDateStr = minDate.toISOString().split("T")[0];
 
   // For per_hour / per_day, the total escrowed = rate × quantity
