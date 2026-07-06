@@ -26,7 +26,7 @@ export async function KinglancerApplicationsSection() {
     .order("created_at", { ascending: false })
     .limit(10);
 
-  const applications = (data ?? []) as Array<{
+  const applications = (data ?? []) as unknown as Array<{
     id: string;
     status: string;
     cover_letter: string;

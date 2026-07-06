@@ -59,7 +59,7 @@ export default async function TransactionsPage() {
     kinglancer: { full_name: string } | null;
   };
 
-  const transactions = (txResult.data ?? []) as TxRow[];
+  const transactions = (txResult.data ?? []) as unknown as TxRow[];
 
   const totalSpent = transactions
     .filter((t) => t.status === "released")

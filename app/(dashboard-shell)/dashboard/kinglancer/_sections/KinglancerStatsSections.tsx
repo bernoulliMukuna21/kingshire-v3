@@ -34,6 +34,8 @@ export async function KinglancerStatsSection() {
   const activeJobsCount = activeJobsResult.count ?? 0;
 
   const statCards = [
+    {
+      label: "Total Earned",
       value: totalEarned > 0 ? `£${totalEarned.toFixed(0)}` : "£0",
       icon: TrendingUp,
       color: "bg-green-50 text-green-600",

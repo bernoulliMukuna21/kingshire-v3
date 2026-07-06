@@ -211,7 +211,7 @@ export default async function ClientJobWorkspacePage({
             )}
           </Card>
 
-          {isDirectRequest && job.status === "open" && !hasPendingPayment && (
+          {isDirectRequest && job.status === "open" && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
                 Direct request
@@ -236,7 +236,7 @@ export default async function ClientJobWorkspacePage({
             </Card>
           )}
 
-          {!isDirectRequest && job.status === "open" && !hasPendingPayment && (
+          {!isDirectRequest && job.status === "open" && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
                 Applicants ({applications.length})
@@ -249,7 +249,7 @@ export default async function ClientJobWorkspacePage({
             </Card>
           )}
 
-          {job.status === "open" && !hasPendingPayment && (
+          {job.status === "open" && (
             <div className="flex justify-end">
               <CancelJobButton
                 jobId={id}
