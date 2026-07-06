@@ -7,7 +7,7 @@ import {
   Tag,
   UserRound,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardContext } from "@/lib/dashboard-context";
 import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
@@ -18,11 +18,6 @@ import {
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
 import { getTransactionByJob } from "@/lib/db/transactions";
-import { stripe } from "@/lib/stripe";
-import {
-  getPendingPaymentAttemptByJob,
-  isCancellablePaymentIntentStatus,
-} from "@/lib/db/payment-attempts";
 import { formatMoney, formatRateType } from "@/lib/utils";
 import {
   ApplicantsList,
@@ -35,8 +30,8 @@ import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import ReviewPanel from "@/components/jobs/ReviewPanel";
-import CancelPaymentButton from "./CancelPaymentButton";
 import CancelJobButton from "./CancelJobButton";
+import PendingPaymentCard from "./PendingPaymentCard";
 
 type Profile = {
   role: "client" | "kinglancer" | "admin" | null;
@@ -102,57 +97,25 @@ export default async function ClientJobWorkspacePage({
 }) {
   const { id } = await params;
   const { payment_failed, from } = await searchParams;
-  const supabase = await createClient();
 
-  const [
-    job,
-    {
-      data: { user },
-    },
-  ] = await Promise.all([getJobById(id), supabase.auth.getUser()]);
+  // getDashboardContext is React-cached — reuses the result already fetched
+  // by the layout with zero extra DB round trips.
+  const [{ supabase, user, profile }, job] = await Promise.all([
+    getDashboardContext(),
+    getJobById(id),
+  ]);
 
-  if (!user) redirect("/sign-in");
   if (!job) notFound();
-
-  const { data: profile } = (await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single()) as { data: Profile | null };
-
-  if (!profile) redirect("/onboarding");
-  if (profile.role === "admin") redirect("/admin");
   if (profile.role === "kinglancer") redirect("/dashboard/kinglancer");
   if (profile.role !== "client") redirect("/onboarding");
   if (job.client_id !== user.id) notFound();
 
   const isDirectRequest = !!job.invited_kinglancer_id;
   const statusConfig = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.open;
-  const pendingAttempt =
-    job.status === "open" ? await getPendingPaymentAttemptByJob(id) : null;
-  const kinglancerProfileId =
-    job.kinglancer_id ??
-    job.invited_kinglancer_id ??
-    pendingAttempt?.kinglancer_id;
-
-  let pendingClientSecret: string | null = null;
-  const hasPendingPayment = Boolean(pendingAttempt);
-
-  if (pendingAttempt?.stripe_payment_intent_id) {
-    try {
-      const pi = await stripe.paymentIntents.retrieve(
-        pendingAttempt.stripe_payment_intent_id,
-      );
-      if (pi.client_secret && isCancellablePaymentIntentStatus(pi.status)) {
-        pendingClientSecret = pi.client_secret;
-      }
-    } catch {
-      // PI not found (e.g. key mismatch after switching Stripe mode) — still show cancel.
-    }
-  }
+  const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
 
   const [applications, kinglancerResult] = await Promise.all([
-    !isDirectRequest && job.status === "open" && !hasPendingPayment
+    !isDirectRequest && job.status === "open"
       ? getApplicationsByJob(id)
       : Promise.resolve([] as ApplicationWithKinglancer[]),
     kinglancerProfileId
@@ -309,40 +272,10 @@ export default async function ClientJobWorkspacePage({
             </Card>
           )}
 
-          {hasPendingPayment && (
-            <Card className="border-amber-200 bg-amber-50 p-5">
-              <div className="flex items-start gap-3">
-                <AlertCircle
-                  size={18}
-                  className="mt-0.5 shrink-0 text-amber-600"
-                />
-                <div>
-                  <h2 className="text-sm font-black text-amber-900">
-                    Payment not completed
-                  </h2>
-                  <p className="mt-1 text-sm text-amber-700">
-                    Your escrow payment was started but not finished. Resume to
-                    lock in your Kinglancer, or cancel it to change your
-                    decision.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                {pendingClientSecret && (
-                  <ButtonLink
-                    href={`/jobs/${id}/pay?cs=${pendingClientSecret}`}
-                  >
-                    Resume payment
-                  </ButtonLink>
-                )}
-                <CancelPaymentButton jobId={id} />
-              </div>
-            </Card>
-          )}
+          {job.status === "open" && <PendingPaymentCard jobId={id} />}
 
           {job.status === "in_progress" &&
-            payment_failed !== "1" &&
-            !hasPendingPayment && (
+            payment_failed !== "1" && (
               <Card className={cardPadding}>
                 <h2 className="text-lg font-black text-slate-950">
                   Job in progress

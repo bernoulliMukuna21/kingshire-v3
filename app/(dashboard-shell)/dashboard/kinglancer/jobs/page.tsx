@@ -10,6 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { type JobStatus, JOBS_PAGE_SIZE } from "@/lib/jobs";
 import { formatMoney, formatRateType } from "@/lib/utils";
+import { getDashboardContext } from "@/lib/dashboard-context";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
@@ -109,27 +110,13 @@ export default async function KinglancerJobsPage({
 }: {
   searchParams: Promise<{ page?: string; tab?: string }>;
 }) {
-  const supabase = await createClient();
+  // getDashboardContext is React-cached — reuses the result already fetched
+  // by the layout with zero extra DB round trips.
+  const { supabase, user } = await getDashboardContext();
   const { page: pageParam, tab: tabParam } = await searchParams;
   const tab = parseTab(tabParam);
   const page = getPageNumber(pageParam);
   const { from, to } = getPageRange(page, JOBS_PAGE_SIZE);
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) redirect("/onboarding");
-  if (profile.role === "admin") redirect("/admin");
-  if (profile.role === "client") redirect("/dashboard/client");
-  if (profile.role !== "kinglancer") redirect("/onboarding");
 
   // Lightweight query for tab counts + stats cards
   const { data: allStatuses } = await supabase

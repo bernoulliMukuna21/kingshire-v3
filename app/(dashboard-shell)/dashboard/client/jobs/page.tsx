@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus, ChevronRight, Send } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardContext } from "@/lib/dashboard-context";
 import { type JobStatus, JOBS_PAGE_SIZE } from "@/lib/jobs";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -110,25 +110,14 @@ export default async function MyJobsPage({
 }: {
   searchParams: Promise<{ page?: string; tab?: string }>;
 }) {
-  const supabase = await createClient();
+  // getDashboardContext is React-cached — the layout already called it,
+  // so this reuses the resolved result with zero extra DB round trips.
+  const { supabase, user, profile } = await getDashboardContext();
   const { page: pageParam, tab: tabParam } = await searchParams;
   const tab = parseTab(tabParam);
   const page = getPageNumber(pageParam);
   const { from, to } = getPageRange(page, JOBS_PAGE_SIZE);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) redirect("/onboarding");
-  if (profile.role === "admin") redirect("/admin");
   if (profile.role === "kinglancer") redirect("/dashboard/kinglancer");
   if (profile.role !== "client") redirect("/onboarding");
 
