@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus, ChevronRight, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/supabase/types";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
@@ -14,16 +15,20 @@ const CLIENT_JOBS_PAGE_SIZE = 10;
 
 // ── Tab definitions ────────────────────────────────────────
 
+// Derived directly from the Supabase schema so it stays in sync automatically.
+type JobStatus = Database["public"]["Tables"]["jobs"]["Row"]["status"];
+
 type Tab = "all" | "open" | "active" | "closed";
 
-// `as const` gives each array its literal type so Supabase's .in() receives
-// the exact status union it expects — no casts needed anywhere downstream.
-const TAB_STATUSES = {
-  all: [] as const,
-  open: ["open"] as const,
-  active: ["in_progress", "completed", "disputed"] as const,
-  closed: ["approved", "cancelled"] as const,
-} satisfies Record<Tab, readonly string[]>;
+// JobStatus[] satisfies Supabase's .in() (needs the exact status union) AND
+// Array.prototype.includes() (needs the argument to be assignable to the
+// element type). The previous string[] was too wide; as const was too narrow.
+const TAB_STATUSES: Record<Tab, JobStatus[]> = {
+  all: [],
+  open: ["open"],
+  active: ["in_progress", "completed", "disputed"],
+  closed: ["approved", "cancelled"],
+};
 
 const TAB_LABELS: Record<Tab, string> = {
   all: "All",
@@ -86,7 +91,7 @@ function compactCategories(categories: string[]) {
 type JobRow = {
   id: string;
   title: string;
-  status: string;
+  status: JobStatus;
   budget: number;
   categories: string[];
   created_at: string;
