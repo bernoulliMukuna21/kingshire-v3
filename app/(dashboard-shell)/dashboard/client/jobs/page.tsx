@@ -8,6 +8,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import Pagination from "@/components/ui/Pagination";
 import { getPageNumber, getPageRange } from "@/lib/pagination";
+import DeleteJobButton from "./DeleteJobButton";
 
 const CLIENT_JOBS_PAGE_SIZE = 5;
 
@@ -224,15 +225,20 @@ function JobCard({
     cancelled: "Cancelled",
   };
 
+  const canDelete = job.status === "open" || job.status === "cancelled";
+
   return (
-    <Link
-      href={`/dashboard/client/jobs/${job.id}`}
-      className={`group block rounded-3xl border p-5 shadow-xl transition-all hover:-translate-y-0.5 sm:p-6 ${
+    <div
+      className={`group rounded-3xl border shadow-xl transition-all hover:-translate-y-0.5 ${
         highlight
           ? "border-blue-100 bg-blue-50/60 shadow-blue-900/5 ring-1 ring-blue-200/60 hover:border-blue-200"
           : "border-white bg-white/90 shadow-slate-900/5 ring-1 ring-slate-200/50 hover:border-blue-100"
       }`}
     >
+      <Link
+        href={`/dashboard/client/jobs/${job.id}`}
+        className="block p-5 sm:p-6"
+      >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -286,10 +292,12 @@ function JobCard({
             <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
             {config.label}
           </StatusBadge>
-          <ChevronRight
-            size={18}
-            className="text-gray-300 transition-colors group-hover:text-blue-400"
-          />
+          {!canDelete && (
+            <ChevronRight
+              size={18}
+              className="text-gray-300 transition-colors group-hover:text-blue-400"
+            />
+          )}
         </div>
       </div>
 
@@ -315,6 +323,16 @@ function JobCard({
           )}
         </div>
       )}
-    </Link>
+      </Link>
+      {canDelete && (
+        <div className="flex items-center justify-end border-t border-slate-100 px-5 pb-3 pt-2.5 sm:px-6">
+          <DeleteJobButton
+            jobId={job.id}
+            jobTitle={job.title}
+            appCount={appCount}
+          />
+        </div>
+      )}
+    </div>
   );
 }
