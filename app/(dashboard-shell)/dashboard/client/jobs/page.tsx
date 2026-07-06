@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Plus, ChevronRight, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { type JobStatus, JOBS_PAGE_SIZE } from "@/lib/jobs";
