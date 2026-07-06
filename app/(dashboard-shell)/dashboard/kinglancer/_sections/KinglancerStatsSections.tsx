@@ -33,9 +33,7 @@ export async function KinglancerStatsSection() {
   const totalEarned = stats.total_earned;
   const activeJobsCount = activeJobsResult.count ?? 0;
 
-  const stats = [
-    {
-      label: "Total Earned",
+  const statCards = [
       value: totalEarned > 0 ? `£${totalEarned.toFixed(0)}` : "£0",
       icon: TrendingUp,
       color: "bg-green-50 text-green-600",
@@ -76,7 +74,7 @@ export async function KinglancerStatsSection() {
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
         staggerDelay={0.07}
       >
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <StaggerItem key={stat.label}>
             {stat.href ? (
               <Link
