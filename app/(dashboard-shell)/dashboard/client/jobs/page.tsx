@@ -11,7 +11,7 @@ import Pagination from "@/components/ui/Pagination";
 import { getPageNumber, getPageRange } from "@/lib/pagination";
 import DeleteJobButton from "./DeleteJobButton";
 
-const CLIENT_JOBS_PAGE_SIZE = 10;
+const CLIENT_JOBS_PAGE_SIZE = 5;
 
 // ── Tab definitions ────────────────────────────────────────
 
@@ -38,8 +38,8 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 function parseTab(raw: string | undefined): Tab {
-  if (raw === "all" || raw === "active" || raw === "closed") return raw;
-  return "open";
+  if (raw === "all" || raw === "open" || raw === "closed") return raw;
+  return "active";
 }
 
 // ── Status display config ─────────────────────────────────
@@ -187,7 +187,7 @@ export default async function MyJobsPage({
     {},
   );
 
-  const tabs: Tab[] = ["all", "open", "active", "closed"];
+  const tabs: Tab[] = ["active", "open", "closed", "all"];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -264,16 +264,18 @@ export default async function MyJobsPage({
           {jobs.map((job) => (
             <JobCard key={job.id} job={job} countMap={countMap} />
           ))}
-          <div className="overflow-hidden rounded-3xl border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
-            <Pagination
-              basePath="/dashboard/client/jobs"
-              page={page}
-              total={count ?? 0}
-              pageSize={CLIENT_JOBS_PAGE_SIZE}
-              itemLabel="jobs"
-              params={tab !== "all" ? { tab } : undefined}
-            />
-          </div>
+          {(count ?? 0) > CLIENT_JOBS_PAGE_SIZE && (
+            <div className="overflow-hidden rounded-3xl border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50">
+              <Pagination
+                basePath="/dashboard/client/jobs"
+                page={page}
+                total={count ?? 0}
+                pageSize={CLIENT_JOBS_PAGE_SIZE}
+                itemLabel="jobs"
+                params={tab !== "active" ? { tab } : undefined}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
