@@ -16,12 +16,14 @@ const CLIENT_JOBS_PAGE_SIZE = 10;
 
 type Tab = "all" | "open" | "active" | "closed";
 
-const TAB_STATUSES: Record<Tab, string[]> = {
-  all: [],
-  open: ["open"],
-  active: ["in_progress", "completed", "disputed"],
-  closed: ["approved", "cancelled"],
-};
+// `as const` gives each array its literal type so Supabase's .in() receives
+// the exact status union it expects — no casts needed anywhere downstream.
+const TAB_STATUSES = {
+  all: [] as const,
+  open: ["open"] as const,
+  active: ["in_progress", "completed", "disputed"] as const,
+  closed: ["approved", "cancelled"] as const,
+} satisfies Record<Tab, readonly string[]>;
 
 const TAB_LABELS: Record<Tab, string> = {
   all: "All",
@@ -158,17 +160,7 @@ export default async function MyJobsPage({
     .range(from, to);
 
   if (TAB_STATUSES[tab].length > 0) {
-    query = query.in(
-      "status",
-      TAB_STATUSES[tab] as (
-        | "open"
-        | "in_progress"
-        | "completed"
-        | "cancelled"
-        | "disputed"
-        | "approved"
-      )[],
-    );
+    query = query.in("status", TAB_STATUSES[tab]);
   }
 
   const { data: jobsRaw, count } = await query;

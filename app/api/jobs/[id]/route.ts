@@ -52,29 +52,35 @@ export async function DELETE(
 
   const db = createServiceClient();
 
-  // Notify applicants on open jobs before the cascade delete removes their records
+  // Notify applicants on open jobs before the cascade delete removes their records.
+  // Two separate queries avoids Supabase's embedded-join type inference issues
+  // and is easier to read: first get kinglancer IDs, then resolve their emails.
   if (job.status === "open") {
     const { data: apps } = await db
       .from("applications")
-      .select("kinglancer_id, kinglancer:profiles!kinglancer_id(email)")
+      .select("kinglancer_id")
       .eq("job_id", id)
       .neq("status", "rejected");
 
     if (apps?.length) {
-      Promise.allSettled(
-        apps
-          .map((app) => {
-            const email = (app.kinglancer as { email: string } | null)?.email;
-            if (!email) return null;
-            return notifyJobCancelled({
-              recipientId: app.kinglancer_id,
-              recipientEmail: email,
+      const kinglancerIds = apps.map((a) => a.kinglancer_id);
+      const { data: kinglancers } = await db
+        .from("profiles")
+        .select("id, email")
+        .in("id", kinglancerIds);
+
+      if (kinglancers?.length) {
+        Promise.allSettled(
+          kinglancers.map((k) =>
+            notifyJobCancelled({
+              recipientId: k.id,
+              recipientEmail: k.email,
               jobTitle: job.title,
               refunded: false,
-            });
-          })
-          .filter(Boolean),
-      ).catch(() => {});
+            }),
+          ),
+        ).catch(() => {});
+      }
     }
   }
 
