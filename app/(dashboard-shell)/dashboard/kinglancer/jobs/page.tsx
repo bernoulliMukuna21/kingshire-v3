@@ -23,9 +23,12 @@ import { getPageNumber, getPageRange } from "@/lib/pagination";
 // ── Tab definitions ────────────────────────────────────────
 
 // JobStatus is imported from @/lib/jobs — single source of truth.
-type Tab = "all" | "active" | "completed" | "disputed" | "cancelled";
+// "applied" is separate from the job-status tabs — it queries the
+// applications table rather than the jobs table.
+type JobTab = "all" | "active" | "completed" | "disputed" | "cancelled";
+type Tab = JobTab | "applied";
 
-const TAB_STATUSES: Record<Tab, JobStatus[]> = {
+const TAB_STATUSES: Record<JobTab, JobStatus[]> = {
   all: [],
   active: ["in_progress", "completed"],
   completed: ["approved"],
@@ -34,15 +37,16 @@ const TAB_STATUSES: Record<Tab, JobStatus[]> = {
 };
 
 const TAB_LABELS: Record<Tab, string> = {
-  all: "All",
+  applied: "Applied",
   active: "Active",
   completed: "Completed",
   disputed: "Disputed",
   cancelled: "Cancelled",
+  all: "All",
 };
 
 function parseTab(raw: string | undefined): Tab {
-  if (raw === "all" || raw === "completed" || raw === "disputed" || raw === "cancelled") return raw;
+  if (raw === "all" || raw === "completed" || raw === "disputed" || raw === "cancelled" || raw === "applied") return raw;
   return "active";
 }
 
@@ -104,6 +108,21 @@ type Transaction = {
   status: string;
 };
 
+type ApplicationRow = {
+  id: string;
+  status: "pending" | "accepted" | "rejected";
+  created_at: string;
+  job: {
+    id: string;
+    title: string;
+    budget: number;
+    rate_type: "fixed" | "per_hour" | "per_day";
+    status: JobStatus;
+    deadline: string | null;
+    categories: string[];
+  } | null;
+};
+
 
 // ── Page ──────────────────────────────────────────────────
 
@@ -120,14 +139,20 @@ export default async function KinglancerJobsPage({
   const page = getPageNumber(pageParam);
   const { from, to } = getPageRange(page, JOBS_PAGE_SIZE);
 
-  // Lightweight query for tab counts + stats cards
-  const { data: allStatuses } = await supabase
-    .from("jobs")
-    .select("status")
-    .eq("kinglancer_id", user.id);
+  // Lightweight queries: job statuses for tab counts + application count
+  const [statusResult, appCountResult] = await Promise.all([
+    supabase.from("jobs").select("status").eq("kinglancer_id", user.id),
+    supabase
+      .from("applications")
+      .select("id", { count: "exact", head: true })
+      .eq("kinglancer_id", user.id),
+  ]);
 
-  const statusRows = allStatuses ?? [];
+  const statusRows = statusResult.data ?? [];
+  const appliedCount = appCountResult.count ?? 0;
+
   const tabCounts: Record<Tab, number> = {
+    applied: appliedCount,
     all: statusRows.length,
     active: statusRows.filter((r) =>
       TAB_STATUSES.active.includes(r.status),
@@ -143,48 +168,65 @@ export default async function KinglancerJobsPage({
     ).length,
   };
 
-  // Paginated jobs for current tab
-  let jobsQuery = supabase
-    .from("jobs")
-    .select(
-      "id, title, budget, rate_type, status, deadline, updated_at, client:profiles!client_id(full_name)",
-      { count: "exact" },
-    )
-    .eq("kinglancer_id", user.id)
-    .order("updated_at", { ascending: false })
-    .range(from, to);
+  // Paginated data — separate query paths for "applied" vs job-status tabs
+  let jobs: JobRow[] = [];
+  let applications: ApplicationRow[] = [];
+  let count: number | null = null;
+  let transactions: Transaction[] = [];
+  let transactionByJob = new Map<string, Transaction>();
+  let totalHeld = 0;
 
-  if (TAB_STATUSES[tab].length > 0) {
-    jobsQuery = jobsQuery.in("status", TAB_STATUSES[tab]);
+  if (tab === "applied") {
+    const { data, count: c } = await supabase
+      .from("applications")
+      .select(
+        "id, status, created_at, job:jobs!job_id(id, title, budget, rate_type, status, deadline, categories)",
+        { count: "exact" },
+      )
+      .eq("kinglancer_id", user.id)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    applications = (data ?? []) as unknown as ApplicationRow[];
+    count = c;
+  } else {
+    let jobsQuery = supabase
+      .from("jobs")
+      .select(
+        "id, title, budget, rate_type, status, deadline, updated_at, client:profiles!client_id(full_name)",
+        { count: "exact" },
+      )
+      .eq("kinglancer_id", user.id)
+      .order("updated_at", { ascending: false })
+      .range(from, to);
+
+    if (TAB_STATUSES[tab as JobTab].length > 0) {
+      jobsQuery = jobsQuery.in("status", TAB_STATUSES[tab as JobTab]);
+    }
+
+    const [jobsResult, transactionsResult] = await Promise.all([
+      jobsQuery,
+      supabase
+        .from("transactions")
+        .select("job_id, amount, platform_fee_kinglancer, status")
+        .eq("kinglancer_id", user.id)
+        .in("status", ["held", "disputed"]),
+    ]);
+
+    jobs = (jobsResult.data ?? []) as unknown as JobRow[];
+    count = jobsResult.count;
+    transactions = (transactionsResult.data ?? []) as Transaction[];
+    transactionByJob = new Map(transactions.map((t) => [t.job_id, t]));
+    totalHeld = transactions
+      .filter((t) => t.status === "held")
+      .reduce((sum, t) => sum + t.amount - t.platform_fee_kinglancer, 0);
   }
 
-  // Transactions for held escrow amounts
-  const [jobsResult, transactionsResult] = await Promise.all([
-    jobsQuery,
-    supabase
-      .from("transactions")
-      .select("job_id, amount, platform_fee_kinglancer, status")
-      .eq("kinglancer_id", user.id)
-      .in("status", ["held", "disputed"]),
-  ]);
-
-  const jobs = (jobsResult.data ?? []) as unknown as JobRow[];
-  const count = jobsResult.count;
-  const transactions = (transactionsResult.data ?? []) as Transaction[];
-
-  const transactionByJob = new Map(
-    transactions.map((t) => [t.job_id, t]),
-  );
-  const totalHeld = transactions
-    .filter((t) => t.status === "held")
-    .reduce((sum, t) => sum + t.amount - t.platform_fee_kinglancer, 0);
-
-  // Submitted = jobs with status "completed" (awaiting client approval)
+  // Submitted = jobs awaiting client approval
   const submittedCount = statusRows.filter(
     (r) => r.status === "completed",
   ).length;
 
-  const tabs: Tab[] = ["active", "completed", "disputed", "cancelled", "all"];
+  const tabs: Tab[] = ["applied", "active", "completed", "disputed", "cancelled", "all"];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -236,8 +278,30 @@ export default async function KinglancerJobsPage({
         basePath="/dashboard/kinglancer/jobs"
       />
 
-      {/* ── Job list ── */}
-      {jobs.length === 0 ? (
+      {/* ── Job list / Application list ── */}
+      {tab === "applied" ? (
+        applications.length === 0 ? (
+          <EmptyState
+            icon={<Briefcase size={22} />}
+            title="No applications yet"
+            description="Browse open jobs and apply — your applications will appear here."
+            action={<ButtonLink href="/jobs">Browse open jobs</ButtonLink>}
+          />
+        ) : (
+          <div className="space-y-3">
+            {applications.map((app) => (
+              <ApplicationCard key={app.id} app={app} />
+            ))}
+            <JobsPagination
+              basePath="/dashboard/kinglancer/jobs"
+              page={page}
+              total={count ?? 0}
+              pageSize={JOBS_PAGE_SIZE}
+              tab={tab}
+            />
+          </div>
+        )
+      ) : jobs.length === 0 ? (
         <EmptyState
           icon={<Briefcase size={22} />}
           title={
@@ -351,5 +415,72 @@ export default async function KinglancerJobsPage({
         </div>
       )}
     </div>
+  );
+}
+
+// ── ApplicationCard ────────────────────────────────────────
+
+const APP_STATUS_CONFIG: Record<
+  ApplicationRow["status"],
+  { label: string; className: string }
+> = {
+  pending: { label: "Pending", className: "bg-yellow-50 text-yellow-700" },
+  accepted: { label: "Selected", className: "bg-green-50 text-green-700" },
+  rejected: { label: "Not selected", className: "bg-gray-100 text-gray-500" },
+};
+
+function ApplicationCard({ app }: { app: ApplicationRow }) {
+  if (!app.job) return null;
+  const { job } = app;
+  const statusCfg = APP_STATUS_CONFIG[app.status];
+  const href =
+    app.status === "accepted"
+      ? `/dashboard/kinglancer/jobs/${job.id}`
+      : `/jobs/${job.id}`;
+
+  return (
+    <Link href={href} className="group block">
+      <Card
+        interactive
+        className="grid gap-4 p-5 sm:grid-cols-[1fr_auto] sm:items-center sm:p-6"
+      >
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="truncate text-lg font-black text-slate-950 transition-colors group-hover:text-blue-700">
+              {job.title}
+            </h2>
+            <StatusBadge className={statusCfg.className}>
+              {statusCfg.label}
+            </StatusBadge>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-500">
+            {job.deadline && (
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar size={14} />
+                Due {formatDeadline(job.deadline)}
+              </span>
+            )}
+            {(job.categories ?? []).length > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Briefcase size={14} />
+                {job.categories.slice(0, 2).join(", ")}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-4 sm:justify-end">
+          <p className="text-lg font-black text-slate-950">
+            {formatMoney(Number(job.budget))}
+            <span className="ml-1 text-sm font-bold text-slate-400">
+              {formatRateType(job.rate_type)}
+            </span>
+          </p>
+          <ChevronRight
+            size={18}
+            className="text-slate-300 transition-colors group-hover:text-blue-500"
+          />
+        </div>
+      </Card>
+    </Link>
   );
 }
