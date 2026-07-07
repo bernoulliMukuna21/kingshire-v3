@@ -23,12 +23,13 @@ import { getPageNumber, getPageRange } from "@/lib/pagination";
 // ── Tab definitions ────────────────────────────────────────
 
 // JobStatus is imported from @/lib/jobs — single source of truth.
-type Tab = "all" | "active" | "completed" | "cancelled";
+type Tab = "all" | "active" | "completed" | "disputed" | "cancelled";
 
 const TAB_STATUSES: Record<Tab, JobStatus[]> = {
   all: [],
-  active: ["in_progress", "completed", "disputed"],
+  active: ["in_progress", "completed"],
   completed: ["approved"],
+  disputed: ["disputed"],
   cancelled: ["cancelled"],
 };
 
@@ -36,11 +37,12 @@ const TAB_LABELS: Record<Tab, string> = {
   all: "All",
   active: "Active",
   completed: "Completed",
+  disputed: "Disputed",
   cancelled: "Cancelled",
 };
 
 function parseTab(raw: string | undefined): Tab {
-  if (raw === "all" || raw === "completed" || raw === "cancelled") return raw;
+  if (raw === "all" || raw === "completed" || raw === "disputed" || raw === "cancelled") return raw;
   return "active";
 }
 
@@ -133,6 +135,9 @@ export default async function KinglancerJobsPage({
     completed: statusRows.filter((r) =>
       TAB_STATUSES.completed.includes(r.status),
     ).length,
+    disputed: statusRows.filter((r) =>
+      TAB_STATUSES.disputed.includes(r.status),
+    ).length,
     cancelled: statusRows.filter((r) =>
       TAB_STATUSES.cancelled.includes(r.status),
     ).length,
@@ -179,7 +184,7 @@ export default async function KinglancerJobsPage({
     (r) => r.status === "completed",
   ).length;
 
-  const tabs: Tab[] = ["active", "completed", "cancelled", "all"];
+  const tabs: Tab[] = ["active", "completed", "disputed", "cancelled", "all"];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
