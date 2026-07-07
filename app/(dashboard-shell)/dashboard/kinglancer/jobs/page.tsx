@@ -145,7 +145,8 @@ export default async function KinglancerJobsPage({
     supabase
       .from("applications")
       .select("id", { count: "exact", head: true })
-      .eq("kinglancer_id", user.id),
+      .eq("kinglancer_id", user.id)
+      .neq("status", "accepted"),
   ]);
 
   const statusRows = statusResult.data ?? [];
@@ -184,6 +185,7 @@ export default async function KinglancerJobsPage({
         { count: "exact" },
       )
       .eq("kinglancer_id", user.id)
+      .neq("status", "accepted")
       .order("created_at", { ascending: false })
       .range(from, to);
     applications = (data ?? []) as unknown as ApplicationRow[];
@@ -424,7 +426,7 @@ const APP_STATUS_CONFIG: Record<
   ApplicationRow["status"],
   { label: string; className: string }
 > = {
-  pending: { label: "Pending", className: "bg-yellow-50 text-yellow-700" },
+  pending: { label: "Pending review", className: "bg-yellow-50 text-yellow-700" },
   accepted: { label: "Selected", className: "bg-green-50 text-green-700" },
   rejected: { label: "Not selected", className: "bg-gray-100 text-gray-500" },
 };
