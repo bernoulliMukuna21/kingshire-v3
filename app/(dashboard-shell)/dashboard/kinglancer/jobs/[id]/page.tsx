@@ -260,7 +260,7 @@ export default async function KinglancerJobWorkspacePage({
       <DashboardBackLink
         source={from}
         fallbackHref="/dashboard/kinglancer/jobs"
-        fallbackLabel="Back to Active Jobs"
+        fallbackLabel="Back to My Jobs"
       />
 
       <Card className="overflow-hidden">
