@@ -9,7 +9,8 @@ export type NotificationType =
   | "new_job"
   | "payout_ready"
   | "review_request"
-  | "review_received";
+  | "review_received"
+  | "job_expired";
 
 interface NotifyParams {
   userId: string;
