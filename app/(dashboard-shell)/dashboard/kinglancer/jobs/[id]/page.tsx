@@ -7,14 +7,14 @@ import {
   Clock,
   Tag,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getDashboardContext } from "@/lib/dashboard-context";
 import {
   getJobReviewState,
   isReviewWindowClosed,
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
-import { getTransactionByJob } from "@/lib/db/transactions";
+import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
@@ -72,6 +72,7 @@ type Transaction = {
   amount: number;
   platform_fee_kinglancer: number;
   status: "pending" | "held" | "released" | "refunded" | "disputed";
+  released_at: string | null;
 };
 
 const statusConfig: Record<string, { label: string; className: string }> = {
@@ -84,20 +85,6 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   approved: { label: "Approved", className: "bg-green-100 text-green-700" },
   cancelled: { label: "Cancelled", className: "bg-slate-100 text-slate-500" },
 };
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
-}
-
-function formatRateType(rateType: JobWorkspace["rate_type"]) {
-  if (rateType === "per_hour") return "/hr";
-  if (rateType === "per_day") return "/day";
-  return "fixed";
-}
 
 function nextAction({
   job,
@@ -185,48 +172,40 @@ export default async function KinglancerJobWorkspacePage({
 }) {
   const { id } = await params;
   const { from } = await searchParams;
-  const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in");
+  // getDashboardContext is React-cached — reuses the result already fetched
+  // by the layout with zero extra DB round trips.
+  const { supabase, user } = await getDashboardContext();
 
-  const [profileResult, jobResult, applicationResult, transactionResult] =
-    await Promise.all([
-      supabase.from("profiles").select("role").eq("id", user.id).single(),
-      supabase
-        .from("jobs")
-        .select(
-          `
+  const [jobResult, applicationResult, transactionResult] = await Promise.all([
+    supabase
+      .from("jobs")
+      .select(
+        `
           id, title, description, budget, rate_type, status, deadline, categories,
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
           client:profiles!client_id(full_name, avatar_url)
         `,
-        )
-        .eq("id", id)
-        .single(),
-      supabase
-        .from("applications")
-        .select("id, status, cover_letter, created_at")
-        .eq("job_id", id)
-        .eq("kinglancer_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("transactions")
-        .select("amount, platform_fee_kinglancer, status")
-        .eq("job_id", id)
-        .eq("kinglancer_id", user.id)
-        .maybeSingle(),
-    ]);
-
-  const profile = profileResult.data;
-  if (!profile) redirect("/onboarding");
-  if (profile.role === "admin") redirect("/admin");
-  if (profile.role === "client") redirect("/dashboard/client");
-  if (profile.role !== "kinglancer") redirect("/onboarding");
+      )
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("applications")
+      .select("id, status, cover_letter, created_at")
+      .eq("job_id", id)
+      .eq("kinglancer_id", user.id)
+      .maybeSingle(),
+    // released_at included here so we do not need a second getTransactionByJob
+    // call for the review window calculation on approved jobs.
+    supabase
+      .from("transactions")
+      .select("amount, platform_fee_kinglancer, status, released_at")
+      .eq("job_id", id)
+      .eq("kinglancer_id", user.id)
+      .maybeSingle(),
+  ]);
 
   const job = (jobResult as unknown as { data: JobWorkspace | null }).data;
   if (!job) notFound();
@@ -257,20 +236,17 @@ export default async function KinglancerJobWorkspacePage({
       ? transaction.amount - transaction.platform_fee_kinglancer
       : null;
 
-  // Review state for approved jobs (double-blind, 7-day window).
+  // Review state for approved jobs — released_at already in `transaction`;
+  // no second DB query needed.
   let reviewState: Awaited<ReturnType<typeof getJobReviewState>> | null = null;
   let reviewWindowClosed = false;
   let reviewRemaining: ReturnType<typeof reviewWindowRemaining> = null;
   if (job.status === "approved") {
-    const [state, tx] = await Promise.all([
-      getJobReviewState(id, user.id),
-      getTransactionByJob(id),
-    ]);
-    reviewState = state;
-    reviewWindowClosed = isReviewWindowClosed(tx?.released_at ?? null);
-    const closesAt = tx?.released_at
+    reviewState = await getJobReviewState(id, user.id);
+    reviewWindowClosed = isReviewWindowClosed(transaction?.released_at ?? null);
+    const closesAt = transaction?.released_at
       ? new Date(
-          new Date(tx.released_at).getTime() +
+          new Date(transaction.released_at).getTime() +
             REVIEW_WINDOW_DAYS * 24 * 60 * 60 * 1000,
         ).toISOString()
       : null;
@@ -283,7 +259,7 @@ export default async function KinglancerJobWorkspacePage({
       <DashboardBackLink
         source={from}
         fallbackHref="/dashboard/kinglancer/jobs"
-        fallbackLabel="Back to Active Jobs"
+        fallbackLabel="Back to My Jobs"
       />
 
       <Card className="overflow-hidden">
@@ -471,14 +447,7 @@ export default async function KinglancerJobWorkspacePage({
               {job.deadline && (
                 <div className="flex items-start gap-3">
                   <Calendar size={16} className="mt-0.5 text-slate-400" />
-                  <span>
-                    Due{" "}
-                    {new Date(job.deadline).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </span>
+                  <span>Due {formatDeadline(job.deadline)}</span>
                 </div>
               )}
               {(job.categories ?? []).length > 0 && (

@@ -9,7 +9,8 @@ export type NotificationType =
   | "new_job"
   | "payout_ready"
   | "review_request"
-  | "review_received";
+  | "review_received"
+  | "job_expired";
 
 interface NotifyParams {
   userId: string;
@@ -471,6 +472,40 @@ export async function emailJobAlert({
       : `A new job has just been posted: <strong>${jobTitle}</strong>. Be one of the first to apply!`,
     link: `/jobs/${jobId}`,
     ctaLabel: isDirect ? "View request →" : "View job →",
+  });
+}
+
+/**
+ * Notifies a kinglancer (or invited kinglancer on a direct request) that the
+ * client has cancelled the job. Used for both open-job cancellations and
+ * in-progress cancellations within the grace period.
+ */
+export async function notifyJobCancelled({
+  recipientId,
+  recipientEmail,
+  jobTitle,
+  refunded,
+}: {
+  recipientId: string;
+  recipientEmail: string;
+  jobTitle: string;
+  /** True when the client received a Stripe refund (in-progress grace period). */
+  refunded: boolean;
+}) {
+  const body = refunded
+    ? `The client cancelled the job "${jobTitle}" within the grace period. The payment has been refunded to them. This job is now closed.`
+    : `The client has cancelled the job posting "${jobTitle}". It is no longer available on the platform.`;
+
+  await notify({
+    userId: recipientId,
+    type: "dispute_raised", // closest available type without a schema change
+    title: "Job cancelled by client",
+    body,
+    link: "/dashboard/kinglancer",
+    email: {
+      to: recipientEmail,
+      subject: `Job cancelled: "${jobTitle}"`,
+    },
   });
 }
 

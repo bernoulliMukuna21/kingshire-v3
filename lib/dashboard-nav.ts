@@ -45,8 +45,8 @@ const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
     href: "/dashboard/action-centre",
   },
   {
-    label: "Active Jobs",
-    mobileLabel: "Active",
+    label: "My Jobs",
+    mobileLabel: "Jobs",
     icon: "💼",
     href: "/dashboard/kinglancer/jobs",
   },

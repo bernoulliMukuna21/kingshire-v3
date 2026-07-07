@@ -33,6 +33,7 @@ const TYPE_ICON: Record<string, string> = {
   new_job: "💼",
   payout_ready: "💷",
   direct_request: "📨",
+  job_expired: "⏰",
 };
 
 export default function NotificationBell() {

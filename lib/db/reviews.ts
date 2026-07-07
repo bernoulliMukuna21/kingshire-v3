@@ -132,7 +132,7 @@ export async function getPendingReviewJobs(
     .select(`id, title, counterpart:profiles!${counterpartColumn}(full_name)`)
     .eq(ownerColumn, userId)
     .eq("status", "approved")
-    .limit(100);
+    .order("created_at", { ascending: false });
 
   const jobs = jobsRaw ?? [];
   if (jobs.length === 0) return [];

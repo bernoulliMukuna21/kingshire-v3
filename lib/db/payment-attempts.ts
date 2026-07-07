@@ -227,7 +227,19 @@ export async function finalizePaymentAttempt(
     status: "held",
   });
 
-  if (transactionError) throw transactionError;
+  if (transactionError) {
+    // 23505 = unique constraint violation on transactions_job_id_unique.
+    // A concurrent webhook delivery already inserted this transaction.
+    // Treat as idempotent success so Stripe stops retrying.
+    if (transactionError.code === "23505") {
+      await updatePaymentAttemptStatus(
+        stripePaymentIntentId,
+        "succeeded",
+      ).catch(() => {});
+      return { attempt, finalizedNow: false };
+    }
+    throw transactionError;
+  }
 
   await updatePaymentAttemptStatus(stripePaymentIntentId, "succeeded");
 

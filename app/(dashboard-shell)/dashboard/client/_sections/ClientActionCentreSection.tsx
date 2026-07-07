@@ -27,7 +27,7 @@ export async function ClientActionCentreSection() {
   const fundedJobIds = new Set(
     (transactionsResult.data ?? []).map((t) => t.job_id),
   );
-  const rawJobs = (jobsResult.data ?? []) as Array<{
+  const rawJobs = (jobsResult.data ?? []) as unknown as Array<{
     id: string;
     status: string;
     invited_kinglancer_id: string | null;

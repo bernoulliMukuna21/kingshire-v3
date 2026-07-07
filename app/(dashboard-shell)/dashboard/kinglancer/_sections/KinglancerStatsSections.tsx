@@ -13,14 +13,11 @@ import { CheckCircle, Star, TrendingUp, Briefcase } from "lucide-react";
 export async function KinglancerStatsSection() {
   const { supabase, user, profile } = await getDashboardContext();
 
-  const [transactionsResult, activeJobsResult] = await Promise.all([
-    supabase
-      .from("transactions")
-      .select("amount, platform_fee_kinglancer, status, job_id")
-      .eq("kinglancer_id", user.id)
-      .in("status", ["held", "released", "disputed"])
-      .order("created_at", { ascending: false })
-      .limit(200),
+  // Two targeted queries in parallel:
+  // 1. Aggregate stats RPC — DB-level totals, no row limit, always accurate
+  // 2. Active jobs count — index-only count query
+  const [statsResult, activeJobsResult] = await Promise.all([
+    supabase.rpc("get_kinglancer_stats", { p_kinglancer_id: user.id }),
     supabase
       .from("jobs")
       .select("id", { count: "exact", head: true })
@@ -28,14 +25,15 @@ export async function KinglancerStatsSection() {
       .in("status", ["in_progress", "completed", "disputed"]),
   ]);
 
-  const transactions = transactionsResult.data ?? [];
-  const totalEarned = transactions
-    .filter((t) => t.status === "released")
-    .reduce((sum, t) => sum + (t.amount - t.platform_fee_kinglancer), 0);
-
+  type KinglancerStats = { total_earned: number; total_held: number };
+  const stats = ((statsResult.data as KinglancerStats[] | null) ?? [])[0] ?? {
+    total_earned: 0,
+    total_held: 0,
+  };
+  const totalEarned = stats.total_earned;
   const activeJobsCount = activeJobsResult.count ?? 0;
 
-  const stats = [
+  const statCards = [
     {
       label: "Total Earned",
       value: totalEarned > 0 ? `£${totalEarned.toFixed(0)}` : "£0",
@@ -78,7 +76,7 @@ export async function KinglancerStatsSection() {
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
         staggerDelay={0.07}
       >
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <StaggerItem key={stat.label}>
             {stat.href ? (
               <Link

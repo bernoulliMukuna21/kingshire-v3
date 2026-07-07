@@ -32,31 +32,29 @@ export default async function JobsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+  let appliedJobIds: string[] = [];
 
-    if (profile?.role === "client") {
+  if (user) {
+    // Fetch profile and applied job IDs in parallel — both need user.id,
+    // neither depends on the other.
+    const [profileResult, applicationsResult] = await Promise.all([
+      supabase.from("profiles").select("role").eq("id", user.id).single(),
+      supabase
+        .from("applications")
+        .select("job_id")
+        .eq("kinglancer_id", user.id),
+    ]);
+
+    if (profileResult.data?.role === "client") {
       redirect("/dashboard/client/jobs");
     }
+    appliedJobIds = (applicationsResult.data ?? []).map((a) => a.job_id);
   }
 
   const jobs = await getCachedOpenJobs();
   const visibleJobs = user
     ? jobs.filter((job) => job.client_id !== user.id)
     : jobs;
-
-  let appliedJobIds: string[] = [];
-  if (user) {
-    const { data: applications } = await supabase
-      .from("applications")
-      .select("job_id")
-      .eq("kinglancer_id", user.id);
-    appliedJobIds = (applications ?? []).map((a) => a.job_id);
-  }
 
   return (
     <PublicShell>

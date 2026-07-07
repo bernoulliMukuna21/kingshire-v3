@@ -14,16 +14,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
-  // Verify the user is a kinglancer
+  // Verify the user is a kinglancer and has a complete profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, bio, services")
     .eq("id", user.id)
     .single();
 
   if (!profile || profile.role !== "kinglancer") {
     return NextResponse.json(
       { error: "Only kinglancers can apply to jobs" },
+      { status: 403 },
+    );
+  }
+
+  const profileServices = (profile.services ?? []) as Array<{ rate: number }>;
+  const isProfileComplete =
+    !!profile.bio?.trim() && profileServices.some((s) => Number(s.rate) > 0);
+
+  if (!isProfileComplete) {
+    return NextResponse.json(
+      {
+        code: "PROFILE_INCOMPLETE",
+        error:
+          "Please complete your profile before applying — add an 'About you' section and set a rate on at least one service.",
+      },
       { status: 403 },
     );
   }

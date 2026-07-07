@@ -17,10 +17,6 @@ export type ApplicationWithKinglancer = Application & {
   };
 };
 
-export type ApplicationWithJob = Application & {
-  job: Database["public"]["Tables"]["jobs"]["Row"];
-};
-
 export class ApplicantSelectionConflictError extends Error {
   constructor() {
     super("A kinglancer has already been selected for this job");
@@ -42,20 +38,6 @@ export async function getApplicationsByJob(
 
   if (error) throw error;
   return (data ?? []) as unknown as ApplicationWithKinglancer[];
-}
-
-export async function getApplicationsByKinglancer(
-  kinglancerId: string,
-): Promise<ApplicationWithJob[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("applications")
-    .select("*, job:jobs(*)")
-    .eq("kinglancer_id", kinglancerId)
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return (data ?? []) as unknown as ApplicationWithJob[];
 }
 
 export async function hasApplied(

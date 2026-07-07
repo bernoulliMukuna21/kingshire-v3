@@ -12,6 +12,33 @@ import { getPublishedReviewsForUser } from "@/lib/db/reviews";
 
 export const revalidate = 3600;
 
+const getClientProfile = unstable_cache(
+  async (id: string) => {
+    const supabase = createServiceClient();
+    const [{ data: profile }, { count }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, role, rating, total_reviews")
+        .eq("id", id)
+        .eq("role", "client")
+        .single(),
+      supabase
+        .from("jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("client_id", id),
+    ]);
+    return profile ? { profile, jobsPosted: count ?? 0 } : null;
+  },
+  ["client-reputation"],
+  { revalidate: 3600, tags: ["client-reputations"] },
+);
+
+const getClientReviews = unstable_cache(
+  async (id: string) => getPublishedReviewsForUser(id, 30),
+  ["client-reviews"],
+  { revalidate: 3600, tags: ["client-reviews"] },
+);
+
 export default async function ClientReputationPage({
   params,
 }: {
@@ -19,43 +46,11 @@ export default async function ClientReputationPage({
 }) {
   const { id } = await params;
 
-  const getClient = unstable_cache(
-    async () => {
-      const supabase = createServiceClient();
-      const [{ data: profile }, { count }] = await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url, role, rating, total_reviews")
-          .eq("id", id)
-          .eq("role", "client")
-          .single(),
-        supabase
-          .from("jobs")
-          .select("id", { count: "exact", head: true })
-          .eq("client_id", id),
-      ]);
-      return profile ? { profile, jobsPosted: count ?? 0 } : null;
-    },
-    [`client-reputation-${id}`],
-    {
-      revalidate: 3600,
-      tags: [`client-reputation-${id}`, "client-reputations"],
-    },
-  );
-
-  const result = await getClient();
+  const result = await getClientProfile(id);
   if (!result) notFound();
   const { profile, jobsPosted } = result;
 
-  const getReviews = unstable_cache(
-    async () => getPublishedReviewsForUser(id, 30),
-    [`client-reviews-${id}`],
-    {
-      revalidate: 3600,
-      tags: [`client-reviews-${id}`, "client-reviews"],
-    },
-  );
-  const reviews = await getReviews();
+  const reviews = await getClientReviews(id);
 
   const firstName = profile.full_name?.split(" ")[0] || "This client";
   const hasReviews = profile.total_reviews > 0;

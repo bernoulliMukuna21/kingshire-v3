@@ -5,6 +5,7 @@ import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
+import { formatDeadline } from "@/lib/utils";
 import {
   ApplyForm,
   ApplicantsList,
@@ -334,14 +335,7 @@ export default async function JobDetailPage({
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Calendar size={16} className="text-gray-400 shrink-0" />
                 <span>
-                  Deadline:{" "}
-                  <strong>
-                    {new Date(job.deadline).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </strong>
+                  Deadline: <strong>{formatDeadline(job.deadline)}</strong>
                 </span>
               </div>
             )}

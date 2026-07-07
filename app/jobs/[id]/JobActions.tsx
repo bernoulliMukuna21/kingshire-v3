@@ -93,7 +93,11 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        setError(data.error ?? "Failed to submit. Please try again.");
+        if (data.code === "PROFILE_INCOMPLETE") {
+          setError("PROFILE_INCOMPLETE");
+        } else {
+          setError(data.error ?? "Failed to submit. Please try again.");
+        }
         return;
       }
 
@@ -136,12 +140,26 @@ export function ApplyForm({ jobId }: { jobId: string }) {
         </p>
       </div>
 
-      {error && (
+      {error === "PROFILE_INCOMPLETE" ? (
+        <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <span>
+            Your profile is incomplete.{" "}
+            <Link
+              href="/dashboard/profile"
+              className="font-bold underline underline-offset-2 hover:text-red-800"
+            >
+              Add an &lsquo;About you&rsquo; section and a service rate
+            </Link>{" "}
+            before applying.
+          </span>
+        </div>
+      ) : error ? (
         <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3">
           <AlertCircle size={16} className="shrink-0" />
           {error}
         </div>
-      )}
+      ) : null}
 
       <button
         type="submit"

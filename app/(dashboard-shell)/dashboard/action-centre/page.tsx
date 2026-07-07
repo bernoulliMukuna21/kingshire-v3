@@ -9,6 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { getPendingReviewJobs, reviewWindowRemaining } from "@/lib/db/reviews";
+import { formatMoney, formatRateType } from "@/lib/utils";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import {
@@ -54,20 +55,6 @@ type KinglancerActionJob = {
   has_funded_transaction?: boolean;
   client: { full_name: string | null } | null;
 };
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
-}
-
-function formatRateType(rateType: string | null) {
-  if (rateType === "per_hour") return "per hour";
-  if (rateType === "per_day") return "per day";
-  return "fixed";
-}
 
 function uniqueActions(actions: ActionItem[]) {
   const seen = new Set<string>();
