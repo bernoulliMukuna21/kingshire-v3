@@ -316,7 +316,7 @@ export default async function KinglancerJobsPage({
               : `You have no jobs in the ${TAB_LABELS[tab].toLowerCase()} category right now.`
           }
           action={
-            tab === "active" || tab === "all" ? (
+            tab === "active" || tab === "history" ? (
               <ButtonLink href="/jobs">Browse open jobs</ButtonLink>
             ) : undefined
           }
