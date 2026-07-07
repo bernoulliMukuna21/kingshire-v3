@@ -25,11 +25,11 @@ import { getPageNumber, getPageRange } from "@/lib/pagination";
 // JobStatus is imported from @/lib/jobs — single source of truth.
 // "applied" is separate from the job-status tabs — it queries the
 // applications table rather than the jobs table.
-type JobTab = "all" | "active" | "completed" | "disputed" | "cancelled";
+type JobTab = "history" | "active" | "completed" | "disputed" | "cancelled";
 type Tab = JobTab | "applied";
 
 const TAB_STATUSES: Record<JobTab, JobStatus[]> = {
-  all: [],
+  history: [],
   active: ["in_progress", "completed"],
   completed: ["approved"],
   disputed: ["disputed"],
@@ -42,11 +42,11 @@ const TAB_LABELS: Record<Tab, string> = {
   completed: "Completed",
   disputed: "Disputed",
   cancelled: "Cancelled",
-  all: "All",
+  history: "History",
 };
 
 function parseTab(raw: string | undefined): Tab {
-  if (raw === "all" || raw === "completed" || raw === "disputed" || raw === "cancelled" || raw === "applied") return raw;
+  if (raw === "history" || raw === "completed" || raw === "disputed" || raw === "cancelled" || raw === "applied") return raw;
   return "active";
 }
 
@@ -146,7 +146,7 @@ export default async function KinglancerJobsPage({
       .from("applications")
       .select("id", { count: "exact", head: true })
       .eq("kinglancer_id", user.id)
-      .neq("status", "accepted"),
+      .eq("status", "pending"),
   ]);
 
   const statusRows = statusResult.data ?? [];
@@ -154,7 +154,7 @@ export default async function KinglancerJobsPage({
 
   const tabCounts: Record<Tab, number> = {
     applied: appliedCount,
-    all: statusRows.length,
+    history: statusRows.length,
     active: statusRows.filter((r) =>
       TAB_STATUSES.active.includes(r.status),
     ).length,
@@ -185,7 +185,7 @@ export default async function KinglancerJobsPage({
         { count: "exact" },
       )
       .eq("kinglancer_id", user.id)
-      .neq("status", "accepted")
+      .eq("status", "pending")
       .order("created_at", { ascending: false })
       .range(from, to);
     applications = (data ?? []) as unknown as ApplicationRow[];
@@ -204,7 +204,6 @@ export default async function KinglancerJobsPage({
     if (TAB_STATUSES[tab as JobTab].length > 0) {
       jobsQuery = jobsQuery.in("status", TAB_STATUSES[tab as JobTab]);
     }
-
     const [jobsResult, transactionsResult] = await Promise.all([
       jobsQuery,
       supabase
@@ -228,7 +227,7 @@ export default async function KinglancerJobsPage({
     (r) => r.status === "completed",
   ).length;
 
-  const tabs: Tab[] = ["applied", "active", "completed", "disputed", "cancelled", "all"];
+  const tabs: Tab[] = ["applied", "active", "completed", "disputed", "cancelled", "history"];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -307,7 +306,7 @@ export default async function KinglancerJobsPage({
         <EmptyState
           icon={<Briefcase size={22} />}
           title={
-            tab === "all"
+            tab === "history"
               ? "No jobs yet"
               : `No ${TAB_LABELS[tab].toLowerCase()} jobs`
           }
