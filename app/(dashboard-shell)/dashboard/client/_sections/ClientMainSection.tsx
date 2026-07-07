@@ -53,13 +53,18 @@ export async function ClientMainSection() {
     supabase.rpc("get_client_stats", { p_client_id: user.id }),
   ]);
 
-  const inProgressJobs = (inProgressResult.data ?? []) as unknown as InProgressJob[];
+  const inProgressJobs = (inProgressResult.data ??
+    []) as unknown as InProgressJob[];
   const stats: ClientStats =
     ((statsResult.data as ClientStats[] | null) ?? [])[0] ?? EMPTY_STATS;
 
-  const { total_spent: totalSpent, total_jobs: postedJobsCount,
-          open_jobs: openJobsCount, completed_jobs: completedCount,
-          total_applicants: totalApplicantCount } = stats;
+  const {
+    total_spent: totalSpent,
+    total_jobs: postedJobsCount,
+    open_jobs: openJobsCount,
+    completed_jobs: completedCount,
+    total_applicants: totalApplicantCount,
+  } = stats;
 
   return (
     <div className="space-y-8">
@@ -71,7 +76,9 @@ export async function ClientMainSection() {
         {inProgressJobs.length === 0 ? (
           <EmptyState
             icon={<Briefcase size={22} />}
-            title={postedJobsCount === 0 ? "No jobs posted yet" : "No active work"}
+            title={
+              postedJobsCount === 0 ? "No jobs posted yet" : "No active work"
+            }
             description={
               postedJobsCount === 0
                 ? "Post your first job to start receiving proposals from Kinglancers."
@@ -135,7 +142,9 @@ export async function ClientMainSection() {
                 className="text-gray-300 group-hover:text-blue-500 transition-colors"
               />
             </div>
-            <p className="text-2xl font-black text-slate-950">{postedJobsCount}</p>
+            <p className="text-2xl font-black text-slate-950">
+              {postedJobsCount}
+            </p>
             <p className="text-sm text-slate-500 mt-0.5">Jobs posted</p>
           </Link>
 
@@ -152,7 +161,9 @@ export async function ClientMainSection() {
                 className="text-gray-300 group-hover:text-emerald-500 transition-colors"
               />
             </div>
-            <p className="text-2xl font-black text-slate-950">{openJobsCount}</p>
+            <p className="text-2xl font-black text-slate-950">
+              {openJobsCount}
+            </p>
             <p className="text-sm text-slate-500 mt-0.5">Open jobs</p>
           </Link>
 
@@ -169,7 +180,9 @@ export async function ClientMainSection() {
                 className="text-gray-300 group-hover:text-purple-500 transition-colors"
               />
             </div>
-            <p className="text-2xl font-black text-slate-950">{totalApplicantCount}</p>
+            <p className="text-2xl font-black text-slate-950">
+              {totalApplicantCount}
+            </p>
             <p className="text-sm text-slate-500 mt-0.5">Applicants</p>
           </Link>
 

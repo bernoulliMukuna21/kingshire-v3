@@ -79,7 +79,10 @@ export async function GET(request: Request) {
 
   if (rejectError) {
     // Non-fatal — log and continue to cancel jobs
-    console.error("[expire-jobs] reject applications error:", rejectError.message);
+    console.error(
+      "[expire-jobs] reject applications error:",
+      rejectError.message,
+    );
   }
 
   // ── 4. Bulk-cancel expired jobs ───────────────────────────

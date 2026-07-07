@@ -1,5 +1,8 @@
 import { Suspense } from "react";
-import { getPendingPaymentAttemptByJob, isCancellablePaymentIntentStatus } from "@/lib/db/payment-attempts";
+import {
+  getPendingPaymentAttemptByJob,
+  isCancellablePaymentIntentStatus,
+} from "@/lib/db/payment-attempts";
 import { stripe } from "@/lib/stripe";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";

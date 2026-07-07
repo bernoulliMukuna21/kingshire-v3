@@ -274,22 +274,21 @@ export default async function ClientJobWorkspacePage({
 
           {job.status === "open" && <PendingPaymentCard jobId={id} />}
 
-          {job.status === "in_progress" &&
-            payment_failed !== "1" && (
-              <Card className={cardPadding}>
-                <h2 className="text-lg font-black text-slate-950">
-                  Job in progress
-                </h2>
-                <p className="mb-4 mt-1 text-sm text-slate-500">
-                  Waiting for the Kinglancer to mark the work as done. You can
-                  raise a dispute if something has gone wrong.
-                </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <ClientApproveActions jobId={id} showApprove={false} />
-                  <CancelJobButton jobId={id} status="in_progress" />
-                </div>
-              </Card>
-            )}
+          {job.status === "in_progress" && payment_failed !== "1" && (
+            <Card className={cardPadding}>
+              <h2 className="text-lg font-black text-slate-950">
+                Job in progress
+              </h2>
+              <p className="mb-4 mt-1 text-sm text-slate-500">
+                Waiting for the Kinglancer to mark the work as done. You can
+                raise a dispute if something has gone wrong.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <ClientApproveActions jobId={id} showApprove={false} />
+                <CancelJobButton jobId={id} status="in_progress" />
+              </div>
+            </Card>
+          )}
 
           {job.status === "approved" && (
             <Card className={cardPadding}>

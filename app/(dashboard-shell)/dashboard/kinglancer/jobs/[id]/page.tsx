@@ -177,36 +177,35 @@ export default async function KinglancerJobWorkspacePage({
   // by the layout with zero extra DB round trips.
   const { supabase, user } = await getDashboardContext();
 
-  const [jobResult, applicationResult, transactionResult] =
-    await Promise.all([
-      supabase
-        .from("jobs")
-        .select(
-          `
+  const [jobResult, applicationResult, transactionResult] = await Promise.all([
+    supabase
+      .from("jobs")
+      .select(
+        `
           id, title, description, budget, rate_type, status, deadline, categories,
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
           client:profiles!client_id(full_name, avatar_url)
         `,
-        )
-        .eq("id", id)
-        .single(),
-      supabase
-        .from("applications")
-        .select("id, status, cover_letter, created_at")
-        .eq("job_id", id)
-        .eq("kinglancer_id", user.id)
-        .maybeSingle(),
-      // released_at included here so we do not need a second getTransactionByJob
-      // call for the review window calculation on approved jobs.
-      supabase
-        .from("transactions")
-        .select("amount, platform_fee_kinglancer, status, released_at")
-        .eq("job_id", id)
-        .eq("kinglancer_id", user.id)
-        .maybeSingle(),
-    ]);
+      )
+      .eq("id", id)
+      .single(),
+    supabase
+      .from("applications")
+      .select("id, status, cover_letter, created_at")
+      .eq("job_id", id)
+      .eq("kinglancer_id", user.id)
+      .maybeSingle(),
+    // released_at included here so we do not need a second getTransactionByJob
+    // call for the review window calculation on approved jobs.
+    supabase
+      .from("transactions")
+      .select("amount, platform_fee_kinglancer, status, released_at")
+      .eq("job_id", id)
+      .eq("kinglancer_id", user.id)
+      .maybeSingle(),
+  ]);
 
   const job = (jobResult as unknown as { data: JobWorkspace | null }).data;
   if (!job) notFound();

@@ -46,7 +46,14 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 function parseTab(raw: string | undefined): Tab {
-  if (raw === "history" || raw === "completed" || raw === "disputed" || raw === "cancelled" || raw === "applied") return raw;
+  if (
+    raw === "history" ||
+    raw === "completed" ||
+    raw === "disputed" ||
+    raw === "cancelled" ||
+    raw === "applied"
+  )
+    return raw;
   return "active";
 }
 
@@ -123,7 +130,6 @@ type ApplicationRow = {
   } | null;
 };
 
-
 // ── Page ──────────────────────────────────────────────────
 
 export default async function KinglancerJobsPage({
@@ -155,15 +161,13 @@ export default async function KinglancerJobsPage({
   const tabCounts: Record<Tab, number> = {
     applied: appliedCount,
     history: statusRows.length,
-    active: statusRows.filter((r) =>
-      TAB_STATUSES.active.includes(r.status),
-    ).length,
+    active: statusRows.filter((r) => TAB_STATUSES.active.includes(r.status))
+      .length,
     completed: statusRows.filter((r) =>
       TAB_STATUSES.completed.includes(r.status),
     ).length,
-    disputed: statusRows.filter((r) =>
-      TAB_STATUSES.disputed.includes(r.status),
-    ).length,
+    disputed: statusRows.filter((r) => TAB_STATUSES.disputed.includes(r.status))
+      .length,
     cancelled: statusRows.filter((r) =>
       TAB_STATUSES.cancelled.includes(r.status),
     ).length,
@@ -227,7 +231,14 @@ export default async function KinglancerJobsPage({
     (r) => r.status === "completed",
   ).length;
 
-  const tabs: Tab[] = ["applied", "active", "completed", "disputed", "cancelled", "history"];
+  const tabs: Tab[] = [
+    "applied",
+    "active",
+    "completed",
+    "disputed",
+    "cancelled",
+    "history",
+  ];
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -425,7 +436,10 @@ const APP_STATUS_CONFIG: Record<
   ApplicationRow["status"],
   { label: string; className: string }
 > = {
-  pending: { label: "Pending review", className: "bg-yellow-50 text-yellow-700" },
+  pending: {
+    label: "Pending review",
+    className: "bg-yellow-50 text-yellow-700",
+  },
   accepted: { label: "Selected", className: "bg-green-50 text-green-700" },
   rejected: { label: "Not selected", className: "bg-gray-100 text-gray-500" },
 };

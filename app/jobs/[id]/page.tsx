@@ -335,8 +335,7 @@ export default async function JobDetailPage({
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Calendar size={16} className="text-gray-400 shrink-0" />
                 <span>
-                  Deadline:{" "}
-                  <strong>{formatDeadline(job.deadline)}</strong>
+                  Deadline: <strong>{formatDeadline(job.deadline)}</strong>
                 </span>
               </div>
             )}

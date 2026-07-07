@@ -17,7 +17,13 @@ import DeleteJobButton from "./DeleteJobButton";
 // Derived directly from the Supabase schema so it stays in sync automatically.
 // JobStatus is imported from @/lib/jobs — single source of truth.
 
-type Tab = "history" | "open" | "active" | "completed" | "disputed" | "cancelled";
+type Tab =
+  | "history"
+  | "open"
+  | "active"
+  | "completed"
+  | "disputed"
+  | "cancelled";
 
 // JobStatus[] satisfies Supabase's .in() (needs the exact status union) AND
 // Array.prototype.includes() (needs the argument to be assignable to the
@@ -41,7 +47,14 @@ const TAB_LABELS: Record<Tab, string> = {
 };
 
 function parseTab(raw: string | undefined): Tab {
-  if (raw === "history" || raw === "open" || raw === "completed" || raw === "disputed" || raw === "cancelled") return raw;
+  if (
+    raw === "history" ||
+    raw === "open" ||
+    raw === "completed" ||
+    raw === "disputed" ||
+    raw === "cancelled"
+  )
+    return raw;
   return "active";
 }
 
@@ -140,15 +153,13 @@ export default async function MyJobsPage({
   const tabCounts: Record<Tab, number> = {
     history: statusRows.length,
     open: statusRows.filter((r) => TAB_STATUSES.open.includes(r.status)).length,
-    active: statusRows.filter((r) =>
-      TAB_STATUSES.active.includes(r.status),
-    ).length,
+    active: statusRows.filter((r) => TAB_STATUSES.active.includes(r.status))
+      .length,
     completed: statusRows.filter((r) =>
       TAB_STATUSES.completed.includes(r.status),
     ).length,
-    disputed: statusRows.filter((r) =>
-      TAB_STATUSES.disputed.includes(r.status),
-    ).length,
+    disputed: statusRows.filter((r) => TAB_STATUSES.disputed.includes(r.status))
+      .length,
     cancelled: statusRows.filter((r) =>
       TAB_STATUSES.cancelled.includes(r.status),
     ).length,
@@ -185,7 +196,14 @@ export default async function MyJobsPage({
     {},
   );
 
-  const tabs: Tab[] = ["active", "open", "completed", "disputed", "cancelled", "history"];
+  const tabs: Tab[] = [
+    "active",
+    "open",
+    "completed",
+    "disputed",
+    "cancelled",
+    "history",
+  ];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -386,4 +404,3 @@ function JobCard({
     </div>
   );
 }
-

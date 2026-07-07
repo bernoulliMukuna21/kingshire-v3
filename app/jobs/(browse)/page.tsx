@@ -39,7 +39,10 @@ export default async function JobsPage() {
     // neither depends on the other.
     const [profileResult, applicationsResult] = await Promise.all([
       supabase.from("profiles").select("role").eq("id", user.id).single(),
-      supabase.from("applications").select("job_id").eq("kinglancer_id", user.id),
+      supabase
+        .from("applications")
+        .select("job_id")
+        .eq("kinglancer_id", user.id),
     ]);
 
     if (profileResult.data?.role === "client") {

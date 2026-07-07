@@ -21,7 +21,9 @@ export function cn(
  * Returns "Today", "Tomorrow", or a short date ("7 Jul 2026").
  * Returns null if no deadline is set.
  */
-export function formatDeadline(value: string | null | undefined): string | null {
+export function formatDeadline(
+  value: string | null | undefined,
+): string | null {
   if (!value) return null;
 
   const deadline = new Date(value);
@@ -74,4 +76,3 @@ export function formatRateType(rateType: string | null | undefined): string {
   if (rateType === "per_day") return "/day";
   return "fixed";
 }
-

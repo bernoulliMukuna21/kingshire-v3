@@ -58,9 +58,7 @@ export default function KinglancersSearch({
           </button>
         )}
       </form>
-      {isPending && (
-        <p className="mt-2 text-xs text-slate-400">Searching…</p>
-      )}
+      {isPending && <p className="mt-2 text-xs text-slate-400">Searching…</p>}
     </div>
   );
 }
