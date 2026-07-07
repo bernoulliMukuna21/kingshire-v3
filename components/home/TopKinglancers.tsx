@@ -16,25 +16,23 @@ const GRADIENT_CYCLE = [
 const getTopKinglancers = unstable_cache(
   async () => {
     const supabase = createServiceClient();
-    // Order by jobs_completed desc first, then by created_at asc as tiebreaker
-    // so that until reviews exist, the earliest members are shown.
+    // Primary sort: highest rating first (shows kinglancers who have earned
+    // trust through real reviews). Secondary: most jobs completed. Final
+    // tiebreaker: earliest members first.
+    // No completeness gate — we don't penalise kinglancers for an unfinished
+    // profile while the platform is still growing.
     const { data } = await supabase
       .from("profiles")
       .select(
         "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services, bio",
       )
       .eq("role", "kinglancer")
+      .order("rating", { ascending: false })
       .order("jobs_completed", { ascending: false })
       .order("created_at", { ascending: true })
       .limit(6);
 
-    // Only surface complete profiles (bio + at least one priced service).
-    return (data ?? []).filter((k) => {
-      const hasBio = !!k.bio?.trim();
-      const hasPricedService = Array.isArray(k.services) &&
-        (k.services as { rate: number }[]).some((s) => Number(s.rate) > 0);
-      return hasBio && hasPricedService;
-    });
+    return data ?? [];
   },
   ["top-kinglancers"],
   { revalidate: 86400 }, // 24 hours — ranking changes very slowly
