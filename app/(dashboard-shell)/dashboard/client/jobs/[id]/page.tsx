@@ -18,7 +18,7 @@ import {
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
 import { getTransactionByJob } from "@/lib/db/transactions";
-import { formatMoney, formatRateType } from "@/lib/utils";
+import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import {
   ApplicantsList,
   ClientApproveActions,
@@ -132,7 +132,7 @@ export default async function ClientJobWorkspacePage({
     ? (kinglancer?.full_name ?? "Selected Kinglancer")
     : null;
   const categories = job.categories ?? [];
-  const deadline = formatDate(job.deadline);
+  const deadline = formatDeadline(job.deadline);
 
   // Review state for approved jobs (double-blind, 7-day window).
   let reviewState: Awaited<ReturnType<typeof getJobReviewState>> | null = null;

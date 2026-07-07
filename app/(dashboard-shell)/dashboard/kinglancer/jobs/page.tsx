@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { type JobStatus, JOBS_PAGE_SIZE } from "@/lib/jobs";
-import { formatMoney, formatRateType } from "@/lib/utils";
+import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -293,12 +293,7 @@ export default async function KinglancerJobsPage({
                       {job.deadline && (
                         <span className="inline-flex items-center gap-1.5">
                           <Calendar size={14} />
-                          Due{" "}
-                          {new Date(job.deadline).toLocaleDateString("en-GB", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
+                          Due {formatDeadline(job.deadline)}
                         </span>
                       )}
                       {job.status === "disputed" && (

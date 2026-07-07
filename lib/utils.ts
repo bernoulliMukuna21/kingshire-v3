@@ -16,7 +16,32 @@ export function cn(
   return classes.filter(Boolean).join(" ");
 }
 
-// ── Money / rate formatting ───────────────────────────────
+/**
+ * Format a job deadline date string for display.
+ * Returns "Today", "Tomorrow", or a short date ("7 Jul 2026").
+ * Returns null if no deadline is set.
+ */
+export function formatDeadline(value: string | null | undefined): string | null {
+  if (!value) return null;
+
+  const deadline = new Date(value);
+  deadline.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (deadline.getTime() === today.getTime()) return "Today";
+  if (deadline.getTime() === tomorrow.getTime()) return "Tomorrow";
+
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 // Formatters are defined once and reused — `new Intl.NumberFormat` is
 // expensive to construct; avoid creating an instance on every call.

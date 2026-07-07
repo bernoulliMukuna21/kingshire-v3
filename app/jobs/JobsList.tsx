@@ -13,6 +13,7 @@ import {
 import { Stagger, StaggerItem } from "@/components/animations";
 import type { JobWithClient } from "@/lib/db/jobs";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
+import { formatDeadline } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card } from "@/components/ui/Card";
 
@@ -147,10 +148,7 @@ export default function JobsList({
                     {job.deadline && (
                       <span className="flex items-center gap-1">
                         <Clock size={12} />
-                        {new Date(job.deadline).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {formatDeadline(job.deadline)}
                       </span>
                     )}
                     <span>{timeAgo(job.created_at)}</span>

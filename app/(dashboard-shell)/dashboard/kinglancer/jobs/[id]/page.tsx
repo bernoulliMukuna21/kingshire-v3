@@ -14,7 +14,7 @@ import {
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
-import { formatMoney, formatRateType } from "@/lib/utils";
+import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
@@ -448,14 +448,7 @@ export default async function KinglancerJobWorkspacePage({
               {job.deadline && (
                 <div className="flex items-start gap-3">
                   <Calendar size={16} className="mt-0.5 text-slate-400" />
-                  <span>
-                    Due{" "}
-                    {new Date(job.deadline).toLocaleDateString("en-GB", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </span>
+                  <span>Due {formatDeadline(job.deadline)}</span>
                 </div>
               )}
               {(job.categories ?? []).length > 0 && (
