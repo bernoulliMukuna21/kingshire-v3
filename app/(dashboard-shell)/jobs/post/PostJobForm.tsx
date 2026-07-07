@@ -139,7 +139,7 @@ export default function PostJobForm({
     if (onSuccess) {
       onSuccess();
     } else {
-      router.push("/dashboard/client/jobs");
+      router.push(`/dashboard/client/jobs/${data.id}`);
     }
   };
 
