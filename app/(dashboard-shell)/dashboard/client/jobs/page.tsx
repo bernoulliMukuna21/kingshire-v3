@@ -17,29 +17,31 @@ import DeleteJobButton from "./DeleteJobButton";
 // Derived directly from the Supabase schema so it stays in sync automatically.
 // JobStatus is imported from @/lib/jobs — single source of truth.
 
-type Tab = "all" | "open" | "active" | "completed" | "cancelled";
+type Tab = "history" | "open" | "active" | "completed" | "disputed" | "cancelled";
 
 // JobStatus[] satisfies Supabase's .in() (needs the exact status union) AND
 // Array.prototype.includes() (needs the argument to be assignable to the
 // element type). The previous string[] was too wide; as const was too narrow.
 const TAB_STATUSES: Record<Tab, JobStatus[]> = {
-  all: [],
+  history: [],
   open: ["open"],
-  active: ["in_progress", "completed", "disputed"],
+  active: ["in_progress", "completed"],
   completed: ["approved"],
+  disputed: ["disputed"],
   cancelled: ["cancelled"],
 };
 
 const TAB_LABELS: Record<Tab, string> = {
-  all: "All",
+  history: "History",
   open: "Open",
   active: "Active",
   completed: "Completed",
+  disputed: "Disputed",
   cancelled: "Cancelled",
 };
 
 function parseTab(raw: string | undefined): Tab {
-  if (raw === "all" || raw === "open" || raw === "completed" || raw === "cancelled") return raw;
+  if (raw === "history" || raw === "open" || raw === "completed" || raw === "disputed" || raw === "cancelled") return raw;
   return "active";
 }
 
@@ -136,13 +138,16 @@ export default async function MyJobsPage({
 
   const statusRows = allStatuses ?? [];
   const tabCounts: Record<Tab, number> = {
-    all: statusRows.length,
+    history: statusRows.length,
     open: statusRows.filter((r) => TAB_STATUSES.open.includes(r.status)).length,
     active: statusRows.filter((r) =>
       TAB_STATUSES.active.includes(r.status),
     ).length,
     completed: statusRows.filter((r) =>
       TAB_STATUSES.completed.includes(r.status),
+    ).length,
+    disputed: statusRows.filter((r) =>
+      TAB_STATUSES.disputed.includes(r.status),
     ).length,
     cancelled: statusRows.filter((r) =>
       TAB_STATUSES.cancelled.includes(r.status),
@@ -180,7 +185,7 @@ export default async function MyJobsPage({
     {},
   );
 
-  const tabs: Tab[] = ["active", "open", "completed", "cancelled", "all"];
+  const tabs: Tab[] = ["active", "open", "completed", "disputed", "cancelled", "history"];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -210,17 +215,17 @@ export default async function MyJobsPage({
         <EmptyState
           icon={<span className="text-2xl">💼</span>}
           title={
-            tab === "all"
+            tab === "history"
               ? "No jobs posted yet"
               : `No ${TAB_LABELS[tab].toLowerCase()} jobs`
           }
           description={
-            tab === "all"
+            tab === "history"
               ? "Post your first job to start finding skilled community members."
               : `You have no jobs in the ${TAB_LABELS[tab].toLowerCase()} category right now.`
           }
           action={
-            tab === "all" ? (
+            tab === "history" ? (
               <ButtonLink href="/jobs/post" size="sm">
                 <Plus size={15} />
                 Post your first job
