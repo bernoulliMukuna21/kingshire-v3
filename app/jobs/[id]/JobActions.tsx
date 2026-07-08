@@ -904,7 +904,7 @@ export function ClientApproveActions({
         {!disputeOpen ? (
           <button
             onClick={() => setDisputeOpen(true)}
-            className="w-full py-2.5 border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold rounded-xl transition-all text-sm flex items-center justify-center gap-2"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-100 transition-all"
           >
             <Flag size={15} />
             Raise a dispute
