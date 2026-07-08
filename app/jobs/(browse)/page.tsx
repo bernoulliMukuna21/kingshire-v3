@@ -23,7 +23,7 @@ const getCachedOpenJobs = unstable_cache(
     return (data ?? []) as unknown as JobWithClient[];
   },
   ["open-jobs"],
-  { revalidate: 300, tags: ["open-jobs"] },
+  { revalidate: 60, tags: ["open-jobs"] },
 );
 
 export default async function JobsPage() {
@@ -52,9 +52,7 @@ export default async function JobsPage() {
   }
 
   const jobs = await getCachedOpenJobs();
-  const visibleJobs = user
-    ? jobs.filter((job) => job.client_id !== user.id)
-    : jobs;
+  const visibleJobs = jobs;
 
   return (
     <PublicShell>
