@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -163,6 +164,9 @@ export async function POST(
 
   // Both parties can now review each other (double-blind, 7-day window).
   notifyReviewRequestsForJob(jobId, job.title).catch(() => {});
+
+  // Invalidate all kinglancer profile caches — jobs_completed changed.
+  revalidateTag("kinglancer-profiles", { expire: 0 });
 
   return NextResponse.json({ success: true });
 }
