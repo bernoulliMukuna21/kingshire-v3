@@ -250,7 +250,14 @@ export default async function ClientJobWorkspacePage({
           )}
 
           {job.status === "open" && (
-            <div className="flex justify-end">
+            <div className="flex items-center justify-end gap-3">
+              <ButtonLink
+                href={`/dashboard/client/jobs/${id}/edit`}
+                variant="secondary"
+                size="sm"
+              >
+                Edit job
+              </ButtonLink>
               <CancelJobButton
                 jobId={id}
                 status="open"

@@ -35,7 +35,7 @@ const getTopKinglancers = unstable_cache(
     return data ?? [];
   },
   ["top-kinglancers"],
-  { revalidate: 86400 }, // 24 hours — ranking changes very slowly
+  { revalidate: 3600, tags: ["top-kinglancers", "kinglancer-profiles"] }, // 1 hour — same tag as listing so invalidation is consistent
 );
 
 export default async function TopKinglancers() {

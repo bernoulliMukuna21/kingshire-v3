@@ -58,36 +58,32 @@ export async function GET(request: Request) {
     return NextResponse.json({ expired: 0, message: "Nothing to expire" });
   }
 
-  const jobIds = expiredJobs.map((j) => j.id);
+  const expiredJobIds = expiredJobs.map((j) => j.id);
 
-  // ── 2. Fetch pending applicants BEFORE rejecting them ─────
-  // (needed to know who to notify)
-  const { data: applicationsData } = await db
+  // ── 2. Filter to jobs with NO applications ────────────────
+  // Jobs that received interest (any application, any status) are kept open —
+  // the client should still have the chance to review and hire. Only truly
+  // abandoned postings (zero applications) are auto-cancelled.
+  const { data: jobsWithApps } = await db
     .from("applications")
-    .select("kinglancer_id")
-    .in("job_id", jobIds)
-    .eq("status", "pending");
+    .select("job_id")
+    .in("job_id", expiredJobIds);
 
-  const applications = applicationsData ?? [];
+  const jobIdsWithApps = new Set((jobsWithApps ?? []).map((a) => a.job_id));
+  const abandonedJobs = expiredJobs.filter((j) => !jobIdsWithApps.has(j.id));
 
-  // ── 3. Bulk-reject pending applications ──────────────────
-  const { error: rejectError } = await db
-    .from("applications")
-    .update({ status: "rejected" })
-    .in("job_id", jobIds)
-    .eq("status", "pending");
-
-  if (rejectError) {
-    // Non-fatal — log and continue to cancel jobs
-    console.error(
-      "[expire-jobs] reject applications error:",
-      rejectError.message,
-    );
+  if (abandonedJobs.length === 0) {
+    return NextResponse.json({
+      expired: 0,
+      skipped: expiredJobs.length,
+      message: "All expired jobs have applications — none cancelled",
+    });
   }
 
-  // ── 4. Bulk-cancel expired jobs ───────────────────────────
-  // .eq("status", "open") is the idempotency guard — already-cancelled jobs
-  // are not touched if the cron somehow runs twice.
+  const jobIds = abandonedJobs.map((j) => j.id);
+
+  // ── 3. Bulk-cancel abandoned expired jobs ─────────────────
+  // .eq("status", "open") is the idempotency guard — safe to run twice.
   const { error: cancelError } = await db
     .from("jobs")
     .update({ status: "cancelled" })
@@ -99,54 +95,38 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Cancel failed" }, { status: 500 });
   }
 
-  // ── 5. Invalidate open-jobs cache ─────────────────────────
+  // ── 4. Invalidate open-jobs cache ─────────────────────────
   revalidateTag("open-jobs", { expire: 0 });
 
-  // ── 6. Bulk-insert in-app notifications ──────────────────
-  const clientNotifications = expiredJobs.map((job) => ({
+  // ── 5. Notify clients of auto-cancelled postings ──────────
+  const clientNotifications = abandonedJobs.map((job) => ({
     user_id: job.client_id,
     type: "job_expired",
     title: "Job posting expired",
-    body: `Your job "${job.title}" was automatically cancelled because its deadline passed. You can post a new job anytime.`,
+    body: `Your job "${job.title}" was automatically cancelled because its deadline passed and no one applied. You can post a new job anytime.`,
     link: `/dashboard/client/jobs?tab=cancelled`,
     read: false,
   }));
 
-  // Deduplicate kinglancer IDs — a kinglancer could theoretically have
-  // multiple pending applications expiring at once.
-  const uniqueKinglancerIds = [
-    ...new Set(applications.map((a) => a.kinglancer_id)),
-  ];
+  // No kinglancer notifications needed — abandoned jobs had zero applicants.
 
-  const kinglancerNotifications = uniqueKinglancerIds.map((kinglancerId) => ({
-    user_id: kinglancerId,
-    type: "job_expired",
-    title: "A job you applied for has expired",
-    body: "One or more jobs you applied for have been cancelled because their deadlines passed.",
-    link: "/dashboard/kinglancer/jobs",
-    read: false,
-  }));
-
-  const allNotifications = [...clientNotifications, ...kinglancerNotifications];
-
-  if (allNotifications.length > 0) {
+  if (clientNotifications.length > 0) {
     const { error: notifError } = await db
       .from("notifications")
-      .insert(allNotifications);
+      .insert(clientNotifications);
 
     if (notifError) {
-      // Non-fatal — notifications are nice-to-have
       console.error("[expire-jobs] notifications error:", notifError.message);
     }
   }
 
   console.log(
-    `[expire-jobs] expired=${expiredJobs.length} applicationsRejected=${applications.length} notificationsSent=${allNotifications.length}`,
+    `[expire-jobs] cancelled=${abandonedJobs.length} skipped=${expiredJobs.length - abandonedJobs.length} (had applications)`,
   );
 
   return NextResponse.json({
-    expired: expiredJobs.length,
-    applicationsRejected: applications.length,
-    notificationsSent: allNotifications.length,
+    expired: abandonedJobs.length,
+    skipped: expiredJobs.length - abandonedJobs.length,
+    notificationsSent: clientNotifications.length,
   });
 }

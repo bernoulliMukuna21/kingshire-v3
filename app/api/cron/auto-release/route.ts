@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -247,6 +248,12 @@ export async function GET(request: Request) {
         ),
       );
     }
+  }
+
+  // Invalidate all kinglancer profile caches — jobs_completed changed for
+  // every kinglancer whose payment was just released.
+  if (released > 0) {
+    revalidateTag("kinglancer-profiles", { expire: 0 });
   }
 
   return NextResponse.json({
