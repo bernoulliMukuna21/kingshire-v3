@@ -96,6 +96,34 @@ export async function syncStripePayoutStatus({
     .eq("id", kinglancerId)
     .eq("stripe_account_id", accountId);
 
+  // If payouts just became enabled, fire any transfers that were deferred
+  // because the kinglancer hadn't completed onboarding at approval time.
+  // This is a safety net — the account.updated webhook does the same thing,
+  // but this covers the case where the webhook event wasn't received.
+  if (status.payoutsEnabled) {
+    const { data: pendingTx } = await db
+      .from("transactions")
+      .select("id, job_id, amount, platform_fee_kinglancer, stripe_payment_intent_id")
+      .eq("kinglancer_id", kinglancerId)
+      .eq("status", "released")
+      .is("stripe_transfer_id", null);
+
+    for (const tx of pendingTx ?? []) {
+      const amountPence = Math.round(
+        (tx.amount - tx.platform_fee_kinglancer) * 100,
+      );
+      await fireTransfer({
+        transactionId: tx.id,
+        amountPence,
+        destinationAccountId: accountId,
+        jobId: tx.job_id,
+        paymentIntentId: tx.stripe_payment_intent_id ?? undefined,
+      }).catch((err) =>
+        console.error(`[syncStripePayoutStatus] Transfer failed for tx ${tx.id}:`, err),
+      );
+    }
+  }
+
   return status;
 }
 
@@ -169,8 +197,20 @@ export async function fireTransfer({
     { idempotencyKey: `transfer-${transactionId}` },
   );
 
-  await db
+  const { error: dbUpdateError } = await db
     .from("transactions")
     .update({ stripe_transfer_id: transfer.id })
     .eq("id", transactionId);
+
+  if (dbUpdateError) {
+    // The Stripe transfer succeeded but the DB record wasn't updated.
+    // Log critically so this can be reconciled manually — do NOT swallow.
+    console.error(
+      `[fireTransfer] CRITICAL: Stripe transfer ${transfer.id} created for tx ${transactionId} but DB update failed:`,
+      dbUpdateError.message,
+    );
+    throw new Error(
+      `Transfer created in Stripe (${transfer.id}) but failed to save to DB: ${dbUpdateError.message}`,
+    );
+  }
 }
