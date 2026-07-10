@@ -26,6 +26,7 @@ import {
   timeAgo,
 } from "@/lib/admin-dashboard";
 import { createServiceClient } from "@/lib/supabase/service";
+import { stripe } from "@/lib/stripe";
 
 export default async function AdminDashboard() {
   const serviceDb = createServiceClient();
@@ -37,6 +38,7 @@ export default async function AdminDashboard() {
     transactionsResult,
     recentUsersResult,
     recentJobsResult,
+    stripeBalanceResult,
   ] = await Promise.all([
     serviceDb
       .from("profiles")
@@ -74,6 +76,8 @@ export default async function AdminDashboard() {
       )
       .order("created_at", { ascending: false })
       .limit(5),
+
+    stripe.balance.retrieve().catch(() => null),
   ]);
 
   const totalUsers = usersCountResult.count ?? 0;
@@ -82,6 +86,20 @@ export default async function AdminDashboard() {
   const transactions = transactionsResult.data ?? [];
   const recentUsers = (recentUsersResult.data ?? []) as AdminUser[];
   const recentJobs = (recentJobsResult.data ?? []) as unknown as AdminJob[];
+
+  // ── Platform financials ───────────────────────────────────
+  const heldTransactions = transactions.filter((t) => t.status === "held");
+  const heldEscrowTotal = heldTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const owedToKinglancers = heldTransactions.reduce(
+    (sum, t) => sum + t.amount - t.platform_fee_kinglancer,
+    0,
+  );
+  // Stripe balance in pence → convert to pounds
+  const stripeAvailableGBP =
+    (stripeBalanceResult?.available?.find((b) => b.currency === "gbp")?.amount ?? 0) / 100;
+  const stripePendingGBP =
+    (stripeBalanceResult?.pending?.find((b) => b.currency === "gbp")?.amount ?? 0) / 100;
+  const safeToWithdraw = Math.max(0, stripeAvailableGBP - owedToKinglancers);
 
   const activeJobsCount = jobs.filter((job) =>
     ["open", "in_progress"].includes(job.status),
@@ -174,6 +192,45 @@ export default async function AdminDashboard() {
           </StaggerItem>
         ))}
       </Stagger>
+
+      {/* ── Platform Financials ── */}
+      <FadeIn className="mb-6">
+        <Card className="p-5 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+              <TrendingUp size={16} />
+            </div>
+            <div>
+              <p className="text-sm font-black text-slate-950">Platform Financials</p>
+              <p className="text-xs text-slate-400">Live Stripe balance vs escrow obligations</p>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div className="rounded-xl bg-slate-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Stripe Available</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(stripeAvailableGBP)}</p>
+              {stripePendingGBP > 0 && (
+                <p className="mt-0.5 text-xs text-slate-400">{formatMoney(stripePendingGBP)} pending</p>
+              )}
+            </div>
+            <div className="rounded-xl bg-amber-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-amber-600">Held in Escrow</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(heldEscrowTotal)}</p>
+              <p className="mt-0.5 text-xs text-amber-600">{heldTransactions.length} active job{heldTransactions.length !== 1 ? "s" : ""}</p>
+            </div>
+            <div className="rounded-xl bg-red-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-red-600">Owed to Kinglancers</p>
+              <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(owedToKinglancers)}</p>
+              <p className="mt-0.5 text-xs text-red-600">Do not withdraw this</p>
+            </div>
+            <div className="rounded-xl bg-emerald-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Safe to Withdraw</p>
+              <p className="mt-1 text-2xl font-black text-emerald-700">{formatMoney(safeToWithdraw)}</p>
+              <p className="mt-0.5 text-xs text-emerald-600">Available − owed</p>
+            </div>
+          </div>
+        </Card>
+      </FadeIn>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <FadeIn>
