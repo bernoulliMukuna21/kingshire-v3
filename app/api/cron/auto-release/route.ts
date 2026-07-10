@@ -13,21 +13,15 @@ import {
   getOrCreateStripeAccount,
 } from "@/lib/stripe-connect";
 
+/** Auto-release window: 2 calendar days after the kinglancer submits work. */
+const AUTO_RELEASE_DAYS = 2;
+
 /**
- * Returns true if `days` working days (Mon–Fri) have passed since `from`.
+ * Returns true if `days` calendar days have passed since `from`.
+ * Calendar days (not working days) because day-to-day jobs happen on weekends.
  */
-function workingDaysPassed(from: Date, days: number): boolean {
-  let counted = 0;
-  const cursor = new Date(from);
-  cursor.setDate(cursor.getDate() + 1); // start counting from the day AFTER
-
-  while (counted < days) {
-    const dow = cursor.getDay(); // 0 = Sun, 6 = Sat
-    if (dow !== 0 && dow !== 6) counted++;
-    if (counted < days) cursor.setDate(cursor.getDate() + 1);
-  }
-
-  return new Date() >= cursor;
+function calendarDaysPassed(from: Date, days: number): boolean {
+  return Date.now() - from.getTime() > days * 24 * 60 * 60 * 1000;
 }
 
 // GET /api/cron/auto-release
@@ -64,7 +58,7 @@ export async function GET(request: Request) {
   }
 
   const toRelease = (completedJobs ?? []).filter((job) =>
-    workingDaysPassed(new Date(job.updated_at), 5),
+    calendarDaysPassed(new Date(job.updated_at), AUTO_RELEASE_DAYS),
   );
 
   if (toRelease.length === 0) {
