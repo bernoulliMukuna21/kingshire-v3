@@ -17,7 +17,7 @@ const stripePromise = loadStripe(
 
 // ── Inner form (must be inside <Elements>) ────────────────
 
-function CheckoutForm({ jobId }: { jobId: string }) {
+function CheckoutForm({ jobId, debug }: { jobId: string; debug: boolean }) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -26,15 +26,17 @@ function CheckoutForm({ jobId }: { jobId: string }) {
   const [succeeded, setSucceeded] = useState(false);
   const [walletsVisible, setWalletsVisible] = useState(false);
 
-  const returnUrl = `${window.location.origin}/jobs/${jobId}/pay/confirmed`;
+  // DIAGNOSTIC (gated by ?debug=1): capture what Stripe reports client-side.
+  const [debugInfo, setDebugInfo] = useState<string>("waiting for Stripe…");
 
   const confirmCurrentElementsPayment = async () => {
-    if (!stripe || !elements) return { error: { message: "Payment is not ready yet." } };
+    if (!stripe || !elements)
+      return { error: { message: "Payment is not ready yet." } };
 
     return stripe.confirmPayment({
       elements,
       confirmParams: {
-        return_url: returnUrl,
+        return_url: `${window.location.origin}/jobs/${jobId}/pay/confirmed`,
       },
     });
   };
@@ -76,7 +78,8 @@ function CheckoutForm({ jobId }: { jobId: string }) {
         <div>
           <p className="text-sm font-semibold text-gray-900">Pay faster</p>
           <p className="mt-1 text-xs text-gray-500">
-            Apple Pay and Google Pay appear automatically on supported devices and browsers.
+            Apple Pay and Google Pay appear automatically on supported devices
+            and browsers.
           </p>
         </div>
 
@@ -137,12 +140,48 @@ function CheckoutForm({ jobId }: { jobId: string }) {
 
               setSucceeded(true);
             }}
+            onReady={(event) => {
+              // DIAGNOSTIC: which wallets Stripe considers available here.
+              console.log(
+                "[express-checkout] ready availablePaymentMethods:",
+                JSON.stringify(event.availablePaymentMethods ?? null),
+              );
+              setDebugInfo(
+                `ready: ${JSON.stringify(event.availablePaymentMethods ?? null)}`,
+              );
+            }}
+            onLoadError={(event) => {
+              // DIAGNOSTIC: element failed to load (e.g. domain/config issue).
+              console.error(
+                "[express-checkout] loadError:",
+                JSON.stringify(event.error ?? event),
+              );
+              setDebugInfo(
+                `loadError: ${JSON.stringify(event.error ?? event)}`,
+              );
+            }}
             onAvailablePaymentMethodsChange={(event) => {
+              // DIAGNOSTIC: full payload so we can see applePay true/false.
+              console.log(
+                "[express-checkout] availablePaymentMethods change:",
+                JSON.stringify(event),
+              );
+              setDebugInfo(`change: ${JSON.stringify(event)}`);
               setWalletsVisible(Boolean(event.paymentMethods));
             }}
           />
         </div>
       </div>
+
+      {debug && (
+        <pre className="overflow-x-auto rounded-lg border border-amber-300 bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-900">
+          <strong>Apple Pay debug</strong>
+          {"\n"}
+          userAgent: {typeof navigator !== "undefined" ? navigator.userAgent : ""}
+          {"\n"}
+          {debugInfo}
+        </pre>
+      )}
 
       {walletsVisible && (
         <div className="relative py-1">
@@ -193,10 +232,12 @@ function CheckoutForm({ jobId }: { jobId: string }) {
 export default function PaymentForm({
   clientSecret,
   jobId,
+  debug = false,
 }: {
   clientSecret: string;
   jobId: string;
   jobTitle: string;
+  debug?: boolean;
 }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-6">
@@ -214,7 +255,7 @@ export default function PaymentForm({
           },
         }}
       >
-        <CheckoutForm jobId={jobId} />
+        <CheckoutForm jobId={jobId} debug={debug} />
       </Elements>
     </div>
   );

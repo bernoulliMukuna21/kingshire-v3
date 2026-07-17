@@ -10,12 +10,12 @@ import PaymentForm from "./PaymentForm";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cs?: string }>;
+  searchParams: Promise<{ cs?: string; debug?: string }>;
 }
 
 export default async function PayPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const { cs: clientSecret } = await searchParams;
+  const { cs: clientSecret, debug } = await searchParams;
 
   if (!clientSecret) redirect(`/jobs/${id}`);
   const paymentIntentId = getPaymentIntentIdFromClientSecret(clientSecret);
@@ -105,6 +105,7 @@ export default async function PayPage({ params, searchParams }: Props) {
           clientSecret={clientSecret}
           jobId={id}
           jobTitle={job.title}
+          debug={debug === "1"}
         />
       </div>
     </div>
