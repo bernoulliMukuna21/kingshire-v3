@@ -73,6 +73,10 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const tokenType = searchParams.get("type");
   const next = searchParams.get("next") ?? redirectSearchParams?.get("next"); // password-reset flow
+  const requestedRole =
+    searchParams.get("role") ?? redirectSearchParams?.get("role");
+  const intent =
+    searchParams.get("intent") ?? redirectSearchParams?.get("intent");
   const flow = code ? "code" : tokenHash ? "token_hash" : "missing";
   const queryKeys = Array.from(searchParams.keys()).sort();
   const cookieDiagnostics = getSafeCookieDiagnostics(request);
@@ -220,9 +224,13 @@ export async function GET(request: NextRequest) {
 
     destination = profile?.role
       ? `${origin}${safeNext ?? getRoleHome(profile.role)}`
-      : `${origin}/onboarding${
-          safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""
-        }`;
+      : `${origin}/onboarding?${new URLSearchParams({
+          ...(safeNext ? { next: safeNext } : {}),
+          ...(requestedRole === "client" || requestedRole === "kinglancer"
+            ? { role: requestedRole }
+            : {}),
+          ...(intent === "organisation" ? { intent } : {}),
+        }).toString()}`;
   }
 
   logAuthCallback("info", "redirecting", {

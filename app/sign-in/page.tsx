@@ -24,6 +24,8 @@ function SignInContent() {
   const authReason = searchParams.get("reason");
   const authSuccess = searchParams.get("success");
   const requestedNext = searchParams.get("next");
+  const requestedRole = searchParams.get("role");
+  const intent = searchParams.get("intent");
   const safeNext =
     requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
       ? requestedNext
@@ -37,8 +39,14 @@ function SignInContent() {
 
   const handleGoogleSignIn = async () => {
     const supabase = createClient();
+    const callbackParams = new URLSearchParams();
+    if (safeNext) callbackParams.set("next", safeNext);
+    if (requestedRole === "client" || requestedRole === "kinglancer") {
+      callbackParams.set("role", requestedRole);
+    }
+    if (intent === "organisation") callbackParams.set("intent", intent);
     const callbackUrl = `${window.location.origin}/auth/callback${
-      safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""
+      callbackParams.size ? `?${callbackParams.toString()}` : ""
     }`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -93,7 +101,13 @@ function SignInContent() {
     router.push(
       profile?.role
         ? (safeNext ?? getRoleHome(profile.role))
-        : `/onboarding${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`,
+        : `/onboarding?${new URLSearchParams({
+            ...(safeNext ? { next: safeNext } : {}),
+            ...(requestedRole === "client" || requestedRole === "kinglancer"
+              ? { role: requestedRole }
+              : {}),
+            ...(intent === "organisation" ? { intent } : {}),
+          }).toString()}`,
     );
   };
 
@@ -117,7 +131,13 @@ function SignInContent() {
         <p className="text-gray-500 mb-8 text-sm">Enter your details below.</p>
 
         <GoogleButton onClick={handleGoogleSignIn} showDivider={false} />
-        <KingsChatButton next={safeNext ?? undefined} />
+        <KingsChatButton
+          next={
+            intent === "organisation"
+              ? "/organisations/start"
+              : safeNext ?? undefined
+          }
+        />
 
         {authSuccess === "password_reset" && (
           <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">

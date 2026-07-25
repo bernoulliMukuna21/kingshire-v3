@@ -18,13 +18,33 @@ import {
 function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const intent = searchParams.get("intent");
+  const requestedRole = searchParams.get("role");
+  const isOrganisationJourney = intent === "organisation";
+  const onboardingRole =
+    isOrganisationJourney || requestedRole === "client"
+      ? "client"
+      : requestedRole === "kinglancer"
+        ? "kinglancer"
+        : null;
   const requestedNext = searchParams.get("next");
   const safeNext =
     requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
       ? requestedNext
       : null;
+  const callbackParams = new URLSearchParams();
+  if (safeNext) callbackParams.set("next", safeNext);
+  if (onboardingRole) callbackParams.set("role", onboardingRole);
+  if (isOrganisationJourney) callbackParams.set("intent", "organisation");
   const callbackPath = `/auth/callback${
-    safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""
+    callbackParams.size ? `?${callbackParams.toString()}` : ""
+  }`;
+  const onboardingParams = new URLSearchParams();
+  if (safeNext) onboardingParams.set("next", safeNext);
+  if (onboardingRole) onboardingParams.set("role", onboardingRole);
+  if (isOrganisationJourney) onboardingParams.set("intent", "organisation");
+  const onboardingPath = `/onboarding${
+    onboardingParams.size ? `?${onboardingParams.toString()}` : ""
   }`;
   const [step, setStep] = useState<"details" | "verify">("details");
   const [showPassword, setShowPassword] = useState(false);
@@ -138,9 +158,7 @@ function SignUpContent() {
 
     // If email confirmation is disabled, Supabase returns a session immediately
     if (data.session) {
-      router.push(
-        `/onboarding${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`,
-      );
+      router.push(onboardingPath);
       return;
     }
 
@@ -151,15 +169,18 @@ function SignUpContent() {
 
   return (
     <AuthLayout
-      headline="Join your community."
-      accent="Earn your worth."
-      body="A trusted platform where people hire local talent and earn from their services."
-      bullets={[
-        "Free to join",
-        "Payments protected by Stripe",
-        "Community verified members",
-        "Low platform fees (2.5% client / 5% kinglancer)",
-      ]}
+      headline={isOrganisationJourney ? "Bring your team to KingsHire." : "Join your community."}
+      accent={isOrganisationJourney ? "Create opportunities together." : "Earn your worth."}
+      body={
+        isOrganisationJourney
+          ? "Create a shared workspace for your Organisation while keeping every team action secure and accountable."
+          : "A trusted platform where people hire local talent and earn from their services."
+      }
+      bullets={
+        isOrganisationJourney
+          ? ["Publish as your Organisation", "Invite your team", "Control member permissions", "Manage jobs together"]
+          : ["Free to join", "Payments protected by Stripe", "Community verified members", "Low platform fees (2.5% client / 5% kinglancer)"]
+      }
     >
       <div className="w-full max-w-md">
         <AnimatePresence mode="wait">
@@ -172,17 +193,26 @@ function SignUpContent() {
               transition={{ duration: 0.3 }}
             >
               <h1 className="text-2xl font-black text-gray-900 mb-1">
-                Create your account
+                {isOrganisationJourney
+                  ? "Create your Organisation"
+                  : "Create your account"}
               </h1>
               <p className="text-gray-500 mb-6 text-sm">
-                Create your login first. You&apos;ll choose Client or Kinglancer
-                in the next step.
+                {isOrganisationJourney
+                  ? "First, create your personal Client account. You’ll then create your Organisation, become its Owner and invite your team."
+                  : onboardingRole
+                    ? `First, create your secure personal ${onboardingRole === "client" ? "Client" : "Kinglancer"} account.`
+                    : "Create your login first. You’ll choose Client or Kinglancer in the next step."}
               </p>
 
               <GoogleButton onClick={handleGoogleSignUp} showDivider={false} />
               <KingsChatButton
                 label="Sign up with KingsChat"
-                next={safeNext ?? undefined}
+                next={
+                  isOrganisationJourney
+                    ? "/organisations/start"
+                    : safeNext ?? undefined
+                }
               />
 
               {error && (
@@ -300,7 +330,7 @@ function SignUpContent() {
               <p className="text-center text-sm text-gray-500 mt-6">
                 Already have an account?{" "}
                 <Link
-                  href={`/sign-in${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`}
+                  href={`/sign-in?${callbackParams.toString()}`}
                   className="text-blue-600 font-semibold hover:underline"
                 >
                   Sign in

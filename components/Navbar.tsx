@@ -13,12 +13,14 @@ const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Browse Jobs", href: "/jobs" },
   { label: "Kinglancers", href: "/kinglancers" },
+  { label: "For Organisations", href: "/for-organisations" },
 ];
 
 const clientNavLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Post a Job", href: "/jobs/post" },
   { label: "Kinglancers", href: "/kinglancers" },
+  { label: "For Organisations", href: "/for-organisations" },
 ];
 
 export default function Navbar({
@@ -110,7 +112,7 @@ export default function Navbar({
                 >
                   Sign in
                 </Link>
-                <ButtonLink href="/sign-up" size="sm">
+                <ButtonLink href="/get-started" size="sm">
                   Get started
                 </ButtonLink>
               </>
@@ -174,7 +176,7 @@ export default function Navbar({
                       >
                         Sign in
                       </Link>
-                      <ButtonLink href="/sign-up" size="sm" className="w-full">
+                      <ButtonLink href="/get-started" size="sm" className="w-full">
                         Get started
                       </ButtonLink>
                     </>

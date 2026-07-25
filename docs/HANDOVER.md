@@ -881,6 +881,25 @@ actions have a clear, auditable actor. The intended first-time flow is:
 4. create the Organisation workspace and become its sole Owner;
 5. complete its profile and invite members.
 
+The public product journey treats Organisations as a first-class offering even
+though the underlying authentication remains person-first:
+
+- `For Organisations` is present in the public navigation;
+- the homepage includes a prominent Organisation callout;
+- `/for-organisations` explains the current team-workspace value and labels
+  placements, subscriptions and verification as coming later;
+- `/get-started` offers Client, Kinglancer and Organisation as three clear
+  intentions;
+- `/organisations/start` sends signed-out founders through Organisation-aware
+  signup, new founders through Client onboarding, and existing Client or
+  Kinglancer accounts directly to Organisation creation.
+
+Organisation signup explicitly explains that the founder first creates a
+personal Client account, which then becomes the Organisation Owner. Existing
+Kinglancers are not converted to Clients and do not create duplicate accounts:
+their existing identity can own an Organisation, with Organisation membership
+providing the workspace capability.
+
 The creation screen now gives ownership consequences a separate amber notice
 and asks for confirmation before creation. A shared Organisation email is not
 collected until a concrete communication feature requires it. Migration 030

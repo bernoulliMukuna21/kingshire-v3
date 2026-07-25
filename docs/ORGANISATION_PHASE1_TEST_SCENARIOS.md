@@ -24,8 +24,8 @@ database invariant and any relevant side effect.
 
 | ID | Scenario | Expected |
 |---|---|---|
-| ORG-U01 | Create with normalized name/email/default country | One normalized repository command |
-| ORG-U02 | Create with invalid name or email | Rejected before persistence |
+| ORG-U01 | Create with normalized name/default country | One normalized repository command |
+| ORG-U02 | Create with invalid name | Rejected before persistence |
 | ORG-U03 | Create with unsupported Organisation type | Rejected before persistence |
 | ORG-U04 | Create with non-HTTP website protocol | Rejected before persistence |
 | ORG-U05 | Admin invites Member | Allowed |
@@ -166,4 +166,23 @@ Phase 1 can proceed only when:
 - ORG-J08 and the payment consistency scenarios are fixed and passing;
 - no Severity 1 or Severity 2 defect remains open;
 - migration, application commit, Stripe mode, and evidence are recorded.
+## Public Organisation entry and onboarding
 
+- **ORG-PUB-01:** The public desktop and mobile navigation show **For
+  Organisations**, linking to `/for-organisations`.
+- **ORG-PUB-02:** The homepage Organisation callout is visible without opening
+  the Client signup flow and links to the Organisation landing page.
+- **ORG-PUB-03:** **Get started** presents Client, Kinglancer and Organisation
+  as three distinct intentions.
+- **ORG-PUB-04:** A signed-out visitor choosing **Create your Organisation**
+  sees Organisation-specific signup copy explaining that a personal Client
+  account is created first.
+- **ORG-PUB-05:** After email, Google or KingsChat authentication, a new
+  Organisation founder reaches Client onboarding and then Organisation
+  creation without losing the intended destination.
+- **ORG-PUB-06:** A signed-in Client goes directly from
+  `/organisations/start` to Organisation creation.
+- **ORG-PUB-07:** A signed-in Kinglancer goes directly to Organisation creation
+  without their Kinglancer role, services or profile being replaced.
+- **ORG-PUB-08:** The Organisation landing page describes placements,
+  subscriptions and verification as coming later, not currently available.
