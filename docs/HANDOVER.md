@@ -907,8 +907,7 @@ AI/template aesthetics:
 
 - Manrope is the single global interface typeface;
 - the homepage retains its centred, animated navy hero and floating profile
-  cards; three photographs move slowly behind the content at very low opacity
-  to add human texture without replacing the KingsHire visual identity;
+  cards without photographic background movement;
 - a slim, dismissible purple celebration announcement replaces the permanent
   Organisation card for signed-out users and Clients until 9 August 2026;
 - the Organisation landing page uses an editorial split layout, restrained

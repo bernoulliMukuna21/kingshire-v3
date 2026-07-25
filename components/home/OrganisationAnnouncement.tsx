@@ -5,7 +5,7 @@ import { PartyPopper, X } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
 
-const STORAGE_KEY = "kingshire:organisation-announcement-dismissed";
+const STORAGE_KEY = "kingshire:organisation-announcement-v2-dismissed";
 const EXPIRY = new Date("2026-08-09T00:00:00+01:00").getTime();
 const CHANGE_EVENT = "kingshire:organisation-announcement-change";
 

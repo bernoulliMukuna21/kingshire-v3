@@ -190,8 +190,8 @@ Phase 1 can proceed only when:
   signed-out visitors and Clients, hidden from Kinglancers, dismissible, and
   no longer shown after 9 August 2026.
 - **ORG-PUB-10:** The homepage no longer renders the permanent Organisation
-  callout card. Its centred navy hero, floating profiles and subtle moving
-  background photographs remain readable and respect reduced-motion settings.
+  callout card. Its centred navy hero and floating profiles remain readable
+  and respect reduced-motion settings.
 - **ORG-PUB-11:** Organisation signup uses Organisation-specific photography
   and copy while retaining the standard KingsHire form controls.
 - **ORG-PUB-12:** Remote photographs preserve their intended crop at desktop

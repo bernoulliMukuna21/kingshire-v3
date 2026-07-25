@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   motion,
@@ -17,30 +16,6 @@ import {
 } from "lucide-react";
 import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
 import OrganisationAnnouncement from "@/components/home/OrganisationAnnouncement";
-
-const backgroundImages = [
-  {
-    src: "https://images.unsplash.com/photo-1615506355925-dd0a54d099dd?auto=format&fit=crop&w=900&q=76",
-    alt: "A professional cleaner at work",
-    top: "18%",
-    duration: 34,
-    delay: 0,
-  },
-  {
-    src: "https://images.unsplash.com/photo-1679137315174-ff25263f2e1c?auto=format&fit=crop&w=900&q=76",
-    alt: "A tradesperson working with tools",
-    top: "44%",
-    duration: 38,
-    delay: 11,
-  },
-  {
-    src: "https://images.unsplash.com/photo-1714976327088-b5615e52594e?auto=format&fit=crop&w=900&q=76",
-    alt: "A team planning a practical project",
-    top: "68%",
-    duration: 42,
-    delay: 22,
-  },
-];
 
 const floatingAvatars = [
   {
@@ -123,36 +98,6 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
         style={{ y: heroY }}
         className="absolute inset-0 bg-linear-to-br from-[#0f172a] via-[#1e3a7a] to-[#0f172a]"
       />
-
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 hidden overflow-hidden md:block"
-      >
-        {backgroundImages.map((image) => (
-          <motion.div
-            key={image.src}
-            initial={{ x: prefersReducedMotion ? "40vw" : "-24vw" }}
-            animate={{ x: prefersReducedMotion ? "40vw" : "112vw" }}
-            transition={{
-              duration: image.duration,
-              delay: image.delay,
-              repeat: prefersReducedMotion ? 0 : Infinity,
-              ease: "linear",
-            }}
-            style={{ top: image.top }}
-            className="absolute h-44 w-72 overflow-hidden rounded-3xl opacity-[0.09] grayscale"
-          >
-            <Image
-              src={image.src}
-              alt=""
-              fill
-              sizes="288px"
-              className="object-cover"
-            />
-          </motion.div>
-        ))}
-        <div className="absolute inset-0 bg-[#10234b]/35" />
-      </div>
 
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div
