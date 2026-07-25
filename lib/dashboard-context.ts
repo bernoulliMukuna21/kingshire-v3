@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserOrganisationSummaries } from "@/infrastructure/supabase/queries/organisation-queries";
 
 export type DashboardProfile = {
   full_name: string | null;
@@ -34,5 +35,7 @@ export const getDashboardContext = cache(async () => {
   if (profile.role === "admin") redirect("/admin");
   if (!profile.role) redirect("/onboarding");
 
-  return { supabase, user, profile: profile as DashboardProfile };
+  const organisations = await getUserOrganisationSummaries(user.id, 5);
+
+  return { supabase, user, profile: profile as DashboardProfile, organisations };
 });

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
@@ -33,8 +34,13 @@ export async function getOpenJobs(): Promise<JobWithClient[]> {
   return (data ?? []) as unknown as JobWithClient[];
 }
 
-export async function getJobById(id: string): Promise<JobWithClient | null> {
-  const supabase = await createClient();
+export async function getJobById(
+  id: string,
+  options?: { useServiceRole?: boolean },
+): Promise<JobWithClient | null> {
+  const supabase = options?.useServiceRole
+    ? createServiceClient()
+    : await createClient();
   const { data, error } = await supabase
     .from("jobs")
     .select(
@@ -47,8 +53,13 @@ export async function getJobById(id: string): Promise<JobWithClient | null> {
   return data as unknown as JobWithClient;
 }
 
-export async function createJob(data: JobInsert): Promise<Job> {
-  const supabase = await createClient();
+export async function createJob(
+  data: JobInsert,
+  options?: { useServiceRole?: boolean },
+): Promise<Job> {
+  const supabase = options?.useServiceRole
+    ? createServiceClient()
+    : await createClient();
   const { data: job, error } = await supabase
     .from("jobs")
     .insert(data)

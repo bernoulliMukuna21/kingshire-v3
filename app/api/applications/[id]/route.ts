@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { stripe, calculateFees } from "@/lib/stripe";
 import {
   createPaymentAttempt,
@@ -8,6 +9,7 @@ import {
   isCancellablePaymentIntentStatus,
   updatePaymentAttemptStatus,
 } from "@/lib/db/payment-attempts";
+import { canManageJob } from "@/lib/organisations";
 
 type ApplicationRow = {
   id: string;
@@ -17,7 +19,7 @@ type ApplicationRow = {
   cover_letter: string;
   proposed_rate: number | null;
   created_at: string;
-  job: { client_id: string; status: string; budget: number; title: string };
+  job: { client_id: string; organisation_id: string | null; status: string; budget: number; title: string };
 };
 
 export async function PATCH(
@@ -43,9 +45,9 @@ export async function PATCH(
   }
 
   // Fetch the application and verify ownership
-  const { data: applicationRaw } = await supabase
+  const { data: applicationRaw } = await createServiceClient()
     .from("applications")
-    .select("*, job:jobs!job_id(client_id, status, budget, title)")
+    .select("*, job:jobs!job_id(client_id, organisation_id, status, budget, title)")
     .eq("id", applicationId)
     .single();
 
@@ -59,7 +61,7 @@ export async function PATCH(
   const application = applicationRaw as unknown as ApplicationRow;
   const job = application.job;
 
-  if (job.client_id !== user.id) {
+  if (!(await canManageJob(job, user.id, "manage_applicants"))) {
     return NextResponse.json(
       { error: "You do not have permission to do this" },
       { status: 403 },

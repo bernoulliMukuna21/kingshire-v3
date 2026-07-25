@@ -9,6 +9,119 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      organisations: {
+        Row: {
+          id: string;
+          name: string;
+          organisation_type:
+            | "company"
+            | "charity"
+            | "church"
+            | "non_profit"
+            | "community_group"
+            | "public_body"
+            | "other";
+          description: string | null;
+          country: string;
+          location: string | null;
+          website: string | null;
+          email: string;
+          phone: string | null;
+          registration_number: string | null;
+          logo_url: string | null;
+          deleted_at: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          name: string;
+          organisation_type:
+            | "company"
+            | "charity"
+            | "church"
+            | "non_profit"
+            | "community_group"
+            | "public_body"
+            | "other";
+          description?: string | null;
+          country?: string;
+          location?: string | null;
+          website?: string | null;
+          email: string;
+          phone?: string | null;
+          registration_number?: string | null;
+          logo_url?: string | null;
+          deleted_at?: string | null;
+          created_by: string;
+        };
+        Update: {
+          name?: string;
+          organisation_type?:
+            | "company"
+            | "charity"
+            | "church"
+            | "non_profit"
+            | "community_group"
+            | "public_body"
+            | "other";
+          description?: string | null;
+          country?: string;
+          location?: string | null;
+          website?: string | null;
+          email?: string;
+          phone?: string | null;
+          registration_number?: string | null;
+          logo_url?: string | null;
+          deleted_at?: string | null;
+        };
+        Relationships: [];
+      };
+      organisation_members: {
+        Row: {
+          organisation_id: string;
+          user_id: string;
+          role: "owner" | "admin" | "member";
+          joined_at: string;
+        };
+        Insert: {
+          organisation_id: string;
+          user_id: string;
+          role: "owner" | "admin" | "member";
+          joined_at?: string;
+        };
+        Update: {
+          role?: "owner" | "admin" | "member";
+        };
+        Relationships: [];
+      };
+      organisation_invitations: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          email: string;
+          role: "admin" | "member";
+          token: string;
+          invited_by: string;
+          expires_at: string;
+          accepted_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          organisation_id: string;
+          email: string;
+          role: "admin" | "member";
+          token?: string;
+          invited_by: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+        };
+        Update: {
+          role?: "admin" | "member";
+          accepted_at?: string | null;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -85,6 +198,8 @@ export type Database = {
         Row: {
           id: string;
           client_id: string;
+          organisation_id: string | null;
+          created_by: string;
           title: string;
           description: string;
           budget: number;
@@ -117,6 +232,8 @@ export type Database = {
         };
         Insert: {
           client_id: string;
+          organisation_id?: string | null;
+          created_by?: string;
           title: string;
           description: string;
           budget: number;
@@ -139,6 +256,7 @@ export type Database = {
           rate_type?: "fixed" | "per_hour" | "per_day";
         };
         Update: {
+          organisation_id?: string | null;
           title?: string;
           description?: string;
           budget?: number;

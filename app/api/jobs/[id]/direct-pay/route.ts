@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { stripe, calculateFees } from "@/lib/stripe";
 import {
   createPaymentAttempt,
@@ -8,10 +9,12 @@ import {
   isCancellablePaymentIntentStatus,
   updatePaymentAttemptStatus,
 } from "@/lib/db/payment-attempts";
+import { canManageJob } from "@/lib/organisations";
 
 type DirectPayJob = {
   id: string;
   client_id: string;
+  organisation_id: string | null;
   title: string;
   budget: number;
   status: string;
@@ -33,10 +36,10 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
-  const { data: jobRaw } = await supabase
+  const { data: jobRaw } = await createServiceClient()
     .from("jobs")
     .select(
-      "id, client_id, title, budget, status, invited_kinglancer_id, direct_request_status",
+      "id, client_id, organisation_id, title, budget, status, invited_kinglancer_id, direct_request_status",
     )
     .eq("id", jobId)
     .single();
@@ -46,7 +49,7 @@ export async function POST(
   }
 
   const job = jobRaw as DirectPayJob;
-  if (job.client_id !== user.id) {
+  if (!(await canManageJob(job, user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (!job.invited_kinglancer_id) {

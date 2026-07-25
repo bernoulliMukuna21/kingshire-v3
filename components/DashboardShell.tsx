@@ -15,10 +15,15 @@ type Props = {
     role: string | null;
     avatar_url: string | null;
   };
+  organisations: Array<{
+    id: string;
+    name: string;
+    role: "owner" | "admin" | "member";
+  }>;
   children: React.ReactNode;
 };
 
-export default function DashboardShell({ profile, children }: Props) {
+export default function DashboardShell({ profile, organisations, children }: Props) {
   const pathname = usePathname();
   const navItems = getNavItems(profile.role, pathname);
   const isKinglancer = profile.role === "kinglancer";
@@ -84,6 +89,28 @@ export default function DashboardShell({ profile, children }: Props) {
         </nav>
 
         <div className="relative p-4 border-t border-white/10 space-y-3">
+          {organisations.length > 0 && (
+            <div className="rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
+              <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-white/35">
+                Switch workspace
+              </p>
+              <Link
+                href={isKinglancer ? "/dashboard/kinglancer" : "/dashboard/client"}
+                className="block rounded-xl px-2 py-1.5 text-xs font-semibold text-white/65 hover:bg-white/10 hover:text-white"
+              >
+                Personal workspace
+              </Link>
+              {organisations.slice(0, 4).map((organisation) => (
+                <Link
+                  key={organisation.id}
+                  href={`/dashboard/organisations/${organisation.id}`}
+                  className="block truncate rounded-xl px-2 py-1.5 text-xs font-semibold text-white/65 hover:bg-white/10 hover:text-white"
+                >
+                  {organisation.name}
+                </Link>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
             <div
               className={`w-10 h-10 rounded-2xl ${avatarGradient} flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0 shadow-lg shadow-slate-950/20`}

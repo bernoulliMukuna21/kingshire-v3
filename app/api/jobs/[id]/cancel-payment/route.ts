@@ -8,6 +8,7 @@ import {
   isCancellablePaymentIntentStatus,
   updatePaymentAttemptStatus,
 } from "@/lib/db/payment-attempts";
+import { canManageJob } from "@/lib/organisations";
 
 export async function POST(
   _request: Request,
@@ -25,16 +26,16 @@ export async function POST(
 
   const { data: job } = await db
     .from("jobs")
-    .select("id, client_id, status")
+    .select("id, client_id, organisation_id, status")
     .eq("id", jobId)
     .single();
 
-  if (!job || job.client_id !== user.id)
+  if (!job || !(await canManageJob(job, user.id)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const attempt = await getPendingPaymentAttemptByJob(jobId);
 
-  if (!attempt || attempt.client_id !== user.id) {
+  if (!attempt) {
     return NextResponse.json(
       { error: "No pending payment to cancel" },
       { status: 404 },

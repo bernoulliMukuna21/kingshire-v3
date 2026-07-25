@@ -9,6 +9,7 @@ import {
   normalizeCurrencyAmount,
 } from "@/lib/validation";
 import { emailJobAlert } from "@/lib/notifications";
+import { requireOrganisationPermission } from "@/lib/organisations";
 
 export async function GET() {
   try {
@@ -32,21 +33,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
-  // Verify the user is a client
+  const body = await request.json();
+  const organisationId =
+    typeof body.organisation_id === "string" ? body.organisation_id : null;
+
+  // Personal jobs require Client mode. Organisation jobs require membership.
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "client") {
+  const organisationMembership = organisationId
+    ? await requireOrganisationPermission(
+        organisationId,
+        user.id,
+        "manage_jobs",
+      )
+    : null;
+
+  if (
+    (!organisationId && (!profile || profile.role !== "client")) ||
+    (organisationId && !organisationMembership)
+  ) {
     return NextResponse.json(
-      { error: "Only clients can post jobs" },
+      { error: "You do not have permission to post this job." },
       { status: 403 },
     );
   }
 
-  const body = await request.json();
   const {
     title,
     description,
@@ -133,6 +148,8 @@ export async function POST(request: Request) {
   try {
     const job = await createJob({
       client_id: user.id,
+      created_by: user.id,
+      organisation_id: organisationId,
       title: titleStr,
       description: descStr,
       categories,
@@ -141,7 +158,7 @@ export async function POST(request: Request) {
       invited_kinglancer_id: invitedKinglancerId,
       direct_request_status: invitedKinglancerId ? "pending" : null,
       deadline: deadline || null,
-    });
+    }, { useServiceRole: !!organisationId });
 
     // MVP-safe fan-out: create bounded in-app notifications only.
     // Avoid sending one email per kinglancer during the job-post request.

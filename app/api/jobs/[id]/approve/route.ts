@@ -16,6 +16,7 @@ import {
   createOnboardingLink,
   fireTransfer,
 } from "@/lib/stripe-connect";
+import { canManageJob } from "@/lib/organisations";
 
 // POST /api/jobs/[id]/approve — client approves completed work, releases payment
 export async function POST(
@@ -34,9 +35,9 @@ export async function POST(
   }
 
   // Fetch job and verify caller is the client
-  const { data: job } = await supabase
+  const { data: job } = await createServiceClient()
     .from("jobs")
-    .select("id, status, client_id, kinglancer_id, title")
+    .select("id, status, client_id, organisation_id, kinglancer_id, title")
     .eq("id", jobId)
     .single();
 
@@ -44,7 +45,7 @@ export async function POST(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  if (job.client_id !== user.id) {
+  if (!(await canManageJob(job, user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

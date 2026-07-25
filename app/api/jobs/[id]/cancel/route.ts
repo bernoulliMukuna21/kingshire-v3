@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 import { getTransactionByJob } from "@/lib/db/transactions";
 import { notifyJobCancelled } from "@/lib/notifications";
+import { canManageJob } from "@/lib/organisations";
 
 const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -38,7 +39,7 @@ export async function POST(
   const { data: job } = await db
     .from("jobs")
     .select(
-      "id, title, status, client_id, kinglancer_id, invited_kinglancer_id",
+      "id, title, status, client_id, organisation_id, kinglancer_id, invited_kinglancer_id",
     )
     .eq("id", jobId)
     .single();
@@ -46,7 +47,7 @@ export async function POST(
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
-  if (job.client_id !== user.id) {
+  if (!(await canManageJob(job, user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (job.status !== "open" && job.status !== "in_progress") {

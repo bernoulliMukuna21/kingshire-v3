@@ -9,6 +9,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { canManageJob } from "@/lib/organisations";
 
 export async function GET(
   _request: Request,
@@ -39,10 +40,10 @@ export async function DELETE(
   if (!user)
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  const job = await getJobById(id);
+  const job = await getJobById(id, { useServiceRole: true });
   if (!job)
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  if (job.client_id !== user.id)
+  if (!(await canManageJob(job, user.id)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   if (!["open", "cancelled"].includes(job.status)) {
@@ -115,10 +116,10 @@ export async function PATCH(
   if (!user)
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  const job = await getJobById(id);
+  const job = await getJobById(id, { useServiceRole: true });
   if (!job)
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  if (job.client_id !== user.id)
+  if (!(await canManageJob(job, user.id)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (job.status !== "open")
     return NextResponse.json(
@@ -127,7 +128,7 @@ export async function PATCH(
     );
 
   // Check for applicants — budget is locked once anyone has applied
-  const { count: applicantCount } = await supabase
+  const { count: applicantCount } = await createServiceClient()
     .from("applications")
     .select("id", { count: "exact", head: true })
     .eq("job_id", id)
@@ -215,7 +216,7 @@ export async function PATCH(
     updatePayload.rate_type = resolvedRateType as "fixed" | "per_hour" | "per_day";
   }
 
-  const { error } = await supabase
+  const { error } = await createServiceClient()
     .from("jobs")
     .update(updatePayload)
     .eq("id", id)

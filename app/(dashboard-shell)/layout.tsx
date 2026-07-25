@@ -6,7 +6,11 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { profile } = await getDashboardContext();
+  const { profile, organisations } = await getDashboardContext();
 
-  return <DashboardShell profile={profile}>{children}</DashboardShell>;
+  return (
+    <DashboardShell profile={profile} organisations={organisations}>
+      {children}
+    </DashboardShell>
+  );
 }

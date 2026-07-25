@@ -32,6 +32,7 @@ import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import ReviewPanel from "@/components/jobs/ReviewPanel";
 import CancelJobButton from "./CancelJobButton";
 import PendingPaymentCard from "./PendingPaymentCard";
+import { canManageJob } from "@/lib/organisations";
 
 type Profile = {
   role: "client" | "kinglancer" | "admin" | null;
@@ -102,13 +103,16 @@ export default async function ClientJobWorkspacePage({
   // by the layout with zero extra DB round trips.
   const [{ supabase, user, profile }, job] = await Promise.all([
     getDashboardContext(),
-    getJobById(id),
+    getJobById(id, { useServiceRole: true }),
   ]);
 
   if (!job) notFound();
-  if (profile.role === "kinglancer") redirect("/dashboard/kinglancer");
-  if (profile.role !== "client") redirect("/onboarding");
-  if (job.client_id !== user.id) notFound();
+  const canManage = await canManageJob(job, user.id);
+  if (!canManage) {
+    if (profile.role === "kinglancer") redirect("/dashboard/kinglancer");
+    if (profile.role !== "client") redirect("/onboarding");
+    notFound();
+  }
 
   const isDirectRequest = !!job.invited_kinglancer_id;
   const statusConfig = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.open;
@@ -116,7 +120,7 @@ export default async function ClientJobWorkspacePage({
 
   const [applications, kinglancerResult] = await Promise.all([
     !isDirectRequest && job.status === "open"
-      ? getApplicationsByJob(id)
+      ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
       : Promise.resolve([] as ApplicationWithKinglancer[]),
     kinglancerProfileId
       ? supabase

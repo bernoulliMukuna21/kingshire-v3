@@ -39,9 +39,11 @@ type PreferredKinglancer = {
 export default function PostJobForm({
   preferredKinglancer,
   onSuccess,
+  organisationId,
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
   onSuccess?: () => void;
+  organisationId?: string;
 }) {
   const router = useRouter();
 
@@ -125,6 +127,7 @@ export default function PostJobForm({
         rate_type: rateType,
         invited_kinglancer_id: preferredKinglancer?.id ?? null,
         deadline: deadline || null,
+        organisation_id: organisationId ?? null,
       }),
     });
 
@@ -139,7 +142,11 @@ export default function PostJobForm({
     if (onSuccess) {
       onSuccess();
     } else {
-      router.push(`/dashboard/client/jobs/${data.id}`);
+      router.push(
+        organisationId
+          ? `/dashboard/organisations/${organisationId}`
+          : `/dashboard/client/jobs/${data.id}`,
+      );
     }
   };
 

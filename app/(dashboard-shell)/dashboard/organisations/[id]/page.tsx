@@ -1,0 +1,124 @@
+import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { getOrganisationMembership } from "@/lib/organisations";
+import { getOrganisationOverview } from "@/infrastructure/supabase/queries/organisation-queries";
+import PageHeader from "@/components/ui/PageHeader";
+import { ButtonLink } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import EmptyState from "@/components/ui/EmptyState";
+import InviteMemberForm from "./InviteMemberForm";
+import MemberActions from "./MemberActions";
+import OrganisationSettings from "./OrganisationSettings";
+import TransferOwnership from "./TransferOwnership";
+
+export default async function OrganisationDashboardPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+  const membership = await getOrganisationMembership(id, user.id);
+  if (!membership) notFound();
+
+  const overview = await getOrganisationOverview(id);
+  if (!overview) notFound();
+  const { organisation, jobs, members, stats } = overview;
+  const canManageMembers = membership.role === "owner" || membership.role === "admin";
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
+      <PageHeader
+        eyebrow={`${membership.role} workspace`}
+        title={organisation.name}
+        description={[organisation.organisation_type?.replaceAll("_", " "), organisation.location].filter(Boolean).join(" · ")}
+        action={<ButtonLink href={`/dashboard/organisations/${id}/jobs/post`}>Post a job</ButtonLink>}
+      />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="p-5"><p className="text-xs font-bold uppercase text-slate-400">Jobs</p><p className="mt-2 text-3xl font-black">{stats.jobCount}</p></Card>
+        <Card className="p-5"><p className="text-xs font-bold uppercase text-slate-400">Members</p><p className="mt-2 text-3xl font-black">{stats.memberCount}</p></Card>
+        <Card className="p-5"><p className="text-xs font-bold uppercase text-slate-400">Released spend</p><p className="mt-2 text-3xl font-black">£{stats.releasedSpend.toFixed(2)}</p></Card>
+      </div>
+      <div>
+        <ButtonLink href={`/dashboard/organisations/${id}/transactions`} variant="secondary">
+          View all transactions
+        </ButtonLink>
+      </div>
+      <section>
+        <h2 className="mb-3 text-xl font-black text-slate-950">Organisation jobs</h2>
+        {!jobs.length ? (
+          <EmptyState title="No jobs yet" description="Post the Organisation's first paid job." action={<ButtonLink href={`/dashboard/organisations/${id}/jobs/post`}>Post a job</ButtonLink>} />
+        ) : (
+          <Card className="divide-y divide-slate-100 overflow-hidden">
+            {jobs.map((job) => (
+              <Link key={job.id} href={`/dashboard/client/jobs/${job.id}`} className="flex items-center justify-between gap-4 p-4 hover:bg-slate-50">
+                <div><p className="font-bold text-slate-950">{job.title}</p><p className="mt-1 text-xs capitalize text-slate-500">{job.status.replaceAll("_", " ")}</p></div>
+                <p className="font-black">£{Number(job.budget).toFixed(2)}</p>
+              </Link>
+            ))}
+          </Card>
+        )}
+      </section>
+      <section>
+        <h2 className="mb-3 text-xl font-black text-slate-950">Team</h2>
+        <Card className="space-y-5 p-5">
+          {canManageMembers && (
+            <InviteMemberForm
+              organisationId={id}
+              canInviteAdmin={membership.role === "owner"}
+            />
+          )}
+          <div className="divide-y divide-slate-100">
+            {members.map((member) => {
+              const profile = member.profile;
+              return (
+                <div key={member.userId} className="flex items-center justify-between py-3">
+                  <div><p className="font-bold text-slate-950">{profile.full_name}</p><p className="text-xs text-slate-500">{profile.email}</p></div>
+                  <MemberActions
+                    organisationId={id}
+                    userId={member.userId}
+                    role={member.role}
+                    actorRole={membership.role}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </section>
+      {(membership.role === "owner" || membership.role === "admin") && (
+        <section>
+          <h2 className="mb-3 text-xl font-black text-slate-950">Organisation profile</h2>
+          <Card className="p-5">
+            <OrganisationSettings
+              organisation={organisation}
+              canDelete={membership.role === "owner"}
+            />
+          </Card>
+        </section>
+      )}
+      {membership.role === "owner" && (
+        <section>
+          <h2 className="mb-3 text-xl font-black text-slate-950">Ownership</h2>
+          <Card className="p-5">
+            <p className="mb-4 text-sm text-slate-600">
+              Transfer ownership to an existing member. You will become an Admin.
+            </p>
+            <TransferOwnership
+              organisationId={id}
+              members={members
+                .filter((member) => member.userId !== user.id)
+                .map((member) => ({
+                  userId: member.userId,
+                  name: member.profile.full_name,
+                }))}
+            />
+          </Card>
+        </section>
+      )}
+    </div>
+  );
+}

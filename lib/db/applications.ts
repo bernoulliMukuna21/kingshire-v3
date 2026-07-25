@@ -26,8 +26,11 @@ export class ApplicantSelectionConflictError extends Error {
 
 export async function getApplicationsByJob(
   jobId: string,
+  options?: { useServiceRole?: boolean },
 ): Promise<ApplicationWithKinglancer[]> {
-  const supabase = await createClient();
+  const supabase = options?.useServiceRole
+    ? createServiceClient()
+    : await createClient();
   const { data, error } = await supabase
     .from("applications")
     .select(

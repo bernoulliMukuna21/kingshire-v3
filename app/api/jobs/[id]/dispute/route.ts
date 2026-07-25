@@ -5,6 +5,7 @@ import {
   notifyDisputeRaised,
   notifyAdminDisputeRaised,
 } from "@/lib/notifications";
+import { canManageJob } from "@/lib/organisations";
 
 // POST /api/jobs/[id]/dispute — either party raises a dispute
 export async function POST(
@@ -36,9 +37,9 @@ export async function POST(
   }
 
   // Fetch job — caller must be the client or kinglancer
-  const { data: job } = await supabase
+  const { data: job } = await createServiceClient()
     .from("jobs")
-    .select("id, title, status, client_id, kinglancer_id")
+    .select("id, title, status, client_id, organisation_id, kinglancer_id")
     .eq("id", jobId)
     .single();
 
@@ -46,7 +47,8 @@ export async function POST(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  const isParty = job.client_id === user.id || job.kinglancer_id === user.id;
+  const isClientParty = await canManageJob(job, user.id);
+  const isParty = isClientParty || job.kinglancer_id === user.id;
   if (!isParty) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -77,7 +79,7 @@ export async function POST(
   }
 
   // Notify the other party
-  const raisedBy = user.id === job.client_id ? "client" : "kinglancer";
+  const raisedBy = isClientParty ? "client" : "kinglancer";
   const recipientId = raisedBy === "client" ? job.kinglancer_id : job.client_id;
 
   // Always alert the admin inbox with full details
