@@ -869,6 +869,35 @@ implemented.
 Placements, subscriptions, verification, public Organisation discovery, and
 the international-student workstream remain outside Phase 1.
 
+### Organisation onboarding and verification decisions
+
+An Organisation is a shared workspace, not a third authentication identity.
+Every Owner and member signs in through an individual KingsHire account so
+actions have a clear, auditable actor. The intended first-time flow is:
+
+1. choose to create an Organisation;
+2. create or sign in to a personal KingsHire account;
+3. complete personal Client or Kinglancer onboarding;
+4. create the Organisation workspace and become its sole Owner;
+5. complete its profile and invite members.
+
+The creation screen now gives ownership consequences a separate amber notice
+and asks for confirmation before creation. A shared Organisation email is not
+collected until a concrete communication feature requires it. Migration 030
+makes the existing database column nullable.
+
+Organisation type remains required but is presented as a prominent guided
+choice. An official registration number is optional and may be added later.
+Supplying one is evidence for a future verification process; it does not by
+itself grant a verified badge, and Organisations without one must not be
+described as illegitimate. Automated register checks, verification status and
+badges remain outside Phase 1.
+
+Invitation landing pages are visible before authentication. New invitees can
+create an individual account, confirm their email, complete personal onboarding
+and return to the original invitation; existing users can sign in and return
+directly. The invitation remains bound to the invited email at acceptance.
+
 Validation completed locally:
 
 - 39 unit tests pass across five files;

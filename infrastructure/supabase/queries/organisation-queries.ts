@@ -120,7 +120,7 @@ export async function getOrganisationOverview(organisationId: string) {
       country: string;
       location: string | null;
       website: string | null;
-      email: string;
+      email: string | null;
       registration_number: string | null;
     },
     jobs: jobsResult.data ?? [],

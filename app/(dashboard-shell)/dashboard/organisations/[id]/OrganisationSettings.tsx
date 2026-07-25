@@ -9,7 +9,7 @@ type Organisation = {
   id: string;
   name: string;
   organisation_type: string;
-  email: string;
+  email: string | null;
   website: string | null;
   location: string | null;
   country: string;
@@ -55,7 +55,6 @@ export default function OrganisationSettings({
     <form action={save} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field name="name" label="Name" defaultValue={organisation.name} required />
-        <Field name="email" label="Organisation email" type="email" defaultValue={organisation.email} required />
         <label className="block">
           <span className="mb-1.5 block text-xs font-bold text-slate-700">Type</span>
           <select name="organisation_type" className={fieldClasses} defaultValue={organisation.organisation_type}>

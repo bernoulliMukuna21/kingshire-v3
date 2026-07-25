@@ -5,8 +5,6 @@ import {
   type OrganisationType,
 } from "../domain/types";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 function optionalText(value: unknown, maximum: number) {
   const normalized = String(value ?? "").trim();
   if (!normalized) return null;
@@ -45,7 +43,6 @@ export function parseOrganisationProfile(
 
   const body = value as Record<string, unknown>;
   const name = String(body.name ?? "").trim();
-  const email = String(body.email ?? "").trim().toLowerCase();
   const organisationType = String(body.organisation_type ?? "");
   const country = String(body.country ?? "").trim() || "United Kingdom";
 
@@ -53,12 +50,6 @@ export function parseOrganisationProfile(
     throw new OrganisationError(
       "invalid_input",
       "Organisation name must be between 2 and 120 characters.",
-    );
-  }
-  if (!EMAIL_PATTERN.test(email) || email.length > 254) {
-    throw new OrganisationError(
-      "invalid_input",
-      "Enter a valid Organisation email.",
     );
   }
   if (
@@ -78,7 +69,6 @@ export function parseOrganisationProfile(
 
   return {
     name,
-    email,
     organisationType: organisationType as OrganisationType,
     description: optionalText(body.description, 1000),
     country,

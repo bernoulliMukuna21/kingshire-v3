@@ -32,6 +32,5 @@ export type OrganisationProfileInput = {
   country: string;
   location: string | null;
   website: string | null;
-  email: string;
   registrationNumber: string | null;
 };

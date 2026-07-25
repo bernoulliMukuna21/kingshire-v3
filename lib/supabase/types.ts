@@ -25,7 +25,7 @@ export type Database = {
           country: string;
           location: string | null;
           website: string | null;
-          email: string;
+          email: string | null;
           phone: string | null;
           registration_number: string | null;
           logo_url: string | null;
@@ -48,7 +48,7 @@ export type Database = {
           country?: string;
           location?: string | null;
           website?: string | null;
-          email: string;
+          email?: string | null;
           phone?: string | null;
           registration_number?: string | null;
           logo_url?: string | null;
@@ -69,7 +69,7 @@ export type Database = {
           country?: string;
           location?: string | null;
           website?: string | null;
-          email?: string;
+          email?: string | null;
           phone?: string | null;
           registration_number?: string | null;
           logo_url?: string | null;

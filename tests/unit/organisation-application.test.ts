@@ -46,7 +46,6 @@ describe("Organisation application services", () => {
         body: {
           name: "  Test Organisation ",
           organisation_type: "company",
-          email: " CONTACT@EXAMPLE.COM ",
           country: "",
           website: "https://example.com",
         },
@@ -57,7 +56,6 @@ describe("Organisation application services", () => {
       "owner-id",
       expect.objectContaining({
         name: "Test Organisation",
-        email: "contact@example.com",
         country: "United Kingdom",
       }),
     );
@@ -71,7 +69,6 @@ describe("Organisation application services", () => {
         body: {
           name: "T",
           organisation_type: "company",
-          email: "not-an-email",
         },
       }),
     ).rejects.toBeInstanceOf(OrganisationError);

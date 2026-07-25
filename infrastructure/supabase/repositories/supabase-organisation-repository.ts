@@ -42,7 +42,7 @@ export class SupabaseOrganisationRepository
       p_country: profile.country,
       p_location: profile.location,
       p_website: profile.website,
-      p_email: profile.email,
+      p_email: null,
       p_registration_number: profile.registrationNumber,
     });
     if (error || typeof data !== "string") {
@@ -109,7 +109,6 @@ export class SupabaseOrganisationRepository
       .from("organisations")
       .update({
         name: profile.name,
-        email: profile.email,
         organisation_type: profile.organisationType,
         description: profile.description,
         country: profile.country,

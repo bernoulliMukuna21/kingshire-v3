@@ -157,11 +157,11 @@ export async function GET(request: NextRequest) {
 
   // Determine where to send the user
   let destination: string;
+  const safeNext =
+    next?.startsWith("/") && !next.startsWith("//") ? next : null;
 
-  if (next) {
+  if (tokenType === "recovery") {
     // Password-reset flow → go straight to the reset page
-    destination = `${origin}${next}`;
-  } else if (tokenType === "recovery") {
     destination = `${origin}/reset-password`;
   } else {
     const {
@@ -218,7 +218,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    destination = `${origin}${getRoleHome(profile?.role)}`;
+    destination = profile?.role
+      ? `${origin}${safeNext ?? getRoleHome(profile.role)}`
+      : `${origin}/onboarding${
+          safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""
+        }`;
   }
 
   logAuthCallback("info", "redirecting", {

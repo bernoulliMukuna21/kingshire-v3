@@ -23,6 +23,11 @@ function SignInContent() {
   const authError = searchParams.get("error");
   const authReason = searchParams.get("reason");
   const authSuccess = searchParams.get("success");
+  const requestedNext = searchParams.get("next");
+  const safeNext =
+    requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : null;
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,10 +37,13 @@ function SignInContent() {
 
   const handleGoogleSignIn = async () => {
     const supabase = createClient();
+    const callbackUrl = `${window.location.origin}/auth/callback${
+      safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""
+    }`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl,
         queryParams: {
           prompt: "select_account",
         },
@@ -82,7 +90,11 @@ function SignInContent() {
       .eq("id", data.user.id)
       .single();
 
-    router.push(getRoleHome(profile?.role));
+    router.push(
+      profile?.role
+        ? (safeNext ?? getRoleHome(profile.role))
+        : `/onboarding${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`,
+    );
   };
 
   return (
@@ -105,7 +117,7 @@ function SignInContent() {
         <p className="text-gray-500 mb-8 text-sm">Enter your details below.</p>
 
         <GoogleButton onClick={handleGoogleSignIn} showDivider={false} />
-        <KingsChatButton />
+        <KingsChatButton next={safeNext ?? undefined} />
 
         {authSuccess === "password_reset" && (
           <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
@@ -171,7 +183,7 @@ function SignInContent() {
         <p className="text-center text-sm text-gray-500 mt-6">
           Don&apos;t have an account?{" "}
           <Link
-            href="/sign-up"
+            href={`/sign-up${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`}
             className="text-blue-600 font-semibold hover:underline"
           >
             Create one free

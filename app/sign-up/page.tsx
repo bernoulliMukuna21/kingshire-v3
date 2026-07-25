@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Eye, EyeOff, CheckCircle, Loader2 } from "lucide-react";
@@ -15,8 +15,17 @@ import {
   normalizeEmail,
 } from "@/lib/validation";
 
-export default function SignUpPage() {
+function SignUpContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedNext = searchParams.get("next");
+  const safeNext =
+    requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : null;
+  const callbackPath = `/auth/callback${
+    safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""
+  }`;
   const [step, setStep] = useState<"details" | "verify">("details");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,6 +51,9 @@ export default function SignUpPage() {
     await supabase.auth.resend({
       type: "signup",
       email: normalizeEmail(form.email),
+      options: {
+        emailRedirectTo: `${window.location.origin}${callbackPath}`,
+      },
     });
     setResendLoading(false);
     setResendSent(true);
@@ -52,7 +64,7 @@ export default function SignUpPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}${callbackPath}`,
         queryParams: {
           prompt: "select_account",
         },
@@ -99,7 +111,7 @@ export default function SignUpPage() {
           full_name: `${form.firstName} ${form.lastName}`,
           role: null,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}${callbackPath}`,
       },
     });
 
@@ -126,7 +138,9 @@ export default function SignUpPage() {
 
     // If email confirmation is disabled, Supabase returns a session immediately
     if (data.session) {
-      router.push("/onboarding");
+      router.push(
+        `/onboarding${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`,
+      );
       return;
     }
 
@@ -166,7 +180,10 @@ export default function SignUpPage() {
               </p>
 
               <GoogleButton onClick={handleGoogleSignUp} showDivider={false} />
-              <KingsChatButton label="Sign up with KingsChat" />
+              <KingsChatButton
+                label="Sign up with KingsChat"
+                next={safeNext ?? undefined}
+              />
 
               {error && (
                 <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
@@ -283,7 +300,7 @@ export default function SignUpPage() {
               <p className="text-center text-sm text-gray-500 mt-6">
                 Already have an account?{" "}
                 <Link
-                  href="/sign-in"
+                  href={`/sign-in${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`}
                   className="text-blue-600 font-semibold hover:underline"
                 >
                   Sign in
@@ -343,5 +360,13 @@ export default function SignUpPage() {
         </AnimatePresence>
       </div>
     </AuthLayout>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpContent />
+    </Suspense>
   );
 }
