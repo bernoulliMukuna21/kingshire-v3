@@ -1,25 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { PartyPopper, X } from "lucide-react";
+import { PartyPopper } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
 
-const STORAGE_KEY = "kingshire:organisation-announcement-v2-dismissed";
 const EXPIRY = new Date("2026-08-09T00:00:00+01:00").getTime();
-const CHANGE_EVENT = "kingshire:organisation-announcement-change";
 
 function subscribe(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener(CHANGE_EVENT, callback);
-  return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener(CHANGE_EVENT, callback);
-  };
+  const timer = window.setInterval(callback, 60_000);
+  return () => window.clearInterval(timer);
 }
 
 function getSnapshot() {
-  return Date.now() < EXPIRY && localStorage.getItem(STORAGE_KEY) !== "1";
+  return Date.now() < EXPIRY;
 }
 
 export default function OrganisationAnnouncement() {
@@ -47,17 +41,6 @@ export default function OrganisationAnnouncement() {
         >
           Discover
         </Link>
-        <button
-          type="button"
-          aria-label="Dismiss Organisation announcement"
-          onClick={() => {
-            localStorage.setItem(STORAGE_KEY, "1");
-            window.dispatchEvent(new Event(CHANGE_EVENT));
-          }}
-          className="shrink-0 rounded-md p-1 text-white/70 hover:bg-white/10 hover:text-white"
-        >
-          <X size={16} />
-        </button>
       </div>
     </div>
   );
