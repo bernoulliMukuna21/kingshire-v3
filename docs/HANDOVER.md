@@ -900,6 +900,29 @@ Kinglancers are not converted to Clients and do not create duplicate accounts:
 their existing identity can own an Organisation, with Organisation membership
 providing the workspace capability.
 
+### Public UI direction
+
+The July 2026 UI pass deliberately moves KingsHire away from generic
+AI/template aesthetics:
+
+- Manrope is the single global interface typeface;
+- the homepage uses one authentic working-person photograph and removes the
+  floating avatar decorations and permanent Organisation feature card;
+- a slim, dismissible Organisation announcement replaces the permanent card
+  for signed-out users and Clients until 9 August 2026;
+- the Organisation landing page uses an editorial split layout, restrained
+  feature rows and two meaningful photographs rather than repeated large
+  cards;
+- Organisation signup reuses the small-business image with the standard
+  KingsHire form, maintaining one brand rather than a separate login design;
+- photography is evidence, not decoration, and should remain limited to places
+  where it explains the people or work being discussed;
+- the public Kinglancer listing reserves a fixed 220px card height, including
+  a fixed service-tag region, so incomplete and detailed profiles align.
+
+The selected Unsplash images are remotely optimized through `next/image`.
+`images.unsplash.com/photo-**` is the only new remote image pattern.
+
 The creation screen now gives ownership consequences a separate amber notice
 and asks for confirmation before creation. A shared Organisation email is not
 collected until a concrete communication feature requires it. Migration 030

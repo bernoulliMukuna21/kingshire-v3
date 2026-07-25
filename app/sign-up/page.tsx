@@ -181,6 +181,16 @@ function SignUpContent() {
           ? ["Publish as your Organisation", "Invite your team", "Control member permissions", "Manage jobs together"]
           : ["Free to join", "Payments protected by Stripe", "Community verified members", "Low platform fees (2.5% client / 5% kinglancer)"]
       }
+      imageSrc={
+        isOrganisationJourney
+          ? "https://images.unsplash.com/photo-1753162660943-ce96a8953e8d?auto=format&fit=crop&w=1400&q=82"
+          : undefined
+      }
+      imageAlt={
+        isOrganisationJourney
+          ? "Two people collaborating in a small clothing business"
+          : undefined
+      }
     >
       <div className="w-full max-w-md">
         <AnimatePresence mode="wait">
@@ -311,7 +321,11 @@ function SignUpContent() {
                   className="w-full mt-2 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {loading && <Loader2 size={16} className="animate-spin" />}
-                  {loading ? "Creating account…" : "Create account"}
+                  {loading
+                    ? "Creating account…"
+                    : isOrganisationJourney
+                      ? "Continue to Organisation setup"
+                      : "Create account"}
                 </button>
                 <p className="text-center text-xs text-gray-400 mt-1">
                   By creating an account you agree to our{" "}

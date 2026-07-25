@@ -5,7 +5,6 @@ import HowItWorks from "@/components/home/HowItWorks";
 import TrustSection from "@/components/home/TrustSection";
 import TopKinglancers from "@/components/home/TopKinglancers";
 import CtaBanner from "@/components/home/CtaBanner";
-import OrganisationCallout from "@/components/home/OrganisationCallout";
 import PublicShell from "@/components/ui/PublicShell";
 import { formatMilestoneCount } from "@/lib/format-stats";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -62,7 +61,6 @@ export default async function HomePage() {
           },
         ]}
       />
-      <OrganisationCallout />
       <ServicesMarquee />
       <HowItWorks />
       <TrustSection />

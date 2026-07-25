@@ -52,10 +52,10 @@ export default function KinglancersGrid({
             const headline = getProfileHeadline(k);
 
             return (
-              <StaggerItem key={k.id}>
-                <Link href={`/kinglancers/${k.id}`}>
-                  <Card interactive className="group overflow-hidden">
-                    <div className="p-5">
+              <StaggerItem key={k.id} className="h-full">
+                <Link href={`/kinglancers/${k.id}`} className="block h-full">
+                  <Card interactive className="group h-[220px] overflow-hidden">
+                    <div className="flex h-full flex-col p-5">
                       {/* Avatar + name */}
                       <div className="flex items-center gap-3.5 mb-4">
                         <Avatar
@@ -65,7 +65,7 @@ export default function KinglancersGrid({
                           tone="green"
                         />
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-black text-slate-950 transition-colors group-hover:text-blue-700">
+                          <p className="truncate text-sm font-bold text-slate-950 transition-colors group-hover:text-blue-700">
                             {k.full_name}
                           </p>
                           <p className="truncate text-xs font-bold text-blue-700">
@@ -75,21 +75,20 @@ export default function KinglancersGrid({
                       </div>
 
                       {/* Service tags */}
-                      {(k.service_tags?.length ?? 0) > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                          {k.service_tags!.slice(0, 3).map((s) => (
-                            <span
-                              key={s}
-                              className="rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs text-slate-600"
-                            >
-                              {s}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      <div className="mb-4 flex h-14 content-start flex-wrap gap-1.5 overflow-hidden">
+                        {(k.service_tags ?? []).slice(0, 3).map((s) => (
+                          <span
+                            key={s}
+                            title={s}
+                            className="max-w-full truncate rounded-full border border-slate-100 bg-slate-50 px-2 py-0.5 text-xs text-slate-600"
+                          >
+                            {s}
+                          </span>
+                        ))}
+                      </div>
 
                       {/* Stats */}
-                      <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
+                      <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
                         <span className="flex items-center gap-1">
                           <Star
                             size={11}

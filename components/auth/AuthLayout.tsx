@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
 import { CheckCircle } from "lucide-react";
 
 interface AuthLayoutProps {
@@ -10,6 +9,8 @@ interface AuthLayoutProps {
   accent: string;
   body: string;
   bullets?: string[];
+  imageSrc?: string;
+  imageAlt?: string;
   children: React.ReactNode;
 }
 
@@ -18,22 +19,29 @@ export default function AuthLayout({
   accent,
   body,
   bullets,
+  imageSrc,
+  imageAlt = "",
   children,
 }: AuthLayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Left panel */}
-      <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-[#0f172a] via-[#1e3a7a] to-[#0f172a] relative overflow-hidden flex-col justify-between p-12">
-        <motion.div
-          animate={{ x: [0, 20, 0], y: [0, -15, 0] }}
-          transition={{ duration: 8, repeat: Infinity }}
-          className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{ x: [0, -20, 0], y: [0, 20, 0] }}
-          transition={{ duration: 10, repeat: Infinity, delay: 2 }}
-          className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl"
-        />
+      <div className="relative hidden overflow-hidden bg-[#10234b] p-12 lg:flex lg:w-1/2 lg:flex-col lg:justify-between">
+        {imageSrc ? (
+          <>
+            <Image
+              src={imageSrc}
+              alt={imageAlt}
+              fill
+              sizes="50vw"
+              className="object-cover"
+              preload
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-[#10234b] via-[#10234b]/72 to-[#10234b]/18" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-linear-to-br from-[#0f172a] via-[#1e3a7a] to-[#0f172a]" />
+        )}
 
         <div className="relative z-10">
           <Link href="/" className="flex items-center">
@@ -49,7 +57,7 @@ export default function AuthLayout({
         </div>
 
         <div className="relative z-10">
-          <h2 className="text-4xl font-black text-white leading-tight mb-4">
+          <h2 className="mb-4 text-4xl font-extrabold leading-tight tracking-tight text-white">
             {headline}
             <br />
             <span className="text-blue-400">{accent}</span>

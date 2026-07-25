@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -5,119 +6,171 @@ import {
   BriefcaseBusiness,
   Building2,
   ShieldCheck,
-  Sparkles,
   Users,
 } from "lucide-react";
 import PublicShell from "@/components/ui/PublicShell";
 
-const features = [
+const BUSINESS_TEAM_IMAGE =
+  "https://images.unsplash.com/photo-1753162660943-ce96a8953e8d?auto=format&fit=crop&w=1600&q=82";
+const COMMUNITY_TEAM_IMAGE =
+  "https://images.unsplash.com/photo-1544928147-79a2dbc1f389?auto=format&fit=crop&w=1200&q=82";
+
+const benefits = [
   {
     icon: Building2,
-    title: "Build your Organisation presence",
-    text: "Create a profile and publish opportunities under your Organisation's name.",
+    title: "Publish with your Organisation identity",
+    text: "Build a clear profile and post paid jobs under the name people recognise.",
   },
   {
     icon: Users,
-    title: "Work together",
-    text: "Invite your team and assign Owner, Admin or Member permissions.",
+    title: "Give your team the right access",
+    text: "Invite colleagues as Owner, Admin or Member without sharing a login.",
   },
   {
     icon: BriefcaseBusiness,
-    title: "Manage paid jobs",
-    text: "Post ordinary paid jobs and manage applicants from one shared workspace.",
+    title: "Manage hiring in one place",
+    text: "Keep Organisation jobs, applicants and transactions together.",
   },
   {
     icon: ShieldCheck,
-    title: "Keep control",
-    text: "Every action belongs to an individual account, giving your team clear accountability.",
+    title: "Know who took each action",
+    text: "Every team member uses an individual account, preserving accountability.",
   },
 ];
 
 export default function ForOrganisationsPage() {
   return (
     <PublicShell navbarVariant="solid">
-      <section className="relative overflow-hidden bg-[#10234b] px-6 pb-20 pt-32 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.45),transparent_45%)]" />
-        <div className="relative mx-auto max-w-6xl">
-          <div className="max-w-3xl">
-            <p className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-400/10 px-4 py-2 text-sm font-bold text-blue-200">
-              <Sparkles size={16} /> KingsHire for Organisations
+      <section className="bg-white px-6 pb-20 pt-28">
+        <div className="mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="max-w-xl">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-blue-600">
+              KingsHire for Organisations
             </p>
-            <h1 className="mt-6 text-4xl font-black leading-tight sm:text-6xl">
-              Create opportunities.
-              <br />
-              Grow people. Work as a team.
+            <h1 className="mt-5 text-5xl font-extrabold leading-[1.06] tracking-[-0.04em] text-slate-950 sm:text-6xl">
+              Create opportunities as a team.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-white/70">
-              A dedicated workspace for companies, charities, churches,
-              non-profits, community groups and public bodies using KingsHire.
+            <p className="mt-6 text-lg leading-8 text-slate-600">
+              A shared KingsHire workspace for companies, charities, churches,
+              non-profits, community groups and public bodies.
             </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/organisations/start"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold text-white transition hover:bg-blue-500"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold text-white transition hover:bg-blue-700"
               >
                 Create your Organisation <ArrowRight size={18} />
               </Link>
               <Link
                 href="/sign-in"
-                className="inline-flex items-center justify-center rounded-xl border border-white/20 bg-white/10 px-7 py-4 font-bold text-white transition hover:bg-white/15"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-7 py-4 font-bold text-slate-800 transition hover:border-blue-400 hover:text-blue-700"
               >
-                Sign in to your workspace
+                Sign in
               </Link>
             </div>
-            <p className="mt-4 text-sm text-white/55">
-              New to KingsHire? You will first create the personal Client
-              account that securely owns and manages your Organisation.
+            <p className="mt-4 text-sm leading-6 text-slate-500">
+              You will first create the personal Client account that securely
+              owns your Organisation. Existing KingsHire users keep their
+              current account.
             </p>
+          </div>
+
+          <div className="relative h-[460px] overflow-hidden rounded-[2rem] bg-slate-100 sm:h-[560px]">
+            <Image
+              src={BUSINESS_TEAM_IMAGE}
+              alt="Two people collaborating in a small clothing business"
+              fill
+              preload
+              sizes="(max-width: 1024px) 100vw, 55vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-slate-950/70 to-transparent p-8 pt-24 text-white">
+              <p className="max-w-md text-lg font-bold">
+                Built for real teams doing real work.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-slate-200 bg-slate-50 px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[0.72fr_1.28fr]">
+            <div>
+              <p className="text-sm font-bold uppercase tracking-[0.18em] text-blue-600">
+                One workspace
+              </p>
+              <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+                More than an individual Client account
+              </h2>
+              <p className="mt-4 leading-7 text-slate-600">
+                Your Organisation has its own identity and shared work, while
+                every person remains individually accountable.
+              </p>
+            </div>
+            <div className="divide-y divide-slate-200 border-y border-slate-200">
+              {benefits.map(({ icon: Icon, title, text }) => (
+                <div key={title} className="grid gap-3 py-6 sm:grid-cols-[auto_1fr] sm:gap-5">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                    <Icon size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-950">{title}</h3>
+                    <p className="mt-1 leading-7 text-slate-600">{text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
       <section className="px-6 py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="max-w-2xl">
-            <p className="text-sm font-black uppercase tracking-widest text-blue-600">
-              Built for shared work
-            </p>
-            <h2 className="mt-3 text-3xl font-black text-slate-950 sm:text-4xl">
-              More than an individual Client account
-            </h2>
+        <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
+          <div className="relative h-[520px] overflow-hidden rounded-[2rem]">
+            <Image
+              src={COMMUNITY_TEAM_IMAGE}
+              alt="A community group creating floral arrangements together"
+              fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-cover"
+            />
           </div>
-          <div className="mt-10 grid gap-5 sm:grid-cols-2">
-            {features.map(({ icon: Icon, title, text }) => (
-              <article key={title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
-                  <Icon size={24} />
-                </div>
-                <h3 className="mt-5 text-xl font-black text-slate-950">{title}</h3>
-                <p className="mt-2 leading-7 text-slate-600">{text}</p>
-              </article>
-            ))}
+          <div className="max-w-xl">
+            <p className="flex items-center gap-2 text-sm font-bold text-emerald-700">
+              <BadgeCheck size={19} /> The next KingsHire opportunity
+            </p>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+              Structured placements with outcomes made clear
+            </h2>
+            <p className="mt-5 text-lg leading-8 text-slate-600">
+              We are designing placements where remuneration, references,
+              certifications and other agreed outcomes are declared before
+              someone applies.
+            </p>
+            <p className="mt-4 text-sm leading-6 text-slate-500">
+              Placements, subscription plans and Organisation verification are
+              coming later and are not currently available.
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="bg-blue-50 px-6 py-16">
-        <div className="mx-auto flex max-w-5xl flex-col gap-6 rounded-3xl bg-white p-8 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <section className="bg-[#10234b] px-6 py-16 text-white">
+        <div className="mx-auto flex max-w-6xl flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="flex items-center gap-2 font-bold text-emerald-700">
-              <BadgeCheck size={20} /> Coming after the foundation
-            </p>
-            <h2 className="mt-2 text-2xl font-black text-slate-950">
-              Structured placements and Organisation plans
+            <h2 className="text-3xl font-extrabold tracking-tight">
+              Start with your Organisation workspace.
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              We are building placements with clearly declared remuneration,
-              outcomes and agreements. Subscription plans and verification
-              will follow; these features are not yet available.
+            <p className="mt-2 text-white/60">
+              Create your profile, invite your team and publish paid jobs.
             </p>
           </div>
           <Link
             href="/organisations/start"
-            className="shrink-0 rounded-xl bg-blue-600 px-6 py-3.5 text-center text-sm font-bold text-white hover:bg-blue-700"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold hover:bg-blue-500"
           >
-            Create your workspace
+            Create your Organisation <ArrowRight size={18} />
           </Link>
         </div>
       </section>

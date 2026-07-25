@@ -186,3 +186,13 @@ Phase 1 can proceed only when:
   without their Kinglancer role, services or profile being replaced.
 - **ORG-PUB-08:** The Organisation landing page describes placements,
   subscriptions and verification as coming later, not currently available.
+- **ORG-PUB-09:** The temporary Organisation announcement is shown to
+  signed-out visitors and Clients, hidden from Kinglancers, dismissible, and
+  no longer shown after 9 August 2026.
+- **ORG-PUB-10:** The homepage no longer renders the permanent Organisation
+  callout card or floating avatar decorations.
+- **ORG-PUB-11:** Organisation signup uses Organisation-specific photography
+  and copy while retaining the standard KingsHire form controls.
+- **ORG-PUB-12:** Remote photographs preserve their intended crop at desktop
+  and mobile sizes, have meaningful alternative text, and produce no layout
+  shift or image-optimizer errors.
