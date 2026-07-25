@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { X } from "lucide-react";
+import { PartyPopper, X } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
 
@@ -29,10 +29,13 @@ export default function OrganisationAnnouncement() {
   if (!authReady || role === "kinglancer" || !withinCampaign) return null;
 
   return (
-    <div className="border-b border-blue-300/20 bg-blue-600 text-white">
+    <div className="border-b border-fuchsia-300/20 bg-linear-to-r from-violet-700 via-purple-600 to-fuchsia-600 text-white">
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5 text-sm sm:px-6">
+        <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 sm:flex">
+          <PartyPopper size={17} aria-hidden="true" />
+        </span>
         <p className="min-w-0 flex-1">
-          <strong>New: Organisation workspaces.</strong>{" "}
+          <strong>Something new to celebrate: Organisation workspaces.</strong>{" "}
           <span className="text-white/80">
             Create your Organisation, invite your team and publish jobs
             together.
@@ -40,7 +43,7 @@ export default function OrganisationAnnouncement() {
         </p>
         <Link
           href="/for-organisations"
-          className="shrink-0 font-bold underline decoration-white/40 underline-offset-4 hover:decoration-white"
+          className="shrink-0 rounded-full bg-white px-3 py-1.5 font-bold text-purple-700 transition hover:bg-purple-50"
         >
           Discover
         </Link>

@@ -183,12 +183,12 @@ function SignUpContent() {
       }
       imageSrc={
         isOrganisationJourney
-          ? "https://images.unsplash.com/photo-1753162660943-ce96a8953e8d?auto=format&fit=crop&w=1400&q=82"
+          ? "https://images.unsplash.com/photo-1603201667141-5a2d4c673378?auto=format&fit=crop&w=1400&q=82"
           : undefined
       }
       imageAlt={
         isOrganisationJourney
-          ? "Two people collaborating in a small clothing business"
+          ? "A small team collaborating around a laptop"
           : undefined
       }
     >

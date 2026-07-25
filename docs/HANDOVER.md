@@ -906,15 +906,17 @@ The July 2026 UI pass deliberately moves KingsHire away from generic
 AI/template aesthetics:
 
 - Manrope is the single global interface typeface;
-- the homepage uses one authentic working-person photograph and removes the
-  floating avatar decorations and permanent Organisation feature card;
-- a slim, dismissible Organisation announcement replaces the permanent card
-  for signed-out users and Clients until 9 August 2026;
+- the homepage retains its centred, animated navy hero and floating profile
+  cards; three photographs move slowly behind the content at very low opacity
+  to add human texture without replacing the KingsHire visual identity;
+- a slim, dismissible purple celebration announcement replaces the permanent
+  Organisation card for signed-out users and Clients until 9 August 2026;
 - the Organisation landing page uses an editorial split layout, restrained
   feature rows and two meaningful photographs rather than repeated large
   cards;
-- Organisation signup reuses the small-business image with the standard
-  KingsHire form, maintaining one brand rather than a separate login design;
+- Organisation signup uses a separate collaboration photograph with the
+  standard KingsHire form, while the discovery page retains the small-business
+  image;
 - photography is evidence, not decoration, and should remain limited to places
   where it explains the people or work being discussed;
 - the public Kinglancer listing reserves a fixed 220px card height, including
