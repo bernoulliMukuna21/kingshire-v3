@@ -435,6 +435,33 @@ function SignUpContent() {
                   </Link>
                 </p>
               </form>
+              {(journey === "client" || journey === "kinglancer") && (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
+                  <span className="mr-2">Looking for a different setup?</span>
+                  {journey === "client" ? (
+                    <Link
+                      href="/sign-up?role=kinglancer"
+                      className="font-bold text-blue-600 hover:underline"
+                    >
+                      Become a Kinglancer
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/sign-up?role=client"
+                      className="font-bold text-blue-600 hover:underline"
+                    >
+                      Join as a Client
+                    </Link>
+                  )}
+                  <span className="mx-2 text-slate-300">·</span>
+                  <Link
+                    href="/sign-up?intent=organisation"
+                    className="font-bold text-blue-600 hover:underline"
+                  >
+                    Set up an Organisation
+                  </Link>
+                </div>
+              )}
               <p className="text-center text-sm text-gray-500 mt-6">
                 Already have an account?{" "}
                 <Link

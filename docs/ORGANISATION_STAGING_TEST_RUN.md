@@ -89,6 +89,11 @@ Expected:
   Profile, Plan, Review and payment, Team and Complete;
 - the desktop form remains centred beside the Organisation team panel and the
   compact bottom progress indicator updates on desktop and mobile;
+- the Account step starts at **0% complete** and only advances after the
+  account stage has actually completed;
+- `/organisation/start` sends a signed-out visitor to
+  `/sign-up?intent=organisation` without user-controllable `role` or `next`
+  parameters;
 - confirmation proceeds without a normal pending-approval screen;
 - the optional invitation step appears;
 - the Organisation workspace opens;

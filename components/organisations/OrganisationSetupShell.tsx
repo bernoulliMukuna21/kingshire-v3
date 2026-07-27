@@ -38,7 +38,7 @@ export default function OrganisationSetupShell({
     (step) => step.id === currentStep,
   );
   const progress = Math.round(
-    ((currentIndex + 1) / ORGANISATION_SETUP_STEPS.length) * 100,
+    (currentIndex / (ORGANISATION_SETUP_STEPS.length - 1)) * 100,
   );
 
   return (
@@ -128,45 +128,44 @@ export default function OrganisationSetupShell({
         </header>
 
         <main className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8 lg:px-10 xl:px-14">
-          <div className="w-full max-w-5xl">{children}</div>
-        </main>
-
-        <footer className="border-t border-slate-200 bg-white px-5 py-5 sm:px-8">
-          <div className="mx-auto max-w-3xl">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">
-                  Step {currentIndex + 1} of {ORGANISATION_SETUP_STEPS.length}
-                </p>
-                <p className="mt-1 text-sm font-extrabold text-slate-900">
-                  {ORGANISATION_SETUP_STEPS[currentIndex].label}
-                </p>
+          <div className="w-full max-w-5xl">
+            <div className="mx-auto mb-7 max-w-3xl">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-blue-700">
+                    Step {currentIndex + 1} of {ORGANISATION_SETUP_STEPS.length}
+                  </p>
+                  <p className="mt-1 text-sm font-extrabold text-slate-900">
+                    {ORGANISATION_SETUP_STEPS[currentIndex].label}
+                  </p>
+                </div>
+                {(organisationName || planName) && (
+                  <p className="max-w-sm truncate text-right text-xs text-slate-500">
+                    {organisationName && (
+                      <strong className="text-slate-700">
+                        {organisationName}
+                      </strong>
+                    )}
+                    {organisationName && planName && " · "}
+                    {planName && `${planName} · £${planPrice}/month`}
+                  </p>
+                )}
+                <span className="text-xs font-bold text-slate-500">
+                  {progress}% complete
+                </span>
               </div>
-              {(organisationName || planName) && (
-                <p className="max-w-sm truncate text-right text-xs text-slate-500">
-                  {organisationName && (
-                    <strong className="text-slate-700">
-                      {organisationName}
-                    </strong>
-                  )}
-                  {organisationName && planName && " · "}
-                  {planName && `${planName} · £${planPrice}/month`}
-                </p>
-              )}
-              <span className="text-xs font-bold text-slate-500">
-                {progress}% complete
-              </span>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
+                <motion.div
+                  className="h-full rounded-full bg-blue-600"
+                  initial={false}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: prefersReducedMotion ? 0 : 0.35 }}
+                />
+              </div>
             </div>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
-              <motion.div
-                className="h-full rounded-full bg-blue-600"
-                initial={false}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: prefersReducedMotion ? 0 : 0.35 }}
-              />
-            </div>
+            {children}
           </div>
-        </footer>
+        </main>
       </section>
     </div>
   );

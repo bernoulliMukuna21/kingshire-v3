@@ -66,7 +66,7 @@ export default function AuthLayout({
           }
           return current;
         }),
-      9000,
+      6000,
     );
     return () => window.clearInterval(interval);
   }, [
@@ -101,11 +101,10 @@ export default function AuthLayout({
                 fill
                 sizes="50vw"
                 className={`object-cover transition-opacity duration-1000 ${
-                  index === activeImage && loadedImages.has(index)
-                    ? "opacity-100"
-                    : "opacity-0"
+                  index === activeImage ? "opacity-100" : "opacity-0"
                 }`}
                 preload={index === 0}
+                unoptimized={image.src.startsWith("/")}
                 onLoad={() =>
                   setLoadedImages((current) => new Set(current).add(index))
                 }

@@ -12,7 +12,36 @@ test.describe("Organisations — access guards", () => {
     page,
   }) => {
     await page.goto("/organisation/setup");
-    await expect(page).toHaveURL(/sign-in/);
+    await expect(page).toHaveURL(/\/sign-up\?intent=organisation$/);
+  });
+
+  test("Organisation entry uses a clean, fixed-intent signup URL", async ({
+    page,
+  }) => {
+    await page.goto("/organisation/start");
+    await expect(page).toHaveURL(/\/sign-up\?intent=organisation$/);
+    await expect(page).not.toHaveURL(/role=|next=/);
+    await expect(page.getByText("0% complete")).toBeVisible();
+  });
+
+  test("Client and Kinglancer signup journeys expose the other choices", async ({
+    page,
+  }) => {
+    await page.goto("/sign-up?role=client");
+    await expect(
+      page.getByRole("link", { name: "Become a Kinglancer" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Set up an Organisation" }),
+    ).toBeVisible();
+
+    await page.goto("/sign-up?role=kinglancer");
+    await expect(
+      page.getByRole("link", { name: "Join as a Client" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Set up an Organisation" }),
+    ).toBeVisible();
   });
 
   test("the Organisation discovery URL is singular and legacy links redirect", async ({
