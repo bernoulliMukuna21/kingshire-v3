@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import type { StaticImageData } from "next/image";
 import { CheckCircle } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import OrganisationSetupShell from "@/components/organisations/OrganisationSetupShell";
 
 export type AuthImage = {
-  src: string;
+  src: string | StaticImageData;
   alt: string;
 };
 
@@ -95,7 +96,7 @@ export default function AuthLayout({
           <>
             {imageList.map((image, index) => (
               <Image
-                key={image.src}
+                key={typeof image.src === "string" ? image.src : image.src.src}
                 src={image.src}
                 alt={index === activeImage ? image.alt : ""}
                 fill
@@ -104,7 +105,7 @@ export default function AuthLayout({
                   index === activeImage ? "opacity-100" : "opacity-0"
                 }`}
                 preload={index === 0}
-                unoptimized={image.src.startsWith("/")}
+                placeholder={typeof image.src === "string" ? undefined : "blur"}
                 onLoad={() =>
                   setLoadedImages((current) => new Set(current).add(index))
                 }
@@ -161,8 +162,8 @@ export default function AuthLayout({
       </div>
 
       {/* Right panel */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        {children}
+      <div className="flex min-h-screen flex-1 overflow-y-auto p-6">
+        <div className="m-auto flex w-full justify-center">{children}</div>
       </div>
     </div>
   );

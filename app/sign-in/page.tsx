@@ -16,6 +16,8 @@ import {
   isValidEmailAddress,
   normalizeEmail,
 } from "@/lib/validation";
+import generalWorkspaceImage from "@/public/images/auth/general-workspace.jpg";
+import generalPracticalWorkImage from "@/public/images/auth/general-practical-work.jpg";
 
 function SignInContent() {
   const router = useRouter();
@@ -125,11 +127,11 @@ function SignInContent() {
       body="Your community is waiting. Sign in and get to work."
       images={[
         {
-          src: "/images/auth/general-workspace.jpg",
+          src: generalWorkspaceImage,
           alt: "A person working independently",
         },
         {
-          src: "/images/auth/general-practical-work.jpg",
+          src: generalPracticalWorkImage,
           alt: "A practical worker carrying out their trade",
         },
       ]}

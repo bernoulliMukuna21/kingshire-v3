@@ -255,25 +255,6 @@ export default function OrganisationPage() {
           </div>
         </div>
       </section>
-
-      <section className="bg-[#10234b] px-6 py-16 text-white">
-        <div className="mx-auto flex max-w-6xl flex-col gap-7 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-3xl font-extrabold tracking-tight">
-              Start with your Organisation workspace.
-            </h2>
-            <p className="mt-2 text-white/60">
-              Create your profile, invite your team and publish paid jobs.
-            </p>
-          </div>
-          <Link
-            href="/organisation/start"
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold hover:bg-blue-500"
-          >
-            Create your Organisation <ArrowRight size={18} />
-          </Link>
-        </div>
-      </section>
     </PublicShell>
   );
 }

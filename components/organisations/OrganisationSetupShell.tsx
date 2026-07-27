@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LockKeyhole } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
+import organisationTeamImage from "@/public/images/auth/organisation-team.jpg";
 
 export const ORGANISATION_SETUP_STEPS = [
   { id: "account", label: "Account" },
@@ -63,11 +64,12 @@ export default function OrganisationSetupShell({
           }}
         >
           <Image
-            src="/images/auth/organisation-team.jpg"
+            src={organisationTeamImage}
             alt=""
             fill
             sizes="38vw"
             className="object-cover"
+            placeholder="blur"
             priority
           />
         </motion.div>
@@ -127,8 +129,8 @@ export default function OrganisationSetupShell({
           </div>
         </header>
 
-        <main className="flex flex-1 items-center justify-center px-4 py-10 sm:px-8 lg:px-10 xl:px-14">
-          <div className="w-full max-w-5xl">
+        <main className="flex flex-1 overflow-y-auto px-4 py-10 sm:px-8 lg:px-10 xl:px-14">
+          <div className="m-auto w-full max-w-5xl">
             <div className="mx-auto mb-7 max-w-3xl">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
