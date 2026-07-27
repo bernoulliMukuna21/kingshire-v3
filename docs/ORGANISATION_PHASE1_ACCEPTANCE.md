@@ -1,8 +1,11 @@
 # Organisation Phase 1 acceptance
 
 This checklist is the release gate for the Organisation foundation. Apply
-`supabase/migrations/029_organisation_foundation.sql` to a non-production
-Supabase project before running it.
+`supabase/migrations/029_organisation_foundation.sql`,
+`030_make_organisation_email_optional.sql` and
+`031_organisation_subscriptions.sql` to a non-production Supabase project
+before running it. Configure Stripe test Prices at £10, £25 and £40 monthly,
+the test webhook, and the test Customer Portal.
 
 The traceable scenario catalogue is in
 `docs/ORGANISATION_PHASE1_TEST_SCENARIOS.md`. Use the scenario IDs from that
@@ -43,14 +46,16 @@ checklist rather than using production credentials in source control.
 ## Creation and workspace switching
 
 1. Sign in as `owner@example.test`.
-2. Create "KingsHire Test Organisation".
-3. Confirm the creator is assigned `Owner`.
-4. Complete every profile field, refresh, and confirm the values persist.
-5. Switch to the personal dashboard and back to the Organisation workspace.
-6. Confirm creating the Organisation did not alter the owner's personal role.
+2. Start "KingsHire Test Organisation" in the guided setup.
+3. Complete its profile, select Starter and confirm the £10/month review.
+4. Complete Stripe Checkout with a test card.
+5. Confirm the creator is assigned `Owner` only after Stripe confirmation.
+6. Refresh and confirm every profile and subscription value persists.
+7. Switch to the personal dashboard and back to the Organisation workspace.
+8. Confirm creating the Organisation did not alter the owner's personal role.
 
-Expected: one Organisation, exactly one owner, and both workspaces remain
-available.
+Expected: one Organisation, exactly one Owner, one active subscription, and
+both workspaces remain available.
 
 ## Invitations and permissions
 
@@ -78,10 +83,14 @@ actions are rejected without changing data.
    controls.
 3. Confirm the former Owner can no longer transfer or delete.
 4. With an active job present, attempt deletion.
-5. Close/remove the active job and delete the Organisation.
+5. Close/remove the active job and confirm deletion is still blocked while the
+   subscription is billable.
+6. Cancel the subscription through Stripe's test Customer Portal, process the
+   webhook and delete the Organisation.
 
 Expected: there is always exactly one Owner; deletion is blocked while jobs are
-active; a deleted Organisation disappears from every member's switcher.
+active or billing is active; a deleted Organisation disappears from every
+member's switcher.
 
 ## Paid-job lifecycle
 

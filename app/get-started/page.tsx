@@ -4,14 +4,6 @@ import PublicShell from "@/components/ui/PublicShell";
 
 const paths = [
   {
-    icon: BriefcaseBusiness,
-    title: "I need work done",
-    label: "Join as a Client",
-    text: "Post paid jobs and hire trusted people for the work you need.",
-    href: "/sign-up?role=client",
-    featured: false,
-  },
-  {
     icon: Zap,
     title: "I want to find work",
     label: "Become a Kinglancer",
@@ -20,11 +12,19 @@ const paths = [
     featured: false,
   },
   {
+    icon: BriefcaseBusiness,
+    title: "I need work done",
+    label: "Join as a Client",
+    text: "Post paid jobs and hire trusted people for the work you need.",
+    href: "/sign-up?role=client",
+    featured: false,
+  },
+  {
     icon: Building2,
     title: "I represent an Organisation",
-    label: "Create an Organisation",
+    label: "Set up an Organisation",
     text: "Create a team workspace for your company, charity, church, community group or public body.",
-    href: "/organisations/start",
+    href: "/organisation/start",
     featured: true,
   },
 ];

@@ -4,8 +4,8 @@ Target: `https://staging.kingshire.uk`
 
 This is a browser-led test run for a human tester. It is different from the
 unit and database scenario catalogue. Record the application commit and confirm
-migration 029 was successfully applied to the staging Supabase project before
-starting.
+migrations 029, 030 and 031 were successfully applied to the staging Supabase
+project before starting.
 
 ## Before testing
 
@@ -13,10 +13,15 @@ The Organisation navigation must be visible after sign-in. If it is not,
 confirm that:
 
 1. the Organisation application changes are deployed to staging;
-2. migration `029_organisation_foundation.sql` is applied to staging;
+2. migrations `029_organisation_foundation.sql`,
+   `030_make_organisation_email_optional.sql` and
+   `031_organisation_subscriptions.sql` are applied to staging;
 3. the staging deployment has its Supabase URL, publishable key, and secret
    key;
-4. the deployment health check is passing.
+4. the three Organisation Stripe test Price IDs and webhook secret are set;
+5. the Stripe test webhook includes Checkout and subscription events;
+6. the Stripe test Customer Portal is enabled;
+7. the deployment health check is passing.
 
 Do not run these scenarios against production.
 
@@ -59,25 +64,33 @@ after an unexpected result.
 1. Sign in as OWNER.
 2. Open **Organisations** from the dashboard navigation.
 3. Select **Create Organisation**.
-4. Enter:
+4. Complete the guided identity and profile steps with:
    - Name: the unique test Organisation name;
    - Type: Company;
-   - Organisation email: an email controlled by the tester;
    - Website: a valid `https://` URL;
    - Location: London;
    - Country: United Kingdom;
    - Registration number: `STAGING-TEST`;
    - Description: `Organisation Phase 1 staging test`.
-5. Submit.
+5. Select the Starter £10/month plan.
+6. Review the recurring subscription and Owner notice.
+7. Continue to Stripe and complete Checkout with test card
+   `4242 4242 4242 4242`, any future expiry and any CVC.
+8. Allow confirmation to finish, skip the invitation step and enter the
+   workspace.
 
 Expected:
 
+- Stripe shows a £10 recurring monthly test subscription;
+- confirmation proceeds without a normal pending-approval screen;
+- the optional invitation step appears;
 - the Organisation workspace opens;
 - the workspace identifies OWNER as `owner`;
 - job count is 0;
 - member count is 1;
 - released spend is £0.00;
-- no duplicate Organisation appears after refreshing.
+- no duplicate Organisation appears after refreshing;
+- the Owner sees Starter, active and **Manage subscription** in the workspace.
 
 ### STG-02: Profile persistence
 
@@ -100,7 +113,8 @@ Expected:
 
 ### STG-04: Invalid profile input
 
-Try an invalid email and a website using a non-HTTP protocol.
+Try an invalid one-character Organisation name and a website using a non-HTTP
+protocol.
 
 Expected: the form/API rejects the values and previously saved data remains
 unchanged.
@@ -391,7 +405,10 @@ Expected: deletion is rejected and the Organisation remains accessible.
 
 ### STG-33: Successful deletion
 
-Only run this at the end. Resolve or cancel every active job, then delete.
+Only run this at the end. Resolve or cancel every active job. First confirm
+deletion is blocked while the subscription is billable, then cancel the
+subscription in Stripe's Customer Portal, process the cancellation webhook and
+delete.
 
 Expected:
 
@@ -400,9 +417,71 @@ Expected:
 - old workspace URLs reveal no data;
 - personal Client/Kinglancer workspaces remain available.
 
+## Run 8 — Subscription recovery and lifecycle
+
+Use a second uniquely named Organisation draft so the main test workspace is
+not disrupted.
+
+### STG-34: Cancelled Checkout retains setup
+
+Reach Stripe Checkout, use the browser's return/cancel action without paying
+and return to KingsHire.
+
+Expected: the cancellation notice appears, entered details and plan remain,
+and no Organisation or Owner membership has been created.
+
+### STG-35: Confirmation and webhook race
+
+Complete Checkout once and record the Checkout Session, subscription and
+Organisation IDs from Stripe, the browser and Supabase.
+
+Expected: one setup draft maps to exactly one Organisation, one Owner and one
+subscription even when both the return page and webhook process confirmation.
+
+### STG-36: Browser does not return
+
+Complete a new test Checkout and close the tab before KingsHire's return page
+loads.
+
+Expected: `checkout.session.completed` still creates the Organisation exactly
+once and it appears on the Owner's next sign-in.
+
+### STG-37: Stripe confirmation temporarily unavailable
+
+In an isolated test deployment, temporarily use an invalid/restricted Stripe
+secret after Checkout has been completed, then open the return URL.
+
+Expected: bounded retries end in the recovery message; restoring the correct
+key and choosing retry activates the same Checkout without another charge.
+
+### STG-38: Billing Portal access control
+
+Open **Manage subscription** as Owner, then attempt the billing API as Admin,
+Member and Outsider.
+
+Expected: Owner reaches the correct Stripe Customer Portal; every other role
+receives a forbidden response and no customer information.
+
+### STG-39: Inactive subscription blocks new work
+
+Cancel a disposable Organisation subscription immediately in Stripe test mode
+and allow the subscription webhook to arrive.
+
+Expected: history and workspace access remain, but posting a new Organisation
+job returns the reactivation message.
+
+### STG-40: Signup image behaviour
+
+Open Client, Kinglancer and Organisation signup on desktop. Observe for at
+least ten seconds, then repeat with reduced motion enabled.
+
+Expected: Client and Kinglancer images crossfade only inside the left visual
+panel; Organisation retains its selected single image; copy and form remain
+stationary; reduced motion freezes the first image.
+
 ## Exit criteria
 
-Record one of Pass, Fail, or Blocked for STG-01 through STG-33.
+Record one of Pass, Fail, or Blocked for STG-01 through STG-40.
 
 Do not release Phase 1 when:
 
@@ -412,5 +491,8 @@ Do not release Phase 1 when:
 - ownership does not leave exactly one Owner;
 - removed members retain mutation access;
 - a Stripe payment succeeds but internal state is inconsistent;
+- a paid setup creates more than one Organisation, Owner or subscription;
+- a non-Owner can open Organisation billing;
+- a cancelled subscription can continue posting new Organisation jobs;
 - STG-29 remains failing;
 - deletion bypasses active-job protection.

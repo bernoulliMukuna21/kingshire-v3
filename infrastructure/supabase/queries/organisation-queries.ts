@@ -78,7 +78,13 @@ export async function getOrganisationInvitationView(token: string) {
 
 export async function getOrganisationOverview(organisationId: string) {
   const db = createServiceClient();
-  const [organisationResult, jobsResult, membersResult, statsResult] =
+  const [
+    organisationResult,
+    jobsResult,
+    membersResult,
+    statsResult,
+    subscriptionResult,
+  ] =
     await Promise.all([
       db.from("organisations").select("*").eq("id", organisationId).single(),
       db
@@ -98,10 +104,20 @@ export async function getOrganisationOverview(organisationId: string) {
       db.rpc("get_organisation_stats", {
         p_organisation_id: organisationId,
       }),
+      db
+        .from("organisation_subscriptions")
+        .select("plan, status, cancel_at_period_end, current_period_end")
+        .eq("organisation_id", organisationId)
+        .maybeSingle(),
     ]);
 
   if (organisationResult.error || !organisationResult.data) return null;
-  if (jobsResult.error || membersResult.error || statsResult.error) {
+  if (
+    jobsResult.error ||
+    membersResult.error ||
+    statsResult.error ||
+    subscriptionResult.error
+  ) {
     throw new OrganisationError(
       "persistence_failure",
       "Unable to load the Organisation workspace.",
@@ -138,6 +154,7 @@ export async function getOrganisationOverview(organisationId: string) {
       memberCount: Number(stats?.member_count ?? 0),
       releasedSpend: Number(stats?.released_spend ?? 0),
     },
+    subscription: subscriptionResult.data,
   };
 }
 

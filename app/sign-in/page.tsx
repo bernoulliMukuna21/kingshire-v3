@@ -134,7 +134,7 @@ function SignInContent() {
         <KingsChatButton
           next={
             intent === "organisation"
-              ? "/organisations/start"
+              ? "/organisation/start"
               : safeNext ?? undefined
           }
         />

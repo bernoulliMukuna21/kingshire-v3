@@ -19,7 +19,7 @@ export default async function OrganisationsPage() {
         eyebrow="Workspaces"
         title="Your Organisations"
         description="Create or open an Organisation workspace."
-        action={<ButtonLink href="/dashboard/organisations/new">Create Organisation</ButtonLink>}
+        action={<ButtonLink href="/organisation/setup">Create Organisation</ButtonLink>}
       />
       {!organisations.length ? (
         <EmptyState title="No Organisations yet" description="Create an Organisation or accept an invitation to join one." />

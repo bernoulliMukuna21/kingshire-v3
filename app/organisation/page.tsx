@@ -5,10 +5,12 @@ import {
   BadgeCheck,
   BriefcaseBusiness,
   Building2,
+  Check,
   ShieldCheck,
   Users,
 } from "lucide-react";
 import PublicShell from "@/components/ui/PublicShell";
+import { ORGANISATION_PLANS } from "@/modules/organisations/domain/plans";
 
 const BUSINESS_TEAM_IMAGE =
   "https://images.unsplash.com/photo-1753162660943-ce96a8953e8d?auto=format&fit=crop&w=1600&q=82";
@@ -38,7 +40,7 @@ const benefits = [
   },
 ];
 
-export default function ForOrganisationsPage() {
+export default function OrganisationPage() {
   return (
     <PublicShell navbarVariant="solid">
       <section className="bg-white px-6 pb-20 pt-28">
@@ -56,7 +58,7 @@ export default function ForOrganisationsPage() {
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/organisations/start"
+                href="/organisation/start"
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold text-white transition hover:bg-blue-700"
               >
                 Create your Organisation <ArrowRight size={18} />
@@ -125,6 +127,68 @@ export default function ForOrganisationsPage() {
         </div>
       </section>
 
+      <section className="bg-white px-6 py-20">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-bold uppercase tracking-[0.18em] text-blue-600">
+              Simple monthly plans
+            </p>
+            <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+              Start with the workspace that fits your team
+            </h2>
+            <p className="mt-4 leading-7 text-slate-600">
+              Every plan includes unlimited ordinary paid job posts.
+              Placement capacities will be added when placements launch.
+            </p>
+          </div>
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {ORGANISATION_PLANS.map((plan) => (
+              <div
+                key={plan.id}
+                className={`rounded-[1.75rem] border p-6 ${
+                  plan.highlighted
+                    ? "border-blue-500 bg-blue-50 shadow-xl shadow-blue-950/10"
+                    : "border-slate-200 bg-white"
+                }`}
+              >
+                <p className="font-extrabold text-slate-950">{plan.name}</p>
+                <p className="mt-3 text-4xl font-extrabold text-slate-950">
+                  £{plan.monthlyPriceGBP}
+                  <span className="text-sm font-semibold text-slate-500">
+                    /month
+                  </span>
+                </p>
+                <p className="mt-3 min-h-14 text-sm leading-6 text-slate-600">
+                  {plan.description}
+                </p>
+                <ul className="mt-5 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex gap-2 text-sm text-slate-700"
+                    >
+                      <Check
+                        size={16}
+                        className="mt-0.5 shrink-0 text-emerald-600"
+                      />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="mt-9 text-center">
+            <Link
+              href="/organisation/start"
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold text-white transition hover:bg-blue-700"
+            >
+              Set up your Organisation <ArrowRight size={18} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="px-6 py-20">
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
           <div className="relative h-[520px] overflow-hidden rounded-[2rem]">
@@ -149,8 +213,8 @@ export default function ForOrganisationsPage() {
               someone applies.
             </p>
             <p className="mt-4 text-sm leading-6 text-slate-500">
-              Placements, subscription plans and Organisation verification are
-              coming later and are not currently available.
+              Placements and Organisation verification are coming later.
+              Subscription plans are now part of Organisation setup.
             </p>
           </div>
         </div>
@@ -167,7 +231,7 @@ export default function ForOrganisationsPage() {
             </p>
           </div>
           <Link
-            href="/organisations/start"
+            href="/organisation/start"
             className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold hover:bg-blue-500"
           >
             Create your Organisation <ArrowRight size={18} />

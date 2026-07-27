@@ -866,8 +866,10 @@ possible, committed separately. Empty future folders should not be created:
 `workers/` will be introduced when durable background jobs are actually
 implemented.
 
-Placements, subscriptions, verification, public Organisation discovery, and
-the international-student workstream remain outside Phase 1.
+Placements, verification and the international-student workstream remain
+outside Phase 1. Organisation subscription onboarding was subsequently brought
+into Phase 1 because an Organisation is now activated only after its selected
+plan is confirmed by Stripe.
 
 ### Organisation onboarding and verification decisions
 
@@ -878,19 +880,21 @@ actions have a clear, auditable actor. The intended first-time flow is:
 1. choose to create an Organisation;
 2. create or sign in to a personal KingsHire account;
 3. complete personal Client or Kinglancer onboarding;
-4. create the Organisation workspace and become its sole Owner;
-5. complete its profile and invite members.
+4. enter the Organisation details and choose a subscription;
+5. complete Stripe Checkout;
+6. activate the Organisation workspace and become its sole Owner;
+7. invite members.
 
 The public product journey treats Organisations as a first-class offering even
 though the underlying authentication remains person-first:
 
-- `For Organisations` is present in the public navigation;
+- `Organisations` is present in the public navigation;
 - the homepage includes a prominent Organisation callout;
-- `/for-organisations` explains the current team-workspace value and labels
-  placements, subscriptions and verification as coming later;
-- `/get-started` offers Client, Kinglancer and Organisation as three clear
-  intentions;
-- `/organisations/start` sends signed-out founders through Organisation-aware
+- `/organisation` is the canonical public discovery URL. The former
+  `/for-organisations` URL permanently redirects to it;
+- `/get-started` offers Kinglancer, Client and Organisation as three clear
+  intentions, in that order;
+- `/organisation/start` sends signed-out founders through Organisation-aware
   signup, new founders through Client onboarding, and existing Client or
   Kinglancer accounts directly to Organisation creation.
 
@@ -915,8 +919,9 @@ AI/template aesthetics:
   feature rows and two meaningful photographs rather than repeated large
   cards;
 - Organisation signup uses a separate collaboration photograph with the
-  standard KingsHire form, while the discovery page retains the small-business
-  image;
+  standard KingsHire form. Client and Kinglancer signup use the same two-column
+  component with journey-specific copy and a restrained two-image, nine-second
+  crossfade. Reduced-motion visitors see the first image without animation;
 - photography is evidence, not decoration, and should remain limited to places
   where it explains the people or work being discussed;
 - the public Kinglancer listing reserves a fixed 220px card height, including
@@ -942,7 +947,7 @@ create an individual account, confirm their email, complete personal onboarding
 and return to the original invitation; existing users can sign in and return
 directly. The invitation remains bound to the invited email at acceptance.
 
-Validation completed locally:
+Validation of the earlier foundation completed locally:
 
 - 39 unit tests pass across five files;
 - TypeScript passes with `npx tsc --noEmit`;
@@ -961,17 +966,83 @@ The human browser run for `https://staging.kingshire.uk` is documented in
 `docs/ORGANISATION_STAGING_TEST_RUN.md`. It contains 33 ordered staging
 scenarios with exact actors, actions, expected UI results, evidence guidance,
 test-data naming, payment cautions, and exit criteria. It should be used only
-after the Organisation code and migration 029 are deployed to staging.
+after the Organisation code and migrations 029–031 are deployed to staging.
 
 The live authenticated workflow still needs to be exercised after applying
-migration 029 to a test Supabase project. Use
+migrations 029–031 to a test Supabase project. Use
 `docs/ORGANISATION_PHASE1_ACCEPTANCE.md` as the release gate. The Playwright
 suite includes unauthenticated Organisation access guards, but this session
 did not have the Supabase environment needed for a live end-to-end run.
 
+## 17. Organisation subscription onboarding (27 July 2026)
+
+Organisation setup is now a guided first-class journey:
+
+1. create or sign in to the personal KingsHire account;
+2. enter Organisation identity details;
+3. complete optional profile details;
+4. choose Starter (£10/month), Growth (£25/month), or Scale (£40/month);
+5. review Owner authority and recurring billing;
+6. complete a real Stripe Checkout subscription in test mode on staging;
+7. confirm and atomically activate the Organisation;
+8. optionally invite a colleague;
+9. enter the workspace.
+
+The plan catalogue and displayed prices live in
+`modules/organisations/domain/plans.ts`. Stripe Price IDs are environment
+configuration, and the server retrieves each Price before Checkout to verify
+that its currency, amount and monthly recurrence match the displayed plan.
+The current tier descriptions intentionally avoid inventing placement limits:
+ordinary paid jobs are unlimited, while placement entitlements will be added
+when placements are implemented.
+
+Migration `031_organisation_subscriptions.sql` introduces private setup drafts,
+Organisation subscriptions and the transactional
+`activate_organisation_setup` command. Organisation and Owner records do not
+exist before payment confirmation. The command locks the draft and returns the
+existing Organisation on a repeat, so the browser return and webhook may race
+safely without duplicate workspaces or subscriptions.
+
+Confirmation deliberately uses two paths:
+
+- `/organisation/setup/complete` retrieves the Checkout Session directly from
+  Stripe and normally activates the workspace immediately for the present
+  user;
+- `checkout.session.completed` calls the same fulfilment service as a durable
+  fallback when the browser never returns.
+
+The completion page performs four bounded retries before showing the recovery
+state. It never asks the user to pay again. Stripe webhook signature
+verification remains mandatory when the deployed app runs with
+`NODE_ENV=production`.
+
+`customer.subscription.updated` and `customer.subscription.deleted` keep local
+status and plan state synchronized. The Owner can open Stripe's Billing Portal
+from the workspace. Once an Organisation has a subscription record, only
+`active` or `trialing` status permits new Organisation jobs. Pre-existing
+Organisation records with no subscription row are grandfathered so migration
+031 does not break existing staging data. An Organisation cannot be deleted
+while its Stripe subscription remains billable.
+
+Required staging variables:
+
+- `STRIPE_ORGANISATION_STARTER_PRICE_ID`
+- `STRIPE_ORGANISATION_GROWTH_PRICE_ID`
+- `STRIPE_ORGANISATION_SCALE_PRICE_ID`
+
+Local verification for this change:
+
+- TypeScript passes with `npx tsc --noEmit --incremental false`;
+- ESLint reports zero errors and the same eight unrelated warnings;
+- 44 unit tests pass across six files;
+- the Next.js production bundle compiles and passes TypeScript. Static
+  prerendering cannot finish in the local environment without Supabase
+  variables (`supabaseUrl is required`), so a full environment-backed build
+  remains a staging deployment check.
+
 ---
 
-## 17. Recommended Next Agent Prompt Prefix
+## 18. Recommended Next Agent Prompt Prefix
 
 When starting a new chat, paste this context:
 

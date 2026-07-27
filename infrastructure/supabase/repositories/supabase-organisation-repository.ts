@@ -159,11 +159,15 @@ export class SupabaseOrganisationRepository
       throw new OrganisationError(
         error.message.includes("active jobs")
           ? "conflict"
+          : error.message.includes("Cancel the Organisation subscription")
+            ? "conflict"
           : error.message.includes("Only the Owner")
             ? "forbidden"
             : "persistence_failure",
         error.message.includes("active jobs")
           ? "Resolve or cancel all active Organisation jobs first."
+          : error.message.includes("Cancel the Organisation subscription")
+            ? "Cancel the subscription before deleting the Organisation."
           : error.message.includes("Only the Owner")
             ? "Only the Owner can delete the Organisation."
             : "Unable to delete Organisation.",

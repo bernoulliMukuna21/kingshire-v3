@@ -62,6 +62,38 @@ export async function POST(request: Request) {
     );
   }
 
+  if (organisationId) {
+    const { data: subscription, error: subscriptionError } =
+      await createServiceClient()
+        .from("organisation_subscriptions")
+        .select("status")
+        .eq("organisation_id", organisationId)
+        .maybeSingle();
+
+    if (subscriptionError) {
+      return NextResponse.json(
+        { error: "Unable to verify the Organisation subscription." },
+        { status: 503 },
+      );
+    }
+    // Organisations created before paid onboarding are intentionally
+    // grandfathered. Once an Organisation has a subscription record, only an
+    // active/trialling subscription may create new work.
+    if (
+      subscription &&
+      subscription.status !== "active" &&
+      subscription.status !== "trialing"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Reactivate the Organisation subscription before posting new jobs.",
+        },
+        { status: 402 },
+      );
+    }
+  }
+
   const {
     title,
     description,

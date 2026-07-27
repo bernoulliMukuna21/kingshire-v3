@@ -15,6 +15,35 @@ import {
   normalizeEmail,
 } from "@/lib/validation";
 
+const ORGANISATION_AUTH_IMAGES = [
+  {
+    src: "https://images.unsplash.com/photo-1603201667141-5a2d4c673378?auto=format&fit=crop&w=1400&q=82",
+    alt: "A small team collaborating around a laptop",
+  },
+] as const;
+
+const KINGLANCER_AUTH_IMAGES = [
+  {
+    src: "https://images.unsplash.com/photo-1743705392857-81fddd3f9fdc?auto=format&fit=crop&w=1400&q=82",
+    alt: "An independent professional working on a laptop",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1744509112837-8471c90b6cce?auto=format&fit=crop&w=1400&q=82",
+    alt: "A craftsperson working with tools",
+  },
+] as const;
+
+const CLIENT_AUTH_IMAGES = [
+  {
+    src: "https://images.unsplash.com/photo-1521790797524-b2497295b8a0?auto=format&fit=crop&w=1400&q=82",
+    alt: "Two people beginning a working relationship",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1629292824735-805e9ab974fb?auto=format&fit=crop&w=1400&q=82",
+    alt: "A person planning work using coloured notes",
+  },
+] as const;
+
 function SignUpContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,6 +56,14 @@ function SignUpContent() {
       : requestedRole === "kinglancer"
         ? "kinglancer"
         : null;
+  const journey =
+    isOrganisationJourney
+      ? "organisation"
+      : onboardingRole === "kinglancer"
+        ? "kinglancer"
+        : onboardingRole === "client"
+          ? "client"
+          : "general";
   const requestedNext = searchParams.get("next");
   const safeNext =
     requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
@@ -169,27 +206,50 @@ function SignUpContent() {
 
   return (
     <AuthLayout
-      headline={isOrganisationJourney ? "Bring your team to KingsHire." : "Join your community."}
-      accent={isOrganisationJourney ? "Create opportunities together." : "Earn your worth."}
+      headline={
+        journey === "organisation"
+          ? "Bring your team to KingsHire."
+          : journey === "kinglancer"
+            ? "Put your skills to work."
+            : journey === "client"
+              ? "Get the work done."
+              : "Join your community."
+      }
+      accent={
+        journey === "organisation"
+          ? "Create opportunities together."
+          : journey === "kinglancer"
+            ? "Earn your worth."
+            : journey === "client"
+              ? "Hire with confidence."
+              : "Earn your worth."
+      }
       body={
-        isOrganisationJourney
+        journey === "organisation"
           ? "Create a shared workspace for your Organisation while keeping every team action secure and accountable."
-          : "A trusted platform where people hire local talent and earn from their services."
+          : journey === "kinglancer"
+            ? "Show people what you do, discover local opportunities and get paid securely for your work."
+            : journey === "client"
+              ? "Find trusted people for practical, creative and professional work."
+              : "A trusted platform where people hire local talent and earn from their services."
       }
       bullets={
-        isOrganisationJourney
+        journey === "organisation"
           ? ["Publish as your Organisation", "Invite your team", "Control member permissions", "Manage jobs together"]
-          : ["Free to join", "Payments protected by Stripe", "Community verified members", "Low platform fees (2.5% client / 5% kinglancer)"]
+          : journey === "kinglancer"
+            ? ["Build your service profile", "Discover local paid work", "Payments protected by Stripe", "Keep control of your availability"]
+            : journey === "client"
+              ? ["Post jobs clearly", "Compare applicants", "Payments protected by Stripe", "Manage work in one place"]
+              : ["Free to join", "Payments protected by Stripe", "Community verified members", "Low platform fees (2.5% client / 5% kinglancer)"]
       }
-      imageSrc={
-        isOrganisationJourney
-          ? "https://images.unsplash.com/photo-1603201667141-5a2d4c673378?auto=format&fit=crop&w=1400&q=82"
-          : undefined
-      }
-      imageAlt={
-        isOrganisationJourney
-          ? "A small team collaborating around a laptop"
-          : undefined
+      images={
+        journey === "organisation"
+          ? ORGANISATION_AUTH_IMAGES
+          : journey === "kinglancer"
+            ? KINGLANCER_AUTH_IMAGES
+            : journey === "client"
+              ? CLIENT_AUTH_IMAGES
+              : undefined
       }
     >
       <div className="w-full max-w-md">
@@ -220,7 +280,7 @@ function SignUpContent() {
                 label="Sign up with KingsChat"
                 next={
                   isOrganisationJourney
-                    ? "/organisations/start"
+                    ? "/organisation/start"
                     : safeNext ?? undefined
                 }
               />

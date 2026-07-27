@@ -99,7 +99,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
         title="Something new to celebrate: Organisation workspaces."
         message="Create your Organisation, invite your team and publish jobs together."
         ctaLabel="Discover"
-        ctaHref="/for-organisations"
+        ctaHref="/organisation"
       />
 
       <motion.div

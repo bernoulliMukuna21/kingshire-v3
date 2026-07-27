@@ -13,14 +13,14 @@ const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Browse Jobs", href: "/jobs" },
   { label: "Kinglancers", href: "/kinglancers" },
-  { label: "Organisations", href: "/for-organisations" },
+  { label: "Organisations", href: "/organisation" },
 ];
 
 const clientNavLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Post a Job", href: "/jobs/post" },
   { label: "Kinglancers", href: "/kinglancers" },
-  { label: "Organisations", href: "/for-organisations" },
+  { label: "Organisations", href: "/organisation" },
 ];
 
 export default function Navbar({

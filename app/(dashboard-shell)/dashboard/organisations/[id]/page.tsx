@@ -11,6 +11,8 @@ import InviteMemberForm from "./InviteMemberForm";
 import MemberActions from "./MemberActions";
 import OrganisationSettings from "./OrganisationSettings";
 import TransferOwnership from "./TransferOwnership";
+import BillingPortalButton from "./BillingPortalButton";
+import { getOrganisationPlan } from "@/modules/organisations/domain/plans";
 
 export default async function OrganisationDashboardPage({
   params,
@@ -26,7 +28,7 @@ export default async function OrganisationDashboardPage({
 
   const overview = await getOrganisationOverview(id);
   if (!overview) notFound();
-  const { organisation, jobs, members, stats } = overview;
+  const { organisation, jobs, members, stats, subscription } = overview;
   const canManageMembers = membership.role === "owner" || membership.role === "admin";
 
   return (
@@ -97,6 +99,38 @@ export default async function OrganisationDashboardPage({
               organisation={organisation}
               canDelete={membership.role === "owner"}
             />
+          </Card>
+        </section>
+      )}
+      {membership.role === "owner" && subscription && (
+        <section>
+          <h2 className="mb-3 text-xl font-black text-slate-950">
+            Subscription
+          </h2>
+          <Card className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-black text-slate-950">
+                {getOrganisationPlan(subscription.plan).name} · £
+                {getOrganisationPlan(subscription.plan).monthlyPriceGBP}/month
+              </p>
+              <p className="mt-1 text-sm capitalize text-slate-600">
+                {subscription.status.replaceAll("_", " ")}
+                {subscription.cancel_at_period_end
+                  ? " · Cancels at the end of the billing period"
+                  : ""}
+              </p>
+              {subscription.current_period_end && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {subscription.cancel_at_period_end ? "Access until" : "Renews"}{" "}
+                  {new Intl.DateTimeFormat("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  }).format(new Date(subscription.current_period_end))}
+                </p>
+              )}
+            </div>
+            <BillingPortalButton organisationId={id} />
           </Card>
         </section>
       )}

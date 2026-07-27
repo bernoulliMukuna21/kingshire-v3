@@ -13,6 +13,25 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: "/for-organisations",
+        destination: "/organisation",
+        permanent: true,
+      },
+      {
+        source: "/organisations/start",
+        destination: "/organisation/start",
+        permanent: true,
+      },
+      {
+        source: "/dashboard/organisations/new",
+        destination: "/organisation/setup",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

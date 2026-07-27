@@ -1,8 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CheckCircle } from "lucide-react";
+import { useReducedMotion } from "framer-motion";
+
+export type AuthImage = {
+  src: string;
+  alt: string;
+};
 
 interface AuthLayoutProps {
   headline: string;
@@ -11,6 +18,7 @@ interface AuthLayoutProps {
   bullets?: string[];
   imageSrc?: string;
   imageAlt?: string;
+  images?: readonly AuthImage[];
   children: React.ReactNode;
 }
 
@@ -21,22 +29,46 @@ export default function AuthLayout({
   bullets,
   imageSrc,
   imageAlt = "",
+  images,
   children,
 }: AuthLayoutProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const [activeImage, setActiveImage] = useState(0);
+  const imageList =
+    images && images.length > 0
+      ? images
+      : imageSrc
+        ? [{ src: imageSrc, alt: imageAlt }]
+        : [];
+
+  useEffect(() => {
+    if (prefersReducedMotion || imageList.length < 2) return;
+    const interval = window.setInterval(
+      () => setActiveImage((current) => (current + 1) % imageList.length),
+      9000,
+    );
+    return () => window.clearInterval(interval);
+  }, [imageList.length, prefersReducedMotion]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Left panel */}
       <div className="relative hidden overflow-hidden bg-[#10234b] p-12 lg:flex lg:w-1/2 lg:flex-col lg:justify-between">
-        {imageSrc ? (
+        {imageList.length > 0 ? (
           <>
-            <Image
-              src={imageSrc}
-              alt={imageAlt}
-              fill
-              sizes="50vw"
-              className="object-cover"
-              preload
-            />
+            {imageList.map((image, index) => (
+              <Image
+                key={image.src}
+                src={image.src}
+                alt={index === activeImage ? image.alt : ""}
+                fill
+                sizes="50vw"
+                className={`object-cover transition-opacity duration-1000 ${
+                  index === activeImage ? "opacity-100" : "opacity-0"
+                }`}
+                preload={index === 0}
+              />
+            ))}
             <div className="absolute inset-0 bg-linear-to-t from-[#10234b] via-[#10234b]/72 to-[#10234b]/18" />
           </>
         ) : (

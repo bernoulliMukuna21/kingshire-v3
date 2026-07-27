@@ -45,7 +45,8 @@ database invariant and any relevant side effect.
 ## Migration and database scenarios
 
 Run these against a disposable or dedicated test Supabase project after
-migration 029 is applied.
+migrations 029–031 are applied and Stripe test-mode Organisation Prices are
+configured.
 
 | ID | Setup/action | Expected database result |
 |---|---|---|
@@ -168,12 +169,13 @@ Phase 1 can proceed only when:
 - migration, application commit, Stripe mode, and evidence are recorded.
 ## Public Organisation entry and onboarding
 
-- **ORG-PUB-01:** The public desktop and mobile navigation show **For
-  Organisations**, linking to `/for-organisations`.
+- **ORG-PUB-01:** The public desktop and mobile navigation show
+  **Organisations**, linking to canonical `/organisation`; the former
+  `/for-organisations` URL permanently redirects there.
 - **ORG-PUB-02:** The homepage Organisation callout is visible without opening
   the Client signup flow and links to the Organisation landing page.
-- **ORG-PUB-03:** **Get started** presents Client, Kinglancer and Organisation
-  as three distinct intentions.
+- **ORG-PUB-03:** **Get started** presents Kinglancer, Client and Organisation
+  as three distinct intentions, in that order.
 - **ORG-PUB-04:** A signed-out visitor choosing **Create your Organisation**
   sees Organisation-specific signup copy explaining that a personal Client
   account is created first.
@@ -181,11 +183,12 @@ Phase 1 can proceed only when:
   Organisation founder reaches Client onboarding and then Organisation
   creation without losing the intended destination.
 - **ORG-PUB-06:** A signed-in Client goes directly from
-  `/organisations/start` to Organisation creation.
+  `/organisation/start` to guided Organisation setup.
 - **ORG-PUB-07:** A signed-in Kinglancer goes directly to Organisation creation
   without their Kinglancer role, services or profile being replaced.
-- **ORG-PUB-08:** The Organisation landing page describes placements,
-  subscriptions and verification as coming later, not currently available.
+- **ORG-PUB-08:** The Organisation landing page describes placements and
+  verification as coming later and sends subscription setup to the guided
+  Organisation journey.
 - **ORG-PUB-09:** The temporary Organisation announcement is shown to
   every homepage visitor immediately, without waiting for authentication or
   reading browser storage, and links to the Organisation discovery page.
@@ -193,7 +196,36 @@ Phase 1 can proceed only when:
   callout card. Its centred navy hero and floating profiles remain readable
   and respect reduced-motion settings.
 - **ORG-PUB-11:** Organisation signup uses Organisation-specific photography
-  and copy while retaining the standard KingsHire form controls.
+  and copy while retaining the standard KingsHire form controls. Client and
+  Kinglancer signup use journey-specific copy and two-image crossfades within
+  the same left visual panel.
 - **ORG-PUB-12:** Remote photographs preserve their intended crop at desktop
   and mobile sizes, have meaningful alternative text, and produce no layout
   shift or image-optimizer errors.
+- **ORG-PUB-13:** The public Organisation page exposes £10, £25 and £40 monthly
+  pricing before account creation and uses the same shared plan catalogue as
+  setup.
+
+## Subscription onboarding and Stripe confirmation
+
+| ID | Scenario | Expected |
+|---|---|---|
+| ORG-S01 | Founder completes Organisation, profile and plan steps | Review shows the exact Organisation and selected monthly amount |
+| ORG-S02 | Starter/Growth/Scale selected | Stripe charges £10/£25/£40 monthly test Price respectively |
+| ORG-S03 | Configured Stripe Price amount/currency/interval mismatches UI | Checkout is rejected before charging |
+| ORG-S04 | Founder cancels on Stripe Checkout | Returns to setup with entered details retained; no Organisation activated |
+| ORG-S05 | Successful test-card checkout | Return page activates Organisation and proceeds to optional invitation |
+| ORG-S06 | `checkout.session.completed` arrives before return confirmation | Exactly one Organisation, Owner and subscription |
+| ORG-S07 | Return confirmation wins race with webhook | Exactly one Organisation, Owner and subscription |
+| ORG-S08 | Same webhook is delivered repeatedly | Idempotent success; no duplicate records |
+| ORG-S09 | User pays and closes the browser before return | Webhook still activates the Organisation |
+| ORG-S10 | Stripe API is temporarily unavailable on return | Bounded retries then recovery message; no second charge |
+| ORG-S11 | Confirmation is retried after Stripe recovers | Existing checkout activates once and continues to invitation |
+| ORG-S12 | Another signed-in user submits the Checkout Session ID | Forbidden; no Organisation data disclosed |
+| ORG-S13 | Owner opens Stripe Customer Portal | Portal opens for the Organisation customer and returns to its workspace |
+| ORG-S14 | Subscription plan changes in the portal | Webhook synchronises local plan, Price and status |
+| ORG-S15 | Subscription reaches `canceled` | Workspace history remains; new Organisation job posting is blocked |
+| ORG-S16 | Pre-migration Organisation has no subscription row | Existing workspace continues to work as grandfathered |
+| ORG-S17 | Owner tries deleting an actively billed Organisation | Rejected until subscription is cancelled |
+| ORG-S18 | Invite is submitted after activation | Email/link flow works; invitation can be skipped |
+| ORG-S19 | Reduced-motion is enabled on tailored signup | First image remains static; no automatic crossfade |

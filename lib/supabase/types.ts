@@ -122,6 +122,136 @@ export type Database = {
         };
         Relationships: [];
       };
+      organisation_setup_drafts: {
+        Row: {
+          id: string;
+          request_key: string;
+          actor_id: string;
+          name: string;
+          organisation_type:
+            | "company"
+            | "charity"
+            | "church"
+            | "non_profit"
+            | "community_group"
+            | "public_body"
+            | "other";
+          description: string | null;
+          country: string;
+          location: string | null;
+          website: string | null;
+          registration_number: string | null;
+          selected_plan: "starter" | "growth" | "scale";
+          stripe_price_id: string;
+          stripe_checkout_session_id: string | null;
+          status:
+            | "draft"
+            | "checkout_pending"
+            | "active"
+            | "cancelled"
+            | "failed";
+          organisation_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          request_key: string;
+          actor_id: string;
+          name: string;
+          organisation_type:
+            | "company"
+            | "charity"
+            | "church"
+            | "non_profit"
+            | "community_group"
+            | "public_body"
+            | "other";
+          description?: string | null;
+          country?: string;
+          location?: string | null;
+          website?: string | null;
+          registration_number?: string | null;
+          selected_plan: "starter" | "growth" | "scale";
+          stripe_price_id: string;
+          stripe_checkout_session_id?: string | null;
+          status?:
+            | "draft"
+            | "checkout_pending"
+            | "active"
+            | "cancelled"
+            | "failed";
+          organisation_id?: string | null;
+        };
+        Update: {
+          stripe_checkout_session_id?: string | null;
+          status?:
+            | "draft"
+            | "checkout_pending"
+            | "active"
+            | "cancelled"
+            | "failed";
+          organisation_id?: string | null;
+        };
+        Relationships: [];
+      };
+      organisation_subscriptions: {
+        Row: {
+          organisation_id: string;
+          plan: "starter" | "growth" | "scale";
+          status:
+            | "incomplete"
+            | "incomplete_expired"
+            | "trialing"
+            | "active"
+            | "past_due"
+            | "canceled"
+            | "unpaid"
+            | "paused";
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+          stripe_checkout_session_id: string;
+          stripe_price_id: string;
+          cancel_at_period_end: boolean;
+          current_period_end: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          organisation_id: string;
+          plan: "starter" | "growth" | "scale";
+          status:
+            | "incomplete"
+            | "incomplete_expired"
+            | "trialing"
+            | "active"
+            | "past_due"
+            | "canceled"
+            | "unpaid"
+            | "paused";
+          stripe_customer_id: string;
+          stripe_subscription_id: string;
+          stripe_checkout_session_id: string;
+          stripe_price_id: string;
+          cancel_at_period_end?: boolean;
+          current_period_end?: string | null;
+        };
+        Update: {
+          plan?: "starter" | "growth" | "scale";
+          status?:
+            | "incomplete"
+            | "incomplete_expired"
+            | "trialing"
+            | "active"
+            | "past_due"
+            | "canceled"
+            | "unpaid"
+            | "paused";
+          stripe_price_id?: string;
+          cancel_at_period_end?: boolean;
+          current_period_end?: string | null;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
@@ -476,6 +606,17 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      activate_organisation_setup: {
+        Args: {
+          p_draft_id: string;
+          p_actor_id: string;
+          p_stripe_checkout_session_id: string;
+          p_stripe_customer_id: string;
+          p_stripe_subscription_id: string;
+          p_subscription_status: string;
+        };
+        Returns: string;
+      };
       increment_jobs_completed: {
         Args: { user_id: string };
         Returns: void;

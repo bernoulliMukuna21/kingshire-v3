@@ -9,6 +9,10 @@ import {
 import { createServiceClient } from "@/lib/supabase/service";
 import { fireTransfer, isStripeAccountPayoutReady } from "@/lib/stripe-connect";
 import { notifyJobAwarded, notifyPaymentFailed } from "@/lib/notifications";
+import {
+  fulfillOrganisationCheckout,
+  syncOrganisationSubscription,
+} from "@/infrastructure/stripe/organisation-subscriptions";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -47,6 +51,23 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        if (session.metadata?.purpose === "organisation_subscription") {
+          await fulfillOrganisationCheckout(session.id);
+        }
+        break;
+      }
+
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object;
+        if (subscription.metadata?.purpose === "organisation_subscription") {
+          await syncOrganisationSubscription(subscription);
+        }
+        break;
+      }
+
       case "payment_intent.succeeded": {
         const pi = event.data.object;
         await finalizePaymentAttempt(pi.id);
