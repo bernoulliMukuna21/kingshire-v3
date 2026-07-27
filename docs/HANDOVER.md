@@ -908,9 +908,9 @@ AI/template aesthetics:
 - Manrope is the single global interface typeface;
 - the homepage retains its centred, animated navy hero and floating profile
   cards without photographic background movement;
-- a slim purple celebration announcement replaces the permanent Organisation
-  card for signed-out users and Clients until 9 August 2026; it is deliberately
-  non-dismissible during the short launch campaign;
+- a reusable `PublicityBanner` renders launch messages directly on the
+  homepage without depending on authentication or browser storage; the current
+  purple Organisation campaign is visible to every homepage visitor;
 - the Organisation landing page uses an editorial split layout, restrained
   feature rows and two meaningful photographs rather than repeated large
   cards;

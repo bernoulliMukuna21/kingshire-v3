@@ -187,8 +187,8 @@ Phase 1 can proceed only when:
 - **ORG-PUB-08:** The Organisation landing page describes placements,
   subscriptions and verification as coming later, not currently available.
 - **ORG-PUB-09:** The temporary Organisation announcement is shown to
-  signed-out visitors and Clients, hidden from Kinglancers, and no longer
-  shown after 9 August 2026.
+  every homepage visitor immediately, without waiting for authentication or
+  reading browser storage, and links to the Organisation discovery page.
 - **ORG-PUB-10:** The homepage no longer renders the permanent Organisation
   callout card. Its centred navy hero and floating profiles remain readable
   and respect reduced-motion settings.
