@@ -10,9 +10,7 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(
-      `/sign-up?intent=organisation&role=client&next=${encodeURIComponent(ORGANISATION_SETUP_PATH)}`,
-    );
+    redirect("/sign-up?intent=organisation");
   }
 
   const { data: profile } = await supabase
@@ -22,9 +20,7 @@ export async function GET() {
     .maybeSingle();
 
   if (!profile?.role) {
-    redirect(
-      `/onboarding?intent=organisation&role=client&next=${encodeURIComponent(ORGANISATION_SETUP_PATH)}`,
-    );
+    redirect(ORGANISATION_SETUP_PATH);
   }
 
   redirect(ORGANISATION_SETUP_PATH);

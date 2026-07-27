@@ -898,6 +898,14 @@ though the underlying authentication remains person-first:
   signup, new founders through Client onboarding, and existing Client or
   Kinglancer accounts directly to Organisation creation.
 
+The public Organisation signup URL is intentionally reduced to
+`/sign-up?intent=organisation`. Organisation intent fixes both the new-account
+foundation (`client`) and the destination (`/organisation/setup`); `role` and
+`next` are not copied from the URL into this journey. Changing arbitrary query
+parameters therefore cannot grant a role, membership or ownership. Existing
+authenticated Kinglancers retain their personal role and may separately own an
+Organisation.
+
 Organisation signup explicitly explains that the founder first creates a
 personal Client account, which then becomes the Organisation Owner. Existing
 Kinglancers are not converted to Clients and do not create duplicate accounts:
@@ -918,11 +926,14 @@ AI/template aesthetics:
 - the Organisation landing page uses an editorial split layout, restrained
   feature rows and two meaningful photographs rather than repeated large
   cards;
-- Organisation signup uses a dedicated setup shell rather than the standard
-  photo-led authentication layout. A persistent seven-step journey covers
-  Account, Organisation, Profile, Plan, Review and payment, Team and Complete.
-  Desktop uses a numbered left rail and setup summary; mobile uses compact
-  progress. Client and Kinglancer signup retain the two-column component with
+- Organisation signup uses a dedicated two-column setup shell rather than the
+  standard authentication layout. A restrained, slowly moving team photograph
+  and Organisation message occupy the desktop brand panel; reduced-motion
+  preferences disable movement. The form remains centred in the working area.
+  A compact bottom counter and progress line follow the seven-step Account,
+  Organisation, Profile, Plan, Review and payment, Team and Complete journey
+  without making setup appear heavier through a permanent step rail. Client
+  and Kinglancer signup retain the two-column component with
   journey-specific copy and a restrained two-image, nine-second crossfade.
   Generic signup and sign-in use neutral real-work photography. The selected
   images are served locally so the first frame is immediately available; the
@@ -935,6 +946,13 @@ AI/template aesthetics:
 
 The auth photographs originated from the selected Unsplash set and are stored
 under `public/images/auth` to avoid an empty carousel while remote images load.
+
+The current setup trust boundary is server-side: authentication, input and plan
+validation, Stripe price verification, checkout-to-actor binding, completed
+payment checks and transactional idempotent activation do not trust journey
+query parameters. Application-level distributed signup/setup rate limiting and
+CAPTCHA are not yet implemented. They should use shared infrastructure rather
+than per-process memory so Railway replicas enforce one limit consistently.
 
 The creation screen now gives ownership consequences a separate amber notice
 and asks for confirmation before creation. A shared Organisation email is not

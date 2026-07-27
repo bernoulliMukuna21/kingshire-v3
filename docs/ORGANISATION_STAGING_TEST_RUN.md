@@ -87,8 +87,8 @@ Expected:
 - Stripe shows a £10 recurring monthly test subscription;
 - the setup shell visibly progresses from Account through Organisation,
   Profile, Plan, Review and payment, Team and Complete;
-- the desktop setup summary updates with the Organisation name and selected
-  plan; on mobile, the compact step indicator updates instead;
+- the desktop form remains centred beside the Organisation team panel and the
+  compact bottom progress indicator updates on desktop and mobile;
 - confirmation proceeds without a normal pending-approval screen;
 - the optional invitation step appears;
 - the Organisation workspace opens;

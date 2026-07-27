@@ -54,6 +54,9 @@ function SignUpContent() {
   const intent = searchParams.get("intent");
   const requestedRole = searchParams.get("role");
   const isOrganisationJourney = intent === "organisation";
+  // Organisation founders always start from a personal Client foundation.
+  // A role query parameter is deliberately ignored for this journey; existing
+  // authenticated Kinglancers keep their role and enter through /organisation/start.
   const onboardingRole =
     isOrganisationJourney || requestedRole === "client"
       ? "client"
@@ -68,21 +71,26 @@ function SignUpContent() {
         ? "client"
         : "general";
   const requestedNext = searchParams.get("next");
-  const safeNext =
-    requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+  const safeNext = isOrganisationJourney
+    ? "/organisation/setup"
+    : requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
       ? requestedNext
       : null;
   const callbackParams = new URLSearchParams();
-  if (safeNext) callbackParams.set("next", safeNext);
-  if (onboardingRole) callbackParams.set("role", onboardingRole);
-  if (isOrganisationJourney) callbackParams.set("intent", "organisation");
+  if (isOrganisationJourney) {
+    callbackParams.set("intent", "organisation");
+  } else {
+    if (safeNext) callbackParams.set("next", safeNext);
+    if (onboardingRole) callbackParams.set("role", onboardingRole);
+  }
   const callbackPath = `/auth/callback${
     callbackParams.size ? `?${callbackParams.toString()}` : ""
   }`;
   const onboardingParams = new URLSearchParams();
-  if (safeNext) onboardingParams.set("next", safeNext);
-  if (onboardingRole) onboardingParams.set("role", onboardingRole);
-  if (isOrganisationJourney) onboardingParams.set("intent", "organisation");
+  if (!isOrganisationJourney) {
+    if (safeNext) onboardingParams.set("next", safeNext);
+    if (onboardingRole) onboardingParams.set("role", onboardingRole);
+  }
   const onboardingPath = isOrganisationJourney
     ? "/organisation/setup"
     : `/onboarding${

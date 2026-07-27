@@ -162,7 +162,11 @@ export async function GET(request: NextRequest) {
   // Determine where to send the user
   let destination: string;
   const safeNext =
-    next?.startsWith("/") && !next.startsWith("//") ? next : null;
+    intent === "organisation"
+      ? "/organisation/setup"
+      : next?.startsWith("/") && !next.startsWith("//")
+        ? next
+        : null;
 
   if (tokenType === "recovery") {
     // Password-reset flow → go straight to the reset page

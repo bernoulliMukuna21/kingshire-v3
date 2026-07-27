@@ -27,9 +27,11 @@ function SignInContent() {
   const requestedRole = searchParams.get("role");
   const intent = searchParams.get("intent");
   const safeNext =
-    requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
-      ? requestedNext
-      : null;
+    intent === "organisation"
+      ? "/organisation/setup"
+      : requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+        ? requestedNext
+        : null;
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -40,11 +42,14 @@ function SignInContent() {
   const handleGoogleSignIn = async () => {
     const supabase = createClient();
     const callbackParams = new URLSearchParams();
-    if (safeNext) callbackParams.set("next", safeNext);
-    if (requestedRole === "client" || requestedRole === "kinglancer") {
-      callbackParams.set("role", requestedRole);
+    if (intent === "organisation") {
+      callbackParams.set("intent", intent);
+    } else {
+      if (safeNext) callbackParams.set("next", safeNext);
+      if (requestedRole === "client" || requestedRole === "kinglancer") {
+        callbackParams.set("role", requestedRole);
+      }
     }
-    if (intent === "organisation") callbackParams.set("intent", intent);
     const callbackUrl = `${window.location.origin}/auth/callback${
       callbackParams.size ? `?${callbackParams.toString()}` : ""
     }`;
