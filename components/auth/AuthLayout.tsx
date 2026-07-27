@@ -82,9 +82,7 @@ export default function AuthLayout({
   if (organisationSetup) {
     return (
       <OrganisationSetupShell currentStep="account">
-        <div className="mx-auto max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-9">
-          {children}
-        </div>
+        <div className="mx-auto w-full max-w-xl">{children}</div>
       </OrganisationSetupShell>
     );
   }
