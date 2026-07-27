@@ -9,12 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import GoogleButton from "@/components/auth/GoogleButton";
 import KingsChatButton from "@/components/auth/KingsChatButton";
-import kinglancerLaptopImage from "@/public/images/auth/kinglancer-laptop.jpg";
-import kinglancerCraftImage from "@/public/images/auth/kinglancer-craft.jpg";
-import clientHandshakeImage from "@/public/images/auth/client-handshake.jpg";
-import clientPlanningImage from "@/public/images/auth/client-planning.jpg";
-import generalWorkspaceImage from "@/public/images/auth/general-workspace.jpg";
-import generalPracticalWorkImage from "@/public/images/auth/general-practical-work.jpg";
+import { AUTH_WORK_PLACEHOLDER } from "@/lib/image-placeholders";
 import {
   EMAIL_VALIDATION_MESSAGE,
   isValidEmailAddress,
@@ -23,33 +18,33 @@ import {
 
 const KINGLANCER_AUTH_IMAGES = [
   {
-    src: kinglancerLaptopImage,
+    src: "/images/auth/kinglancer-laptop.jpg",
     alt: "An independent professional working on a laptop",
   },
   {
-    src: kinglancerCraftImage,
+    src: "/images/auth/kinglancer-craft.jpg",
     alt: "A craftsperson working with tools",
   },
 ] as const;
 
 const CLIENT_AUTH_IMAGES = [
   {
-    src: clientHandshakeImage,
+    src: "/images/auth/client-handshake.jpg",
     alt: "Two people beginning a working relationship",
   },
   {
-    src: clientPlanningImage,
+    src: "/images/auth/client-planning.jpg",
     alt: "A person planning work using coloured notes",
   },
 ] as const;
 
 const GENERAL_AUTH_IMAGES = [
   {
-    src: generalWorkspaceImage,
+    src: "/images/auth/general-workspace.jpg",
     alt: "A person working independently",
   },
   {
-    src: generalPracticalWorkImage,
+    src: "/images/auth/general-practical-work.jpg",
     alt: "A practical worker carrying out their trade",
   },
 ] as const;
@@ -226,6 +221,7 @@ function SignUpContent() {
   return (
     <AuthLayout
       organisationSetup={isOrganisationJourney}
+      imagePlaceholder={AUTH_WORK_PLACEHOLDER}
       headline={
         journey === "organisation"
           ? "Bring your team to KingsHire."

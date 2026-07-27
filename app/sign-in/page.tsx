@@ -16,8 +16,7 @@ import {
   isValidEmailAddress,
   normalizeEmail,
 } from "@/lib/validation";
-import generalWorkspaceImage from "@/public/images/auth/general-workspace.jpg";
-import generalPracticalWorkImage from "@/public/images/auth/general-practical-work.jpg";
+import { AUTH_WORK_PLACEHOLDER } from "@/lib/image-placeholders";
 
 function SignInContent() {
   const router = useRouter();
@@ -125,13 +124,14 @@ function SignInContent() {
       headline="Welcome back."
       accent="Great to see you."
       body="Your community is waiting. Sign in and get to work."
+      imagePlaceholder={AUTH_WORK_PLACEHOLDER}
       images={[
         {
-          src: generalWorkspaceImage,
+          src: "/images/auth/general-workspace.jpg",
           alt: "A person working independently",
         },
         {
-          src: generalPracticalWorkImage,
+          src: "/images/auth/general-practical-work.jpg",
           alt: "A practical worker carrying out their trade",
         },
       ]}

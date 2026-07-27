@@ -3,13 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import type { StaticImageData } from "next/image";
 import { CheckCircle } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
 import OrganisationSetupShell from "@/components/organisations/OrganisationSetupShell";
 
 export type AuthImage = {
-  src: string | StaticImageData;
+  src: string;
   alt: string;
 };
 
@@ -21,6 +20,7 @@ interface AuthLayoutProps {
   imageSrc?: string;
   imageAlt?: string;
   images?: readonly AuthImage[];
+  imagePlaceholder?: string;
   children: React.ReactNode;
   organisationSetup?: boolean;
 }
@@ -35,6 +35,7 @@ export default function AuthLayout({
   images,
   children,
   organisationSetup = false,
+  imagePlaceholder,
 }: AuthLayoutProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeImage, setActiveImage] = useState(0);
@@ -96,7 +97,7 @@ export default function AuthLayout({
           <>
             {imageList.map((image, index) => (
               <Image
-                key={typeof image.src === "string" ? image.src : image.src.src}
+                key={image.src}
                 src={image.src}
                 alt={index === activeImage ? image.alt : ""}
                 fill
@@ -105,7 +106,9 @@ export default function AuthLayout({
                   index === activeImage ? "opacity-100" : "opacity-0"
                 }`}
                 preload={index === 0}
-                placeholder={typeof image.src === "string" ? undefined : "blur"}
+                unoptimized
+                placeholder={imagePlaceholder ? "blur" : undefined}
+                blurDataURL={imagePlaceholder}
                 onLoad={() =>
                   setLoadedImages((current) => new Set(current).add(index))
                 }

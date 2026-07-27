@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LockKeyhole } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
-import organisationTeamImage from "@/public/images/auth/organisation-team.jpg";
+import { AUTH_TEAM_PLACEHOLDER } from "@/lib/image-placeholders";
 
 export const ORGANISATION_SETUP_STEPS = [
   { id: "account", label: "Account" },
@@ -64,12 +64,14 @@ export default function OrganisationSetupShell({
           }}
         >
           <Image
-            src={organisationTeamImage}
+            src="/images/auth/organisation-team.jpg"
             alt=""
             fill
             sizes="38vw"
             className="object-cover"
+            unoptimized
             placeholder="blur"
+            blurDataURL={AUTH_TEAM_PLACEHOLDER}
             priority
           />
         </motion.div>
