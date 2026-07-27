@@ -29,14 +29,14 @@ Do not run these scenarios against production.
 
 Use six confirmed staging accounts. Do not share passwords in this document.
 
-| Label | Personal role | Purpose |
-|---|---|---|
-| OWNER | Client | Creates and owns the Organisation |
-| ADMIN | Client | Tests delegated administration |
-| MEMBER | Client | Tests ordinary Organisation job management |
-| KING-MEMBER | Kinglancer | Proves Organisation membership does not alter personal role |
-| APPLICANT | Kinglancer | Applies to Organisation jobs |
-| OUTSIDER | Client | Tests unauthorized access |
+| Label       | Personal role | Purpose                                                     |
+| ----------- | ------------- | ----------------------------------------------------------- |
+| OWNER       | Client        | Creates and owns the Organisation                           |
+| ADMIN       | Client        | Tests delegated administration                              |
+| MEMBER      | Client        | Tests ordinary Organisation job management                  |
+| KING-MEMBER | Kinglancer    | Proves Organisation membership does not alter personal role |
+| APPLICANT   | Kinglancer    | Applies to Organisation jobs                                |
+| OUTSIDER    | Client        | Tests unauthorized access                                   |
 
 Use a unique run suffix, for example `20260725-01`. Name the Organisation:
 
@@ -49,8 +49,8 @@ collisions with earlier runs.
 
 For every scenario record:
 
-| ID | Result | Notes/evidence |
-|---|---|---|
+| ID              | Result            | Notes/evidence                                            |
+| --------------- | ----------------- | --------------------------------------------------------- |
 | Example: STG-01 | Pass/Fail/Blocked | Screenshot, URL, visible error, Stripe ID, or defect link |
 
 If a test fails, record the exact actor, page URL, action, expected result,
@@ -73,6 +73,9 @@ after an unexpected result.
    - Registration number: `STAGING-TEST`;
    - Description: `Organisation Phase 1 staging test`.
 5. Select the Starter £10/month plan.
+   Confirm the card explicitly shows 3 teammates plus the Owner, 1 active
+   volunteer scheme, 2 active paid placement listings, 3 active participants
+   and Basic reporting.
 6. Review the recurring subscription and Owner notice.
 7. Continue to Stripe and complete Checkout with test card
    `4242 4242 4242 4242`, any future expiry and any CVC.
@@ -82,6 +85,10 @@ after an unexpected result.
 Expected:
 
 - Stripe shows a £10 recurring monthly test subscription;
+- the setup shell visibly progresses from Account through Organisation,
+  Profile, Plan, Review and payment, Team and Complete;
+- the desktop setup summary updates with the Organisation name and selected
+  plan; on mobile, the compact step indicator updates instead;
 - confirmation proceeds without a normal pending-approval screen;
 - the optional invitation step appears;
 - the Organisation workspace opens;

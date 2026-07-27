@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import PublicShell from "@/components/ui/PublicShell";
+import OrganisationSetupShell from "@/components/organisations/OrganisationSetupShell";
 import OrganisationConfirmation from "./OrganisationConfirmation";
 
 export default async function OrganisationSetupCompletePage({
@@ -18,10 +18,10 @@ export default async function OrganisationSetupCompletePage({
   if (!sessionId?.startsWith("cs_")) redirect("/organisation/setup");
 
   return (
-    <PublicShell navbarVariant="solid">
-      <main className="flex min-h-screen items-center bg-slate-50 px-4 py-28 sm:px-6">
+    <OrganisationSetupShell currentStep="payment">
+      <main className="flex min-h-[60vh] items-center">
         <OrganisationConfirmation sessionId={sessionId} />
       </main>
-    </PublicShell>
+    </OrganisationSetupShell>
   );
 }

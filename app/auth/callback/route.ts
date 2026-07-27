@@ -224,13 +224,15 @@ export async function GET(request: NextRequest) {
 
     destination = profile?.role
       ? `${origin}${safeNext ?? getRoleHome(profile.role)}`
-      : `${origin}/onboarding?${new URLSearchParams({
-          ...(safeNext ? { next: safeNext } : {}),
-          ...(requestedRole === "client" || requestedRole === "kinglancer"
-            ? { role: requestedRole }
-            : {}),
-          ...(intent === "organisation" ? { intent } : {}),
-        }).toString()}`;
+      : intent === "organisation"
+        ? `${origin}/organisation/setup`
+        : `${origin}/onboarding?${new URLSearchParams({
+            ...(safeNext ? { next: safeNext } : {}),
+            ...(requestedRole === "client" || requestedRole === "kinglancer"
+              ? { role: requestedRole }
+              : {}),
+            ...(intent === "organisation" ? { intent } : {}),
+          }).toString()}`;
   }
 
   logAuthCallback("info", "redirecting", {

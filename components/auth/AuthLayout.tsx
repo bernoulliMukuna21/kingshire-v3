@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { CheckCircle } from "lucide-react";
 import { useReducedMotion } from "framer-motion";
+import OrganisationSetupShell from "@/components/organisations/OrganisationSetupShell";
 
 export type AuthImage = {
   src: string;
@@ -20,6 +21,7 @@ interface AuthLayoutProps {
   imageAlt?: string;
   images?: readonly AuthImage[];
   children: React.ReactNode;
+  organisationSetup?: boolean;
 }
 
 export default function AuthLayout({
@@ -31,9 +33,16 @@ export default function AuthLayout({
   imageAlt = "",
   images,
   children,
+  organisationSetup = false,
 }: AuthLayoutProps) {
   const prefersReducedMotion = useReducedMotion();
   const [activeImage, setActiveImage] = useState(0);
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [failedImages, setFailedImages] = useState<Set<number>>(
+    () => new Set(),
+  );
   const imageList =
     images && images.length > 0
       ? images
@@ -42,13 +51,41 @@ export default function AuthLayout({
         : [];
 
   useEffect(() => {
-    if (prefersReducedMotion || imageList.length < 2) return;
+    if (
+      prefersReducedMotion ||
+      imageList.length < 2 ||
+      !loadedImages.has(activeImage)
+    )
+      return;
     const interval = window.setInterval(
-      () => setActiveImage((current) => (current + 1) % imageList.length),
+      () =>
+        setActiveImage((current) => {
+          for (let offset = 1; offset <= imageList.length; offset += 1) {
+            const candidate = (current + offset) % imageList.length;
+            if (!failedImages.has(candidate)) return candidate;
+          }
+          return current;
+        }),
       9000,
     );
     return () => window.clearInterval(interval);
-  }, [imageList.length, prefersReducedMotion]);
+  }, [
+    activeImage,
+    failedImages,
+    imageList.length,
+    loadedImages,
+    prefersReducedMotion,
+  ]);
+
+  if (organisationSetup) {
+    return (
+      <OrganisationSetupShell currentStep="account">
+        <div className="mx-auto max-w-xl rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-9">
+          {children}
+        </div>
+      </OrganisationSetupShell>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -64,9 +101,20 @@ export default function AuthLayout({
                 fill
                 sizes="50vw"
                 className={`object-cover transition-opacity duration-1000 ${
-                  index === activeImage ? "opacity-100" : "opacity-0"
+                  index === activeImage && loadedImages.has(index)
+                    ? "opacity-100"
+                    : "opacity-0"
                 }`}
                 preload={index === 0}
+                onLoad={() =>
+                  setLoadedImages((current) => new Set(current).add(index))
+                }
+                onError={() => {
+                  setFailedImages((current) => new Set(current).add(index));
+                  if (index === activeImage) {
+                    setActiveImage((index + 1) % imageList.length);
+                  }
+                }}
               />
             ))}
             <div className="absolute inset-0 bg-linear-to-t from-[#10234b] via-[#10234b]/72 to-[#10234b]/18" />

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { organisationRepository } from "@/infrastructure/supabase/repositories/supabase-organisation-repository";
 import InviteMemberForm from "@/app/(dashboard-shell)/dashboard/organisations/[id]/InviteMemberForm";
 import { ButtonLink } from "@/components/ui/Button";
-import PublicShell from "@/components/ui/PublicShell";
+import OrganisationSetupShell from "@/components/organisations/OrganisationSetupShell";
 
 export default async function OrganisationTeamSetupPage({
   searchParams,
@@ -27,8 +27,8 @@ export default async function OrganisationTeamSetupPage({
   if (membership?.role !== "owner") redirect("/dashboard/organisations");
 
   return (
-    <PublicShell navbarVariant="solid">
-      <main className="min-h-screen bg-slate-50 px-4 pb-20 pt-28 sm:px-6">
+    <OrganisationSetupShell currentStep="team">
+      <main>
         <div className="mx-auto max-w-3xl">
           <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-9">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
@@ -58,22 +58,22 @@ export default async function OrganisationTeamSetupPage({
 
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <ButtonLink
-                href="/dashboard/organisations"
+                href={`/organisation/setup/finished?organisation_id=${organisationId}`}
                 variant="secondary"
                 size="lg"
               >
-                View all Organisations
+                Finish without another invite
               </ButtonLink>
               <ButtonLink
-                href={`/dashboard/organisations/${organisationId}`}
+                href={`/organisation/setup/finished?organisation_id=${organisationId}`}
                 size="lg"
               >
-                Enter workspace
+                Continue
               </ButtonLink>
             </div>
           </div>
         </div>
       </main>
-    </PublicShell>
+    </OrganisationSetupShell>
   );
 }

@@ -8,26 +8,41 @@ export type OrganisationPlan = {
   monthlyPriceGBP: number;
   description: string;
   features: readonly string[];
+  entitlements: {
+    teammates: number;
+    volunteerSchemes: number;
+    paidPlacements: number;
+    activeParticipants: number;
+    reporting: "Basic" | "Team" | "Advanced";
+  };
   highlighted?: boolean;
 };
 
 /**
  * Product-facing plan information lives in one module so the setup UI and
  * Stripe adapter cannot silently disagree about plan IDs or displayed prices.
- * Placement entitlements remain deliberately absent until that product is
- * defined and implemented.
+ * Placement allowances are product entitlements. They are displayed during
+ * setup now and become enforceable when placements launch.
  */
 export const ORGANISATION_PLANS: readonly OrganisationPlan[] = [
   {
     id: "starter",
     name: "Starter",
     monthlyPriceGBP: 10,
-    description: "For small organisations setting up their first shared workspace.",
+    description:
+      "For small organisations setting up their first shared workspace.",
     features: [
       "Organisation profile and workspace",
       "Unlimited ordinary paid job posts",
-      "Invite and manage your team",
+      "Placement Passport included",
     ],
+    entitlements: {
+      teammates: 3,
+      volunteerSchemes: 1,
+      paidPlacements: 2,
+      activeParticipants: 3,
+      reporting: "Basic",
+    },
   },
   {
     id: "growth",
@@ -35,10 +50,17 @@ export const ORGANISATION_PLANS: readonly OrganisationPlan[] = [
     monthlyPriceGBP: 25,
     description: "For growing organisations coordinating more hiring activity.",
     features: [
-      "Everything in Starter",
-      "Built for growing teams",
-      "Ready for future placement capacity",
+      "Organisation profile and workspace",
+      "Unlimited ordinary paid job posts",
+      "Placement Passport included",
     ],
+    entitlements: {
+      teammates: 10,
+      volunteerSchemes: 3,
+      paidPlacements: 6,
+      activeParticipants: 10,
+      reporting: "Team",
+    },
     highlighted: true,
   },
   {
@@ -47,10 +69,17 @@ export const ORGANISATION_PLANS: readonly OrganisationPlan[] = [
     monthlyPriceGBP: 40,
     description: "For established organisations preparing to operate at scale.",
     features: [
-      "Everything in Growth",
-      "Built for larger operations",
-      "Ready for future advanced controls",
+      "Organisation profile and workspace",
+      "Unlimited ordinary paid job posts",
+      "Placement Passport included",
     ],
+    entitlements: {
+      teammates: 25,
+      volunteerSchemes: 10,
+      paidPlacements: 20,
+      activeParticipants: 30,
+      reporting: "Advanced",
+    },
   },
 ] as const;
 

@@ -112,12 +112,17 @@ export default function OrganisationPage() {
             </div>
             <div className="divide-y divide-slate-200 border-y border-slate-200">
               {benefits.map(({ icon: Icon, title, text }) => (
-                <div key={title} className="grid gap-3 py-6 sm:grid-cols-[auto_1fr] sm:gap-5">
+                <div
+                  key={title}
+                  className="grid gap-3 py-6 sm:grid-cols-[auto_1fr] sm:gap-5"
+                >
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
                     <Icon size={20} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-950">{title}</h3>
+                    <h3 className="text-lg font-bold text-slate-950">
+                      {title}
+                    </h3>
                     <p className="mt-1 leading-7 text-slate-600">{text}</p>
                   </div>
                 </div>
@@ -137,8 +142,8 @@ export default function OrganisationPage() {
               Start with the workspace that fits your team
             </h2>
             <p className="mt-4 leading-7 text-slate-600">
-              Every plan includes unlimited ordinary paid job posts.
-              Placement capacities will be added when placements launch.
+              Every plan includes unlimited ordinary paid job posts. Placement
+              allowances are clearly reserved ahead of the placement launch.
             </p>
           </div>
           <div className="mt-10 grid gap-5 lg:grid-cols-3">
@@ -162,6 +167,24 @@ export default function OrganisationPage() {
                   {plan.description}
                 </p>
                 <ul className="mt-5 space-y-3">
+                  {[
+                    `Up to ${plan.entitlements.teammates} teammates, plus the Owner`,
+                    `${plan.entitlements.volunteerSchemes} active volunteer ${plan.entitlements.volunteerSchemes === 1 ? "scheme" : "schemes"}`,
+                    `${plan.entitlements.paidPlacements} active paid placement listings`,
+                    `${plan.entitlements.activeParticipants} active placement participants`,
+                    `${plan.entitlements.reporting} reporting`,
+                  ].map((feature) => (
+                    <li
+                      key={feature}
+                      className="flex gap-2 text-sm text-slate-700"
+                    >
+                      <Check
+                        size={16}
+                        className="mt-0.5 shrink-0 text-emerald-600"
+                      />
+                      {feature}
+                    </li>
+                  ))}
                   {plan.features.map((feature) => (
                     <li
                       key={feature}
@@ -177,6 +200,19 @@ export default function OrganisationPage() {
                 </ul>
               </div>
             ))}
+          </div>
+          <div className="mx-auto mt-8 max-w-4xl rounded-2xl bg-slate-50 p-5 text-left text-sm leading-6 text-slate-600">
+            <p>
+              <strong className="text-slate-900">Active listing:</strong>{" "}
+              accepting applications or currently in progress.{" "}
+              <strong className="text-slate-900">Active participant:</strong>{" "}
+              one person currently undertaking a placement.
+            </p>
+            <p className="mt-2">
+              A volunteer scheme is a structured non-salaried opportunity with
+              its remuneration, development and agreed outcomes declared before
+              application.
+            </p>
           </div>
           <div className="mt-9 text-center">
             <Link

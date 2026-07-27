@@ -21,6 +21,40 @@ describe("Organisation subscription setup", () => {
     ]);
   });
 
+  it("keeps the agreed measurable allowances in the plan catalogue", () => {
+    expect(
+      ORGANISATION_PLANS.map(({ id, entitlements }) => ({
+        id,
+        ...entitlements,
+      })),
+    ).toEqual([
+      {
+        id: "starter",
+        teammates: 3,
+        volunteerSchemes: 1,
+        paidPlacements: 2,
+        activeParticipants: 3,
+        reporting: "Basic",
+      },
+      {
+        id: "growth",
+        teammates: 10,
+        volunteerSchemes: 3,
+        paidPlacements: 6,
+        activeParticipants: 10,
+        reporting: "Team",
+      },
+      {
+        id: "scale",
+        teammates: 25,
+        volunteerSchemes: 10,
+        paidPlacements: 20,
+        activeParticipants: 30,
+        reporting: "Advanced",
+      },
+    ]);
+  });
+
   it("normalises valid Organisation setup details", () => {
     expect(
       parseOrganisationSetup({

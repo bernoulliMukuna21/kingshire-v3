@@ -15,32 +15,36 @@ import {
   normalizeEmail,
 } from "@/lib/validation";
 
-const ORGANISATION_AUTH_IMAGES = [
-  {
-    src: "https://images.unsplash.com/photo-1603201667141-5a2d4c673378?auto=format&fit=crop&w=1400&q=82",
-    alt: "A small team collaborating around a laptop",
-  },
-] as const;
-
 const KINGLANCER_AUTH_IMAGES = [
   {
-    src: "https://images.unsplash.com/photo-1743705392857-81fddd3f9fdc?auto=format&fit=crop&w=1400&q=82",
+    src: "/images/auth/kinglancer-laptop.jpg",
     alt: "An independent professional working on a laptop",
   },
   {
-    src: "https://images.unsplash.com/photo-1744509112837-8471c90b6cce?auto=format&fit=crop&w=1400&q=82",
+    src: "/images/auth/kinglancer-craft.jpg",
     alt: "A craftsperson working with tools",
   },
 ] as const;
 
 const CLIENT_AUTH_IMAGES = [
   {
-    src: "https://images.unsplash.com/photo-1521790797524-b2497295b8a0?auto=format&fit=crop&w=1400&q=82",
+    src: "/images/auth/client-handshake.jpg",
     alt: "Two people beginning a working relationship",
   },
   {
-    src: "https://images.unsplash.com/photo-1629292824735-805e9ab974fb?auto=format&fit=crop&w=1400&q=82",
+    src: "/images/auth/client-planning.jpg",
     alt: "A person planning work using coloured notes",
+  },
+] as const;
+
+const GENERAL_AUTH_IMAGES = [
+  {
+    src: "/images/auth/general-workspace.jpg",
+    alt: "A person working independently",
+  },
+  {
+    src: "/images/auth/general-practical-work.jpg",
+    alt: "A practical worker carrying out their trade",
   },
 ] as const;
 
@@ -56,14 +60,13 @@ function SignUpContent() {
       : requestedRole === "kinglancer"
         ? "kinglancer"
         : null;
-  const journey =
-    isOrganisationJourney
-      ? "organisation"
-      : onboardingRole === "kinglancer"
-        ? "kinglancer"
-        : onboardingRole === "client"
-          ? "client"
-          : "general";
+  const journey = isOrganisationJourney
+    ? "organisation"
+    : onboardingRole === "kinglancer"
+      ? "kinglancer"
+      : onboardingRole === "client"
+        ? "client"
+        : "general";
   const requestedNext = searchParams.get("next");
   const safeNext =
     requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
@@ -80,9 +83,11 @@ function SignUpContent() {
   if (safeNext) onboardingParams.set("next", safeNext);
   if (onboardingRole) onboardingParams.set("role", onboardingRole);
   if (isOrganisationJourney) onboardingParams.set("intent", "organisation");
-  const onboardingPath = `/onboarding${
-    onboardingParams.size ? `?${onboardingParams.toString()}` : ""
-  }`;
+  const onboardingPath = isOrganisationJourney
+    ? "/organisation/setup"
+    : `/onboarding${
+        onboardingParams.size ? `?${onboardingParams.toString()}` : ""
+      }`;
   const [step, setStep] = useState<"details" | "verify">("details");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -206,6 +211,7 @@ function SignUpContent() {
 
   return (
     <AuthLayout
+      organisationSetup={isOrganisationJourney}
       headline={
         journey === "organisation"
           ? "Bring your team to KingsHire."
@@ -235,21 +241,41 @@ function SignUpContent() {
       }
       bullets={
         journey === "organisation"
-          ? ["Publish as your Organisation", "Invite your team", "Control member permissions", "Manage jobs together"]
+          ? [
+              "Publish as your Organisation",
+              "Invite your team",
+              "Control member permissions",
+              "Manage jobs together",
+            ]
           : journey === "kinglancer"
-            ? ["Build your service profile", "Discover local paid work", "Payments protected by Stripe", "Keep control of your availability"]
+            ? [
+                "Build your service profile",
+                "Discover local paid work",
+                "Payments protected by Stripe",
+                "Keep control of your availability",
+              ]
             : journey === "client"
-              ? ["Post jobs clearly", "Compare applicants", "Payments protected by Stripe", "Manage work in one place"]
-              : ["Free to join", "Payments protected by Stripe", "Community verified members", "Low platform fees (2.5% client / 5% kinglancer)"]
+              ? [
+                  "Post jobs clearly",
+                  "Compare applicants",
+                  "Payments protected by Stripe",
+                  "Manage work in one place",
+                ]
+              : [
+                  "Free to join",
+                  "Payments protected by Stripe",
+                  "Community verified members",
+                  "Low platform fees (2.5% client / 5% kinglancer)",
+                ]
       }
       images={
         journey === "organisation"
-          ? ORGANISATION_AUTH_IMAGES
+          ? undefined
           : journey === "kinglancer"
             ? KINGLANCER_AUTH_IMAGES
             : journey === "client"
               ? CLIENT_AUTH_IMAGES
-              : undefined
+              : GENERAL_AUTH_IMAGES
       }
     >
       <div className="w-full max-w-md">
@@ -281,7 +307,7 @@ function SignUpContent() {
                 next={
                   isOrganisationJourney
                     ? "/organisation/start"
-                    : safeNext ?? undefined
+                    : (safeNext ?? undefined)
                 }
               />
 

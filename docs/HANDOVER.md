@@ -918,17 +918,23 @@ AI/template aesthetics:
 - the Organisation landing page uses an editorial split layout, restrained
   feature rows and two meaningful photographs rather than repeated large
   cards;
-- Organisation signup uses a separate collaboration photograph with the
-  standard KingsHire form. Client and Kinglancer signup use the same two-column
-  component with journey-specific copy and a restrained two-image, nine-second
-  crossfade. Reduced-motion visitors see the first image without animation;
+- Organisation signup uses a dedicated setup shell rather than the standard
+  photo-led authentication layout. A persistent seven-step journey covers
+  Account, Organisation, Profile, Plan, Review and payment, Team and Complete.
+  Desktop uses a numbered left rail and setup summary; mobile uses compact
+  progress. Client and Kinglancer signup retain the two-column component with
+  journey-specific copy and a restrained two-image, nine-second crossfade.
+  Generic signup and sign-in use neutral real-work photography. The selected
+  images are served locally so the first frame is immediately available; the
+  navy treatment remains the failure fallback. Reduced-motion visitors see the
+  first image without animation;
 - photography is evidence, not decoration, and should remain limited to places
   where it explains the people or work being discussed;
 - the public Kinglancer listing reserves a fixed 220px card height, including
   a fixed service-tag region, so incomplete and detailed profiles align.
 
-The selected Unsplash images are remotely optimized through `next/image`.
-`images.unsplash.com/photo-**` is the only new remote image pattern.
+The auth photographs originated from the selected Unsplash set and are stored
+under `public/images/auth` to avoid an empty carousel while remote images load.
 
 The creation screen now gives ownership consequences a separate amber notice
 and asks for confirmation before creation. A shared Organisation email is not
@@ -992,9 +998,23 @@ The plan catalogue and displayed prices live in
 `modules/organisations/domain/plans.ts`. Stripe Price IDs are environment
 configuration, and the server retrieves each Price before Checkout to verify
 that its currency, amount and monthly recurrence match the displayed plan.
-The current tier descriptions intentionally avoid inventing placement limits:
-ordinary paid jobs are unlimited, while placement entitlements will be added
-when placements are implemented.
+The tier descriptions now show the agreed measurable allowances. Ordinary paid
+jobs remain unlimited:
+
+- Starter: 3 teammates plus the Owner, 1 active volunteer scheme, 2 active paid
+  placement listings, 3 active participants and Basic reporting;
+- Growth: 10 teammates plus the Owner, 3 active volunteer schemes, 6 active
+  paid placement listings, 10 active participants and Team reporting;
+- Scale: 25 teammates plus the Owner, 10 active volunteer schemes, 20 active
+  paid placement listings, 30 active participants and Advanced reporting.
+
+Every tier also includes the Organisation workspace and Placement Passport.
+These placement allowances are visible as the agreed product entitlement but
+cannot be enforced until the placement domain launches. An active placement
+listing is accepting applications or in progress. An active participant is one
+person currently undertaking a placement. A volunteer scheme is a structured
+non-salaried opportunity whose remuneration, development and outcomes are
+declared before application.
 
 Migration `031_organisation_subscriptions.sql` introduces private setup drafts,
 Organisation subscriptions and the transactional

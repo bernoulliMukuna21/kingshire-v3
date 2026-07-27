@@ -101,13 +101,15 @@ function SignInContent() {
     router.push(
       profile?.role
         ? (safeNext ?? getRoleHome(profile.role))
-        : `/onboarding?${new URLSearchParams({
-            ...(safeNext ? { next: safeNext } : {}),
-            ...(requestedRole === "client" || requestedRole === "kinglancer"
-              ? { role: requestedRole }
-              : {}),
-            ...(intent === "organisation" ? { intent } : {}),
-          }).toString()}`,
+        : intent === "organisation"
+          ? "/organisation/setup"
+          : `/onboarding?${new URLSearchParams({
+              ...(safeNext ? { next: safeNext } : {}),
+              ...(requestedRole === "client" || requestedRole === "kinglancer"
+                ? { role: requestedRole }
+                : {}),
+              ...(intent === "organisation" ? { intent } : {}),
+            }).toString()}`,
     );
   };
 
@@ -116,6 +118,16 @@ function SignInContent() {
       headline="Welcome back."
       accent="Great to see you."
       body="Your community is waiting. Sign in and get to work."
+      images={[
+        {
+          src: "/images/auth/general-workspace.jpg",
+          alt: "A person working independently",
+        },
+        {
+          src: "/images/auth/general-practical-work.jpg",
+          alt: "A practical worker carrying out their trade",
+        },
+      ]}
     >
       <div className="w-full max-w-md">
         <Link
@@ -135,7 +147,7 @@ function SignInContent() {
           next={
             intent === "organisation"
               ? "/organisation/start"
-              : safeNext ?? undefined
+              : (safeNext ?? undefined)
           }
         />
 
