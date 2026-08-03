@@ -9,6 +9,7 @@ import {
   normalizeCurrencyAmount,
 } from "@/lib/validation";
 import { emailJobAlert } from "@/lib/notifications";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export async function GET() {
   try {
@@ -197,6 +198,18 @@ export async function POST(request: Request) {
     if (!invitedKinglancerId) {
       revalidateTag("open-jobs", "max");
     }
+
+    await captureServerEvent({
+      distinctId: user.id,
+      event: "job_posted",
+      properties: {
+        job_id: job.id,
+        budget: normalizedBudget,
+        category_count: categories.length,
+        is_direct_request: Boolean(invitedKinglancerId),
+        rate_type: resolvedRateType,
+      },
+    });
 
     return NextResponse.json(job, { status: 201 });
   } catch {

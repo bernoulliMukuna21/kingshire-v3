@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import posthog from "posthog-js";
 import { Button } from "@/components/ui/Button";
 
 type Props = {
@@ -13,6 +14,7 @@ export default function SignOutButton({ className = "", onSignOut }: Props) {
     const supabase = createClient();
     await fetch("/api/admin/session", { method: "DELETE" }).catch(() => null);
     await supabase.auth.signOut();
+    posthog.reset();
     onSignOut?.();
     window.location.href = "/sign-in";
   };

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { notifyWorkSubmitted } from "@/lib/notifications";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 // POST /api/jobs/[id]/complete — kinglancer marks work as done
 export async function POST(
@@ -68,6 +69,12 @@ export async function POST(
       jobTitle: job.title,
     }).catch(() => {});
   }
+
+  await captureServerEvent({
+    distinctId: user.id,
+    event: "job_completed",
+    properties: { job_id: jobId },
+  });
 
   return NextResponse.json({ success: true });
 }
