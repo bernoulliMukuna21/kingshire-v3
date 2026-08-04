@@ -227,7 +227,7 @@ export default async function AdminDashboard() {
               <p className="mt-0.5 text-xs text-amber-600">{heldTransactions.length} active job{heldTransactions.length !== 1 ? "s" : ""}</p>
             </div>
             <div className="rounded-xl bg-red-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-red-600">Owed to Kinglancers</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-red-600">To Be Paid Out</p>
               <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(owedToKinglancers)}</p>
               <p className="mt-0.5 text-xs text-red-600">Do not withdraw this</p>
             </div>
