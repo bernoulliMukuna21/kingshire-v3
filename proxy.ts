@@ -11,6 +11,13 @@ export const config = {
 
 export const proxy = async (request: NextRequest) => {
   const { pathname } = request.nextUrl;
+
+  // On the admin subdomain, send the bare root straight to the admin panel.
+  const host = (request.headers.get("host") ?? "").split(":")[0];
+  if (host === "admin.kingshire.uk" && pathname === "/") {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
   const onAuthPage = pathname === "/sign-in" || pathname === "/sign-up";
   const protectedPrefixes = [
     "/dashboard",
