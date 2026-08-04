@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -18,7 +18,6 @@ import {
 } from "@/lib/validation";
 
 function SignInContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const authError = searchParams.get("error");
   const authReason = searchParams.get("reason");
@@ -82,7 +81,9 @@ function SignInContent() {
       .eq("id", data.user.id)
       .single();
 
-    router.push(getRoleHome(profile?.role));
+    // Full-page navigation so the freshly-set session cookie reaches the server
+    // on the first request, avoiding a soft-nav redirect loop.
+    window.location.assign(getRoleHome(profile?.role));
   };
 
   return (
