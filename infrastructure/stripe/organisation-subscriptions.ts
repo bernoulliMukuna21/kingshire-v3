@@ -16,6 +16,21 @@ const PRICE_ENV_BY_PLAN: Record<OrganisationPlanId, string> = {
   scale: "STRIPE_ORGANISATION_SCALE_PRICE_ID",
 };
 
+// Surfaces the real Supabase/Stripe cause in server logs; callers still return
+// a friendly message so we never leak internals to the browser.
+function logBillingCause(context: string, cause: unknown) {
+  const detail =
+    cause && typeof cause === "object"
+      ? {
+          message: (cause as { message?: unknown }).message,
+          code: (cause as { code?: unknown }).code,
+          details: (cause as { details?: unknown }).details,
+          hint: (cause as { hint?: unknown }).hint,
+        }
+      : { message: String(cause) };
+  console.error(`[organisation-billing] ${context}`, detail);
+}
+
 type SetupDraftRow = {
   id: string;
   actor_id: string;
@@ -59,9 +74,10 @@ async function findExistingDraft(actorId: string, requestKey: string) {
     .maybeSingle();
 
   if (error) {
+    logBillingCause("findExistingDraft query failed", error);
     throw new OrganisationError(
       "persistence_failure",
-      "Unable to resume Organisation setup.",
+      "We couldn't check your Organisation setup. Please try again, and contact support if this keeps happening.",
     );
   }
   return data as SetupDraftRow | null;
@@ -131,11 +147,14 @@ export async function createOrganisationCheckout(input: {
       .single();
 
     if (error || !draft) {
+      if (error?.code !== "23505") {
+        logBillingCause("setup draft insert failed", error);
+      }
       throw new OrganisationError(
         error?.code === "23505" ? "conflict" : "persistence_failure",
         error?.code === "23505"
           ? "This setup is already being processed."
-          : "Unable to save Organisation setup.",
+          : "We couldn't save your Organisation details. Please try again.",
       );
     }
     draftId = draft.id;
@@ -191,10 +210,11 @@ export async function createOrganisationCheckout(input: {
     .eq("actor_id", input.actorId);
 
   if (updateError) {
+    logBillingCause("linking checkout session to draft failed", updateError);
     await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
     throw new OrganisationError(
       "persistence_failure",
-      "Unable to link payment to Organisation setup.",
+      "We couldn't attach your payment to the Organisation setup. Please try again.",
     );
   }
 
@@ -276,6 +296,7 @@ export async function fulfillOrganisationCheckout(
     .single();
 
   if (draftError || !draft) {
+    if (draftError) logBillingCause("fulfil draft lookup failed", draftError);
     throw new OrganisationError(
       "not_found",
       "Organisation setup was not found.",
@@ -302,9 +323,10 @@ export async function fulfillOrganisationCheckout(
   );
 
   if (error || typeof organisationId !== "string") {
+    logBillingCause("activate_organisation_setup RPC failed", error);
     throw new OrganisationError(
       "persistence_failure",
-      "Unable to activate the Organisation.",
+      "We couldn't activate your Organisation after payment. Your payment is safe — please contact support.",
     );
   }
   const currentPeriodEnd =
