@@ -46,5 +46,13 @@ export async function captureServerEvent({
   const posthog = getPostHogClient();
   if (!posthog) return;
 
-  await posthog.captureImmediate({ distinctId, event, properties });
+  // Analytics is best-effort and must never break core flows (job posting,
+  // payments, reviews). Swallow delivery failures instead of throwing.
+  try {
+    await posthog.captureImmediate({ distinctId, event, properties });
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[posthog] Failed to capture server event:", err);
+    }
+  }
 }
