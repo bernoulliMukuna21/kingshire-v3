@@ -417,7 +417,7 @@ export async function handleKingsChatCallback(
         : null;
     const safeNext = !sessionProfile?.role
       ? safeOrigin?.startsWith("/onboarding") ||
-        safeOrigin === "/organisations/start"
+        safeOrigin === "/organisation/start"
         ? safeOrigin
         : "/onboarding"
       : origin &&

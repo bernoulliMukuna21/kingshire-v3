@@ -25,11 +25,6 @@ const nextConfig: NextConfig = {
         destination: "/organisation/start",
         permanent: true,
       },
-      {
-        source: "/dashboard/organisations/new",
-        destination: "/organisation/setup",
-        permanent: false,
-      },
     ];
   },
 };
