@@ -90,8 +90,6 @@ export default async function AdminDashboard() {
   const recentJobs = (recentJobsResult.data ?? []) as unknown as AdminJob[];
 
   // ── Platform financials ───────────────────────────────────
-  const heldTransactions = transactions.filter((t) => t.status === "held");
-  const heldEscrowTotal = heldTransactions.reduce((sum, t) => sum + t.amount, 0);
   // Money in our Stripe balance that still belongs to kinglancers: escrow
   // (held) jobs plus released jobs whose payout transfer hasn't fired yet
   // (kinglancer hasn't finished Stripe onboarding, so stripe_transfer_id is null).
@@ -210,33 +208,33 @@ export default async function AdminDashboard() {
             </div>
             <div>
               <p className="text-sm font-black text-slate-950">Platform Financials</p>
-              <p className="text-xs text-slate-400">Live Stripe balance vs escrow obligations</p>
+              <p className="text-xs text-slate-400">Live Stripe balance — your money vs kinglancer payouts</p>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl bg-slate-50 p-4">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Stripe Available</p>
               <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(stripeAvailableGBP)}</p>
-              {stripePendingGBP > 0 && (
-                <p className="mt-0.5 text-xs text-slate-400">{formatMoney(stripePendingGBP)} pending</p>
+              {stripePendingGBP > 0 ? (
+                <p className="mt-0.5 text-xs text-slate-400">{formatMoney(stripePendingGBP)} still settling</p>
+              ) : (
+                <p className="mt-0.5 text-xs text-slate-400">Total in your Stripe account</p>
               )}
-            </div>
-            <div className="rounded-xl bg-amber-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-amber-600">Held in Escrow</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(heldEscrowTotal)}</p>
-              <p className="mt-0.5 text-xs text-amber-600">{heldTransactions.length} active job{heldTransactions.length !== 1 ? "s" : ""}</p>
             </div>
             <div className="rounded-xl bg-red-50 p-4">
               <p className="text-xs font-bold uppercase tracking-widest text-red-600">To Be Paid Out</p>
               <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(owedToKinglancers)}</p>
-              <p className="mt-0.5 text-xs text-red-600">Do not withdraw this</p>
+              <p className="mt-0.5 text-xs text-red-600">Kinglancer payouts held (escrow + unclaimed). Not yours.</p>
             </div>
             <div className="rounded-xl bg-emerald-50 p-4">
               <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Safe to Withdraw</p>
               <p className="mt-1 text-2xl font-black text-emerald-700">{formatMoney(safeToWithdraw)}</p>
-              <p className="mt-0.5 text-xs text-emerald-600">Available − owed</p>
+              <p className="mt-0.5 text-xs text-emerald-600">Your earnings — safe to take out.</p>
             </div>
           </div>
+          <p className="mt-3 text-xs text-slate-400">
+            Stripe Available = To Be Paid Out + Safe to Withdraw
+          </p>
         </Card>
       </FadeIn>
 
