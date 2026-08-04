@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getTransactionByJob } from "@/lib/db/transactions";
 import { isReviewWindowClosed } from "@/lib/db/reviews";
 import { notifyReviewReceived } from "@/lib/notifications";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 const MAX_COMMENT_LENGTH = 2000;
 
@@ -187,6 +188,17 @@ export async function POST(
         : Promise.resolve(),
     ]);
   }
+
+  await captureServerEvent({
+    distinctId: user.id,
+    event: "review_submitted",
+    properties: {
+      job_id: jobId,
+      rating,
+      reviewer_role: reviewerRole,
+      revealed,
+    },
+  });
 
   return NextResponse.json({ success: true, revealed });
 }

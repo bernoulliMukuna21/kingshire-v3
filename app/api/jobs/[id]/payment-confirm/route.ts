@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { stripe } from "@/lib/stripe";
 import { finalizePaymentAttempt } from "@/lib/db/payment-attempts";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 // POST /api/jobs/[id]/payment-confirm
 // Called by the pay page after stripe.confirmPayment() succeeds.
@@ -50,6 +51,15 @@ export async function POST(
   }
 
   await finalizePaymentAttempt(paymentIntentId);
+
+  await captureServerEvent({
+    distinctId: user.id,
+    event: "payment_confirmed",
+    properties: {
+      job_id: jobId,
+      payment_type: paymentIntent.metadata.attempt_type ?? null,
+    },
+  });
 
   return NextResponse.json({ success: true });
 }

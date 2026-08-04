@@ -6,6 +6,7 @@ import {
   notifyAdminDisputeRaised,
 } from "@/lib/notifications";
 import { canManageJob } from "@/lib/organisations";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 // POST /api/jobs/[id]/dispute — either party raises a dispute
 export async function POST(
@@ -113,6 +114,12 @@ export async function POST(
       }).catch(() => {});
     }
   }
+
+  await captureServerEvent({
+    distinctId: user.id,
+    event: "dispute_raised",
+    properties: { job_id: jobId, raised_by_role: raisedBy },
+  });
 
   return NextResponse.json({ success: true });
 }

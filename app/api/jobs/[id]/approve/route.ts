@@ -17,6 +17,7 @@ import {
   fireTransfer,
 } from "@/lib/stripe-connect";
 import { canManageJob } from "@/lib/organisations";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 // POST /api/jobs/[id]/approve — client approves completed work, releases payment
 export async function POST(
@@ -168,6 +169,16 @@ export async function POST(
 
   // Invalidate all kinglancer profile caches — jobs_completed changed.
   revalidateTag("kinglancer-profiles", { expire: 0 });
+
+  await captureServerEvent({
+    distinctId: user.id,
+    event: "payment_released",
+    properties: {
+      job_id: jobId,
+      amount: netAmount,
+      payout_onboarding_complete: kinglancerProfile.stripe_onboarding_complete,
+    },
+  });
 
   return NextResponse.json({ success: true });
 }
