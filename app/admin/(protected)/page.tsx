@@ -58,7 +58,9 @@ export default async function AdminDashboard() {
 
     serviceDb
       .from("transactions")
-      .select("amount, platform_fee_client, platform_fee_kinglancer, status"),
+      .select(
+        "amount, platform_fee_client, platform_fee_kinglancer, status, stripe_transfer_id",
+      ),
 
     serviceDb
       .from("profiles")
@@ -90,10 +92,16 @@ export default async function AdminDashboard() {
   // ── Platform financials ───────────────────────────────────
   const heldTransactions = transactions.filter((t) => t.status === "held");
   const heldEscrowTotal = heldTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const owedToKinglancers = heldTransactions.reduce(
-    (sum, t) => sum + t.amount - t.platform_fee_kinglancer,
-    0,
-  );
+  // Money in our Stripe balance that still belongs to kinglancers: escrow
+  // (held) jobs plus released jobs whose payout transfer hasn't fired yet
+  // (kinglancer hasn't finished Stripe onboarding, so stripe_transfer_id is null).
+  const owedToKinglancers = transactions
+    .filter(
+      (t) =>
+        t.status === "held" ||
+        (t.status === "released" && !t.stripe_transfer_id),
+    )
+    .reduce((sum, t) => sum + t.amount - t.platform_fee_kinglancer, 0);
   // Stripe balance in pence → convert to pounds
   const stripeAvailableGBP =
     (stripeBalanceResult?.available?.find((b) => b.currency === "gbp")?.amount ?? 0) / 100;
