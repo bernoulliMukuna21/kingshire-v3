@@ -363,7 +363,7 @@ export type Database = {
         Insert: {
           client_id: string;
           organisation_id?: string | null;
-          created_by?: string;
+          created_by: string;
           title: string;
           description: string;
           budget: number;
