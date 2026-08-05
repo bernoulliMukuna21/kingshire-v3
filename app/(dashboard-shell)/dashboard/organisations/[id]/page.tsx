@@ -44,9 +44,12 @@ export default async function OrganisationDashboardPage({
         <Card className="p-5"><p className="text-xs font-bold uppercase text-slate-400">Members</p><p className="mt-2 text-3xl font-black">{stats.memberCount}</p></Card>
         <Card className="p-5"><p className="text-xs font-bold uppercase text-slate-400">Released spend</p><p className="mt-2 text-3xl font-black">£{stats.releasedSpend.toFixed(2)}</p></Card>
       </div>
-      <div>
+      <div className="flex flex-wrap gap-3">
         <ButtonLink href={`/dashboard/organisations/${id}/transactions`} variant="secondary">
           View all transactions
+        </ButtonLink>
+        <ButtonLink href={`/dashboard/organisations/${id}/placements`} variant="secondary">
+          Manage placements
         </ButtonLink>
       </div>
       <section>
