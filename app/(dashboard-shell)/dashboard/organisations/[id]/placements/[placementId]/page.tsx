@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
@@ -124,9 +125,10 @@ export default async function OrganisationPlacementDetailPage({
           </h2>
           <Card className="divide-y divide-slate-100 overflow-hidden">
             {agreements.map((ag) => (
-              <div
+              <Link
                 key={ag.id}
-                className="flex items-center justify-between p-4 text-sm"
+                href={`/dashboard/placements/agreements/${ag.id}`}
+                className="flex items-center justify-between p-4 text-sm hover:bg-slate-50"
               >
                 <span className="capitalize text-slate-700">
                   {ag.status.replaceAll("_", " ")}
@@ -134,7 +136,7 @@ export default async function OrganisationPlacementDetailPage({
                 <span className="text-xs text-slate-500">
                   {ag.weekly_hours}h/week · {ag.duration_weeks} weeks
                 </span>
-              </div>
+              </Link>
             ))}
           </Card>
         </section>

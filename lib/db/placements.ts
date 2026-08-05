@@ -346,3 +346,183 @@ export async function listPlacementAgreements(
   if (error) throw error;
   return (data ?? []) as PlacementAgreementRow[];
 }
+
+// ── Milestones, check-ins, completion (Placement Passport) ─
+
+export type PlacementMilestoneRow =
+  Database["public"]["Tables"]["placement_milestones"]["Row"];
+export type PlacementCheckInRow =
+  Database["public"]["Tables"]["placement_check_ins"]["Row"];
+export type ExperienceRecordRow =
+  Database["public"]["Tables"]["experience_records"]["Row"];
+
+export async function listMilestones(
+  agreementId: string,
+): Promise<PlacementMilestoneRow[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_milestones")
+    .select("*")
+    .eq("agreement_id", agreementId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as PlacementMilestoneRow[];
+}
+
+export async function createMilestone(params: {
+  agreementId: string;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+}): Promise<PlacementMilestoneRow> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_milestones")
+    .insert({
+      agreement_id: params.agreementId,
+      title: params.title,
+      description: params.description,
+      due_date: params.dueDate,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlacementMilestoneRow;
+}
+
+export async function getMilestone(
+  milestoneId: string,
+): Promise<PlacementMilestoneRow | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_milestones")
+    .select("*")
+    .eq("id", milestoneId)
+    .maybeSingle();
+  return (data as PlacementMilestoneRow | null) ?? null;
+}
+
+export async function confirmMilestone(
+  milestoneId: string,
+  confirmedBy: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_milestones")
+    .update({
+      status: "confirmed",
+      confirmed_by: confirmedBy,
+      confirmed_at: new Date().toISOString(),
+    })
+    .eq("id", milestoneId)
+    .eq("status", "pending");
+  if (error) throw error;
+}
+
+export async function listCheckIns(
+  agreementId: string,
+): Promise<PlacementCheckInRow[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_check_ins")
+    .select("*")
+    .eq("agreement_id", agreementId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PlacementCheckInRow[];
+}
+
+export async function createCheckIn(params: {
+  agreementId: string;
+  authorId: string;
+  note: string;
+}): Promise<PlacementCheckInRow> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_check_ins")
+    .insert({
+      agreement_id: params.agreementId,
+      author_id: params.authorId,
+      note: params.note,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlacementCheckInRow;
+}
+
+/** Marks an active agreement completed; returns true if it was active. */
+export async function completeAgreement(
+  agreementId: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_agreements")
+    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .eq("id", agreementId)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+export async function createExperienceRecord(params: {
+  agreement: PlacementAgreementRow;
+  title: string;
+  summary: string | null;
+  skills: string[];
+  outcome: string | null;
+  referenceText: string | null;
+  isPublic: boolean;
+}): Promise<ExperienceRecordRow> {
+  const db = createServiceClient();
+  const { agreement } = params;
+  const { data, error } = await db
+    .from("experience_records")
+    .insert({
+      agreement_id: agreement.id,
+      placement_id: agreement.placement_id,
+      organisation_id: agreement.organisation_id,
+      kinglancer_id: agreement.kinglancer_id,
+      title: params.title,
+      summary: params.summary,
+      skills: params.skills,
+      outcome: params.outcome,
+      reference_text: params.referenceText,
+      is_public: params.isPublic,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ExperienceRecordRow;
+}
+
+export type PublicExperienceRecord = ExperienceRecordRow & {
+  organisation: { name: string } | null;
+};
+
+export async function listPublicExperienceRecords(
+  kinglancerId: string,
+): Promise<PublicExperienceRecord[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("experience_records")
+    .select("*, organisation:organisations(name)")
+    .eq("kinglancer_id", kinglancerId)
+    .eq("is_public", true)
+    .order("completed_at", { ascending: false });
+  return (data ?? []) as unknown as PublicExperienceRecord[];
+}
+
+export async function getPlacementTitle(
+  placementId: string,
+): Promise<string | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placements")
+    .select("title")
+    .eq("id", placementId)
+    .maybeSingle();
+  return (data?.title as string | undefined) ?? null;
+}

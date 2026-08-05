@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import {
   listKinglancerAgreements,
@@ -80,9 +81,10 @@ export default async function KinglancerPlacementsPage() {
           </h2>
           <Card className="divide-y divide-slate-100 overflow-hidden">
             {active.map((a) => (
-              <div
+              <Link
                 key={a.id}
-                className="flex items-center justify-between p-4"
+                href={`/dashboard/placements/agreements/${a.id}`}
+                className="flex items-center justify-between p-4 hover:bg-slate-50"
               >
                 <p className="font-bold text-slate-950">
                   {a.placement?.title ?? "Placement"}
@@ -90,7 +92,7 @@ export default async function KinglancerPlacementsPage() {
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                   Active
                 </span>
-              </div>
+              </Link>
             ))}
           </Card>
         </section>
