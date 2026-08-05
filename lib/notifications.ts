@@ -212,8 +212,8 @@ export async function notifyPaymentFailed({
       ? "Your payment didn't go through"
       : "Payment did not complete",
     body: isClient
-      ? `Your card payment for <strong>${jobTitle}</strong> failed. No one has been hired yet. Please retry or cancel the pending payment from your dashboard.`
-      : `The client's payment for <strong>${jobTitle}</strong> did not complete. We'll notify you if the client completes escrow.`,
+      ? `Your card payment for "${jobTitle}" failed. No one has been hired yet. Please retry or cancel the pending payment from your dashboard.`
+      : `The client's payment for "${jobTitle}" did not complete. We'll notify you if the client completes escrow.`,
     link: isClient ? `/dashboard/client` : `/dashboard/kinglancer`,
     ctaLabel: isClient ? "View dashboard →" : "View dashboard →",
   });
@@ -234,7 +234,7 @@ export async function notifyDisputeRaised({
     userId: recipientId,
     type: "dispute_raised",
     title: "A dispute has been raised",
-    body: `The ${raisedBy} has raised a dispute on "${jobTitle}". Our team will review it shortly.<br><br>If you have any questions or evidence to share, please email us directly at <a href="mailto:kingshirecompany@gmail.com" style="color:#2563eb">kingshirecompany@gmail.com</a> — include the job title in your message.`,
+    body: `The ${raisedBy} has raised a dispute on "${jobTitle}". Our team will review it shortly.\n\nIf you have any questions or evidence to share, please email us directly at kingshirecompany@gmail.com — include the job title in your message.`,
     link: `/dashboard/${raisedBy === "client" ? "kinglancer" : "client"}`,
     email: {
       to: recipientEmail,
@@ -263,7 +263,7 @@ export async function notifyAdminDisputeRaised({
     to: adminEmail,
     subject: `[Dispute] ${jobTitle}`,
     title: "New dispute raised",
-    body: `A dispute has been raised by the <strong>${raisedBy}</strong> (${raisedByEmail}) on job <strong>${jobTitle}</strong>.<br><br><strong>Reason:</strong><br>${reason}`,
+    body: `A dispute has been raised by the ${raisedBy} (${raisedByEmail}) on job "${jobTitle}".\n\nReason:\n${reason}`,
     link: `${appUrl}/admin?dispute=${jobId}`,
     ctaLabel: "View in admin →",
   });
@@ -468,8 +468,8 @@ export async function emailJobAlert({
       : `New job posted: "${jobTitle}"`,
     title: isDirect ? "New direct job request" : "New job posted",
     body: isDirect
-      ? `You have received a direct job request: <strong>${jobTitle}</strong>. Log in to review and respond.`
-      : `A new job has just been posted: <strong>${jobTitle}</strong>. Be one of the first to apply!`,
+      ? `You have received a direct job request: "${jobTitle}". Log in to review and respond.`
+      : `A new job has just been posted: "${jobTitle}". Be one of the first to apply!`,
     link: `/jobs/${jobId}`,
     ctaLabel: isDirect ? "View request →" : "View job →",
   });
@@ -594,6 +594,15 @@ async function sendEmail({
   }
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function emailTemplate({
   recipientName,
   recipientEmail,
@@ -617,11 +626,11 @@ function emailTemplate({
       : `${appUrl}${link}`
     : null;
   const ctaButton = ctaUrl
-    ? `<a href="${ctaUrl}" style="display:inline-block;background:#2563eb;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">${ctaLabel}</a>`
+    ? `<a href="${escapeHtml(ctaUrl)}" style="display:inline-block;background:#2563eb;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px">${escapeHtml(ctaLabel)}</a>`
     : "";
 
   const firstName = getPreferredFirstName(recipientName, recipientEmail);
-  const greeting = firstName ? `Dear ${firstName},` : "Dear there,";
+  const greeting = firstName ? `Dear ${escapeHtml(firstName)},` : "Dear there,";
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -638,8 +647,8 @@ function emailTemplate({
         <tr>
           <td style="padding:32px">
             <p style="margin:0 0 10px;color:#0f172a;line-height:1.6;font-size:15px">${greeting}</p>
-            <h2 style="margin:0 0 12px;font-size:20px;color:#0f172a;font-weight:700">${title}</h2>
-            <p style="margin:0 0 28px;color:#64748b;line-height:1.7;font-size:15px">${body}</p>
+            <h2 style="margin:0 0 12px;font-size:20px;color:#0f172a;font-weight:700">${escapeHtml(title)}</h2>
+            <p style="margin:0 0 28px;color:#64748b;line-height:1.7;font-size:15px">${escapeHtml(body).replace(/\n/g, "<br>")}</p>
             ${ctaButton}
           </td>
         </tr>
