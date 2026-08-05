@@ -8,7 +8,6 @@ import {
   Building2,
   Check,
   CheckCircle2,
-  Clock,
   CreditCard,
   Loader2,
   ShieldCheck,
@@ -346,8 +345,8 @@ export default function OrganisationSetupWizard() {
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   Every plan includes the shared workspace, your team, and
-                  unlimited organisation-owned paid jobs. Placement features are
-                  marked &ldquo;Soon&rdquo; and arrive when placements launch.
+                  unlimited organisation-owned paid jobs, plus experience
+                  placements with the Placement Passport.
                 </p>
               </div>
               <div className="mt-6 grid gap-4 lg:grid-cols-3">
@@ -382,52 +381,22 @@ export default function OrganisationSetupWizard() {
                       </p>
                       <ul className="mt-5 space-y-3">
                         {[
-                          {
-                            label: `Up to ${plan.entitlements.teammates} teammates, plus the Owner`,
-                            soon: false,
-                          },
-                          {
-                            label: `${plan.entitlements.reporting} reporting`,
-                            soon: false,
-                          },
-                          ...plan.features
-                            .filter((f) => f !== "Placement Passport included")
-                            .map((label) => ({ label, soon: false })),
-                          {
-                            label: `${plan.entitlements.volunteerSchemes} active volunteer ${plan.entitlements.volunteerSchemes === 1 ? "scheme" : "schemes"}`,
-                            soon: true,
-                          },
-                          {
-                            label: `${plan.entitlements.paidPlacements} active paid placement listings`,
-                            soon: true,
-                          },
-                          {
-                            label: `${plan.entitlements.activeParticipants} active placement participants`,
-                            soon: true,
-                          },
-                          { label: "Placement Passport", soon: true },
-                        ].map(({ label, soon }) => (
+                          `Up to ${plan.entitlements.teammates} teammates, plus the Owner`,
+                          `${plan.entitlements.volunteerSchemes} active volunteer ${plan.entitlements.volunteerSchemes === 1 ? "scheme" : "schemes"}`,
+                          `${plan.entitlements.paidPlacements} active paid placement listings`,
+                          `${plan.entitlements.activeParticipants} active placement participants`,
+                          `${plan.entitlements.reporting} reporting`,
+                          ...plan.features,
+                        ].map((feature) => (
                           <li
-                            key={label}
-                            className={`flex items-center gap-2 text-sm ${soon ? "text-slate-400" : "text-slate-700"}`}
+                            key={feature}
+                            className="flex gap-2 text-sm text-slate-700"
                           >
-                            {soon ? (
-                              <Clock
-                                size={16}
-                                className="shrink-0 text-slate-300"
-                              />
-                            ) : (
-                              <Check
-                                size={16}
-                                className="shrink-0 text-emerald-600"
-                              />
-                            )}
-                            <span>{label}</span>
-                            {soon && (
-                              <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                                Soon
-                              </span>
-                            )}
+                            <Check
+                              size={16}
+                              className="mt-0.5 shrink-0 text-emerald-600"
+                            />
+                            {feature}
                           </li>
                         ))}
                       </ul>

@@ -13,6 +13,7 @@ const ADMIN_NAV_ITEMS = [
   { label: "Users", icon: "👥", href: "/admin/users" },
   { label: "Jobs", icon: "💼", href: "/admin/jobs" },
   { label: "Disputes", icon: "🚨", href: "/admin/disputes" },
+  { label: "Placements", icon: "🎓", href: "/admin/placements" },
 ];
 
 type Props = {

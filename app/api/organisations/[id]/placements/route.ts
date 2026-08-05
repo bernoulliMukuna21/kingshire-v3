@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireOrganisationPermission } from "@/lib/organisations";
-import { parsePlacementInput, PlacementError } from "@/lib/placements";
+import { parsePlacementInput, PlacementError, placementNeedsManualReview } from "@/lib/placements";
 import {
   countOrganisationPlacements,
   createPlacement,
@@ -90,14 +90,15 @@ export async function POST(
 
   try {
     const input = parsePlacementInput(body);
-    // The organisation's first placement is manually reviewed before it can go
-    // live, so early listings are checked while patterns are established.
+    // The organisation's first placement, and any higher-risk category, are
+    // held for manual review before they can go live.
     const existing = await countOrganisationPlacements(id);
     const placement = await createPlacement({
       organisationId: id,
       createdBy: auth.user.id,
       input,
-      requiresManualReview: existing === 0,
+      requiresManualReview:
+        existing === 0 || placementNeedsManualReview(input.categories),
     });
     return NextResponse.json({ placement }, { status: 201 });
   } catch (err) {

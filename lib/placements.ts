@@ -126,3 +126,16 @@ export function openPlacementLimit(planId: OrganisationPlanId) {
 export function activeParticipantLimit(planId: OrganisationPlanId) {
   return getOrganisationPlan(planId).entitlements.activeParticipants;
 }
+
+// Higher-risk categories are always held for a manual safety review before a
+// placement can go live, regardless of whether it is the organisation's first.
+export const MANUAL_REVIEW_CATEGORIES = [
+  "Cleaning & Maintenance",
+  "Construction & Trade",
+] as const;
+
+export function placementNeedsManualReview(categories: string[]): boolean {
+  return categories.some((c) =>
+    (MANUAL_REVIEW_CATEGORIES as readonly string[]).includes(c),
+  );
+}

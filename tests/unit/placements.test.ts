@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   parsePlacementInput,
   openPlacementLimit,
+  activeParticipantLimit,
+  placementNeedsManualReview,
   PlacementError,
 } from "@/lib/placements";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
@@ -73,5 +75,29 @@ describe("openPlacementLimit", () => {
     expect(openPlacementLimit("starter")).toBe(2);
     expect(openPlacementLimit("growth")).toBe(6);
     expect(openPlacementLimit("scale")).toBe(20);
+  });
+});
+
+describe("activeParticipantLimit", () => {
+  it("returns the plan's participant allowance", () => {
+    expect(activeParticipantLimit("starter")).toBe(3);
+    expect(activeParticipantLimit("growth")).toBe(10);
+    expect(activeParticipantLimit("scale")).toBe(30);
+  });
+});
+
+describe("placementNeedsManualReview", () => {
+  it("flags higher-risk categories", () => {
+    expect(placementNeedsManualReview(["Cleaning & Maintenance"])).toBe(true);
+    expect(placementNeedsManualReview(["Construction & Trade"])).toBe(true);
+    expect(
+      placementNeedsManualReview(["Design & Creative", "Construction & Trade"]),
+    ).toBe(true);
+  });
+
+  it("does not flag ordinary categories", () => {
+    expect(placementNeedsManualReview(["Design & Creative"])).toBe(false);
+    expect(placementNeedsManualReview(["Technology & IT"])).toBe(false);
+    expect(placementNeedsManualReview([])).toBe(false);
   });
 });

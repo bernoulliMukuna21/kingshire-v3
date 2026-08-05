@@ -526,3 +526,37 @@ export async function getPlacementTitle(
     .maybeSingle();
   return (data?.title as string | undefined) ?? null;
 }
+
+// ── Admin review ──────────────────────────────────────────
+
+export type PlacementForReview = PlacementRow & {
+  organisation: { name: string } | null;
+};
+
+export async function listPlacementsForReview(): Promise<PlacementForReview[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .select("*, organisation:organisations(name)")
+    .eq("status", "pending_review")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as PlacementForReview[];
+}
+
+/** Admin approves (→open) or rejects (→cancelled) a placement in review. */
+export async function adminReviewPlacement(
+  placementId: string,
+  status: "open" | "cancelled",
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .update({ status })
+    .eq("id", placementId)
+    .eq("status", "pending_review")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
