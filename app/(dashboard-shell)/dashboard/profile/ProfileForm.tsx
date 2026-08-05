@@ -76,6 +76,9 @@ export default function ProfileForm({ profile }: Props) {
   const [tagline, setTagline] = useState(profile.tagline ?? "");
   const [portfolioUrl, setPortfolioUrl] = useState(profile.portfolio_url ?? "");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? "");
+  const [openToPlacements, setOpenToPlacements] = useState(
+    profile.open_to_placements ?? false,
+  );
 
   const [services, setServices] = useState<ServiceEntry[]>(() => {
     const saved = profile.services ?? [];
@@ -210,6 +213,7 @@ export default function ProfileForm({ profile }: Props) {
         services: parsedServices,
         service_tags: serviceNames,
         portfolio_url: portfolioUrl.trim() || null,
+        open_to_placements: openToPlacements,
       }),
     };
 
@@ -384,6 +388,36 @@ export default function ProfileForm({ profile }: Props) {
             <p className="mt-1 text-sm text-slate-500">
               This information is visible to clients when you apply to jobs.
             </p>
+          </div>
+
+          {/* Open to placements opt-in */}
+          <div className="mb-5 flex items-start justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+            <div>
+              <p className="text-sm font-bold text-slate-900">
+                Open to placements
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Let organisations invite you to experience placements —
+                supervised opportunities offering mentoring, training and a
+                verified experience record. Separate from paid jobs.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={openToPlacements}
+              aria-label="Open to placements"
+              onClick={() => setOpenToPlacements((v) => !v)}
+              className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                openToPlacements ? "bg-blue-600" : "bg-slate-300"
+              }`}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                  openToPlacements ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
           </div>
 
           {/* Professional title */}

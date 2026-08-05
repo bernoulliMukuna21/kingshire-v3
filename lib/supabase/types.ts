@@ -275,6 +275,7 @@ export type Database = {
           cv_url: string | null;
           stripe_account_id: string | null;
           stripe_onboarding_complete: boolean;
+          open_to_placements: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -298,6 +299,7 @@ export type Database = {
           }> | null;
           portfolio_url?: string | null;
           cv_url?: string | null;
+          open_to_placements?: boolean;
         };
         Update: {
           id?: string;
@@ -321,6 +323,7 @@ export type Database = {
           cv_url?: string | null;
           stripe_account_id?: string | null;
           stripe_onboarding_complete?: boolean;
+          open_to_placements?: boolean;
         };
         Relationships: [];
       };
