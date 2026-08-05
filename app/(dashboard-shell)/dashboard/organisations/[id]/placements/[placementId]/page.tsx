@@ -1,0 +1,144 @@
+import { notFound, redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { requireOrganisationPermission } from "@/lib/organisations";
+import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
+import {
+  getOrganisationPlacement,
+  listPlacementAgreements,
+  listPlacementApplicants,
+} from "@/lib/db/placements";
+import PageHeader from "@/components/ui/PageHeader";
+import { Card } from "@/components/ui/Card";
+import { ButtonLink } from "@/components/ui/Button";
+import EmptyState from "@/components/ui/EmptyState";
+import ApplicantActions from "./ApplicantActions";
+
+export default async function OrganisationPlacementDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string; placementId: string }>;
+}) {
+  const { id, placementId } = await params;
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+  if (!(await requireOrganisationPermission(id, user.id, "manage_applicants"))) {
+    notFound();
+  }
+  const organisationName = await getOrganisationName(id);
+  const placement = await getOrganisationPlacement(placementId, id);
+  if (!organisationName || !placement) notFound();
+
+  const [applicants, agreements] = await Promise.all([
+    listPlacementApplicants(placementId),
+    listPlacementAgreements(placementId),
+  ]);
+  const pendingApplicants = applicants.filter((a) => a.status === "pending");
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
+      <PageHeader
+        eyebrow={organisationName}
+        title={placement.title}
+        description={`${placement.weekly_hours}h/week · ${placement.duration_weeks} weeks${
+          placement.is_remote
+            ? " · Remote"
+            : placement.location
+              ? ` · ${placement.location}`
+              : ""
+        }`}
+        action={
+          <ButtonLink
+            href={`/dashboard/organisations/${id}/placements`}
+            variant="secondary"
+          >
+            Back to placements
+          </ButtonLink>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="p-5">
+          <p className="text-xs font-bold uppercase text-slate-400">
+            Participant contributes
+          </p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+            {placement.contribution}
+          </p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs font-bold uppercase text-slate-400">
+            Participant receives
+          </p>
+          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+            {placement.reward}
+          </p>
+        </Card>
+      </div>
+
+      <section>
+        <h2 className="mb-3 text-lg font-black text-slate-950">Applicants</h2>
+        {!pendingApplicants.length ? (
+          <EmptyState
+            title="No pending applicants"
+            description="Applications from Kinglancers will appear here."
+          />
+        ) : (
+          <Card className="divide-y divide-slate-100 overflow-hidden">
+            {pendingApplicants.map((a) => (
+              <div key={a.id} className="space-y-2 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-slate-950">
+                      {a.kinglancer?.full_name ?? "Kinglancer"}
+                    </p>
+                    {a.kinglancer?.location && (
+                      <p className="text-xs text-slate-500">
+                        {a.kinglancer.location}
+                      </p>
+                    )}
+                  </div>
+                  <ApplicantActions
+                    organisationId={id}
+                    placementId={placementId}
+                    applicationId={a.id}
+                  />
+                </div>
+                {a.message && (
+                  <p className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                    {a.message}
+                  </p>
+                )}
+              </div>
+            ))}
+          </Card>
+        )}
+      </section>
+
+      {agreements.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-black text-slate-950">
+            Participants
+          </h2>
+          <Card className="divide-y divide-slate-100 overflow-hidden">
+            {agreements.map((ag) => (
+              <div
+                key={ag.id}
+                className="flex items-center justify-between p-4 text-sm"
+              >
+                <span className="capitalize text-slate-700">
+                  {ag.status.replaceAll("_", " ")}
+                </span>
+                <span className="text-xs text-slate-500">
+                  {ag.weekly_hours}h/week · {ag.duration_weeks} weeks
+                </span>
+              </div>
+            ))}
+          </Card>
+        </section>
+      )}
+    </div>
+  );
+}

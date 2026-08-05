@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
@@ -75,7 +76,12 @@ export default async function OrganisationPlacementsPage({
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="truncate font-bold text-slate-950">{p.title}</p>
+                  <Link
+                    href={`/dashboard/organisations/${id}/placements/${p.id}`}
+                    className="truncate font-bold text-slate-950 hover:text-blue-700"
+                  >
+                    {p.title}
+                  </Link>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                       STATUS_CLASS[p.status] ?? "bg-slate-100 text-slate-600"
