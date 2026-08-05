@@ -2,6 +2,7 @@ import {
   ApplicantSelectionConflictError,
   selectApplicant,
 } from "@/lib/db/applications";
+import { canManageJob } from "@/lib/organisations";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 
@@ -19,6 +20,7 @@ type FinalizeResult = {
 type FinalizeJob = {
   id: string;
   client_id: string;
+  organisation_id: string | null;
   status: Database["public"]["Tables"]["jobs"]["Row"]["status"];
   kinglancer_id: string | null;
   invited_kinglancer_id: string | null;
@@ -153,7 +155,7 @@ export async function finalizePaymentAttempt(
   const { data: jobRaw, error: jobError } = await db
     .from("jobs")
     .select(
-      "id, client_id, status, kinglancer_id, invited_kinglancer_id, direct_request_status",
+      "id, client_id, organisation_id, status, kinglancer_id, invited_kinglancer_id, direct_request_status",
     )
     .eq("id", attempt.job_id)
     .single();
@@ -161,8 +163,11 @@ export async function finalizePaymentAttempt(
   if (jobError) throw jobError;
 
   const job = jobRaw as FinalizeJob;
-  if (job.client_id !== attempt.client_id) {
-    throw new Error("Payment attempt client does not match job client");
+  // The payer is stored in attempt.client_id. For personal jobs this must be
+  // the job owner; for organisation jobs any current member with job
+  // permission may fund it (re-checked here in case membership changed).
+  if (!(await canManageJob(job, attempt.client_id))) {
+    throw new Error("Payment attempt payer is not authorised for this job");
   }
 
   if (attempt.attempt_type === "application") {

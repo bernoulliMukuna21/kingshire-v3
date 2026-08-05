@@ -5,13 +5,26 @@ import {
 } from "@/lib/organisations";
 import { vi } from "vitest";
 
+// Membership lookup is keyed on the user id passed to the second `.eq()`.
+// Only "current-member" resolves to an active membership; everyone else
+// (removed members, outsiders) resolves to no membership.
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
-          eq: () => ({
-            maybeSingle: async () => ({ data: null }),
+          eq: (_column: string, userId: string) => ({
+            maybeSingle: async () =>
+              userId === "current-member"
+                ? {
+                    data: {
+                      organisation_id: "organisation-id",
+                      user_id: "current-member",
+                      role: "member",
+                      organisation: { deleted_at: null },
+                    },
+                  }
+                : { data: null },
           }),
         }),
       }),
@@ -56,6 +69,18 @@ describe("organisation permissions", () => {
         "former-member",
       ),
     ).resolves.toBe(false);
+  });
+
+  it("lets a current member manage an Organisation job they did not post (ORG-J08)", async () => {
+    await expect(
+      canManageJob(
+        {
+          client_id: "original-poster",
+          organisation_id: "organisation-id",
+        },
+        "current-member",
+      ),
+    ).resolves.toBe(true);
   });
 
   it("keeps personal jobs manageable by their client", async () => {
