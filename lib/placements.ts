@@ -121,3 +121,8 @@ export function parsePlacementInput(body: unknown): PlacementInput {
 export function openPlacementLimit(planId: OrganisationPlanId) {
   return getOrganisationPlan(planId).entitlements.paidPlacements;
 }
+
+/** Plan entitlement: how many participants may be on placement at once. */
+export function activeParticipantLimit(planId: OrganisationPlanId) {
+  return getOrganisationPlan(planId).entitlements.activeParticipants;
+}
