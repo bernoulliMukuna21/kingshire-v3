@@ -29,7 +29,7 @@ Stripe Checkout), and organisation-owned **paid jobs**.
 
 Remaining work before production:
 
-### 1. Fix cross-member payment — ORG-J08 / STG-29 (release blocker)
+### 1. Fix cross-member payment — ORG-J08 / STG-29 (release blocker) — DONE
 - **Symptom:** only the original poster can pay for an organisation job; any
   other authorised member is rejected at payment finalization.
 - **Root cause:** `finalizePaymentAttempt` (`lib/db/payment-attempts.ts`)
@@ -44,20 +44,34 @@ Remaining work before production:
 - **Tests:** ORG-J08 (colleague pays), ORG-J09/J10 (single release, no double
   transfer), plus a regression that a non-member/removed member is rejected.
 
-### 2. Technical Audit Stage 0 confirmed defects
+### 2. Technical Audit Stage 0 confirmed defects — DONE
 From `TECHNICAL_AUDIT_2026-07-25.md`, verify/resolve before release:
 - C1 — SECURITY DEFINER function grants (revoke public/anon/authenticated).
+  Migration 032; also run the C1 inventory query against staging + prod.
 - C4 — auto-release cron DB client correctness.
-- H9 — escape untrusted HTML in invitation emails.
+- H9 — escape untrusted HTML in emails.
+
+### 2b. C3 — atomic payment finalization — DONE
+- `finalizePaymentAttempt` spanned several independent PostgREST calls, so a
+  crash/race could leave a funded Stripe payment with partially-advanced state.
+- Moved the whole transition into one locked Postgres function
+  (`finalize_payment_attempt`, migration 033): lock attempt + job, validate
+  states, authorise the payer (incl. ORG-J08 membership), reserve/select the
+  worker, reject competing applications, insert the unique escrow transaction,
+  mark the attempt succeeded — commit once. The TS wrapper maps the result and
+  keeps idempotent races as success so Stripe stops retrying. The now-dead
+  `selectApplicant` helper was removed.
+- C5 (org creation/invitation atomicity) is already handled in migration 029.
+  A durable outbox for post-commit side-effects remains a later (H-level) item.
 
 ### 3. Acceptance on staging
-- Apply migrations 029/030/031 to the staging Supabase project.
+- Apply migrations 029–033 to the staging Supabase project.
 - Run `ORGANISATION_PHASE1_ACCEPTANCE.md`; ORG-J08 and payment-consistency
   scenarios must pass; no Severity 1/2 defect open.
 
 ### 4. Ship to production
 - Merge `staging` → `main` (also carries the webhook idempotency fix).
-- Apply migrations 029/030/031 to the production Supabase project.
+- Apply migrations 029–033 to the production Supabase project.
 - Create **live** Stripe prices (£10/£25/£40 monthly GBP) in the prod account;
   set `STRIPE_ORGANISATION_{STARTER,GROWTH,SCALE}_PRICE_ID`; live webhook
   (incl. `checkout.session.completed`, `customer.subscription.updated/deleted`);
