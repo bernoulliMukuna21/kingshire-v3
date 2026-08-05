@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   notifyPaymentReleased,
@@ -43,11 +42,13 @@ export async function GET(request: Request) {
     }
   }
 
-  const supabase = await createClient();
+  const serviceClient = createServiceClient();
 
   // Find all jobs where kinglancer has marked work done (status = 'completed')
-  // and there is a held transaction (payment is waiting)
-  const { data: completedJobs, error } = await supabase
+  // and there is a held transaction (payment is waiting). Uses the service
+  // client because cron requests carry no user session — anonymous RLS would
+  // return no eligible jobs.
+  const { data: completedJobs, error } = await serviceClient
     .from("jobs")
     .select("id, title, updated_at, client_id, kinglancer_id")
     .eq("status", "completed");
@@ -67,7 +68,6 @@ export async function GET(request: Request) {
 
   let released = 0;
   const errors: string[] = [];
-  const serviceClient = createServiceClient();
 
   for (const job of toRelease) {
     // 1. Fetch the held transaction. If the kinglancer is already onboarded,
