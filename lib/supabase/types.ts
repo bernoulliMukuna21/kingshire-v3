@@ -327,6 +327,237 @@ export type Database = {
         };
         Relationships: [];
       };
+      placements: {
+        Row: {
+          id: string;
+          organisation_id: string;
+          created_by: string;
+          title: string;
+          summary: string;
+          categories: string[];
+          contribution: string;
+          reward: string;
+          location: string | null;
+          is_remote: boolean;
+          weekly_hours: number;
+          duration_weeks: number;
+          start_date: string | null;
+          status:
+            | "draft"
+            | "pending_review"
+            | "open"
+            | "closed"
+            | "cancelled";
+          requires_manual_review: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organisation_id: string;
+          created_by: string;
+          title: string;
+          summary: string;
+          categories?: string[];
+          contribution: string;
+          reward: string;
+          location?: string | null;
+          is_remote?: boolean;
+          weekly_hours?: number;
+          duration_weeks?: number;
+          start_date?: string | null;
+          status?:
+            | "draft"
+            | "pending_review"
+            | "open"
+            | "closed"
+            | "cancelled";
+          requires_manual_review?: boolean;
+        };
+        Update: {
+          title?: string;
+          summary?: string;
+          categories?: string[];
+          contribution?: string;
+          reward?: string;
+          location?: string | null;
+          is_remote?: boolean;
+          weekly_hours?: number;
+          duration_weeks?: number;
+          start_date?: string | null;
+          status?:
+            | "draft"
+            | "pending_review"
+            | "open"
+            | "closed"
+            | "cancelled";
+          requires_manual_review?: boolean;
+        };
+        Relationships: [];
+      };
+      placement_applications: {
+        Row: {
+          id: string;
+          placement_id: string;
+          kinglancer_id: string;
+          message: string | null;
+          status: "pending" | "accepted" | "rejected" | "withdrawn";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          placement_id: string;
+          kinglancer_id: string;
+          message?: string | null;
+          status?: "pending" | "accepted" | "rejected" | "withdrawn";
+        };
+        Update: {
+          message?: string | null;
+          status?: "pending" | "accepted" | "rejected" | "withdrawn";
+        };
+        Relationships: [];
+      };
+      placement_agreements: {
+        Row: {
+          id: string;
+          placement_id: string;
+          organisation_id: string;
+          kinglancer_id: string;
+          version: number;
+          contribution_terms: string;
+          reward_terms: string;
+          weekly_hours: number;
+          duration_weeks: number;
+          status: "pending_acceptance" | "active" | "completed" | "cancelled";
+          org_signed_by: string | null;
+          org_signed_at: string | null;
+          kinglancer_signed_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          placement_id: string;
+          organisation_id: string;
+          kinglancer_id: string;
+          version?: number;
+          contribution_terms: string;
+          reward_terms: string;
+          weekly_hours: number;
+          duration_weeks: number;
+          status?: "pending_acceptance" | "active" | "completed" | "cancelled";
+          org_signed_by?: string | null;
+          org_signed_at?: string | null;
+          kinglancer_signed_at?: string | null;
+          completed_at?: string | null;
+        };
+        Update: {
+          version?: number;
+          contribution_terms?: string;
+          reward_terms?: string;
+          weekly_hours?: number;
+          duration_weeks?: number;
+          status?: "pending_acceptance" | "active" | "completed" | "cancelled";
+          org_signed_by?: string | null;
+          org_signed_at?: string | null;
+          kinglancer_signed_at?: string | null;
+          completed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      placement_milestones: {
+        Row: {
+          id: string;
+          agreement_id: string;
+          title: string;
+          description: string | null;
+          due_date: string | null;
+          status: "pending" | "confirmed";
+          confirmed_by: string | null;
+          confirmed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          agreement_id: string;
+          title: string;
+          description?: string | null;
+          due_date?: string | null;
+          status?: "pending" | "confirmed";
+          confirmed_by?: string | null;
+          confirmed_at?: string | null;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          due_date?: string | null;
+          status?: "pending" | "confirmed";
+          confirmed_by?: string | null;
+          confirmed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      placement_check_ins: {
+        Row: {
+          id: string;
+          agreement_id: string;
+          author_id: string;
+          note: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          agreement_id: string;
+          author_id: string;
+          note: string;
+        };
+        Update: {
+          note?: string;
+        };
+        Relationships: [];
+      };
+      experience_records: {
+        Row: {
+          id: string;
+          agreement_id: string | null;
+          placement_id: string | null;
+          organisation_id: string;
+          kinglancer_id: string;
+          title: string;
+          summary: string | null;
+          skills: string[];
+          outcome: string | null;
+          reference_text: string | null;
+          is_public: boolean;
+          completed_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          agreement_id?: string | null;
+          placement_id?: string | null;
+          organisation_id: string;
+          kinglancer_id: string;
+          title: string;
+          summary?: string | null;
+          skills?: string[];
+          outcome?: string | null;
+          reference_text?: string | null;
+          is_public?: boolean;
+          completed_at?: string;
+        };
+        Update: {
+          title?: string;
+          summary?: string | null;
+          skills?: string[];
+          outcome?: string | null;
+          reference_text?: string | null;
+          is_public?: boolean;
+        };
+        Relationships: [];
+      };
       jobs: {
         Row: {
           id: string;
