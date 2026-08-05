@@ -11,6 +11,7 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import ReviewsList from "@/components/reviews/ReviewsList";
 import { getPublishedReviewsForUser } from "@/lib/db/reviews";
+import { listPublicExperienceRecords } from "@/lib/db/placements";
 import ServicesSection from "./ServicesSection";
 import {
   BookingCard,
@@ -46,6 +47,12 @@ const getKinglancerReviews = unstable_cache(
   { revalidate: 3600, tags: ["kinglancer-reviews"] },
 );
 
+const getKinglancerExperience = unstable_cache(
+  async (id: string) => listPublicExperienceRecords(id),
+  ["kinglancer-experience"],
+  { revalidate: 3600, tags: ["kinglancer-experience"] },
+);
+
 export default async function KinglancerProfilePage({
   params,
 }: {
@@ -61,6 +68,7 @@ export default async function KinglancerProfilePage({
     (kinglancer.services as Array<{ rate: number }> | null) ?? [];
 
   const reviews = await getKinglancerReviews(id);
+  const experience = await getKinglancerExperience(id);
 
   type Service = { name: string; rate: number; rate_type: string };
   const services = (kinglancer.services as Service[] | null) ?? [];
@@ -198,6 +206,55 @@ export default async function KinglancerProfilePage({
 
           {services.length > 0 && (
             <ServicesSection services={kinglancer.services} />
+          )}
+
+          {experience.length > 0 && (
+            <Card className="p-6">
+              <h2 className="text-lg font-black text-slate-950">
+                Placement Passport
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Verified experience placements completed through KingsHire.
+              </p>
+              <div className="mt-4 space-y-4">
+                {experience.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="rounded-2xl border border-slate-100 p-4"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-bold text-slate-950">{rec.title}</p>
+                      <span className="shrink-0 text-xs text-slate-400">
+                        {rec.organisation?.name ?? "Organisation"}
+                      </span>
+                    </div>
+                    {rec.summary && (
+                      <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">
+                        {rec.summary}
+                      </p>
+                    )}
+                    {rec.outcome && (
+                      <p className="mt-2 text-sm text-slate-700">
+                        <span className="font-semibold">Outcome:</span>{" "}
+                        {rec.outcome}
+                      </p>
+                    )}
+                    {rec.skills.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {rec.skills.map((s) => (
+                          <span
+                            key={s}
+                            className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"
+                          >
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
         </div>
 
