@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createApplication, hasApplied } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
 import { notifyNewApplication } from "@/lib/notifications";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -103,6 +104,15 @@ export async function POST(request: Request) {
         jobId: job_id,
       }).catch(() => {});
     }
+
+    await captureServerEvent({
+      distinctId: user.id,
+      event: "job_application_submitted",
+      properties: {
+        application_id: application.id,
+        job_id,
+      },
+    });
 
     return NextResponse.json(application, { status: 201 });
   } catch {

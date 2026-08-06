@@ -4,6 +4,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 import { getTransactionByJob } from "@/lib/db/transactions";
 import { notifyJobCancelled } from "@/lib/notifications";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -94,6 +95,12 @@ export async function POST(
       }
     }
 
+    await captureServerEvent({
+      distinctId: user.id,
+      event: "job_cancelled",
+      properties: { job_id: jobId, refunded: false },
+    });
+
     return NextResponse.json({ success: true });
   }
 
@@ -171,6 +178,12 @@ export async function POST(
       }).catch(console.error);
     }
   }
+
+  await captureServerEvent({
+    distinctId: user.id,
+    event: "job_cancelled",
+    properties: { job_id: jobId, refunded: true },
+  });
 
   return NextResponse.json({ success: true, refunded: true });
 }

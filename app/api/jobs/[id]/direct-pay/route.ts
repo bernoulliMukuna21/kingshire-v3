@@ -8,6 +8,7 @@ import {
   isCancellablePaymentIntentStatus,
   updatePaymentAttemptStatus,
 } from "@/lib/db/payment-attempts";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 type DirectPayJob = {
   id: string;
@@ -168,6 +169,16 @@ export async function POST(
       await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => {});
       throw err;
     }
+
+    await captureServerEvent({
+      distinctId: user.id,
+      event: "payment_started",
+      properties: {
+        job_id: job.id,
+        amount: job.budget,
+        payment_type: "direct_request",
+      },
+    });
 
     return NextResponse.json({
       success: true,
