@@ -67,6 +67,10 @@ function OnboardingContent() {
   const roleParam = searchParams.get("role"); // "client" | "kinglancer" | null
   const nextParam = searchParams.get("next");
   const isOrganisationJourney = searchParams.get("intent") === "organisation";
+  // Invitees accepting an organisation invite join as a Client with no extra
+  // setup — this page is skipped for them.
+  const isOrgInvitation =
+    nextParam?.startsWith("/organisation-invitations/") ?? false;
 
   const [role, setRole] = useState<string>("");
   const [services, setServices] = useState<ServiceEntry[]>([
@@ -98,6 +102,26 @@ function OnboardingContent() {
         .eq("id", user.id)
         .single();
 
+      // Organisation invitees auto-join as a Client and go straight to the
+      // invitation — they never see the role picker.
+      if (isOrgInvitation && nextParam && !profile?.role) {
+        const res = await fetch("/api/profile/complete-onboarding", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role: "client",
+            phone: "",
+            services: [],
+            service_tags: [],
+          }),
+        });
+        if (res.ok) {
+          router.replace(nextParam);
+          return;
+        }
+        // If it fails, fall through to the normal form so they aren't stuck.
+      }
+
       if (roleParam === "client" || roleParam === "kinglancer") {
         setRole(roleParam);
       } else if (profile?.role) {
@@ -106,7 +130,7 @@ function OnboardingContent() {
       setInitialLoading(false);
     };
     loadProfile();
-  }, [router, roleParam]);
+  }, [router, roleParam, isOrgInvitation, nextParam]);
 
   const addService = () =>
     setServices((prev) => [
