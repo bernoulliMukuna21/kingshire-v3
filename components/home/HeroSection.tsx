@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  AnimatePresence,
   motion,
   useReducedMotion,
   useScroll,
@@ -68,6 +69,19 @@ const trustBadges = [
   "Low platform fees",
 ];
 
+const jobWords = [
+  "Cleaning",
+  "Gardening",
+  "Graphic Design",
+  "Photography",
+  "Tutoring",
+  "Plumbing",
+  "Catering",
+  "Web Design",
+  "Video Editing",
+  "Carpentry",
+];
+
 type HeroStat = {
   value: string;
   label: string;
@@ -87,6 +101,15 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
     role === "client"
       ? { href: "/jobs/post", label: "Post a Job" }
       : { href: "/jobs", label: "Browse Jobs" };
+
+  const [wordIndex, setWordIndex] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(
+      () => setWordIndex((i) => (i + 1) % jobWords.length),
+      2100,
+    );
+    return () => clearInterval(timer);
+  }, []);
 
   return (
     <section
@@ -215,6 +238,37 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
           KingsHire connects people who need work done with skilled people who
           can do it—with trust, security and fair pay built in from the start.
         </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-7 flex flex-wrap items-center justify-center gap-x-3 text-xl font-bold text-white/50 sm:text-2xl"
+        >
+          <span>People hire for</span>
+          <span className="inline-flex h-9 items-center overflow-hidden sm:h-10">
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={jobWords[wordIndex]}
+                initial={
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : { y: "110%", opacity: 0 }
+                }
+                animate={{ y: "0%", opacity: 1 }}
+                exit={
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : { y: "-110%", opacity: 0 }
+                }
+                transition={{ duration: 0.42, ease: "easeOut" }}
+                className="text-gradient whitespace-nowrap"
+              >
+                {jobWords[wordIndex]}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

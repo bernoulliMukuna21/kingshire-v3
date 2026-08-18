@@ -20,21 +20,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Staircase fade — job labels ripple bright→dim across the steps */
-@keyframes stairFade {
-  0%,
-  100% {
-    opacity: 0.22;
-  }
-  45% {
-    opacity: 1;
-  }
-}
-
-.animate-stair {
-  animation: stairFade 4.5s ease-in-out infinite;
-}
-
 /* Gradient animated background */
 @keyframes gradientShift {
   0% {
