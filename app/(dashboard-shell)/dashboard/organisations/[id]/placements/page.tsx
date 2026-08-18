@@ -56,7 +56,6 @@ export default async function OrganisationPlacementsPage({
         organisationId={id}
         organisationName={organisationName}
         role={membership.role}
-        subtitle="Supervised experience placements — participants receive the value you declare, these are not paid jobs."
         active="placements"
         canManageMembers={
           membership.role === "owner" || membership.role === "admin"

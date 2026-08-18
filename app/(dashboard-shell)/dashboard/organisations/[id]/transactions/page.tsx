@@ -36,7 +36,6 @@ export default async function OrganisationTransactionsPage({
         organisationId={id}
         organisationName={result.organisationName}
         role={membership.role}
-        subtitle="Payments for jobs owned by this Organisation."
         active="transactions"
         canManageMembers={
           membership.role === "owner" || membership.role === "admin"

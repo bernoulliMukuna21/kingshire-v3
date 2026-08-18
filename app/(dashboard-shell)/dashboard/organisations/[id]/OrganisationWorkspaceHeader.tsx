@@ -6,14 +6,12 @@ export default function OrganisationWorkspaceHeader({
   organisationId,
   organisationName,
   role,
-  subtitle,
   active,
   canManageMembers,
 }: {
   organisationId: string;
   organisationName: string;
   role: string;
-  subtitle?: string;
   active: string;
   canManageMembers: boolean;
 }) {
@@ -43,7 +41,6 @@ export default function OrganisationWorkspaceHeader({
       <PageHeader
         eyebrow={`${role} workspace`}
         title={organisationName}
-        description={subtitle}
         action={
           <div className="flex flex-wrap gap-2">
             <ButtonLink href={`${base}/jobs/post`}>Post a job</ButtonLink>
