@@ -19,10 +19,8 @@ type Organisation = {
 
 export default function OrganisationSettings({
   organisation,
-  canDelete,
 }: {
   organisation: Organisation;
-  canDelete: boolean;
 }) {
   const router = useRouter();
   const [message, setMessage] = useState<string | null>(null);
@@ -37,18 +35,6 @@ export default function OrganisationSettings({
     const result = await response.json();
     setMessage(response.ok ? "Organisation profile saved." : result.error);
     if (response.ok) router.refresh();
-  }
-
-  async function remove() {
-    if (!window.confirm(`Delete ${organisation.name}? Historical financial records will be retained.`)) return;
-    const response = await fetch(`/api/organisations/${organisation.id}`, { method: "DELETE" });
-    const result = await response.json();
-    if (!response.ok) {
-      setMessage(result.error);
-      return;
-    }
-    router.push("/dashboard/organisations");
-    router.refresh();
   }
 
   return (
@@ -79,7 +65,6 @@ export default function OrganisationSettings({
       {message && <p className="text-sm text-slate-600">{message}</p>}
       <div className="flex flex-wrap gap-3">
         <Button type="submit">Save profile</Button>
-        {canDelete && <Button type="button" variant="danger" onClick={remove}>Delete Organisation</Button>}
       </div>
     </form>
   );

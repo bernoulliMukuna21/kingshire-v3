@@ -246,7 +246,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
           className="mt-7 flex flex-wrap items-center justify-center gap-x-3 text-xl font-bold text-white/50 sm:text-2xl"
         >
           <span>People hire for</span>
-          <span className="inline-flex h-9 items-center overflow-hidden sm:h-10">
+          <span className="inline-flex h-9 w-[15ch] items-center justify-start overflow-hidden sm:h-10">
             <AnimatePresence mode="wait">
               <motion.span
                 key={jobWords[wordIndex]}
