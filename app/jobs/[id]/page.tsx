@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
+import { Calendar, Briefcase, Tag, AlertCircle, MapPin, Clock, Monitor } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
@@ -331,6 +331,40 @@ export default async function JobDetailPage({
           </Card>
 
           <Card className="space-y-3 p-5">
+            <div className="text-sm text-gray-600">
+              <div className="flex items-center gap-3">
+                {job.work_mode === "in_person" ? (
+                  <MapPin size={16} className="text-gray-400 shrink-0" />
+                ) : (
+                  <Monitor size={16} className="text-gray-400 shrink-0" />
+                )}
+                <strong>
+                  {job.work_mode === "in_person"
+                    ? "In person"
+                    : "Online / remote"}
+                </strong>
+              </div>
+              {job.work_mode === "in_person" && job.location && (
+                <p className="mt-1 pl-7 text-gray-500">{job.location}</p>
+              )}
+            </div>
+            {job.work_mode === "in_person" && job.scheduled_at && (
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <Clock size={16} className="text-gray-400 shrink-0" />
+                <span>
+                  Attend:{" "}
+                  <strong>
+                    {new Date(job.scheduled_at).toLocaleString("en-GB", {
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </strong>
+                </span>
+              </div>
+            )}
             {job.deadline && (
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Calendar size={16} className="text-gray-400 shrink-0" />

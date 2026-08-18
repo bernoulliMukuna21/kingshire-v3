@@ -109,6 +109,9 @@ export async function POST(request: Request) {
     rate_type,
     deadline,
     invited_kinglancer_id,
+    work_mode,
+    location,
+    scheduled_at,
   } = body;
 
   const titleStr = (title ?? "").trim();
@@ -168,6 +171,26 @@ export async function POST(request: Request) {
       ? invited_kinglancer_id.trim()
       : null;
 
+  const resolvedWorkMode = work_mode === "in_person" ? "in_person" : "online";
+  const locationStr = typeof location === "string" ? location.trim() : "";
+  let scheduledAtIso: string | null = null;
+  if (resolvedWorkMode === "in_person") {
+    if (!locationStr) {
+      return NextResponse.json(
+        { error: "Add the location for an in-person job." },
+        { status: 400 },
+      );
+    }
+    const when = new Date(scheduled_at);
+    if (!scheduled_at || isNaN(when.getTime())) {
+      return NextResponse.json(
+        { error: "Add a valid date and time of attendance." },
+        { status: 400 },
+      );
+    }
+    scheduledAtIso = when.toISOString();
+  }
+
   if (invitedKinglancerId) {
     const { data: invitedKinglancer } = await supabase
       .from("profiles")
@@ -194,6 +217,9 @@ export async function POST(request: Request) {
       categories,
       budget: normalizedBudget,
       rate_type: resolvedRateType,
+      work_mode: resolvedWorkMode,
+      location: resolvedWorkMode === "in_person" ? locationStr : null,
+      scheduled_at: scheduledAtIso,
       invited_kinglancer_id: invitedKinglancerId,
       direct_request_status: invitedKinglancerId ? "pending" : null,
       deadline: deadline || null,

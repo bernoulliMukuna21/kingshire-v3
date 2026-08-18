@@ -591,6 +591,9 @@ export type Database = {
           counter_rate_type: "fixed" | "per_hour" | "per_day" | null;
           counter_deadline: string | null;
           rate_type: "fixed" | "per_hour" | "per_day";
+          work_mode: "online" | "in_person";
+          location: string | null;
+          scheduled_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -618,6 +621,9 @@ export type Database = {
           counter_rate_type?: "fixed" | "per_hour" | "per_day" | null;
           counter_deadline?: string | null;
           rate_type?: "fixed" | "per_hour" | "per_day";
+          work_mode?: "online" | "in_person";
+          location?: string | null;
+          scheduled_at?: string | null;
         };
         Update: {
           organisation_id?: string | null;
@@ -627,6 +633,9 @@ export type Database = {
           categories?: string[];
           service_tags_required?: string[];
           rate_type?: "fixed" | "per_hour" | "per_day";
+          work_mode?: "online" | "in_person";
+          location?: string | null;
+          scheduled_at?: string | null;
           invited_kinglancer_id?: string | null;
           direct_request_status?:
             | "pending"
