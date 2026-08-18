@@ -19,41 +19,62 @@ export default async function OrganisationTransactionsPage({
   const { id } = await params;
   const query = await searchParams;
   const requestedPage = Number.parseInt(query.page ?? "1", 10);
-  const page = Number.isFinite(requestedPage) && requestedPage > 0
-    ? requestedPage
-    : 1;
+  const page =
+    Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
   const membership = await getOrganisationMembership(id, user.id);
   if (!membership) notFound();
   const result = await getOrganisationTransactions(id, page);
   if (!result) notFound();
   return (
-    <div className="mx-auto max-w-5xl space-y-7 px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
       <OrganisationWorkspaceHeader
         organisationId={id}
         organisationName={result.organisationName}
         role={membership.role}
         subtitle="Payments for jobs owned by this Organisation."
         active="transactions"
-        canManageMembers={membership.role === "owner" || membership.role === "admin"}
+        canManageMembers={
+          membership.role === "owner" || membership.role === "admin"
+        }
       />
       {!result.transactions.length ? (
-        <EmptyState title="No transactions yet" description="Payments appear here after the Organisation selects and pays a Kinglancer." />
+        <EmptyState
+          title="No transactions yet"
+          description="Payments appear here after the Organisation selects and pays a Kinglancer."
+        />
       ) : (
         <Card className="divide-y divide-slate-100 overflow-hidden">
           {result.transactions.map((transaction) => {
             const total = transaction.amount + transaction.platformFeeClient;
             return (
-              <div key={transaction.id} className="flex flex-wrap items-center justify-between gap-4 p-4">
+              <div
+                key={transaction.id}
+                className="flex flex-wrap items-center justify-between gap-4 p-4"
+              >
                 <div>
-                  <Link href={`/dashboard/client/jobs/${transaction.jobId}`} className="font-bold text-slate-950 hover:text-blue-700">{transaction.jobTitle}</Link>
-                  <p className="mt-1 text-xs text-slate-500">{transaction.kinglancerName} · {new Date(transaction.createdAt).toLocaleDateString("en-GB")}</p>
+                  <Link
+                    href={`/dashboard/client/jobs/${transaction.jobId}`}
+                    className="font-bold text-slate-950 hover:text-blue-700"
+                  >
+                    {transaction.jobTitle}
+                  </Link>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {transaction.kinglancerName} ·{" "}
+                    {new Date(transaction.createdAt).toLocaleDateString(
+                      "en-GB",
+                    )}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="font-black">£{total.toFixed(2)}</p>
-                  <StatusBadge className="mt-1 capitalize">{transaction.status}</StatusBadge>
+                  <StatusBadge className="mt-1 capitalize">
+                    {transaction.status}
+                  </StatusBadge>
                 </div>
               </div>
             );

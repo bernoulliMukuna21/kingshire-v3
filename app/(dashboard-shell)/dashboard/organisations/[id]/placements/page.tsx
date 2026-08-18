@@ -1,7 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getOrganisationMembership, requireOrganisationPermission } from "@/lib/organisations";
+import {
+  getOrganisationMembership,
+  requireOrganisationPermission,
+} from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { listOrganisationPlacements } from "@/lib/db/placements";
 import { ButtonLink } from "@/components/ui/Button";
@@ -48,21 +51,17 @@ export default async function OrganisationPlacementsPage({
   const placements = await listOrganisationPlacements(id);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       <OrganisationWorkspaceHeader
         organisationId={id}
         organisationName={organisationName}
         role={membership.role}
         subtitle="Supervised experience placements — participants receive the value you declare, these are not paid jobs."
         active="placements"
-        canManageMembers={membership.role === "owner" || membership.role === "admin"}
+        canManageMembers={
+          membership.role === "owner" || membership.role === "admin"
+        }
       />
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
-        <span className="font-bold text-slate-900">Placements aren&apos;t jobs.</span>{" "}
-        A job is paid work settled through Kingshire; a placement is supervised
-        experience — participants receive the mentoring, training or reference you
-        offer, not a platform payment.
-      </div>
       {!placements.length ? (
         <EmptyState
           title="No placements yet"

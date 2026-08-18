@@ -1,6 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
-import PostMenu from "./PostMenu";
+import { ButtonLink } from "@/components/ui/Button";
 
 export default function OrganisationWorkspaceHeader({
   organisationId,
@@ -21,10 +21,18 @@ export default function OrganisationWorkspaceHeader({
   const tabs = [
     { key: "overview", label: "Overview", href: `${base}?tab=overview` },
     { key: "team", label: "Team", href: `${base}?tab=team` },
-    { key: "transactions", label: "Transactions", href: `${base}/transactions` },
+    {
+      key: "transactions",
+      label: "Transactions",
+      href: `${base}/transactions`,
+    },
     ...(canManageMembers
       ? [
-          { key: "placements", label: "Placements", href: `${base}/placements` },
+          {
+            key: "placements",
+            label: "Placements",
+            href: `${base}/placements`,
+          },
           { key: "settings", label: "Settings", href: `${base}?tab=settings` },
         ]
       : []),
@@ -37,10 +45,14 @@ export default function OrganisationWorkspaceHeader({
         title={organisationName}
         description={subtitle}
         action={
-          <PostMenu
-            organisationId={organisationId}
-            canCreatePlacement={canManageMembers}
-          />
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href={`${base}/jobs/post`}>Post a job</ButtonLink>
+            {canManageMembers && (
+              <ButtonLink href={`${base}/placements/new`} variant="secondary">
+                Post a placement
+              </ButtonLink>
+            )}
+          </div>
         }
       />
       <div className="flex gap-1 overflow-x-auto border-b border-slate-200 scrollbar-none [&::-webkit-scrollbar]:hidden">
