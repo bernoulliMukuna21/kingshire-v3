@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireOrganisationPermission } from "@/modules/organisations/application/permissions";
 import { organisationRepository } from "@/infrastructure/supabase/repositories/supabase-organisation-repository";
+import { ensureOrganisationPortalConfiguration } from "@/infrastructure/stripe/organisation-subscriptions";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -56,8 +57,10 @@ export async function POST(request: Request) {
     process.env.APP_URL?.replace(/\/$/, "") ??
     new URL(request.url).origin;
   try {
+    const configuration = await ensureOrganisationPortalConfiguration();
     const portal = await stripe.billingPortal.sessions.create({
       customer: subscription.stripe_customer_id,
+      configuration,
       return_url: `${appUrl}/dashboard/organisations/${organisationId}`,
     });
     return NextResponse.json({ url: portal.url });

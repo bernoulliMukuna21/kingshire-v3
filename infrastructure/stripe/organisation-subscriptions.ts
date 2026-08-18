@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   getOrganisationPlan,
+  ORGANISATION_PLAN_IDS,
   type OrganisationPlanId,
 } from "@/modules/organisations/domain/plans";
 import type { OrganisationProfileInput } from "@/modules/organisations/domain/types";
@@ -55,6 +56,55 @@ function getPriceId(planId: OrganisationPlanId) {
   return priceId;
 }
 
+// The default Stripe customer portal only exposes cancel + payment method, so
+// owners can't move between plans. We build a configuration that enables plan
+// switching across all organisation plans and reuse it for the process.
+let cachedPortalConfigurationId: string | null = null;
+
+export async function ensureOrganisationPortalConfiguration(): Promise<string> {
+  if (cachedPortalConfigurationId) return cachedPortalConfigurationId;
+
+  const prices = await Promise.all(
+    ORGANISATION_PLAN_IDS.map((planId) =>
+      stripe.prices.retrieve(getPriceId(planId)),
+    ),
+  );
+
+  const pricesByProduct = new Map<string, string[]>();
+  for (const price of prices) {
+    const productId =
+      typeof price.product === "string" ? price.product : price.product.id;
+    pricesByProduct.set(productId, [
+      ...(pricesByProduct.get(productId) ?? []),
+      price.id,
+    ]);
+  }
+  const products = [...pricesByProduct.entries()].map(
+    ([product, productPrices]) => ({ product, prices: productPrices }),
+  );
+
+  const configuration = await stripe.billingPortal.configurations.create({
+    features: {
+      customer_update: {
+        enabled: true,
+        allowed_updates: ["address", "email", "name", "tax_id"],
+      },
+      invoice_history: { enabled: true },
+      payment_method_update: { enabled: true },
+      subscription_cancel: { enabled: true, mode: "at_period_end" },
+      subscription_update: {
+        enabled: true,
+        default_allowed_updates: ["price"],
+        proration_behavior: "create_prorations",
+        products,
+      },
+    },
+  });
+
+  cachedPortalConfigurationId = configuration.id;
+  return configuration.id;
+}
+
 function publicAppUrl(requestUrl: string) {
   return (
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
@@ -66,9 +116,7 @@ function publicAppUrl(requestUrl: string) {
 async function findExistingDraft(actorId: string, requestKey: string) {
   const { data, error } = await createServiceClient()
     .from("organisation_setup_drafts")
-    .select(
-      "id, actor_id, stripe_checkout_session_id, organisation_id",
-    )
+    .select("id, actor_id, stripe_checkout_session_id, organisation_id")
     .eq("actor_id", actorId)
     .eq("request_key", requestKey)
     .maybeSingle();
@@ -221,10 +269,7 @@ export async function createOrganisationCheckout(input: {
   return { organisationId: null, checkoutUrl: session.url };
 }
 
-function getExpandedId(
-  value: string | { id: string } | null,
-  label: string,
-) {
+function getExpandedId(value: string | { id: string } | null, label: string) {
   const id = typeof value === "string" ? value : value?.id;
   if (!id) {
     throw new OrganisationError(
@@ -253,19 +298,13 @@ export async function fulfillOrganisationCheckout(
       "Organisation checkout was not found.",
     );
   }
-  if (
-    expectedActorId &&
-    session.metadata.actor_id !== expectedActorId
-  ) {
+  if (expectedActorId && session.metadata.actor_id !== expectedActorId) {
     throw new OrganisationError(
       "forbidden",
       "This checkout belongs to another account.",
     );
   }
-  if (
-    session.status !== "complete" ||
-    session.payment_status === "unpaid"
-  ) {
+  if (session.status !== "complete" || session.payment_status === "unpaid") {
     throw new OrganisationError(
       "conflict",
       "The subscription payment has not completed.",
@@ -329,8 +368,7 @@ export async function fulfillOrganisationCheckout(
       "We couldn't activate your Organisation after payment. Your payment is safe — please contact support.",
     );
   }
-  const currentPeriodEnd =
-    subscription.items.data[0]?.current_period_end;
+  const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
   if (currentPeriodEnd) {
     await db
       .from("organisation_subscriptions")
@@ -360,18 +398,13 @@ export async function syncOrganisationSubscription(
   if (priceId) {
     update.stripe_price_id = priceId;
     const matchingPlan = (
-      Object.entries(PRICE_ENV_BY_PLAN) as Array<
-        [OrganisationPlanId, string]
-      >
+      Object.entries(PRICE_ENV_BY_PLAN) as Array<[OrganisationPlanId, string]>
     ).find(([, environmentName]) => process.env[environmentName] === priceId);
     if (matchingPlan) update.plan = matchingPlan[0];
   }
-  const currentPeriodEnd =
-    subscription.items.data[0]?.current_period_end;
+  const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
   if (currentPeriodEnd) {
-    update.current_period_end = new Date(
-      currentPeriodEnd * 1000,
-    ).toISOString();
+    update.current_period_end = new Date(currentPeriodEnd * 1000).toISOString();
   }
 
   const { error } = await createServiceClient()
