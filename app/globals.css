@@ -20,18 +20,19 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* Marquee animation */
-@keyframes marquee {
-  0% {
-    transform: translateX(0);
-  }
+/* Staircase fade — job labels ripple bright→dim across the steps */
+@keyframes stairFade {
+  0%,
   100% {
-    transform: translateX(-50%);
+    opacity: 0.22;
+  }
+  45% {
+    opacity: 1;
   }
 }
 
-.animate-marquee {
-  animation: marquee 25s linear infinite;
+.animate-stair {
+  animation: stairFade 4.5s ease-in-out infinite;
 }
 
 /* Gradient animated background */
