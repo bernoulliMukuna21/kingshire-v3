@@ -56,12 +56,13 @@ export default async function OrganisationPlacementsPage({
         subtitle="Supervised experience placements — participants receive the value you declare, these are not paid jobs."
         active="placements"
         canManageMembers={membership.role === "owner" || membership.role === "admin"}
-        action={
-          <ButtonLink href={`/dashboard/organisations/${id}/placements/new`}>
-            Create placement
-          </ButtonLink>
-        }
       />
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+        <span className="font-bold text-slate-900">Placements aren&apos;t jobs.</span>{" "}
+        A job is paid work settled through Kingshire; a placement is supervised
+        experience — participants receive the mentoring, training or reference you
+        offer, not a platform payment.
+      </div>
       {!placements.length ? (
         <EmptyState
           title="No placements yet"

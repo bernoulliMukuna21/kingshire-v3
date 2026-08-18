@@ -47,7 +47,6 @@ export default async function OrganisationDashboardPage({
         subtitle={[organisation.organisation_type?.replaceAll("_", " "), organisation.location].filter(Boolean).join(" · ")}
         active={activeTab}
         canManageMembers={canManageMembers}
-        action={<ButtonLink href={`/dashboard/organisations/${id}/jobs/post`}>Post a job</ButtonLink>}
       />
 
       {activeTab === "overview" && (
