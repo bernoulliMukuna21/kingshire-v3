@@ -3,10 +3,10 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganisationMembership } from "@/lib/organisations";
 import { getOrganisationOverview } from "@/infrastructure/supabase/queries/organisation-queries";
-import PageHeader from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
+import OrganisationWorkspaceHeader from "./OrganisationWorkspaceHeader";
 import InviteMemberForm from "./InviteMemberForm";
 import MemberActions from "./MemberActions";
 import OrganisationSettings from "./OrganisationSettings";
@@ -35,39 +35,20 @@ export default async function OrganisationDashboardPage({
   const { organisation, jobs, members, stats, subscription } = overview;
   const canManageMembers = membership.role === "owner" || membership.role === "admin";
 
-  const tabs = [
-    { key: "overview", label: "Overview" },
-    { key: "team", label: "Team" },
-    ...(canManageMembers ? [{ key: "settings", label: "Settings" }] : []),
-  ];
-  const activeTab = tabs.some((t) => t.key === tab)
-    ? (tab as string)
-    : "overview";
+  const validTabs = ["overview", "team", ...(canManageMembers ? ["settings"] : [])];
+  const activeTab = validTabs.includes(tab ?? "") ? (tab as string) : "overview";
 
   return (
     <div className="mx-auto max-w-6xl space-y-7 px-4 py-8 sm:px-6">
-      <PageHeader
-        eyebrow={`${membership.role} workspace`}
-        title={organisation.name}
-        description={[organisation.organisation_type?.replaceAll("_", " "), organisation.location].filter(Boolean).join(" · ")}
+      <OrganisationWorkspaceHeader
+        organisationId={id}
+        organisationName={organisation.name}
+        role={membership.role}
+        subtitle={[organisation.organisation_type?.replaceAll("_", " "), organisation.location].filter(Boolean).join(" · ")}
+        active={activeTab}
+        canManageMembers={canManageMembers}
         action={<ButtonLink href={`/dashboard/organisations/${id}/jobs/post`}>Post a job</ButtonLink>}
       />
-
-      <div className="flex gap-1 overflow-x-auto border-b border-slate-200">
-        {tabs.map((t) => (
-          <Link
-            key={t.key}
-            href={`/dashboard/organisations/${id}?tab=${t.key}`}
-            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-bold transition-colors ${
-              activeTab === t.key
-                ? "border-blue-600 text-blue-700"
-                : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </div>
 
       {activeTab === "overview" && (
         <div className="space-y-7">
@@ -75,14 +56,6 @@ export default async function OrganisationDashboardPage({
             <Card className="p-5"><p className="text-xs font-bold uppercase text-slate-400">Jobs</p><p className="mt-2 text-3xl font-black">{stats.jobCount}</p></Card>
             <Card className="p-5"><p className="text-xs font-bold uppercase text-slate-400">Members</p><p className="mt-2 text-3xl font-black">{stats.memberCount}</p></Card>
             <Card className="p-5"><p className="text-xs font-bold uppercase text-slate-400">Released spend</p><p className="mt-2 text-3xl font-black">£{stats.releasedSpend.toFixed(2)}</p></Card>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <ButtonLink href={`/dashboard/organisations/${id}/transactions`} variant="secondary">
-              View all transactions
-            </ButtonLink>
-            <ButtonLink href={`/dashboard/organisations/${id}/placements`} variant="secondary">
-              Manage placements
-            </ButtonLink>
           </div>
           <section>
             <h2 className="mb-3 text-xl font-black text-slate-950">Organisation jobs</h2>

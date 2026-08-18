@@ -3,11 +3,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganisationMembership } from "@/lib/organisations";
 import { getOrganisationTransactions } from "@/infrastructure/supabase/queries/organisation-queries";
-import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import Pagination from "@/components/ui/Pagination";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import OrganisationWorkspaceHeader from "../OrganisationWorkspaceHeader";
 
 export default async function OrganisationTransactionsPage({
   params,
@@ -25,12 +25,20 @@ export default async function OrganisationTransactionsPage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
-  if (!(await getOrganisationMembership(id, user.id))) notFound();
+  const membership = await getOrganisationMembership(id, user.id);
+  if (!membership) notFound();
   const result = await getOrganisationTransactions(id, page);
   if (!result) notFound();
   return (
     <div className="mx-auto max-w-5xl space-y-7 px-4 py-8 sm:px-6">
-      <PageHeader eyebrow={result.organisationName} title="Organisation transactions" description="Payments for jobs owned by this Organisation." />
+      <OrganisationWorkspaceHeader
+        organisationId={id}
+        organisationName={result.organisationName}
+        role={membership.role}
+        subtitle="Payments for jobs owned by this Organisation."
+        active="transactions"
+        canManageMembers={membership.role === "owner" || membership.role === "admin"}
+      />
       {!result.transactions.length ? (
         <EmptyState title="No transactions yet" description="Payments appear here after the Organisation selects and pays a Kinglancer." />
       ) : (

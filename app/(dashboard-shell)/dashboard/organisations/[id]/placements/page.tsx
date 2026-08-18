@@ -1,13 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { requireOrganisationPermission } from "@/lib/organisations";
+import { getOrganisationMembership, requireOrganisationPermission } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { listOrganisationPlacements } from "@/lib/db/placements";
-import PageHeader from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
+import OrganisationWorkspaceHeader from "../OrganisationWorkspaceHeader";
 import PlacementActions from "./PlacementActions";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -40,6 +40,8 @@ export default async function OrganisationPlacementsPage({
   if (!(await requireOrganisationPermission(id, user.id, "manage_jobs"))) {
     notFound();
   }
+  const membership = await getOrganisationMembership(id, user.id);
+  if (!membership) notFound();
   const organisationName = await getOrganisationName(id);
   if (!organisationName) notFound();
 
@@ -47,10 +49,13 @@ export default async function OrganisationPlacementsPage({
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-8 sm:px-6">
-      <PageHeader
-        eyebrow={organisationName}
-        title="Placements"
-        description="Supervised experience placements. Participants receive the value you declare — these are not paid jobs."
+      <OrganisationWorkspaceHeader
+        organisationId={id}
+        organisationName={organisationName}
+        role={membership.role}
+        subtitle="Supervised experience placements — participants receive the value you declare, these are not paid jobs."
+        active="placements"
+        canManageMembers={membership.role === "owner" || membership.role === "admin"}
         action={
           <ButtonLink href={`/dashboard/organisations/${id}/placements/new`}>
             Create placement
