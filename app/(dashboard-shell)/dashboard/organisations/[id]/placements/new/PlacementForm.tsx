@@ -6,17 +6,37 @@ import { useRouter } from "next/navigation";
 const fieldClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500";
 
+const WORK_MODES = [
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "On-site" },
+] as const;
+
+const COMPENSATION_OPTIONS = [
+  { value: "money", label: "Money" },
+  { value: "reference", label: "Reference" },
+  { value: "certificate", label: "Certificate" },
+  { value: "mentoring", label: "Mentoring" },
+  { value: "training", label: "Training" },
+  { value: "other", label: "Other" },
+] as const;
+
+type WorkMode = (typeof WORK_MODES)[number]["value"];
+
 function Field({
   label,
+  required,
   children,
 }: {
   label: string;
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div>
       <label className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
+        {required && <span className="text-red-500"> *</span>}
       </label>
       {children}
     </div>
@@ -36,13 +56,18 @@ export default function PlacementForm({
   const [selected, setSelected] = useState<string[]>([]);
   const [contribution, setContribution] = useState("");
   const [reward, setReward] = useState("");
+  const [workMode, setWorkMode] = useState<WorkMode>("remote");
+  const [daysOnSite, setDaysOnSite] = useState("2");
   const [location, setLocation] = useState("");
-  const [isRemote, setIsRemote] = useState(false);
+  const [compensation, setCompensation] = useState<string[]>([]);
+  const [compensationNote, setCompensationNote] = useState("");
   const [weeklyHours, setWeeklyHours] = useState("8");
   const [durationWeeks, setDurationWeeks] = useState("8");
   const [startDate, setStartDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const needsLocation = workMode === "hybrid" || workMode === "onsite";
 
   function toggleCategory(c: string) {
     setSelected((prev) =>
@@ -50,8 +75,42 @@ export default function PlacementForm({
     );
   }
 
+  function toggleCompensation(value: string) {
+    setCompensation((prev) =>
+      prev.includes(value)
+        ? prev.filter((x) => x !== value)
+        : [...prev, value],
+    );
+  }
+
+  function validate(): string | null {
+    if (title.trim().length < 3) return "Add a title (at least 3 characters).";
+    if (summary.trim().length < 10)
+      return "Add a summary (at least 10 characters).";
+    if (!selected.length) return "Select at least one category.";
+    if (contribution.trim().length < 10)
+      return "Describe what the participant will contribute.";
+    if (reward.trim().length < 10)
+      return "Describe what the participant will receive.";
+    if (needsLocation && !location.trim())
+      return "Add a location for on-site or hybrid placements.";
+    if (workMode === "hybrid") {
+      const days = Number(daysOnSite);
+      if (!Number.isInteger(days) || days < 1 || days > 6)
+        return "Set how many days on-site per week (1–6).";
+    }
+    if (compensation.includes("other") && compensationNote.trim().length < 3)
+      return "Explain what the 'Other' compensation is.";
+    return null;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setSaving(true);
     setError(null);
     const res = await fetch(
@@ -65,8 +124,11 @@ export default function PlacementForm({
           categories: selected,
           contribution,
           reward,
-          location: location || null,
-          is_remote: isRemote,
+          location: needsLocation ? location.trim() || null : null,
+          work_mode: workMode,
+          days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
+          compensation_types: compensation,
+          compensation_note: compensationNote.trim() || null,
           weekly_hours: Number(weeklyHours),
           duration_weeks: Number(durationWeeks),
           start_date: startDate || null,
@@ -90,7 +152,7 @@ export default function PlacementForm({
           {error}
         </div>
       )}
-      <Field label="Title">
+      <Field label="Title" required>
         <input
           className={fieldClass}
           value={title}
@@ -99,7 +161,7 @@ export default function PlacementForm({
           placeholder="e.g. Media team assistant placement"
         />
       </Field>
-      <Field label="Summary">
+      <Field label="Summary" required>
         <textarea
           className={`${fieldClass} resize-none`}
           rows={3}
@@ -109,7 +171,7 @@ export default function PlacementForm({
           placeholder="What the placement is about."
         />
       </Field>
-      <Field label="Categories">
+      <Field label="Categories" required>
         <div className="flex flex-wrap gap-2">
           {categories.map((c) => (
             <button
@@ -127,7 +189,7 @@ export default function PlacementForm({
           ))}
         </div>
       </Field>
-      <Field label="What the participant will contribute">
+      <Field label="What the participant will contribute" required>
         <textarea
           className={`${fieldClass} resize-none`}
           rows={3}
@@ -137,7 +199,7 @@ export default function PlacementForm({
           placeholder="The work or activities they'll take part in."
         />
       </Field>
-      <Field label="What the participant will receive">
+      <Field label="What the participant will receive" required>
         <textarea
           className={`${fieldClass} resize-none`}
           rows={3}
@@ -147,8 +209,82 @@ export default function PlacementForm({
           placeholder="Mentoring, training, a reference, a verified experience record…"
         />
       </Field>
+
+      <Field label="Compensation">
+        <div className="flex flex-wrap gap-2">
+          {COMPENSATION_OPTIONS.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              onClick={() => toggleCompensation(option.value)}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                compensation.includes(option.value)
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </Field>
+      {compensation.includes("other") && (
+        <Field label="Please specify the other compensation" required>
+          <input
+            className={fieldClass}
+            value={compensationNote}
+            onChange={(e) => setCompensationNote(e.target.value)}
+            maxLength={2000}
+            placeholder="e.g. Travel allowance of £30/week"
+          />
+        </Field>
+      )}
+
+      <Field label="Where is the placement carried out?" required>
+        <div className="flex flex-wrap gap-2">
+          {WORK_MODES.map((mode) => (
+            <button
+              type="button"
+              key={mode.value}
+              onClick={() => setWorkMode(mode.value)}
+              className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
+                workMode === mode.value
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Weekly hours (max 16)">
+        {workMode === "hybrid" && (
+          <Field label="Days on-site per week (max 6)" required>
+            <input
+              type="number"
+              min={1}
+              max={6}
+              className={fieldClass}
+              value={daysOnSite}
+              onChange={(e) => setDaysOnSite(e.target.value)}
+            />
+          </Field>
+        )}
+        {needsLocation && (
+          <Field label="Location" required>
+            <input
+              className={fieldClass}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="City or address"
+            />
+          </Field>
+        )}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Weekly hours (max 16)" required>
           <input
             type="number"
             min={1}
@@ -158,7 +294,7 @@ export default function PlacementForm({
             onChange={(e) => setWeeklyHours(e.target.value)}
           />
         </Field>
-        <Field label="Duration in weeks (max 26)">
+        <Field label="Duration in weeks (max 26)" required>
           <input
             type="number"
             min={1}
@@ -166,15 +302,6 @@ export default function PlacementForm({
             className={fieldClass}
             value={durationWeeks}
             onChange={(e) => setDurationWeeks(e.target.value)}
-          />
-        </Field>
-        <Field label="Location">
-          <input
-            className={fieldClass}
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder="City or address"
-            disabled={isRemote}
           />
         </Field>
         <Field label="Start date">
@@ -186,15 +313,6 @@ export default function PlacementForm({
           />
         </Field>
       </div>
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input
-          type="checkbox"
-          checked={isRemote}
-          onChange={(e) => setIsRemote(e.target.checked)}
-          className="h-4 w-4 rounded border-slate-300"
-        />
-        Remote placement
-      </label>
       <div className="flex items-center gap-3 pt-2">
         <button
           type="submit"

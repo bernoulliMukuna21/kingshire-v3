@@ -7,6 +7,7 @@ import {
 } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { listOrganisationPlacements } from "@/lib/db/placements";
+import { placementWorkModeSummary } from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -95,12 +96,8 @@ export default async function OrganisationPlacementsPage({
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  {p.weekly_hours}h/week · {p.duration_weeks} weeks
-                  {p.is_remote
-                    ? " · Remote"
-                    : p.location
-                      ? ` · ${p.location}`
-                      : ""}
+                  {p.weekly_hours}h/week · {p.duration_weeks} weeks ·{" "}
+                  {placementWorkModeSummary(p)}
                 </p>
               </div>
               <PlacementActions

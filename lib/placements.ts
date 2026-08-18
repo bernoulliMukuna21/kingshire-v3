@@ -11,6 +11,44 @@ export type PlacementStatus =
   | "closed"
   | "cancelled";
 
+export type PlacementWorkMode = "remote" | "hybrid" | "onsite";
+
+export const PLACEMENT_COMPENSATION_TYPES = [
+  "money",
+  "reference",
+  "certificate",
+  "mentoring",
+  "training",
+  "other",
+] as const;
+
+export type PlacementCompensationType =
+  (typeof PLACEMENT_COMPENSATION_TYPES)[number];
+
+export const COMPENSATION_LABELS: Record<string, string> = {
+  money: "Money",
+  reference: "Reference",
+  certificate: "Certificate",
+  mentoring: "Mentoring",
+  training: "Training",
+  other: "Other",
+};
+
+export function placementWorkModeSummary(p: {
+  work_mode: string;
+  days_on_site: number | null;
+  location: string | null;
+}): string {
+  if (p.work_mode === "hybrid") {
+    const days = p.days_on_site ? ` (${p.days_on_site}d on-site/week)` : "";
+    return `Hybrid${days}${p.location ? ` · ${p.location}` : ""}`;
+  }
+  if (p.work_mode === "onsite") {
+    return `On-site${p.location ? ` · ${p.location}` : ""}`;
+  }
+  return "Remote";
+}
+
 export type PlacementInput = {
   title: string;
   summary: string;
@@ -18,7 +56,11 @@ export type PlacementInput = {
   contribution: string;
   reward: string;
   location: string | null;
+  workMode: PlacementWorkMode;
+  daysOnSite: number | null;
   isRemote: boolean;
+  compensationTypes: string[];
+  compensationNote: string | null;
   weeklyHours: number;
   durationWeeks: number;
   startDate: string | null;
@@ -51,7 +93,11 @@ export function parsePlacementInput(body: unknown): PlacementInput {
   const contribution = trimmed(b.contribution);
   const reward = trimmed(b.reward);
   const location = trimmed(b.location) || null;
-  const isRemote = b.is_remote === true;
+  const workMode = (trimmed(b.work_mode) || "remote") as PlacementWorkMode;
+  const compensationTypes = Array.isArray(b.compensation_types)
+    ? (b.compensation_types.filter((c) => typeof c === "string") as string[])
+    : [];
+  const compensationNote = trimmed(b.compensation_note) || null;
   const weeklyHours = Number(b.weekly_hours);
   const durationWeeks = Number(b.duration_weeks);
   const startDate = trimmed(b.start_date) || null;
@@ -78,7 +124,9 @@ export function parsePlacementInput(body: unknown): PlacementInput {
   if (!categories.length) {
     throw new PlacementError("Select at least one category.");
   }
-  if (categories.some((c) => !(JOB_CATEGORIES as readonly string[]).includes(c))) {
+  if (
+    categories.some((c) => !(JOB_CATEGORIES as readonly string[]).includes(c))
+  ) {
     throw new PlacementError("One or more categories are invalid.");
   }
   if (
@@ -102,6 +150,34 @@ export function parsePlacementInput(body: unknown): PlacementInput {
   if (startDate && Number.isNaN(Date.parse(startDate))) {
     throw new PlacementError("Start date is invalid.");
   }
+  if (!(["remote", "hybrid", "onsite"] as string[]).includes(workMode)) {
+    throw new PlacementError("Choose how the placement will be carried out.");
+  }
+  let daysOnSite: number | null = null;
+  if (workMode === "hybrid") {
+    daysOnSite = Number(b.days_on_site);
+    if (!Number.isInteger(daysOnSite) || daysOnSite < 1 || daysOnSite > 6) {
+      throw new PlacementError(
+        "Set how many days on-site per week (1–6) for hybrid placements.",
+      );
+    }
+  }
+  if ((workMode === "hybrid" || workMode === "onsite") && !location) {
+    throw new PlacementError("Add a location for on-site or hybrid placements.");
+  }
+  if (
+    compensationTypes.some(
+      (t) => !(PLACEMENT_COMPENSATION_TYPES as readonly string[]).includes(t),
+    )
+  ) {
+    throw new PlacementError("One or more compensation options are invalid.");
+  }
+  if (
+    compensationTypes.includes("other") &&
+    (!compensationNote || compensationNote.length < 3)
+  ) {
+    throw new PlacementError("Explain what the 'Other' compensation is.");
+  }
 
   return {
     title,
@@ -110,7 +186,11 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     contribution,
     reward,
     location,
-    isRemote,
+    workMode,
+    daysOnSite,
+    isRemote: workMode === "remote",
+    compensationTypes,
+    compensationNote,
     weeklyHours,
     durationWeeks,
     startDate,

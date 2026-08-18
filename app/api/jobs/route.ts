@@ -112,6 +112,7 @@ export async function POST(request: Request) {
     work_mode,
     location,
     scheduled_at,
+    days_on_site,
   } = body;
 
   const titleStr = (title ?? "").trim();
@@ -171,16 +172,21 @@ export async function POST(request: Request) {
       ? invited_kinglancer_id.trim()
       : null;
 
-  const resolvedWorkMode = work_mode === "in_person" ? "in_person" : "online";
+  const resolvedWorkMode = ["in_person", "hybrid"].includes(work_mode)
+    ? work_mode
+    : "online";
   const locationStr = typeof location === "string" ? location.trim() : "";
   let scheduledAtIso: string | null = null;
-  if (resolvedWorkMode === "in_person") {
+  let daysOnSite: number | null = null;
+  if (resolvedWorkMode === "in_person" || resolvedWorkMode === "hybrid") {
     if (!locationStr) {
       return NextResponse.json(
-        { error: "Add the location for an in-person job." },
+        { error: "Add the location for an in-person or hybrid job." },
         { status: 400 },
       );
     }
+  }
+  if (resolvedWorkMode === "in_person") {
     const when = new Date(scheduled_at);
     if (!scheduled_at || isNaN(when.getTime())) {
       return NextResponse.json(
@@ -189,6 +195,18 @@ export async function POST(request: Request) {
       );
     }
     scheduledAtIso = when.toISOString();
+  }
+  if (resolvedWorkMode === "hybrid") {
+    daysOnSite = Number(days_on_site);
+    if (!Number.isInteger(daysOnSite) || daysOnSite < 1 || daysOnSite > 6) {
+      return NextResponse.json(
+        {
+          error:
+            "Set how many days on-site per week (1–6) for a hybrid job.",
+        },
+        { status: 400 },
+      );
+    }
   }
 
   if (invitedKinglancerId) {
@@ -208,22 +226,26 @@ export async function POST(request: Request) {
   }
 
   try {
-    const job = await createJob({
-      client_id: user.id,
-      created_by: user.id,
-      organisation_id: organisationId,
-      title: titleStr,
-      description: descStr,
-      categories,
-      budget: normalizedBudget,
-      rate_type: resolvedRateType,
-      work_mode: resolvedWorkMode,
-      location: resolvedWorkMode === "in_person" ? locationStr : null,
-      scheduled_at: scheduledAtIso,
-      invited_kinglancer_id: invitedKinglancerId,
-      direct_request_status: invitedKinglancerId ? "pending" : null,
-      deadline: deadline || null,
-    }, { useServiceRole: !!organisationId });
+    const job = await createJob(
+      {
+        client_id: user.id,
+        created_by: user.id,
+        organisation_id: organisationId,
+        title: titleStr,
+        description: descStr,
+        categories,
+        budget: normalizedBudget,
+        rate_type: resolvedRateType,
+        work_mode: resolvedWorkMode,
+        location: resolvedWorkMode !== "online" ? locationStr : null,
+        scheduled_at: scheduledAtIso,
+        days_on_site: daysOnSite,
+        invited_kinglancer_id: invitedKinglancerId,
+        direct_request_status: invitedKinglancerId ? "pending" : null,
+        deadline: deadline || null,
+      },
+      { useServiceRole: !!organisationId },
+    );
 
     // MVP-safe fan-out: create bounded in-app notifications only.
     // Avoid sending one email per kinglancer during the job-post request.

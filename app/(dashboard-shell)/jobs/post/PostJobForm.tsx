@@ -56,9 +56,12 @@ export default function PostJobForm({
     "fixed",
   );
   const [deadline, setDeadline] = useState("");
-  const [workMode, setWorkMode] = useState<"online" | "in_person">("online");
+  const [workMode, setWorkMode] = useState<"online" | "in_person" | "hybrid">(
+    "online",
+  );
   const [location, setLocation] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [daysOnSite, setDaysOnSite] = useState("2");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +73,7 @@ export default function PostJobForm({
     quantity?: string;
     location?: string;
     scheduledAt?: string;
+    daysOnSite?: string;
   }>({});
 
   const clearFieldError = (field: keyof typeof fieldErrors) =>
@@ -114,10 +118,16 @@ export default function PostJobForm({
     else if (totalBudget > 50000)
       fe.budget = "Maximum total budget is £50,000.";
 
-    if (workMode === "in_person") {
+    if (workMode === "in_person" || workMode === "hybrid") {
       if (!location.trim()) fe.location = "Add the job location.";
-      if (!scheduledAt)
-        fe.scheduledAt = "Add the date and time of attendance.";
+    }
+    if (workMode === "in_person") {
+      if (!scheduledAt) fe.scheduledAt = "Add the date and time of attendance.";
+    }
+    if (workMode === "hybrid") {
+      const days = Number(daysOnSite);
+      if (!Number.isInteger(days) || days < 1 || days > 6)
+        fe.daysOnSite = "Set how many days on-site per week (1–6).";
     }
 
     if (Object.keys(fe).length > 0) {
@@ -139,9 +149,10 @@ export default function PostJobForm({
         invited_kinglancer_id: preferredKinglancer?.id ?? null,
         deadline: deadline || null,
         work_mode: workMode,
-        location: workMode === "in_person" ? location.trim() : null,
+        location: workMode !== "online" ? location.trim() : null,
         scheduled_at:
           workMode === "in_person" && scheduledAt ? scheduledAt : null,
+        days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
         organisation_id: organisationId ?? null,
       }),
     });
@@ -446,6 +457,7 @@ export default function PostJobForm({
           {(
             [
               { value: "online", label: "Online / remote" },
+              { value: "hybrid", label: "Hybrid" },
               { value: "in_person", label: "In person" },
             ] as const
           ).map((opt) => (
@@ -465,59 +477,86 @@ export default function PostJobForm({
         </div>
       </div>
 
-      {workMode === "in_person" && (
-        <>
-          {/* Location */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Location <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => {
-                setLocation(e.target.value);
-                clearFieldError("location");
-              }}
-              maxLength={200}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-                fieldErrors.location
-                  ? "border-red-400 focus:ring-red-300"
-                  : "border-gray-200 focus:ring-blue-500"
-              }`}
-              placeholder="Address or area where the work happens"
-            />
-            {fieldErrors.location && (
-              <p className="mt-1 text-xs text-red-500">{fieldErrors.location}</p>
-            )}
-          </div>
+      {(workMode === "in_person" || workMode === "hybrid") && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Location <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => {
+              setLocation(e.target.value);
+              clearFieldError("location");
+            }}
+            maxLength={200}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+              fieldErrors.location
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+            placeholder="Address or area where the work happens"
+          />
+          {fieldErrors.location && (
+            <p className="mt-1 text-xs text-red-500">{fieldErrors.location}</p>
+          )}
+        </div>
+      )}
 
-          {/* Date & time of attendance */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Date &amp; time of attendance{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="datetime-local"
-              value={scheduledAt}
-              onChange={(e) => {
-                setScheduledAt(e.target.value);
-                clearFieldError("scheduledAt");
-              }}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-                fieldErrors.scheduledAt
-                  ? "border-red-400 focus:ring-red-300"
-                  : "border-gray-200 focus:ring-blue-500"
-              }`}
-            />
-            {fieldErrors.scheduledAt && (
-              <p className="mt-1 text-xs text-red-500">
-                {fieldErrors.scheduledAt}
-              </p>
-            )}
-          </div>
-        </>
+      {workMode === "hybrid" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Days on-site per week (max 6){" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={6}
+            value={daysOnSite}
+            onChange={(e) => {
+              setDaysOnSite(e.target.value);
+              clearFieldError("daysOnSite");
+            }}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+              fieldErrors.daysOnSite
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+          />
+          {fieldErrors.daysOnSite && (
+            <p className="mt-1 text-xs text-red-500">
+              {fieldErrors.daysOnSite}
+            </p>
+          )}
+        </div>
+      )}
+
+      {workMode === "in_person" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Date &amp; time of attendance{" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(e) => {
+              setScheduledAt(e.target.value);
+              clearFieldError("scheduledAt");
+            }}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+              fieldErrors.scheduledAt
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+          />
+          {fieldErrors.scheduledAt && (
+            <p className="mt-1 text-xs text-red-500">
+              {fieldErrors.scheduledAt}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Error */}

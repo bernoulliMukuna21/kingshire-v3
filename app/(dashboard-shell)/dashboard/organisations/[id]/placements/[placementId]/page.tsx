@@ -12,6 +12,10 @@ import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
+import {
+  COMPENSATION_LABELS,
+  placementWorkModeSummary,
+} from "@/lib/placements";
 import ApplicantActions from "./ApplicantActions";
 
 export default async function OrganisationPlacementDetailPage({
@@ -25,7 +29,9 @@ export default async function OrganisationPlacementDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
-  if (!(await requireOrganisationPermission(id, user.id, "manage_applicants"))) {
+  if (
+    !(await requireOrganisationPermission(id, user.id, "manage_applicants"))
+  ) {
     notFound();
   }
   const organisationName = await getOrganisationName(id);
@@ -43,13 +49,7 @@ export default async function OrganisationPlacementDetailPage({
       <PageHeader
         eyebrow={organisationName}
         title={placement.title}
-        description={`${placement.weekly_hours}h/week · ${placement.duration_weeks} weeks${
-          placement.is_remote
-            ? " · Remote"
-            : placement.location
-              ? ` · ${placement.location}`
-              : ""
-        }`}
+        description={`${placement.weekly_hours}h/week · ${placement.duration_weeks} weeks · ${placementWorkModeSummary(placement)}`}
         action={
           <ButtonLink
             href={`/dashboard/organisations/${id}/placements`}
@@ -78,6 +78,29 @@ export default async function OrganisationPlacementDetailPage({
           </p>
         </Card>
       </div>
+
+      {placement.compensation_types.length > 0 && (
+        <Card className="p-5">
+          <p className="text-xs font-bold uppercase text-slate-400">
+            Compensation
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {placement.compensation_types.map((type) => (
+              <span
+                key={type}
+                className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700"
+              >
+                {COMPENSATION_LABELS[type] ?? type}
+              </span>
+            ))}
+          </div>
+          {placement.compensation_note && (
+            <p className="mt-2 text-sm text-slate-600">
+              {placement.compensation_note}
+            </p>
+          )}
+        </Card>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-black text-slate-950">Applicants</h2>

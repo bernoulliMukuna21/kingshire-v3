@@ -339,15 +339,14 @@ export type Database = {
           reward: string;
           location: string | null;
           is_remote: boolean;
+          work_mode: "remote" | "hybrid" | "onsite";
+          days_on_site: number | null;
+          compensation_types: string[];
+          compensation_note: string | null;
           weekly_hours: number;
           duration_weeks: number;
           start_date: string | null;
-          status:
-            | "draft"
-            | "pending_review"
-            | "open"
-            | "closed"
-            | "cancelled";
+          status: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review: boolean;
           created_at: string;
           updated_at: string;
@@ -363,15 +362,14 @@ export type Database = {
           reward: string;
           location?: string | null;
           is_remote?: boolean;
+          work_mode?: "remote" | "hybrid" | "onsite";
+          days_on_site?: number | null;
+          compensation_types?: string[];
+          compensation_note?: string | null;
           weekly_hours?: number;
           duration_weeks?: number;
           start_date?: string | null;
-          status?:
-            | "draft"
-            | "pending_review"
-            | "open"
-            | "closed"
-            | "cancelled";
+          status?: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review?: boolean;
         };
         Update: {
@@ -382,15 +380,14 @@ export type Database = {
           reward?: string;
           location?: string | null;
           is_remote?: boolean;
+          work_mode?: "remote" | "hybrid" | "onsite";
+          days_on_site?: number | null;
+          compensation_types?: string[];
+          compensation_note?: string | null;
           weekly_hours?: number;
           duration_weeks?: number;
           start_date?: string | null;
-          status?:
-            | "draft"
-            | "pending_review"
-            | "open"
-            | "closed"
-            | "cancelled";
+          status?: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review?: boolean;
         };
         Relationships: [];
@@ -591,9 +588,10 @@ export type Database = {
           counter_rate_type: "fixed" | "per_hour" | "per_day" | null;
           counter_deadline: string | null;
           rate_type: "fixed" | "per_hour" | "per_day";
-          work_mode: "online" | "in_person";
+          work_mode: "online" | "in_person" | "hybrid";
           location: string | null;
           scheduled_at: string | null;
+          days_on_site: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -621,9 +619,10 @@ export type Database = {
           counter_rate_type?: "fixed" | "per_hour" | "per_day" | null;
           counter_deadline?: string | null;
           rate_type?: "fixed" | "per_hour" | "per_day";
-          work_mode?: "online" | "in_person";
+          work_mode?: "online" | "in_person" | "hybrid";
           location?: string | null;
           scheduled_at?: string | null;
+          days_on_site?: number | null;
         };
         Update: {
           organisation_id?: string | null;
@@ -633,9 +632,10 @@ export type Database = {
           categories?: string[];
           service_tags_required?: string[];
           rate_type?: "fixed" | "per_hour" | "per_day";
-          work_mode?: "online" | "in_person";
+          work_mode?: "online" | "in_person" | "hybrid";
           location?: string | null;
           scheduled_at?: string | null;
+          days_on_site?: number | null;
           invited_kinglancer_id?: string | null;
           direct_request_status?:
             | "pending"

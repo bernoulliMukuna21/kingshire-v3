@@ -17,7 +17,8 @@ const valid = {
   contribution: "Assist with filming and editing during weekly services.",
   reward: "Mentoring, hands-on training and a verified experience record.",
   location: "London",
-  is_remote: false,
+  work_mode: "onsite",
+  compensation_types: [],
   weekly_hours: 8,
   duration_weeks: 8,
   start_date: null,
@@ -31,6 +32,7 @@ describe("parsePlacementInput", () => {
     expect(result.weeklyHours).toBe(8);
     expect(result.durationWeeks).toBe(8);
     expect(result.isRemote).toBe(false);
+    expect(result.workMode).toBe("onsite");
   });
 
   it("rejects a too-short title", () => {
@@ -40,15 +42,15 @@ describe("parsePlacementInput", () => {
   });
 
   it("caps weekly hours at 16", () => {
-    expect(() =>
-      parsePlacementInput({ ...valid, weekly_hours: 20 }),
-    ).toThrow(/Weekly hours/);
+    expect(() => parsePlacementInput({ ...valid, weekly_hours: 20 })).toThrow(
+      /Weekly hours/,
+    );
   });
 
   it("caps duration at 26 weeks", () => {
-    expect(() =>
-      parsePlacementInput({ ...valid, duration_weeks: 30 }),
-    ).toThrow(/Duration/);
+    expect(() => parsePlacementInput({ ...valid, duration_weeks: 30 })).toThrow(
+      /Duration/,
+    );
   });
 
   it("requires at least one category", () => {
@@ -67,6 +69,41 @@ describe("parsePlacementInput", () => {
     expect(() => parsePlacementInput({ ...valid, reward: "n/a" })).toThrow(
       PlacementError,
     );
+  });
+
+  it("requires a location for on-site placements", () => {
+    expect(() =>
+      parsePlacementInput({ ...valid, work_mode: "onsite", location: "" }),
+    ).toThrow(/location/);
+  });
+
+  it("requires days on-site for hybrid placements", () => {
+    expect(() =>
+      parsePlacementInput({ ...valid, work_mode: "hybrid", location: "London" }),
+    ).toThrow(/days on-site/);
+  });
+
+  it("accepts a hybrid placement with days on-site", () => {
+    const result = parsePlacementInput({
+      ...valid,
+      work_mode: "hybrid",
+      location: "London",
+      days_on_site: 3,
+    });
+    expect(result.workMode).toBe("hybrid");
+    expect(result.daysOnSite).toBe(3);
+  });
+
+  it("requires an explanation when compensation includes 'other'", () => {
+    expect(() =>
+      parsePlacementInput({ ...valid, compensation_types: ["other"] }),
+    ).toThrow(/Other/);
+  });
+
+  it("rejects an unknown compensation option", () => {
+    expect(() =>
+      parsePlacementInput({ ...valid, compensation_types: ["crypto"] }),
+    ).toThrow(/compensation/);
   });
 });
 

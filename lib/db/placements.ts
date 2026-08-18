@@ -48,7 +48,11 @@ export async function createPlacement(params: {
       contribution: input.contribution,
       reward: input.reward,
       location: input.location,
-      is_remote: input.isRemote,
+      is_remote: input.workMode === "remote",
+      work_mode: input.workMode,
+      days_on_site: input.daysOnSite,
+      compensation_types: input.compensationTypes,
+      compensation_note: input.compensationNote,
       weekly_hours: input.weeklyHours,
       duration_weeks: input.durationWeeks,
       start_date: input.startDate,
@@ -235,9 +239,7 @@ export async function listKinglancerApplications(
   const db = createServiceClient();
   const { data } = await db
     .from("placement_applications")
-    .select(
-      "*, placement:placements(id, title, organisation_id, status)",
-    )
+    .select("*, placement:placements(id, title, organisation_id, status)")
     .eq("kinglancer_id", kinglancerId)
     .order("created_at", { ascending: false });
   return (data ?? []) as unknown as KinglancerApplication[];
@@ -301,7 +303,10 @@ export async function activateAgreement(agreementId: string): Promise<boolean> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("placement_agreements")
-    .update({ status: "active", kinglancer_signed_at: new Date().toISOString() })
+    .update({
+      status: "active",
+      kinglancer_signed_at: new Date().toISOString(),
+    })
     .eq("id", agreementId)
     .eq("status", "pending_acceptance")
     .select("id")
@@ -452,9 +457,7 @@ export async function createCheckIn(params: {
 }
 
 /** Marks an active agreement completed; returns true if it was active. */
-export async function completeAgreement(
-  agreementId: string,
-): Promise<boolean> {
+export async function completeAgreement(agreementId: string): Promise<boolean> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("placement_agreements")
