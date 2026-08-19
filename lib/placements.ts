@@ -54,7 +54,6 @@ export type PlacementInput = {
   summary: string;
   categories: string[];
   contribution: string;
-  reward: string;
   location: string | null;
   workMode: PlacementWorkMode;
   daysOnSite: number | null;
@@ -63,7 +62,8 @@ export type PlacementInput = {
   compensationNote: string | null;
   weeklyHours: number;
   durationWeeks: number;
-  startDate: string | null;
+  startDate: string;
+  endDate: string;
 };
 
 export class PlacementError extends Error {
@@ -91,7 +91,6 @@ export function parsePlacementInput(body: unknown): PlacementInput {
   const title = trimmed(b.title);
   const summary = trimmed(b.summary);
   const contribution = trimmed(b.contribution);
-  const reward = trimmed(b.reward);
   const location = trimmed(b.location) || null;
   const workMode = (trimmed(b.work_mode) || "remote") as PlacementWorkMode;
   const compensationTypes = Array.isArray(b.compensation_types)
@@ -99,8 +98,8 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     : [];
   const compensationNote = trimmed(b.compensation_note) || null;
   const weeklyHours = Number(b.weekly_hours);
-  const durationWeeks = Number(b.duration_weeks);
-  const startDate = trimmed(b.start_date) || null;
+  const startDate = trimmed(b.start_date);
+  const endDate = trimmed(b.end_date);
   const categories = Array.isArray(b.categories)
     ? (b.categories.filter((c) => typeof c === "string") as string[])
     : [];
@@ -114,11 +113,6 @@ export function parsePlacementInput(body: unknown): PlacementInput {
   if (contribution.length < 10 || contribution.length > 4000) {
     throw new PlacementError(
       "Describe what the participant will contribute (10–4000 characters).",
-    );
-  }
-  if (reward.length < 10 || reward.length > 4000) {
-    throw new PlacementError(
-      "Describe what the participant will receive (10–4000 characters).",
     );
   }
   if (!categories.length) {
@@ -138,17 +132,22 @@ export function parsePlacementInput(body: unknown): PlacementInput {
       `Weekly hours must be between 1 and ${MAX_PLACEMENT_WEEKLY_HOURS}.`,
     );
   }
-  if (
-    !Number.isInteger(durationWeeks) ||
-    durationWeeks < 1 ||
-    durationWeeks > MAX_PLACEMENT_DURATION_WEEKS
-  ) {
-    throw new PlacementError(
-      `Duration must be between 1 and ${MAX_PLACEMENT_DURATION_WEEKS} weeks.`,
-    );
+  if (!startDate || Number.isNaN(Date.parse(startDate))) {
+    throw new PlacementError("Add a valid start date.");
   }
-  if (startDate && Number.isNaN(Date.parse(startDate))) {
-    throw new PlacementError("Start date is invalid.");
+  if (!endDate || Number.isNaN(Date.parse(endDate))) {
+    throw new PlacementError("Add a valid end date.");
+  }
+  const durationWeeks = Math.ceil(
+    (Date.parse(endDate) - Date.parse(startDate)) / (7 * 24 * 60 * 60 * 1000),
+  );
+  if (durationWeeks < 1) {
+    throw new PlacementError("The end date must be after the start date.");
+  }
+  if (durationWeeks > MAX_PLACEMENT_DURATION_WEEKS) {
+    throw new PlacementError(
+      `A placement can run for at most ${MAX_PLACEMENT_DURATION_WEEKS} weeks.`,
+    );
   }
   if (!(["remote", "hybrid", "onsite"] as string[]).includes(workMode)) {
     throw new PlacementError("Choose how the placement will be carried out.");
@@ -184,7 +183,6 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     summary,
     categories,
     contribution,
-    reward,
     location,
     workMode,
     daysOnSite,
@@ -194,6 +192,7 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     weeklyHours,
     durationWeeks,
     startDate,
+    endDate,
   };
 }
 

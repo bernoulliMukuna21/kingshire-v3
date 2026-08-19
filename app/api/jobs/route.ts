@@ -185,11 +185,26 @@ export async function POST(request: Request) {
   let scheduledAtIso: string | null = null;
   let endsAtIso: string | null = null;
   let daysOnSite: number | null = null;
-  if (resolvedWorkMode === "online" && !deadline) {
-    return NextResponse.json(
-      { error: "Add a deadline for online jobs." },
-      { status: 400 },
-    );
+  if (resolvedWorkMode === "online") {
+    const start = new Date(scheduled_at);
+    const end = new Date(ends_at);
+    if (!scheduled_at || isNaN(start.getTime())) {
+      return NextResponse.json(
+        { error: "Add the start date." },
+        { status: 400 },
+      );
+    }
+    if (!ends_at || isNaN(end.getTime())) {
+      return NextResponse.json({ error: "Add the end date." }, { status: 400 });
+    }
+    if (end.getTime() < start.getTime()) {
+      return NextResponse.json(
+        { error: "The end date must be after the start date." },
+        { status: 400 },
+      );
+    }
+    scheduledAtIso = start.toISOString();
+    endsAtIso = end.toISOString();
   }
   if (resolvedWorkMode === "in_person" || resolvedWorkMode === "hybrid") {
     if (!locationStr) {
@@ -258,6 +273,10 @@ export async function POST(request: Request) {
     endsAtIso = end.toISOString();
   }
 
+  // Every job now carries a start/end window; the end date backs the legacy
+  // deadline column (job expiry, list displays) for continuity.
+  const resolvedDeadline = endsAtIso ? endsAtIso.slice(0, 10) : deadline || null;
+
   if (invitedKinglancerId) {
     const { data: invitedKinglancer } = await supabase
       .from("profiles")
@@ -292,7 +311,7 @@ export async function POST(request: Request) {
         days_on_site: daysOnSite,
         invited_kinglancer_id: invitedKinglancerId,
         direct_request_status: invitedKinglancerId ? "pending" : null,
-        deadline: deadline || null,
+        deadline: resolvedDeadline,
       },
       { useServiceRole: !!organisationId },
     );

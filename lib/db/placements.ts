@@ -46,7 +46,6 @@ export async function createPlacement(params: {
       summary: input.summary,
       categories: input.categories,
       contribution: input.contribution,
-      reward: input.reward,
       location: input.location,
       is_remote: input.workMode === "remote",
       work_mode: input.workMode,
@@ -56,6 +55,7 @@ export async function createPlacement(params: {
       weekly_hours: input.weeklyHours,
       duration_weeks: input.durationWeeks,
       start_date: input.startDate,
+      end_date: input.endDate,
       status: "draft",
       requires_manual_review: params.requiresManualReview,
     })

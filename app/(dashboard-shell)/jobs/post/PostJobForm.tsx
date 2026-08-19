@@ -55,7 +55,6 @@ export default function PostJobForm({
   const [rateType, setRateType] = useState<"fixed" | "per_hour" | "per_day">(
     "fixed",
   );
-  const [deadline, setDeadline] = useState("");
   const [workMode, setWorkMode] = useState<
     "online" | "in_person" | "hybrid" | ""
   >("");
@@ -75,7 +74,6 @@ export default function PostJobForm({
     location?: string;
     scheduledAt?: string;
     endsAt?: string;
-    deadline?: string;
     daysOnSite?: string;
     workMode?: string;
   }>({});
@@ -123,8 +121,15 @@ export default function PostJobForm({
       fe.budget = "Maximum total budget is £50,000.";
 
     if (!workMode) fe.workMode = "Choose where the job happens.";
-    if (workMode === "online" && !deadline)
-      fe.deadline = "Add a deadline for online jobs.";
+    if (workMode === "online") {
+      if (!scheduledAt) fe.scheduledAt = "Add the start date.";
+      if (!endsAt) fe.endsAt = "Add the end date.";
+      else if (
+        scheduledAt &&
+        new Date(endsAt).getTime() < new Date(scheduledAt).getTime()
+      )
+        fe.endsAt = "The end date must be after the start date.";
+    }
     if (workMode === "in_person" || workMode === "hybrid") {
       if (!location.trim()) fe.location = "Add the job location.";
     }
@@ -169,17 +174,10 @@ export default function PostJobForm({
         budget: totalBudget,
         rate_type: rateType,
         invited_kinglancer_id: preferredKinglancer?.id ?? null,
-        deadline: workMode === "online" ? deadline || null : null,
         work_mode: workMode,
         location: workMode !== "online" ? location.trim() : null,
-        scheduled_at:
-          (workMode === "in_person" || workMode === "hybrid") && scheduledAt
-            ? scheduledAt
-            : null,
-        ends_at:
-          (workMode === "in_person" || workMode === "hybrid") && endsAt
-            ? endsAt
-            : null,
+        scheduled_at: scheduledAt || null,
+        ends_at: endsAt || null,
         days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
         organisation_id: organisationId ?? null,
       }),
@@ -422,17 +420,17 @@ export default function PostJobForm({
         </div>
       )}
 
-      {(workMode === "in_person" || workMode === "hybrid") && (
+      {workMode && (
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {workMode === "hybrid" ? "Start date" : "Starts"}{" "}
+              {workMode === "in_person" ? "Starts" : "Start date"}{" "}
               <span className="text-red-500">*</span>
             </label>
             <input
-              type={workMode === "hybrid" ? "date" : "datetime-local"}
+              type={workMode === "in_person" ? "datetime-local" : "date"}
               value={scheduledAt}
-              min={workMode === "hybrid" ? minDateStr : undefined}
+              min={workMode === "in_person" ? undefined : minDateStr}
               onChange={(e) => {
                 setScheduledAt(e.target.value);
                 clearFieldError("scheduledAt");
@@ -451,11 +449,11 @@ export default function PostJobForm({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {workMode === "hybrid" ? "End date" : "Ends"}{" "}
+              {workMode === "in_person" ? "Ends" : "End date"}{" "}
               <span className="text-red-500">*</span>
             </label>
             <input
-              type={workMode === "hybrid" ? "date" : "datetime-local"}
+              type={workMode === "in_person" ? "datetime-local" : "date"}
               value={endsAt}
               min={scheduledAt || undefined}
               onChange={(e) => {
@@ -601,32 +599,6 @@ export default function PostJobForm({
           </p>
         )}
       </div>
-
-      {/* Deadline — only for online jobs; in-person uses start/end, hybrid uses days/week */}
-      {workMode === "online" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Deadline <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            value={deadline}
-            min={minDateStr}
-            onChange={(e) => {
-              setDeadline(e.target.value);
-              clearFieldError("deadline");
-            }}
-            className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
-              fieldErrors.deadline
-                ? "border-red-400 focus:ring-red-300"
-                : "border-gray-200 focus:ring-blue-500"
-            }`}
-          />
-          {fieldErrors.deadline && (
-            <p className="mt-1 text-xs text-red-500">{fieldErrors.deadline}</p>
-          )}
-        </div>
-      )}
 
       {/* Error */}
       {error && (

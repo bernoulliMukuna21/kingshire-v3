@@ -365,42 +365,41 @@ export default async function JobDetailPage({
                 </p>
               )}
             </div>
-            {(job.work_mode === "in_person" || job.work_mode === "hybrid") &&
-              job.scheduled_at && (
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <Clock size={16} className="text-gray-400 shrink-0" />
-                  <span>
-                    {job.work_mode === "hybrid"
-                      ? new Date(job.scheduled_at).toLocaleDateString("en-GB", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })
-                      : new Date(job.scheduled_at).toLocaleString("en-GB", {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                    {job.ends_at
-                      ? ` → ${
-                          job.work_mode === "hybrid"
-                            ? new Date(job.ends_at).toLocaleDateString("en-GB", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })
-                            : new Date(job.ends_at).toLocaleString("en-GB", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                        }`
-                      : ""}
-                  </span>
-                </div>
-              )}
-            {job.deadline && (
+            {job.scheduled_at && (
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <Clock size={16} className="text-gray-400 shrink-0" />
+                <span>
+                  {job.work_mode === "in_person"
+                    ? new Date(job.scheduled_at).toLocaleString("en-GB", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : new Date(job.scheduled_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                  {job.ends_at
+                    ? ` → ${
+                        job.work_mode === "in_person"
+                          ? new Date(job.ends_at).toLocaleString("en-GB", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : new Date(job.ends_at).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                      }`
+                    : ""}
+                </span>
+              </div>
+            )}
+            {!job.scheduled_at && job.deadline && (
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Calendar size={16} className="text-gray-400 shrink-0" />
                 <span>

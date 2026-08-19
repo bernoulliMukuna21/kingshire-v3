@@ -336,7 +336,7 @@ export type Database = {
           summary: string;
           categories: string[];
           contribution: string;
-          reward: string;
+          reward: string | null;
           location: string | null;
           is_remote: boolean;
           work_mode: "remote" | "hybrid" | "onsite";
@@ -346,6 +346,7 @@ export type Database = {
           weekly_hours: number;
           duration_weeks: number;
           start_date: string | null;
+          end_date: string | null;
           status: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review: boolean;
           created_at: string;
@@ -359,7 +360,7 @@ export type Database = {
           summary: string;
           categories?: string[];
           contribution: string;
-          reward: string;
+          reward?: string | null;
           location?: string | null;
           is_remote?: boolean;
           work_mode?: "remote" | "hybrid" | "onsite";
@@ -369,6 +370,7 @@ export type Database = {
           weekly_hours?: number;
           duration_weeks?: number;
           start_date?: string | null;
+          end_date?: string | null;
           status?: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review?: boolean;
         };
@@ -377,7 +379,7 @@ export type Database = {
           summary?: string;
           categories?: string[];
           contribution?: string;
-          reward?: string;
+          reward?: string | null;
           location?: string | null;
           is_remote?: boolean;
           work_mode?: "remote" | "hybrid" | "onsite";
@@ -387,6 +389,7 @@ export type Database = {
           weekly_hours?: number;
           duration_weeks?: number;
           start_date?: string | null;
+          end_date?: string | null;
           status?: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review?: boolean;
         };

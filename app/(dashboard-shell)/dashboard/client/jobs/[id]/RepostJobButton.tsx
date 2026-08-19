@@ -32,7 +32,6 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState(String(job.budget));
   const [location, setLocation] = useState(job.location ?? "");
-  const [deadline, setDeadline] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState(String(job.days_on_site ?? 2));
@@ -46,23 +45,22 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
     if (!(Number(price) > 0)) return "Enter the price for the new job.";
     if (needsLocation && !location.trim())
       return "Confirm the location for the new job.";
-    if (job.work_mode === "online" && !deadline)
-      return "Set a deadline for the new job.";
     if (job.work_mode === "in_person") {
       if (!/T\d{2}:\d{2}/.test(scheduledAt))
         return "Set the start date and time.";
       if (!/T\d{2}:\d{2}/.test(endsAt)) return "Set the end date and time.";
       if (new Date(endsAt).getTime() <= new Date(scheduledAt).getTime())
         return "The end time must be after the start time.";
+    } else {
+      if (!scheduledAt) return "Set the start date.";
+      if (!endsAt) return "Set the end date.";
+      if (new Date(endsAt).getTime() < new Date(scheduledAt).getTime())
+        return "The end date must be after the start date.";
     }
     if (job.work_mode === "hybrid") {
       const days = Number(daysOnSite);
       if (!Number.isInteger(days) || days < 1 || days > 6)
         return "Set days on-site per week (1–6).";
-      if (!scheduledAt) return "Set the start date.";
-      if (!endsAt) return "Set the end date.";
-      if (new Date(endsAt).getTime() < new Date(scheduledAt).getTime())
-        return "The end date must be after the start date.";
     }
     return null;
   }
@@ -86,16 +84,9 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
         rate_type: job.rate_type,
         work_mode: job.work_mode,
         location: needsLocation ? location.trim() : null,
-        scheduled_at:
-          job.work_mode === "in_person" || job.work_mode === "hybrid"
-            ? scheduledAt
-            : null,
-        ends_at:
-          job.work_mode === "in_person" || job.work_mode === "hybrid"
-            ? endsAt
-            : null,
+        scheduled_at: scheduledAt || null,
+        ends_at: endsAt || null,
         days_on_site: job.work_mode === "hybrid" ? Number(daysOnSite) : null,
-        deadline: job.work_mode === "online" ? deadline || null : null,
         organisation_id: job.organisation_id ?? null,
       }),
     });
@@ -137,51 +128,36 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
               . Set a new date, then confirm the price and location.
             </p>
 
-            {job.work_mode === "in_person" || job.work_mode === "hybrid" ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    {job.work_mode === "hybrid" ? "Start date" : "Starts"}
-                  </label>
-                  <input
-                    type={
-                      job.work_mode === "hybrid" ? "date" : "datetime-local"
-                    }
-                    className={fieldClass}
-                    value={scheduledAt}
-                    min={job.work_mode === "hybrid" ? minDate : undefined}
-                    onChange={(e) => setScheduledAt(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    {job.work_mode === "hybrid" ? "End date" : "Ends"}
-                  </label>
-                  <input
-                    type={
-                      job.work_mode === "hybrid" ? "date" : "datetime-local"
-                    }
-                    className={fieldClass}
-                    value={endsAt}
-                    min={scheduledAt || undefined}
-                    onChange={(e) => setEndsAt(e.target.value)}
-                  />
-                </div>
-              </div>
-            ) : job.work_mode === "online" ? (
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  New deadline <span className="text-red-500">*</span>
+                  {job.work_mode === "in_person" ? "Starts" : "Start date"}
                 </label>
                 <input
-                  type="date"
-                  min={minDate}
+                  type={
+                    job.work_mode === "in_person" ? "datetime-local" : "date"
+                  }
                   className={fieldClass}
-                  value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
+                  value={scheduledAt}
+                  min={job.work_mode === "in_person" ? undefined : minDate}
+                  onChange={(e) => setScheduledAt(e.target.value)}
                 />
               </div>
-            ) : null}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  {job.work_mode === "in_person" ? "Ends" : "End date"}
+                </label>
+                <input
+                  type={
+                    job.work_mode === "in_person" ? "datetime-local" : "date"
+                  }
+                  className={fieldClass}
+                  value={endsAt}
+                  min={scheduledAt || undefined}
+                  onChange={(e) => setEndsAt(e.target.value)}
+                />
+              </div>
+            </div>
 
             {job.work_mode === "hybrid" && (
               <div>

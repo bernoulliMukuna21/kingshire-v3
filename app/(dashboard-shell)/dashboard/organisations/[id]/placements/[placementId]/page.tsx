@@ -69,14 +69,6 @@ export default async function OrganisationPlacementDetailPage({
             {placement.contribution}
           </p>
         </Card>
-        <Card className="p-5">
-          <p className="text-xs font-bold uppercase text-slate-400">
-            Participant receives
-          </p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
-            {placement.reward}
-          </p>
-        </Card>
       </div>
 
       {placement.compensation_types.length > 0 && (

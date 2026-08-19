@@ -15,13 +15,12 @@ const valid = {
   summary: "Support the media team with production during services.",
   categories: [category],
   contribution: "Assist with filming and editing during weekly services.",
-  reward: "Mentoring, hands-on training and a verified experience record.",
   location: "London",
   work_mode: "onsite",
   compensation_types: [],
   weekly_hours: 8,
-  duration_weeks: 8,
-  start_date: null,
+  start_date: "2026-09-01",
+  end_date: "2026-10-27",
 };
 
 describe("parsePlacementInput", () => {
@@ -47,10 +46,33 @@ describe("parsePlacementInput", () => {
     );
   });
 
-  it("caps duration at 26 weeks", () => {
-    expect(() => parsePlacementInput({ ...valid, duration_weeks: 30 })).toThrow(
-      /Duration/,
+  it("rejects a placement longer than the maximum weeks", () => {
+    expect(() =>
+      parsePlacementInput({
+        ...valid,
+        start_date: "2026-01-01",
+        end_date: "2026-12-31",
+      }),
+    ).toThrow(/26 weeks/);
+  });
+
+  it("requires a start and end date", () => {
+    expect(() => parsePlacementInput({ ...valid, start_date: "" })).toThrow(
+      /start date/,
     );
+    expect(() => parsePlacementInput({ ...valid, end_date: "" })).toThrow(
+      /end date/,
+    );
+  });
+
+  it("rejects an end date on or before the start", () => {
+    expect(() =>
+      parsePlacementInput({
+        ...valid,
+        start_date: "2026-10-01",
+        end_date: "2026-09-01",
+      }),
+    ).toThrow(/after the start/);
   });
 
   it("requires at least one category", () => {
@@ -63,12 +85,6 @@ describe("parsePlacementInput", () => {
     expect(() =>
       parsePlacementInput({ ...valid, categories: ["Not A Category"] }),
     ).toThrow(/invalid/);
-  });
-
-  it("requires a meaningful reward description", () => {
-    expect(() => parsePlacementInput({ ...valid, reward: "n/a" })).toThrow(
-      PlacementError,
-    );
   });
 
   it("requires a location for on-site placements", () => {

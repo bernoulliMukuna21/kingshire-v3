@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { MAX_PLACEMENT_DURATION_WEEKS } from "@/lib/placements";
 
 const fieldClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -55,15 +56,14 @@ export default function PlacementForm({
   const [summary, setSummary] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
   const [contribution, setContribution] = useState("");
-  const [reward, setReward] = useState("");
   const [workMode, setWorkMode] = useState<WorkMode>("remote");
   const [daysOnSite, setDaysOnSite] = useState("2");
   const [location, setLocation] = useState("");
   const [compensation, setCompensation] = useState<string[]>([]);
   const [compensationNote, setCompensationNote] = useState("");
   const [weeklyHours, setWeeklyHours] = useState("8");
-  const [durationWeeks, setDurationWeeks] = useState("8");
   const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,8 +90,6 @@ export default function PlacementForm({
     if (!selected.length) return "Select at least one category.";
     if (contribution.trim().length < 10)
       return "Describe what the participant will contribute.";
-    if (reward.trim().length < 10)
-      return "Describe what the participant will receive.";
     if (needsLocation && !location.trim())
       return "Add a location for on-site or hybrid placements.";
     if (workMode === "hybrid") {
@@ -99,6 +97,15 @@ export default function PlacementForm({
       if (!Number.isInteger(days) || days < 1 || days > 6)
         return "Set how many days on-site per week (1–6).";
     }
+    if (!startDate) return "Add a start date.";
+    if (!endDate) return "Add an end date.";
+    const weeks = Math.ceil(
+      (new Date(endDate).getTime() - new Date(startDate).getTime()) /
+        (7 * 24 * 60 * 60 * 1000),
+    );
+    if (weeks < 1) return "The end date must be after the start date.";
+    if (weeks > MAX_PLACEMENT_DURATION_WEEKS)
+      return `A placement can run for at most ${MAX_PLACEMENT_DURATION_WEEKS} weeks.`;
     if (compensation.includes("other") && compensationNote.trim().length < 3)
       return "Explain what the 'Other' compensation is.";
     return null;
@@ -123,15 +130,14 @@ export default function PlacementForm({
           summary,
           categories: selected,
           contribution,
-          reward,
           location: needsLocation ? location.trim() || null : null,
           work_mode: workMode,
           days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
           compensation_types: compensation,
           compensation_note: compensationNote.trim() || null,
           weekly_hours: Number(weeklyHours),
-          duration_weeks: Number(durationWeeks),
-          start_date: startDate || null,
+          start_date: startDate,
+          end_date: endDate,
         }),
       },
     );
@@ -197,16 +203,6 @@ export default function PlacementForm({
           onChange={(e) => setContribution(e.target.value)}
           maxLength={4000}
           placeholder="The work or activities they'll take part in."
-        />
-      </Field>
-      <Field label="What the participant will receive" required>
-        <textarea
-          className={`${fieldClass} resize-none`}
-          rows={3}
-          value={reward}
-          onChange={(e) => setReward(e.target.value)}
-          maxLength={4000}
-          placeholder="Mentoring, training, a reference, a verified experience record…"
         />
       </Field>
 
@@ -294,22 +290,21 @@ export default function PlacementForm({
             onChange={(e) => setWeeklyHours(e.target.value)}
           />
         </Field>
-        <Field label="Duration in weeks (max 26)" required>
-          <input
-            type="number"
-            min={1}
-            max={26}
-            className={fieldClass}
-            value={durationWeeks}
-            onChange={(e) => setDurationWeeks(e.target.value)}
-          />
-        </Field>
-        <Field label="Start date">
+        <Field label="Start date" required>
           <input
             type="date"
             className={fieldClass}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+          />
+        </Field>
+        <Field label="End date" required>
+          <input
+            type="date"
+            className={fieldClass}
+            value={endDate}
+            min={startDate || undefined}
+            onChange={(e) => setEndDate(e.target.value)}
           />
         </Field>
       </div>
