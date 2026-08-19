@@ -61,6 +61,7 @@ export default function PostJobForm({
   >("");
   const [location, setLocation] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState("2");
 
   const [loading, setLoading] = useState(false);
@@ -73,6 +74,8 @@ export default function PostJobForm({
     quantity?: string;
     location?: string;
     scheduledAt?: string;
+    endsAt?: string;
+    deadline?: string;
     daysOnSite?: string;
     workMode?: string;
   }>({});
@@ -120,12 +123,21 @@ export default function PostJobForm({
       fe.budget = "Maximum total budget is £50,000.";
 
     if (!workMode) fe.workMode = "Choose where the job happens.";
+    if (workMode === "online" && !deadline)
+      fe.deadline = "Add a deadline for online jobs.";
     if (workMode === "in_person" || workMode === "hybrid") {
       if (!location.trim()) fe.location = "Add the job location.";
     }
     if (workMode === "in_person") {
       if (!scheduledAt || !/T\d{2}:\d{2}/.test(scheduledAt))
-        fe.scheduledAt = "Add both the date and time of attendance.";
+        fe.scheduledAt = "Add the start date and time.";
+      if (!endsAt || !/T\d{2}:\d{2}/.test(endsAt))
+        fe.endsAt = "Add the end date and time.";
+      else if (
+        scheduledAt &&
+        new Date(endsAt).getTime() <= new Date(scheduledAt).getTime()
+      )
+        fe.endsAt = "The end time must be after the start time.";
     }
     if (workMode === "hybrid") {
       const days = Number(daysOnSite);
@@ -155,6 +167,7 @@ export default function PostJobForm({
         location: workMode !== "online" ? location.trim() : null,
         scheduled_at:
           workMode === "in_person" && scheduledAt ? scheduledAt : null,
+        ends_at: workMode === "in_person" && endsAt ? endsAt : null,
         days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
         organisation_id: organisationId ?? null,
       }),
@@ -398,29 +411,52 @@ export default function PostJobForm({
       )}
 
       {workMode === "in_person" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Date &amp; time of attendance{" "}
-            <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => {
-              setScheduledAt(e.target.value);
-              clearFieldError("scheduledAt");
-            }}
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-              fieldErrors.scheduledAt
-                ? "border-red-400 focus:ring-red-300"
-                : "border-gray-200 focus:ring-blue-500"
-            }`}
-          />
-          {fieldErrors.scheduledAt && (
-            <p className="mt-1 text-xs text-red-500">
-              {fieldErrors.scheduledAt}
-            </p>
-          )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Starts <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => {
+                setScheduledAt(e.target.value);
+                clearFieldError("scheduledAt");
+              }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                fieldErrors.scheduledAt
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+            />
+            {fieldErrors.scheduledAt && (
+              <p className="mt-1 text-xs text-red-500">
+                {fieldErrors.scheduledAt}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Ends <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={endsAt}
+              min={scheduledAt || undefined}
+              onChange={(e) => {
+                setEndsAt(e.target.value);
+                clearFieldError("endsAt");
+              }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                fieldErrors.endsAt
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+            />
+            {fieldErrors.endsAt && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.endsAt}</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -556,15 +592,29 @@ export default function PostJobForm({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
             Deadline{" "}
-            <span className="text-gray-400 font-normal">(optional)</span>
+            {workMode === "online" ? (
+              <span className="text-red-500">*</span>
+            ) : (
+              <span className="text-gray-400 font-normal">(optional)</span>
+            )}
           </label>
           <input
             type="date"
             value={deadline}
             min={minDateStr}
-            onChange={(e) => setDeadline(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+            onChange={(e) => {
+              setDeadline(e.target.value);
+              clearFieldError("deadline");
+            }}
+            className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
+              fieldErrors.deadline
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
           />
+          {fieldErrors.deadline && (
+            <p className="mt-1 text-xs text-red-500">{fieldErrors.deadline}</p>
+          )}
         </div>
       )}
 

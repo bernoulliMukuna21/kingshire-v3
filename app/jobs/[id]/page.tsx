@@ -369,16 +369,19 @@ export default async function JobDetailPage({
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Clock size={16} className="text-gray-400 shrink-0" />
                 <span>
-                  Attend:{" "}
-                  <strong>
-                    {new Date(job.scheduled_at).toLocaleString("en-GB", {
-                      weekday: "short",
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </strong>
+                  {new Date(job.scheduled_at).toLocaleString("en-GB", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                  {job.ends_at
+                    ? ` → ${new Date(job.ends_at).toLocaleString("en-GB", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}`
+                    : ""}
                 </span>
               </div>
             )}

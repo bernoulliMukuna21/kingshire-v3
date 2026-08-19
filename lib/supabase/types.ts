@@ -591,6 +591,7 @@ export type Database = {
           work_mode: "online" | "in_person" | "hybrid";
           location: string | null;
           scheduled_at: string | null;
+          ends_at: string | null;
           days_on_site: number | null;
           created_at: string;
           updated_at: string;
@@ -622,6 +623,7 @@ export type Database = {
           work_mode?: "online" | "in_person" | "hybrid";
           location?: string | null;
           scheduled_at?: string | null;
+          ends_at?: string | null;
           days_on_site?: number | null;
         };
         Update: {
@@ -635,6 +637,7 @@ export type Database = {
           work_mode?: "online" | "in_person" | "hybrid";
           location?: string | null;
           scheduled_at?: string | null;
+          ends_at?: string | null;
           days_on_site?: number | null;
           invited_kinglancer_id?: string | null;
           direct_request_status?:

@@ -34,6 +34,7 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
   const [location, setLocation] = useState(job.location ?? "");
   const [deadline, setDeadline] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState(String(job.days_on_site ?? 2));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,8 +46,15 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
     if (!(Number(price) > 0)) return "Enter the price for the new job.";
     if (needsLocation && !location.trim())
       return "Confirm the location for the new job.";
-    if (job.work_mode === "in_person" && !/T\d{2}:\d{2}/.test(scheduledAt))
-      return "Set the new date and time of attendance.";
+    if (job.work_mode === "online" && !deadline)
+      return "Set a deadline for the new job.";
+    if (job.work_mode === "in_person") {
+      if (!/T\d{2}:\d{2}/.test(scheduledAt))
+        return "Set the start date and time.";
+      if (!/T\d{2}:\d{2}/.test(endsAt)) return "Set the end date and time.";
+      if (new Date(endsAt).getTime() <= new Date(scheduledAt).getTime())
+        return "The end time must be after the start time.";
+    }
     if (job.work_mode === "hybrid") {
       const days = Number(daysOnSite);
       if (!Number.isInteger(days) || days < 1 || days > 6)
@@ -75,8 +83,9 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
         work_mode: job.work_mode,
         location: needsLocation ? location.trim() : null,
         scheduled_at: job.work_mode === "in_person" ? scheduledAt : null,
+        ends_at: job.work_mode === "in_person" ? endsAt : null,
         days_on_site: job.work_mode === "hybrid" ? Number(daysOnSite) : null,
-        deadline: deadline || null,
+        deadline: job.work_mode === "in_person" ? null : deadline || null,
         organisation_id: job.organisation_id ?? null,
       }),
     });
@@ -119,22 +128,42 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
             </p>
 
             {job.work_mode === "in_person" ? (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  New date &amp; time of attendance
-                </label>
-                <input
-                  type="datetime-local"
-                  className={fieldClass}
-                  value={scheduledAt}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                    Starts
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className={fieldClass}
+                    value={scheduledAt}
+                    onChange={(e) => setScheduledAt(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                    Ends
+                  </label>
+                  <input
+                    type="datetime-local"
+                    className={fieldClass}
+                    value={endsAt}
+                    min={scheduledAt || undefined}
+                    onChange={(e) => setEndsAt(e.target.value)}
+                  />
+                </div>
               </div>
             ) : (
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   New deadline{" "}
-                  <span className="font-normal text-slate-400">(optional)</span>
+                  {job.work_mode === "online" ? (
+                    <span className="text-red-500">*</span>
+                  ) : (
+                    <span className="font-normal text-slate-400">
+                      (optional)
+                    </span>
+                  )}
                 </label>
                 <input
                   type="date"

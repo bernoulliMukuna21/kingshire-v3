@@ -112,6 +112,7 @@ export async function POST(request: Request) {
     work_mode,
     location,
     scheduled_at,
+    ends_at,
     days_on_site,
   } = body;
 
@@ -182,7 +183,14 @@ export async function POST(request: Request) {
   const resolvedWorkMode = work_mode;
   const locationStr = typeof location === "string" ? location.trim() : "";
   let scheduledAtIso: string | null = null;
+  let endsAtIso: string | null = null;
   let daysOnSite: number | null = null;
+  if (resolvedWorkMode === "online" && !deadline) {
+    return NextResponse.json(
+      { error: "Add a deadline for online jobs." },
+      { status: 400 },
+    );
+  }
   if (resolvedWorkMode === "in_person" || resolvedWorkMode === "hybrid") {
     if (!locationStr) {
       return NextResponse.json(
@@ -192,16 +200,32 @@ export async function POST(request: Request) {
     }
   }
   if (resolvedWorkMode === "in_person") {
-    const hasTime =
+    const startHasTime =
       typeof scheduled_at === "string" && /T\d{2}:\d{2}/.test(scheduled_at);
-    const when = new Date(scheduled_at);
-    if (!scheduled_at || !hasTime || isNaN(when.getTime())) {
+    const endHasTime =
+      typeof ends_at === "string" && /T\d{2}:\d{2}/.test(ends_at);
+    const start = new Date(scheduled_at);
+    const end = new Date(ends_at);
+    if (!startHasTime || isNaN(start.getTime())) {
       return NextResponse.json(
-        { error: "Add both the date and time of attendance." },
+        { error: "Add the start date and time." },
         { status: 400 },
       );
     }
-    scheduledAtIso = when.toISOString();
+    if (!endHasTime || isNaN(end.getTime())) {
+      return NextResponse.json(
+        { error: "Add the end date and time." },
+        { status: 400 },
+      );
+    }
+    if (end.getTime() <= start.getTime()) {
+      return NextResponse.json(
+        { error: "The end time must be after the start time." },
+        { status: 400 },
+      );
+    }
+    scheduledAtIso = start.toISOString();
+    endsAtIso = end.toISOString();
   }
   if (resolvedWorkMode === "hybrid") {
     daysOnSite = Number(days_on_site);
@@ -246,6 +270,7 @@ export async function POST(request: Request) {
         work_mode: resolvedWorkMode,
         location: resolvedWorkMode !== "online" ? locationStr : null,
         scheduled_at: scheduledAtIso,
+        ends_at: endsAtIso,
         days_on_site: daysOnSite,
         invited_kinglancer_id: invitedKinglancerId,
         direct_request_status: invitedKinglancerId ? "pending" : null,
