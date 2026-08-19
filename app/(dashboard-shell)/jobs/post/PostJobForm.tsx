@@ -56,9 +56,9 @@ export default function PostJobForm({
     "fixed",
   );
   const [deadline, setDeadline] = useState("");
-  const [workMode, setWorkMode] = useState<"online" | "in_person" | "hybrid">(
-    "online",
-  );
+  const [workMode, setWorkMode] = useState<
+    "online" | "in_person" | "hybrid" | ""
+  >("");
   const [location, setLocation] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState("2");
@@ -74,6 +74,7 @@ export default function PostJobForm({
     location?: string;
     scheduledAt?: string;
     daysOnSite?: string;
+    workMode?: string;
   }>({});
 
   const clearFieldError = (field: keyof typeof fieldErrors) =>
@@ -118,11 +119,13 @@ export default function PostJobForm({
     else if (totalBudget > 50000)
       fe.budget = "Maximum total budget is £50,000.";
 
+    if (!workMode) fe.workMode = "Choose where the job happens.";
     if (workMode === "in_person" || workMode === "hybrid") {
       if (!location.trim()) fe.location = "Add the job location.";
     }
     if (workMode === "in_person") {
-      if (!scheduledAt) fe.scheduledAt = "Add the date and time of attendance.";
+      if (!scheduledAt || !/T\d{2}:\d{2}/.test(scheduledAt))
+        fe.scheduledAt = "Add both the date and time of attendance.";
     }
     if (workMode === "hybrid") {
       const days = Number(daysOnSite);
@@ -307,6 +310,120 @@ export default function PostJobForm({
         ) : null}
       </div>
 
+      {/* Work mode */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Where does this happen? <span className="text-red-500">*</span>
+        </label>
+        <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs font-medium">
+          {(
+            [
+              { value: "online", label: "Online / remote" },
+              { value: "hybrid", label: "Hybrid" },
+              { value: "in_person", label: "In person" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setWorkMode(opt.value)}
+              className={`flex-1 py-2 transition-colors ${
+                workMode === opt.value
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-500 hover:bg-gray-50"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {fieldErrors.workMode && (
+          <p className="text-xs text-red-500 mt-2">{fieldErrors.workMode}</p>
+        )}
+      </div>
+
+      {(workMode === "in_person" || workMode === "hybrid") && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Location <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => {
+              setLocation(e.target.value);
+              clearFieldError("location");
+            }}
+            maxLength={200}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+              fieldErrors.location
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+            placeholder="Address or area where the work happens"
+          />
+          {fieldErrors.location && (
+            <p className="mt-1 text-xs text-red-500">{fieldErrors.location}</p>
+          )}
+        </div>
+      )}
+
+      {workMode === "hybrid" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Days on-site per week (max 6){" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={6}
+            value={daysOnSite}
+            onChange={(e) => {
+              setDaysOnSite(e.target.value);
+              clearFieldError("daysOnSite");
+            }}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+              fieldErrors.daysOnSite
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+          />
+          {fieldErrors.daysOnSite && (
+            <p className="mt-1 text-xs text-red-500">
+              {fieldErrors.daysOnSite}
+            </p>
+          )}
+        </div>
+      )}
+
+      {workMode === "in_person" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Date &amp; time of attendance{" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="datetime-local"
+            value={scheduledAt}
+            onChange={(e) => {
+              setScheduledAt(e.target.value);
+              clearFieldError("scheduledAt");
+            }}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+              fieldErrors.scheduledAt
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+          />
+          {fieldErrors.scheduledAt && (
+            <p className="mt-1 text-xs text-red-500">
+              {fieldErrors.scheduledAt}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Budget */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -447,117 +564,6 @@ export default function PostJobForm({
           className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
         />
       </div>
-
-      {/* Work mode */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Where does this happen? <span className="text-red-500">*</span>
-        </label>
-        <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs font-medium">
-          {(
-            [
-              { value: "online", label: "Online / remote" },
-              { value: "hybrid", label: "Hybrid" },
-              { value: "in_person", label: "In person" },
-            ] as const
-          ).map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setWorkMode(opt.value)}
-              className={`flex-1 py-2 transition-colors ${
-                workMode === opt.value
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-500 hover:bg-gray-50"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {(workMode === "in_person" || workMode === "hybrid") && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Location <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => {
-              setLocation(e.target.value);
-              clearFieldError("location");
-            }}
-            maxLength={200}
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-              fieldErrors.location
-                ? "border-red-400 focus:ring-red-300"
-                : "border-gray-200 focus:ring-blue-500"
-            }`}
-            placeholder="Address or area where the work happens"
-          />
-          {fieldErrors.location && (
-            <p className="mt-1 text-xs text-red-500">{fieldErrors.location}</p>
-          )}
-        </div>
-      )}
-
-      {workMode === "hybrid" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Days on-site per week (max 6){" "}
-            <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            min={1}
-            max={6}
-            value={daysOnSite}
-            onChange={(e) => {
-              setDaysOnSite(e.target.value);
-              clearFieldError("daysOnSite");
-            }}
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-              fieldErrors.daysOnSite
-                ? "border-red-400 focus:ring-red-300"
-                : "border-gray-200 focus:ring-blue-500"
-            }`}
-          />
-          {fieldErrors.daysOnSite && (
-            <p className="mt-1 text-xs text-red-500">
-              {fieldErrors.daysOnSite}
-            </p>
-          )}
-        </div>
-      )}
-
-      {workMode === "in_person" && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Date &amp; time of attendance{" "}
-            <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            onChange={(e) => {
-              setScheduledAt(e.target.value);
-              clearFieldError("scheduledAt");
-            }}
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-              fieldErrors.scheduledAt
-                ? "border-red-400 focus:ring-red-300"
-                : "border-gray-200 focus:ring-blue-500"
-            }`}
-          />
-          {fieldErrors.scheduledAt && (
-            <p className="mt-1 text-xs text-red-500">
-              {fieldErrors.scheduledAt}
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Error */}
       {error && (

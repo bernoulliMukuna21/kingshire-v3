@@ -172,9 +172,14 @@ export async function POST(request: Request) {
       ? invited_kinglancer_id.trim()
       : null;
 
-  const resolvedWorkMode = ["in_person", "hybrid"].includes(work_mode)
-    ? work_mode
-    : "online";
+  const validWorkModes = ["online", "in_person", "hybrid"];
+  if (!validWorkModes.includes(work_mode)) {
+    return NextResponse.json(
+      { error: "Choose where the job happens." },
+      { status: 400 },
+    );
+  }
+  const resolvedWorkMode = work_mode;
   const locationStr = typeof location === "string" ? location.trim() : "";
   let scheduledAtIso: string | null = null;
   let daysOnSite: number | null = null;
@@ -187,10 +192,12 @@ export async function POST(request: Request) {
     }
   }
   if (resolvedWorkMode === "in_person") {
+    const hasTime =
+      typeof scheduled_at === "string" && /T\d{2}:\d{2}/.test(scheduled_at);
     const when = new Date(scheduled_at);
-    if (!scheduled_at || isNaN(when.getTime())) {
+    if (!scheduled_at || !hasTime || isNaN(when.getTime())) {
       return NextResponse.json(
-        { error: "Add a valid date and time of attendance." },
+        { error: "Add both the date and time of attendance." },
         { status: 400 },
       );
     }
