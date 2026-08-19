@@ -85,7 +85,7 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
         scheduled_at: job.work_mode === "in_person" ? scheduledAt : null,
         ends_at: job.work_mode === "in_person" ? endsAt : null,
         days_on_site: job.work_mode === "hybrid" ? Number(daysOnSite) : null,
-        deadline: job.work_mode === "in_person" ? null : deadline || null,
+        deadline: job.work_mode === "online" ? deadline || null : null,
         organisation_id: job.organisation_id ?? null,
       }),
     });
@@ -153,17 +153,10 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
                   />
                 </div>
               </div>
-            ) : (
+            ) : job.work_mode === "online" ? (
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  New deadline{" "}
-                  {job.work_mode === "online" ? (
-                    <span className="text-red-500">*</span>
-                  ) : (
-                    <span className="font-normal text-slate-400">
-                      (optional)
-                    </span>
-                  )}
+                  New deadline <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -173,7 +166,7 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
                   onChange={(e) => setDeadline(e.target.value)}
                 />
               </div>
-            )}
+            ) : null}
 
             {job.work_mode === "hybrid" && (
               <div>

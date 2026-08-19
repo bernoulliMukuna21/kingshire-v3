@@ -162,7 +162,7 @@ export default function PostJobForm({
         budget: totalBudget,
         rate_type: rateType,
         invited_kinglancer_id: preferredKinglancer?.id ?? null,
-        deadline: workMode === "in_person" ? null : deadline || null,
+        deadline: workMode === "online" ? deadline || null : null,
         work_mode: workMode,
         location: workMode !== "online" ? location.trim() : null,
         scheduled_at:
@@ -587,16 +587,11 @@ export default function PostJobForm({
         )}
       </div>
 
-      {/* Deadline — not shown for in-person, where attendance date/time applies */}
-      {workMode !== "in_person" && (
+      {/* Deadline — only for online jobs; in-person uses start/end, hybrid uses days/week */}
+      {workMode === "online" && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Deadline{" "}
-            {workMode === "online" ? (
-              <span className="text-red-500">*</span>
-            ) : (
-              <span className="text-gray-400 font-normal">(optional)</span>
-            )}
+            Deadline <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
