@@ -32,6 +32,7 @@ import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import ReviewPanel from "@/components/jobs/ReviewPanel";
 import CancelJobButton from "./CancelJobButton";
 import PendingPaymentCard from "./PendingPaymentCard";
+import RepostJobButton from "./RepostJobButton";
 import { canManageJob } from "@/lib/organisations";
 
 type Profile = {
@@ -341,6 +342,34 @@ export default async function ClientJobWorkspacePage({
                 This job is under dispute. Handle the dispute outside of the
                 platform before changing the job state.
               </p>
+            </Card>
+          )}
+
+          {["approved", "completed", "cancelled", "disputed"].includes(
+            job.status,
+          ) && (
+            <Card className={cardPadding}>
+              <h2 className="text-lg font-black text-slate-950">
+                Need this job again?
+              </h2>
+              <p className="mb-4 mt-1 text-sm text-slate-500">
+                Repost it as a new listing — you&apos;ll set a fresh date and
+                confirm the price and location before it goes live.
+              </p>
+              <RepostJobButton
+                job={{
+                  id,
+                  title: job.title,
+                  description: job.description,
+                  categories: job.categories,
+                  budget: Number(job.budget),
+                  rate_type: job.rate_type,
+                  work_mode: job.work_mode,
+                  location: job.location,
+                  days_on_site: job.days_on_site,
+                  organisation_id: job.organisation_id,
+                }}
+              />
             </Card>
           )}
         </div>
