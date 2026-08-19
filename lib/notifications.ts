@@ -269,6 +269,26 @@ export async function notifyAdminDisputeRaised({
   });
 }
 
+export async function notifyAdminPlacementForReview({
+  placementTitle,
+  organisationName,
+}: {
+  placementTitle: string;
+  organisationName: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
+  const adminEmail =
+    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  await sendEmail({
+    to: adminEmail,
+    subject: `[Placement review] ${placementTitle}`,
+    title: "Placement awaiting review",
+    body: `${organisationName} has published a placement opportunity, "${placementTitle}", that is ready for your review before it goes live.`,
+    link: `${appUrl}/admin/placements`,
+    ctaLabel: "Review placement →",
+  });
+}
+
 export async function notifyPayoutClaimReady({
   kinglancerId,
   kinglancerEmail,

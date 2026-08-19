@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireOrganisationPermission } from "@/lib/organisations";
+import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
+import { notifyAdminPlacementForReview } from "@/lib/notifications";
 import { openPlacementLimit } from "@/lib/placements";
 import type { OrganisationPlanId } from "@/modules/organisations/domain/plans";
 import {
@@ -46,7 +48,10 @@ export async function PATCH(
 
   const placement = await getOrganisationPlacement(placementId, id);
   if (!placement) {
-    return NextResponse.json({ error: "Placement not found." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Placement not found." },
+      { status: 404 },
+    );
   }
 
   if (action === "publish") {
@@ -92,6 +97,16 @@ export async function PATCH(
       ? "pending_review"
       : "open";
     const updated = await updatePlacementStatus(placementId, id, nextStatus);
+    if (nextStatus === "pending_review") {
+      const organisationName =
+        (await getOrganisationName(id)) ?? "An Organisation";
+      await notifyAdminPlacementForReview({
+        placementTitle: placement.title,
+        organisationName,
+      }).catch((error) =>
+        console.error("[placements] admin review email failed", error),
+      );
+    }
     return NextResponse.json({ placement: updated });
   }
 
