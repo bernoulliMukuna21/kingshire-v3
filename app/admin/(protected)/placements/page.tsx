@@ -55,19 +55,59 @@ export default async function AdminPlacementsPage() {
                   <AdminPlacementActions placementId={p.id} />
                 </div>
 
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold text-slate-500">
-                  <span>{placementWorkModeSummary(p)}</span>
-                  <span>{p.weekly_hours}h/week</span>
-                  <span>{p.duration_weeks} weeks</span>
-                  {dateRange && <span>{dateRange}</span>}
-                  <span>{p.categories.join(", ")}</span>
-                </div>
-
                 {p.summary && (
-                  <p className="mt-4 whitespace-pre-wrap text-sm text-slate-600">
-                    {p.summary}
-                  </p>
+                  <div className="mt-4">
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Summary
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-slate-600">
+                      {p.summary}
+                    </p>
+                  </div>
                 )}
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Work mode
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {placementWorkModeSummary(p)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Weekly hours
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {p.weekly_hours} hours per week
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Duration
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {p.duration_weeks} week{p.duration_weeks === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Runs from
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {dateRange || "Not set"}
+                    </p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-xs font-bold uppercase text-slate-400">
+                      Categories
+                    </p>
+                    <p className="mt-1 text-sm text-slate-700">
+                      {p.categories.join(", ")}
+                    </p>
+                  </div>
+                </div>
 
                 <div className="mt-4">
                   <p className="text-xs font-bold uppercase text-slate-400">
