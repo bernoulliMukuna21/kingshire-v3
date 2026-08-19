@@ -143,6 +143,13 @@ export default function PostJobForm({
       const days = Number(daysOnSite);
       if (!Number.isInteger(days) || days < 1 || days > 6)
         fe.daysOnSite = "Set how many days on-site per week (1–6).";
+      if (!scheduledAt) fe.scheduledAt = "Add the start date.";
+      if (!endsAt) fe.endsAt = "Add the end date.";
+      else if (
+        scheduledAt &&
+        new Date(endsAt).getTime() < new Date(scheduledAt).getTime()
+      )
+        fe.endsAt = "The end date must be after the start date.";
     }
 
     if (Object.keys(fe).length > 0) {
@@ -166,8 +173,13 @@ export default function PostJobForm({
         work_mode: workMode,
         location: workMode !== "online" ? location.trim() : null,
         scheduled_at:
-          workMode === "in_person" && scheduledAt ? scheduledAt : null,
-        ends_at: workMode === "in_person" && endsAt ? endsAt : null,
+          (workMode === "in_person" || workMode === "hybrid") && scheduledAt
+            ? scheduledAt
+            : null,
+        ends_at:
+          (workMode === "in_person" || workMode === "hybrid") && endsAt
+            ? endsAt
+            : null,
         days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
         organisation_id: organisationId ?? null,
       }),
@@ -410,15 +422,17 @@ export default function PostJobForm({
         </div>
       )}
 
-      {workMode === "in_person" && (
+      {(workMode === "in_person" || workMode === "hybrid") && (
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Starts <span className="text-red-500">*</span>
+              {workMode === "hybrid" ? "Start date" : "Starts"}{" "}
+              <span className="text-red-500">*</span>
             </label>
             <input
-              type="datetime-local"
+              type={workMode === "hybrid" ? "date" : "datetime-local"}
               value={scheduledAt}
+              min={workMode === "hybrid" ? minDateStr : undefined}
               onChange={(e) => {
                 setScheduledAt(e.target.value);
                 clearFieldError("scheduledAt");
@@ -437,10 +451,11 @@ export default function PostJobForm({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Ends <span className="text-red-500">*</span>
+              {workMode === "hybrid" ? "End date" : "Ends"}{" "}
+              <span className="text-red-500">*</span>
             </label>
             <input
-              type="datetime-local"
+              type={workMode === "hybrid" ? "date" : "datetime-local"}
               value={endsAt}
               min={scheduledAt || undefined}
               onChange={(e) => {

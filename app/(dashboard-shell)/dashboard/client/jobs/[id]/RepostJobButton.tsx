@@ -59,6 +59,10 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
       const days = Number(daysOnSite);
       if (!Number.isInteger(days) || days < 1 || days > 6)
         return "Set days on-site per week (1–6).";
+      if (!scheduledAt) return "Set the start date.";
+      if (!endsAt) return "Set the end date.";
+      if (new Date(endsAt).getTime() < new Date(scheduledAt).getTime())
+        return "The end date must be after the start date.";
     }
     return null;
   }
@@ -82,8 +86,14 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
         rate_type: job.rate_type,
         work_mode: job.work_mode,
         location: needsLocation ? location.trim() : null,
-        scheduled_at: job.work_mode === "in_person" ? scheduledAt : null,
-        ends_at: job.work_mode === "in_person" ? endsAt : null,
+        scheduled_at:
+          job.work_mode === "in_person" || job.work_mode === "hybrid"
+            ? scheduledAt
+            : null,
+        ends_at:
+          job.work_mode === "in_person" || job.work_mode === "hybrid"
+            ? endsAt
+            : null,
         days_on_site: job.work_mode === "hybrid" ? Number(daysOnSite) : null,
         deadline: job.work_mode === "online" ? deadline || null : null,
         organisation_id: job.organisation_id ?? null,
@@ -127,25 +137,30 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
               . Set a new date, then confirm the price and location.
             </p>
 
-            {job.work_mode === "in_person" ? (
+            {job.work_mode === "in_person" || job.work_mode === "hybrid" ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Starts
+                    {job.work_mode === "hybrid" ? "Start date" : "Starts"}
                   </label>
                   <input
-                    type="datetime-local"
+                    type={
+                      job.work_mode === "hybrid" ? "date" : "datetime-local"
+                    }
                     className={fieldClass}
                     value={scheduledAt}
+                    min={job.work_mode === "hybrid" ? minDate : undefined}
                     onChange={(e) => setScheduledAt(e.target.value)}
                   />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                    Ends
+                    {job.work_mode === "hybrid" ? "End date" : "Ends"}
                   </label>
                   <input
-                    type="datetime-local"
+                    type={
+                      job.work_mode === "hybrid" ? "date" : "datetime-local"
+                    }
                     className={fieldClass}
                     value={endsAt}
                     min={scheduledAt || undefined}

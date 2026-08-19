@@ -232,12 +232,30 @@ export async function POST(request: Request) {
     if (!Number.isInteger(daysOnSite) || daysOnSite < 1 || daysOnSite > 6) {
       return NextResponse.json(
         {
-          error:
-            "Set how many days on-site per week (1–6) for a hybrid job.",
+          error: "Set how many days on-site per week (1–6) for a hybrid job.",
         },
         { status: 400 },
       );
     }
+    const start = new Date(scheduled_at);
+    const end = new Date(ends_at);
+    if (!scheduled_at || isNaN(start.getTime())) {
+      return NextResponse.json(
+        { error: "Add the start date." },
+        { status: 400 },
+      );
+    }
+    if (!ends_at || isNaN(end.getTime())) {
+      return NextResponse.json({ error: "Add the end date." }, { status: 400 });
+    }
+    if (end.getTime() < start.getTime()) {
+      return NextResponse.json(
+        { error: "The end date must be after the start date." },
+        { status: 400 },
+      );
+    }
+    scheduledAtIso = start.toISOString();
+    endsAtIso = end.toISOString();
   }
 
   if (invitedKinglancerId) {
