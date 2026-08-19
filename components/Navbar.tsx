@@ -12,6 +12,7 @@ import { ButtonLink } from "@/components/ui/Button";
 const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Browse Jobs", href: "/jobs" },
+  { label: "Placements", href: "/placements" },
   { label: "Kinglancers", href: "/kinglancers" },
   { label: "Organisations", href: "/organisation" },
 ];
@@ -19,6 +20,7 @@ const navLinks = [
 const clientNavLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Post a Job", href: "/jobs/post" },
+  { label: "Placements", href: "/placements" },
   { label: "Kinglancers", href: "/kinglancers" },
   { label: "Organisations", href: "/organisation" },
 ];

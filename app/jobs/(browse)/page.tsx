@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import JobsList from "../JobsList";
 import PublicHero from "@/components/ui/PublicHero";
 import PublicShell from "@/components/ui/PublicShell";
+import BrowseModeTabs from "@/components/ui/BrowseModeTabs";
 
 const getCachedOpenJobs = unstable_cache(
   async (): Promise<JobWithClient[]> => {
@@ -59,7 +60,9 @@ export default async function JobsPage() {
       <PublicHero
         title="Browse Jobs"
         description="Find paid work posted by trusted community members."
-      />
+      >
+        <BrowseModeTabs active="jobs" />
+      </PublicHero>
       <section className="px-4 py-10 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <FadeIn>

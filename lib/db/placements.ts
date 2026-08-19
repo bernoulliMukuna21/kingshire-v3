@@ -159,6 +159,35 @@ export async function getOpenPlacement(
   return (data as PlacementRow | null) ?? null;
 }
 
+export type PublicPlacement = PlacementRow & {
+  organisation: { name: string } | null;
+};
+
+export async function listPublicPlacements(): Promise<PublicPlacement[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .select("*, organisation:organisations!inner(name)")
+    .eq("status", "open")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []) as unknown as PublicPlacement[];
+}
+
+export async function getPublicPlacement(
+  placementId: string,
+): Promise<PublicPlacement | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placements")
+    .select("*, organisation:organisations!inner(name)")
+    .eq("id", placementId)
+    .eq("status", "open")
+    .maybeSingle();
+  return (data as unknown as PublicPlacement | null) ?? null;
+}
+
 // ── Applications ──────────────────────────────────────────
 
 export async function hasAppliedToPlacement(
