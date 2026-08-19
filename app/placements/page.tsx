@@ -20,8 +20,7 @@ export default async function PublicPlacementsPage() {
   return (
     <PublicShell>
       <PublicHero
-        eyebrow="Placements"
-        title="Experience placements"
+        title="Placements"
         description="Supervised opportunities offering mentoring, training and a verified experience record. These are not paid jobs."
       >
         <BrowseModeTabs active="placements" />

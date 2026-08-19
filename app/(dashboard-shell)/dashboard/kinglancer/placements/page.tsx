@@ -30,8 +30,7 @@ export default async function KinglancerPlacementsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
       <PageHeader
-        eyebrow="Placements"
-        title="Experience placements"
+        title="Placements"
         description="Supervised opportunities offering mentoring, training and a verified experience record. These are not paid jobs."
       />
 

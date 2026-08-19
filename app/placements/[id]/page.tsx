@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -21,21 +20,6 @@ function formatDate(value: string | null) {
         year: "numeric",
       })
     : null;
-}
-
-function Label({ children }: { children: ReactNode }) {
-  return (
-    <p className="text-xs font-bold uppercase text-slate-400">{children}</p>
-  );
-}
-
-function Meta({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <Label>{label}</Label>
-      <p className="mt-1 text-sm text-slate-700">{value}</p>
-    </div>
-  );
 }
 
 export default async function PublicPlacementDetailPage({
@@ -68,94 +52,103 @@ export default async function PublicPlacementDetailPage({
     .filter(Boolean)
     .join(" → ");
 
+  const facts: Array<[string, string]> = [
+    ["Work mode", placementWorkModeSummary(placement)],
+    ["Hours", `${placement.weekly_hours} per week`],
+    [
+      "Duration",
+      `${placement.duration_weeks} week${
+        placement.duration_weeks === 1 ? "" : "s"
+      }`,
+    ],
+    ["Dates", dateRange || "Not set"],
+    ["Categories", placement.categories.join(", ")],
+  ];
+
   return (
     <PublicShell>
       <PublicHero
         eyebrow={placement.organisation?.name ?? "Organisation"}
         title={placement.title}
-        description="A supervised experience placement — not a paid job."
+        description="A supervised placement — not a paid job."
       />
       <section className="px-4 py-10 sm:px-6">
-        <div className="mx-auto max-w-3xl space-y-6">
-          <Card className="grid gap-4 p-5 sm:grid-cols-2">
-            <Meta label="Work mode" value={placementWorkModeSummary(placement)} />
-            <Meta
-              label="Weekly hours"
-              value={`${placement.weekly_hours} hours per week`}
-            />
-            <Meta
-              label="Duration"
-              value={`${placement.duration_weeks} week${
-                placement.duration_weeks === 1 ? "" : "s"
-              }`}
-            />
-            <Meta label="Runs from" value={dateRange || "Not set"} />
-            <div className="sm:col-span-2">
-              <Meta
-                label="Categories"
-                value={placement.categories.join(", ")}
-              />
+        <div className="mx-auto max-w-3xl">
+          <Card className="space-y-7 p-6 sm:p-8">
+            <div className="flex flex-wrap gap-x-8 gap-y-2 border-b border-slate-100 pb-6 text-sm text-slate-600">
+              {facts.map(([label, value]) => (
+                <span key={label}>
+                  <span className="font-bold text-slate-900">{label}:</span>{" "}
+                  {value}
+                </span>
+              ))}
             </div>
-          </Card>
 
-          {placement.summary && (
-            <Card className="p-5">
-              <Label>About</Label>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-                {placement.summary}
-              </p>
-            </Card>
-          )}
-
-          <Card className="p-5">
-            <Label>What you&apos;ll contribute</Label>
-            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-              {placement.contribution}
-            </p>
-          </Card>
-
-          {placement.compensation_types.length > 0 && (
-            <Card className="p-5">
-              <Label>Compensation</Label>
-              <ul className="mt-2 space-y-1.5">
-                {placement.compensation_types.map((type) => (
-                  <li
-                    key={type}
-                    className="flex flex-wrap items-baseline gap-2 text-sm"
-                  >
-                    <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
-                      {COMPENSATION_LABELS[type] ?? type}
-                    </span>
-                    <span className="text-slate-700">
-                      {formatCompensationDetail(
-                        type,
-                        placement.compensation_details?.[type],
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-
-          <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
-            <p className="text-sm font-semibold text-slate-700">
-              Interested in this placement?
-            </p>
-            {role === "kinglancer" ? (
-              <ApplyButton placementId={id} />
-            ) : !user ? (
-              <Link
-                href="/sign-in"
-                className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
-              >
-                Sign in to apply
-              </Link>
-            ) : (
-              <p className="text-xs text-slate-500">
-                Placements are open to Kinglancers.
-              </p>
+            {placement.summary && (
+              <div>
+                <h2 className="text-base font-black text-slate-900">
+                  About this placement
+                </h2>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                  {placement.summary}
+                </p>
+              </div>
             )}
+
+            <div>
+              <h2 className="text-base font-black text-slate-900">
+                What you&apos;ll contribute
+              </h2>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                {placement.contribution}
+              </p>
+            </div>
+
+            {placement.compensation_types.length > 0 && (
+              <div>
+                <h2 className="text-base font-black text-slate-900">
+                  Compensation
+                </h2>
+                <ul className="mt-2 space-y-1.5">
+                  {placement.compensation_types.map((type) => (
+                    <li
+                      key={type}
+                      className="flex flex-wrap items-baseline gap-2 text-sm"
+                    >
+                      <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                        {COMPENSATION_LABELS[type] ?? type}
+                      </span>
+                      <span className="text-slate-700">
+                        {formatCompensationDetail(
+                          type,
+                          placement.compensation_details?.[type],
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-6">
+              <p className="text-sm font-semibold text-slate-700">
+                Interested in this placement?
+              </p>
+              {role === "kinglancer" ? (
+                <ApplyButton placementId={id} />
+              ) : !user ? (
+                <Link
+                  href="/sign-in"
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                >
+                  Sign in to apply
+                </Link>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Placements are open to Kinglancers.
+                </p>
+              )}
+            </div>
           </Card>
         </div>
       </section>
