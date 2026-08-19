@@ -279,17 +279,17 @@ export default function PlacementForm({
         )}
       </div>
 
+      <Field label="Weekly hours (max 16)" required>
+        <input
+          type="number"
+          min={1}
+          max={16}
+          className={fieldClass}
+          value={weeklyHours}
+          onChange={(e) => setWeeklyHours(e.target.value)}
+        />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Weekly hours (max 16)" required>
-          <input
-            type="number"
-            min={1}
-            max={16}
-            className={fieldClass}
-            value={weeklyHours}
-            onChange={(e) => setWeeklyHours(e.target.value)}
-          />
-        </Field>
         <Field label="Start date" required>
           <input
             type="date"
