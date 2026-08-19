@@ -150,7 +150,7 @@ export default function PostJobForm({
         budget: totalBudget,
         rate_type: rateType,
         invited_kinglancer_id: preferredKinglancer?.id ?? null,
-        deadline: deadline || null,
+        deadline: workMode === "in_person" ? null : deadline || null,
         work_mode: workMode,
         location: workMode !== "online" ? location.trim() : null,
         scheduled_at:
@@ -551,19 +551,22 @@ export default function PostJobForm({
         )}
       </div>
 
-      {/* Deadline */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Deadline <span className="text-gray-400 font-normal">(optional)</span>
-        </label>
-        <input
-          type="date"
-          value={deadline}
-          min={minDateStr}
-          onChange={(e) => setDeadline(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
-        />
-      </div>
+      {/* Deadline — not shown for in-person, where attendance date/time applies */}
+      {workMode !== "in_person" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Deadline{" "}
+            <span className="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <input
+            type="date"
+            value={deadline}
+            min={minDateStr}
+            onChange={(e) => setDeadline(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+          />
+        </div>
+      )}
 
       {/* Error */}
       {error && (
