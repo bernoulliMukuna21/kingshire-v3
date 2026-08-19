@@ -343,6 +343,7 @@ export type Database = {
           days_on_site: number | null;
           compensation_types: string[];
           compensation_note: string | null;
+          compensation_details: Record<string, unknown>;
           weekly_hours: number;
           duration_weeks: number;
           start_date: string | null;
@@ -367,6 +368,7 @@ export type Database = {
           days_on_site?: number | null;
           compensation_types?: string[];
           compensation_note?: string | null;
+          compensation_details?: Record<string, unknown>;
           weekly_hours?: number;
           duration_weeks?: number;
           start_date?: string | null;
@@ -386,6 +388,7 @@ export type Database = {
           days_on_site?: number | null;
           compensation_types?: string[];
           compensation_note?: string | null;
+          compensation_details?: Record<string, unknown>;
           weekly_hours?: number;
           duration_weeks?: number;
           start_date?: string | null;

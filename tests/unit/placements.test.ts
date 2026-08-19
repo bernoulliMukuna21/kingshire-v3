@@ -53,7 +53,7 @@ describe("parsePlacementInput", () => {
         start_date: "2026-01-01",
         end_date: "2026-12-31",
       }),
-    ).toThrow(/26 weeks/);
+    ).toThrow(/6 months/);
   });
 
   it("requires a start and end date", () => {
@@ -120,6 +120,41 @@ describe("parsePlacementInput", () => {
     expect(() =>
       parsePlacementInput({ ...valid, compensation_types: ["crypto"] }),
     ).toThrow(/compensation/);
+  });
+
+  it("requires details for a non-money compensation", () => {
+    expect(() =>
+      parsePlacementInput({ ...valid, compensation_types: ["certificate"] }),
+    ).toThrow(/Certificate/);
+  });
+
+  it("requires an amount and cadence for money compensation", () => {
+    expect(() =>
+      parsePlacementInput({
+        ...valid,
+        compensation_types: ["money"],
+        compensation_details: { money: { cadence: "per_week" } },
+      }),
+    ).toThrow(/amount/);
+    expect(() =>
+      parsePlacementInput({
+        ...valid,
+        compensation_types: ["money"],
+        compensation_details: { money: { amount: 30 } },
+      }),
+    ).toThrow(/how often/);
+  });
+
+  it("accepts money compensation with an amount and cadence", () => {
+    const result = parsePlacementInput({
+      ...valid,
+      compensation_types: ["money"],
+      compensation_details: { money: { amount: 30, cadence: "per_week" } },
+    });
+    expect(result.compensationDetails.money).toEqual({
+      amount: 30,
+      cadence: "per_week",
+    });
   });
 });
 

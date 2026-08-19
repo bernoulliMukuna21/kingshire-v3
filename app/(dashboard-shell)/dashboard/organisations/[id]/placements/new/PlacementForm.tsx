@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { MAX_PLACEMENT_DURATION_WEEKS } from "@/lib/placements";
+import {
+  MAX_PLACEMENT_DURATION_WEEKS,
+  COMPENSATION_LABELS,
+  PLACEMENT_COMPENSATION_CADENCES,
+  COMPENSATION_CADENCE_LABELS,
+} from "@/lib/placements";
 
 const fieldClass =
   "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -21,6 +26,14 @@ const COMPENSATION_OPTIONS = [
   { value: "training", label: "Training" },
   { value: "other", label: "Other" },
 ] as const;
+
+const DETAIL_PLACEHOLDERS: Record<string, string> = {
+  reference: "Who provides it and in what form?",
+  certificate: "What it certifies and any accreditation.",
+  mentoring: "What mentoring, how often, and by whom.",
+  training: "What training the participant will receive.",
+  other: "Describe the other compensation.",
+};
 
 type WorkMode = (typeof WORK_MODES)[number]["value"];
 
@@ -60,7 +73,9 @@ export default function PlacementForm({
   const [daysOnSite, setDaysOnSite] = useState("2");
   const [location, setLocation] = useState("");
   const [compensation, setCompensation] = useState<string[]>([]);
-  const [compensationNote, setCompensationNote] = useState("");
+  const [moneyAmount, setMoneyAmount] = useState("");
+  const [moneyCadence, setMoneyCadence] = useState("per_month");
+  const [compDetails, setCompDetails] = useState<Record<string, string>>({});
   const [weeklyHours, setWeeklyHours] = useState("8");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -81,6 +96,21 @@ export default function PlacementForm({
         ? prev.filter((x) => x !== value)
         : [...prev, value],
     );
+  }
+
+  function setDetail(type: string, value: string) {
+    setCompDetails((prev) => ({ ...prev, [type]: value }));
+  }
+
+  function buildCompensationDetails() {
+    const details: Record<string, unknown> = {};
+    if (compensation.includes("money"))
+      details.money = { amount: Number(moneyAmount), cadence: moneyCadence };
+    for (const type of compensation) {
+      if (type === "money") continue;
+      details[type] = (compDetails[type] ?? "").trim();
+    }
+    return details;
   }
 
   function validate(): string | null {
@@ -106,8 +136,13 @@ export default function PlacementForm({
     if (weeks < 1) return "The end date must be after the start date.";
     if (weeks > MAX_PLACEMENT_DURATION_WEEKS)
       return "A placement can run for at most 6 months.";
-    if (compensation.includes("other") && compensationNote.trim().length < 3)
-      return "Explain what the 'Other' compensation is.";
+    if (compensation.includes("money") && !(Number(moneyAmount) > 0))
+      return "Enter the amount for the money compensation.";
+    for (const type of compensation) {
+      if (type === "money") continue;
+      if ((compDetails[type] ?? "").trim().length < 3)
+        return `Add details for the ${COMPENSATION_LABELS[type]} compensation.`;
+    }
     return null;
   }
 
@@ -134,7 +169,7 @@ export default function PlacementForm({
           work_mode: workMode,
           days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
           compensation_types: compensation,
-          compensation_note: compensationNote.trim() || null,
+          compensation_details: buildCompensationDetails(),
           weekly_hours: Number(weeklyHours),
           start_date: startDate,
           end_date: endDate,
@@ -224,17 +259,52 @@ export default function PlacementForm({
           ))}
         </div>
       </Field>
-      {compensation.includes("other") && (
-        <Field label="Please specify the other compensation" required>
-          <input
-            className={fieldClass}
-            value={compensationNote}
-            onChange={(e) => setCompensationNote(e.target.value)}
-            maxLength={2000}
-            placeholder="e.g. Travel allowance of £30/week"
-          />
-        </Field>
+      {compensation.includes("money") && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Amount (£)" required>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              inputMode="decimal"
+              className={fieldClass}
+              value={moneyAmount}
+              onChange={(e) => setMoneyAmount(e.target.value)}
+              placeholder="e.g. 30"
+            />
+          </Field>
+          <Field label="How often" required>
+            <select
+              className={fieldClass}
+              value={moneyCadence}
+              onChange={(e) => setMoneyCadence(e.target.value)}
+            >
+              {PLACEMENT_COMPENSATION_CADENCES.map((cadence) => (
+                <option key={cadence} value={cadence}>
+                  {COMPENSATION_CADENCE_LABELS[cadence]}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
       )}
+      {compensation
+        .filter((type) => type !== "money")
+        .map((type) => (
+          <Field
+            key={type}
+            label={`${COMPENSATION_LABELS[type]} details`}
+            required
+          >
+            <input
+              className={fieldClass}
+              value={compDetails[type] ?? ""}
+              onChange={(e) => setDetail(type, e.target.value)}
+              maxLength={500}
+              placeholder={DETAIL_PLACEHOLDERS[type]}
+            />
+          </Field>
+        ))}
 
       <Field label="Where is the placement carried out?" required>
         <div className="flex flex-wrap gap-2">

@@ -34,6 +34,41 @@ export const COMPENSATION_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+export const PLACEMENT_COMPENSATION_CADENCES = [
+  "per_hour",
+  "per_day",
+  "per_week",
+  "per_month",
+  "one_off",
+] as const;
+
+export const COMPENSATION_CADENCE_LABELS: Record<string, string> = {
+  per_hour: "per hour",
+  per_day: "per day",
+  per_week: "per week",
+  per_month: "per month",
+  one_off: "one-off",
+};
+
+export function formatCompensationDetail(
+  type: string,
+  detail: unknown,
+): string {
+  if (type === "money") {
+    if (detail && typeof detail === "object") {
+      const money = detail as { amount?: unknown; cadence?: unknown };
+      const amount = Number(money.amount);
+      const cadence =
+        typeof money.cadence === "string"
+          ? (COMPENSATION_CADENCE_LABELS[money.cadence] ?? "")
+          : "";
+      if (Number.isFinite(amount)) return `£${amount} ${cadence}`.trim();
+    }
+    return "";
+  }
+  return typeof detail === "string" ? detail : "";
+}
+
 export function placementWorkModeSummary(p: {
   work_mode: string;
   days_on_site: number | null;
@@ -59,7 +94,7 @@ export type PlacementInput = {
   daysOnSite: number | null;
   isRemote: boolean;
   compensationTypes: string[];
-  compensationNote: string | null;
+  compensationDetails: Record<string, unknown>;
   weeklyHours: number;
   durationWeeks: number;
   startDate: string;
@@ -96,7 +131,12 @@ export function parsePlacementInput(body: unknown): PlacementInput {
   const compensationTypes = Array.isArray(b.compensation_types)
     ? (b.compensation_types.filter((c) => typeof c === "string") as string[])
     : [];
-  const compensationNote = trimmed(b.compensation_note) || null;
+  const detailsRaw =
+    b.compensation_details &&
+    typeof b.compensation_details === "object" &&
+    !Array.isArray(b.compensation_details)
+      ? (b.compensation_details as Record<string, unknown>)
+      : {};
   const weeklyHours = Number(b.weekly_hours);
   const startDate = trimmed(b.start_date);
   const endDate = trimmed(b.end_date);
@@ -171,11 +211,42 @@ export function parsePlacementInput(body: unknown): PlacementInput {
   ) {
     throw new PlacementError("One or more compensation options are invalid.");
   }
-  if (
-    compensationTypes.includes("other") &&
-    (!compensationNote || compensationNote.length < 3)
-  ) {
-    throw new PlacementError("Explain what the 'Other' compensation is.");
+  const compensationDetails: Record<string, unknown> = {};
+  for (const type of compensationTypes) {
+    if (type === "money") {
+      const money =
+        detailsRaw.money && typeof detailsRaw.money === "object"
+          ? (detailsRaw.money as Record<string, unknown>)
+          : {};
+      const amount = Number(money.amount);
+      const cadence = typeof money.cadence === "string" ? money.cadence : "";
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new PlacementError(
+          "Enter the amount for the money compensation.",
+        );
+      }
+      if (
+        !(PLACEMENT_COMPENSATION_CADENCES as readonly string[]).includes(cadence)
+      ) {
+        throw new PlacementError("Choose how often the money is paid.");
+      }
+      compensationDetails.money = { amount, cadence };
+    } else {
+      const detail =
+        typeof detailsRaw[type] === "string"
+          ? (detailsRaw[type] as string).trim()
+          : "";
+      const label = COMPENSATION_LABELS[type] ?? type;
+      if (detail.length < 3) {
+        throw new PlacementError(`Add details for the ${label} compensation.`);
+      }
+      if (detail.length > 500) {
+        throw new PlacementError(
+          `${label} details must be 500 characters or fewer.`,
+        );
+      }
+      compensationDetails[type] = detail;
+    }
   }
 
   return {
@@ -188,7 +259,7 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     daysOnSite,
     isRemote: workMode === "remote",
     compensationTypes,
-    compensationNote,
+    compensationDetails,
     weeklyHours,
     durationWeeks,
     startDate,

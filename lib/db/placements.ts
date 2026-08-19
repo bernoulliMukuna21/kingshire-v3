@@ -51,7 +51,7 @@ export async function createPlacement(params: {
       work_mode: input.workMode,
       days_on_site: input.daysOnSite,
       compensation_types: input.compensationTypes,
-      compensation_note: input.compensationNote,
+      compensation_details: input.compensationDetails,
       weekly_hours: input.weeklyHours,
       duration_weeks: input.durationWeeks,
       start_date: input.startDate,

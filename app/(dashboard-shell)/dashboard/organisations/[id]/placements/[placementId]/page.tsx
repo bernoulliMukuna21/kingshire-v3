@@ -14,6 +14,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import {
   COMPENSATION_LABELS,
+  formatCompensationDetail,
   placementWorkModeSummary,
 } from "@/lib/placements";
 import ApplicantActions from "./ApplicantActions";
@@ -76,21 +77,24 @@ export default async function OrganisationPlacementDetailPage({
           <p className="text-xs font-bold uppercase text-slate-400">
             Compensation
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <ul className="mt-3 space-y-2">
             {placement.compensation_types.map((type) => (
-              <span
+              <li
                 key={type}
-                className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700"
+                className="flex flex-wrap items-baseline gap-2 text-sm"
               >
-                {COMPENSATION_LABELS[type] ?? type}
-              </span>
+                <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">
+                  {COMPENSATION_LABELS[type] ?? type}
+                </span>
+                <span className="text-slate-600">
+                  {formatCompensationDetail(
+                    type,
+                    placement.compensation_details?.[type],
+                  )}
+                </span>
+              </li>
             ))}
-          </div>
-          {placement.compensation_note && (
-            <p className="mt-2 text-sm text-slate-600">
-              {placement.compensation_note}
-            </p>
-          )}
+          </ul>
         </Card>
       )}
 
