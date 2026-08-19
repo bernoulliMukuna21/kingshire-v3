@@ -105,7 +105,7 @@ export default function PlacementForm({
     );
     if (weeks < 1) return "The end date must be after the start date.";
     if (weeks > MAX_PLACEMENT_DURATION_WEEKS)
-      return `A placement can run for at most ${MAX_PLACEMENT_DURATION_WEEKS} weeks.`;
+      return "A placement can run for at most 6 months.";
     if (compensation.includes("other") && compensationNote.trim().length < 3)
       return "Explain what the 'Other' compensation is.";
     return null;

@@ -146,7 +146,7 @@ export function parsePlacementInput(body: unknown): PlacementInput {
   }
   if (durationWeeks > MAX_PLACEMENT_DURATION_WEEKS) {
     throw new PlacementError(
-      `A placement can run for at most ${MAX_PLACEMENT_DURATION_WEEKS} weeks.`,
+      "A placement can run for at most 6 months.",
     );
   }
   if (!(["remote", "hybrid", "onsite"] as string[]).includes(workMode)) {

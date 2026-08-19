@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import PublicShell from "@/components/ui/PublicShell";
 import { ORGANISATION_PLANS } from "@/modules/organisations/domain/plans";
+import { createClient } from "@/lib/supabase/server";
+import { getUserOrganisationSummaries } from "@/infrastructure/supabase/queries/organisation-queries";
 
 const BUSINESS_TEAM_IMAGE =
   "https://images.unsplash.com/photo-1753162660943-ce96a8953e8d?auto=format&fit=crop&w=1600&q=82";
@@ -40,7 +42,20 @@ const benefits = [
   },
 ];
 
-export default function OrganisationPage() {
+export default async function OrganisationPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const organisations = user
+    ? await getUserOrganisationSummaries(user.id)
+    : [];
+  const hasOrganisation = organisations.length > 0;
+  const organisationHref =
+    organisations.length === 1
+      ? `/dashboard/organisations/${organisations[0].id}`
+      : "/dashboard/organisations";
+
   return (
     <PublicShell navbarVariant="solid">
       <section className="bg-white px-6 pb-20 pt-28">
@@ -57,24 +72,47 @@ export default function OrganisationPage() {
               non-profits, community groups and public bodies.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                href="/organisation/start"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold text-white transition hover:bg-blue-700"
-              >
-                Create your Organisation <ArrowRight size={18} />
-              </Link>
-              <Link
-                href="/sign-in"
-                className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-7 py-4 font-bold text-slate-800 transition hover:border-blue-400 hover:text-blue-700"
-              >
-                Sign in
-              </Link>
+              {hasOrganisation ? (
+                <>
+                  <Link
+                    href={organisationHref}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold text-white transition hover:bg-blue-700"
+                  >
+                    Go to your Organisation <ArrowRight size={18} />
+                  </Link>
+                  <Link
+                    href="/organisation/start"
+                    className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-7 py-4 font-bold text-slate-800 transition hover:border-blue-400 hover:text-blue-700"
+                  >
+                    Create another
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/organisation/start"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold text-white transition hover:bg-blue-700"
+                  >
+                    Create your Organisation <ArrowRight size={18} />
+                  </Link>
+                  {!user && (
+                    <Link
+                      href="/sign-in"
+                      className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-7 py-4 font-bold text-slate-800 transition hover:border-blue-400 hover:text-blue-700"
+                    >
+                      Sign in
+                    </Link>
+                  )}
+                </>
+              )}
             </div>
-            <p className="mt-4 text-sm leading-6 text-slate-500">
-              You will first create the personal Client account that securely
-              owns your Organisation. Existing KingsHire users keep their
-              current account.
-            </p>
+            {!user && (
+              <p className="mt-4 text-sm leading-6 text-slate-500">
+                You will first create the personal Client account that securely
+                owns your Organisation. Existing KingsHire users keep their
+                current account.
+              </p>
+            )}
           </div>
 
           <div className="relative h-[460px] overflow-hidden rounded-[2rem] bg-slate-100 sm:h-[560px]">
@@ -206,10 +244,13 @@ export default function OrganisationPage() {
           </div>
           <div className="mt-9 text-center">
             <Link
-              href="/organisation/start"
+              href={hasOrganisation ? organisationHref : "/organisation/start"}
               className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-7 py-4 font-bold text-white transition hover:bg-blue-700"
             >
-              Set up your Organisation <ArrowRight size={18} />
+              {hasOrganisation
+                ? "Go to your Organisation"
+                : "Set up your Organisation"}{" "}
+              <ArrowRight size={18} />
             </Link>
           </div>
         </div>
