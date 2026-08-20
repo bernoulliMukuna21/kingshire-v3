@@ -64,7 +64,6 @@ const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
     href: "/dashboard/profile",
   },
   { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
-  { label: "Organisations", icon: "🏢", href: "/dashboard/organisations" },
 ];
 
 const ADMIN_NAV: Omit<DashboardNavItem, "active">[] = [

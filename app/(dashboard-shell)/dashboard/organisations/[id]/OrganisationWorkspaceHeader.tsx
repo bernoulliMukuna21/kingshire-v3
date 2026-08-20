@@ -19,12 +19,6 @@ export default function OrganisationWorkspaceHeader({
   const tabs = [
     { key: "overview", label: "Overview", href: `${base}?tab=overview` },
     { key: "jobs", label: "Jobs", href: `${base}/jobs` },
-    { key: "team", label: "Team", href: `${base}?tab=team` },
-    {
-      key: "transactions",
-      label: "Transactions",
-      href: `${base}/transactions`,
-    },
     ...(canManageMembers
       ? [
           {
@@ -32,8 +26,16 @@ export default function OrganisationWorkspaceHeader({
             label: "Placements",
             href: `${base}/placements`,
           },
-          { key: "settings", label: "Settings", href: `${base}?tab=settings` },
         ]
+      : []),
+    { key: "team", label: "Team", href: `${base}?tab=team` },
+    {
+      key: "transactions",
+      label: "Transactions",
+      href: `${base}/transactions`,
+    },
+    ...(canManageMembers
+      ? [{ key: "settings", label: "Settings", href: `${base}?tab=settings` }]
       : []),
   ];
 

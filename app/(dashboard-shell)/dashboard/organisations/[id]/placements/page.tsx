@@ -53,7 +53,7 @@ const TAB_LABELS: Record<Tab, string> = {
   cancelled: "Cancelled",
 };
 
-const TAB_ORDER: Tab[] = ["all", "open", "review", "draft", "closed", "cancelled"];
+const TAB_ORDER: Tab[] = ["all", "draft", "review", "open", "closed", "cancelled"];
 
 function parseTab(raw: string | undefined): Tab {
   return TAB_ORDER.includes(raw as Tab) ? (raw as Tab) : "all";
@@ -135,9 +135,9 @@ export default async function OrganisationPlacementsPage({
           description={`No placements in the ${TAB_LABELS[tab].toLowerCase()} category right now.`}
         />
       ) : (
-        <Card className="divide-y divide-slate-100 overflow-hidden">
+        <div className="space-y-3">
           {placements.map((p) => (
-            <div
+            <Card
               key={p.id}
               className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
             >
@@ -167,9 +167,9 @@ export default async function OrganisationPlacementsPage({
                 placementId={p.id}
                 status={p.status}
               />
-            </div>
+            </Card>
           ))}
-        </Card>
+        </div>
       )}
     </div>
   );

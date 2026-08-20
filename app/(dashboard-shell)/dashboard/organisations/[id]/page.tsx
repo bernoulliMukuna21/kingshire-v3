@@ -3,6 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganisationMembership } from "@/lib/organisations";
 import { getOrganisationOverview } from "@/infrastructure/supabase/queries/organisation-queries";
+import { listOrganisationPlacements } from "@/lib/db/placements";
+import { placementWorkModeSummary } from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -37,6 +39,17 @@ export default async function OrganisationDashboardPage({
   const { organisation, jobs, members, stats, subscription } = overview;
   const canManageMembers =
     membership.role === "owner" || membership.role === "admin";
+  const recentPlacements = canManageMembers
+    ? (await listOrganisationPlacements(id)).slice(0, 5)
+    : [];
+
+  const PLACEMENT_STATUS_LABEL: Record<string, string> = {
+    draft: "Draft",
+    pending_review: "In review",
+    open: "Open",
+    closed: "Closed",
+    cancelled: "Cancelled",
+  };
 
   const validTabs = [
     "overview",
@@ -125,6 +138,60 @@ export default async function OrganisationDashboardPage({
               </Card>
             )}
           </section>
+
+          {canManageMembers && (
+            <section>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-black text-slate-950">
+                  Recent placements
+                </h2>
+                {recentPlacements.length > 0 && (
+                  <ButtonLink
+                    href={`/dashboard/organisations/${id}/placements`}
+                    variant="secondary"
+                  >
+                    View all placements
+                  </ButtonLink>
+                )}
+              </div>
+              {!recentPlacements.length ? (
+                <EmptyState
+                  title="No placements yet"
+                  description="Offer a supervised experience placement."
+                  action={
+                    <ButtonLink
+                      href={`/dashboard/organisations/${id}/placements/new`}
+                    >
+                      Post a placement
+                    </ButtonLink>
+                  }
+                />
+              ) : (
+                <Card className="divide-y divide-slate-100 overflow-hidden">
+                  {recentPlacements.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/dashboard/organisations/${id}/placements/${p.id}`}
+                      className="flex items-center justify-between gap-4 p-4 hover:bg-slate-50"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-slate-950">
+                          {p.title}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {p.weekly_hours}h/week · {p.duration_weeks} weeks ·{" "}
+                          {placementWorkModeSummary(p)}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-xs font-bold text-slate-500">
+                        {PLACEMENT_STATUS_LABEL[p.status] ?? p.status}
+                      </span>
+                    </Link>
+                  ))}
+                </Card>
+              )}
+            </section>
+          )}
         </div>
       )}
 
