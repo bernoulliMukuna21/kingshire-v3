@@ -429,15 +429,13 @@ export default function PostJobForm({
           <>
             <strong>How payment works:</strong> Your budget is held in escrow
             once {preferredKinglancer.fullName.split(" ")[0]} accepts your
-            request. Released only when you approve the completed work. A 5% +
-            30p service fee is added at checkout.
+            request. Released only when you approve the completed work.
           </>
         ) : (
           <>
             <strong>How payment works:</strong> Your budget is only charged when
             you select a kinglancer. It is held securely in escrow until you
-            approve the completed work. A 5% + 30p service fee is added at
-            checkout.
+            approve the completed work.
           </>
         )}
       </div>
