@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 import type { PlacementInput, PlacementStatus } from "@/lib/placements";
+import { summarizePlacementCompensation } from "@/lib/placements";
 
 export type PlacementRow = Database["public"]["Tables"]["placements"]["Row"];
 export type PlacementApplicationRow =
@@ -302,7 +303,10 @@ export async function createAgreementFromPlacement(params: {
       organisation_id: placement.organisation_id,
       kinglancer_id: params.kinglancerId,
       contribution_terms: placement.contribution,
-      reward_terms: placement.reward,
+      reward_terms:
+        summarizePlacementCompensation(placement) ||
+        placement.reward ||
+        "Supervised experience, mentoring and a verified record.",
       weekly_hours: placement.weekly_hours,
       duration_weeks: placement.duration_weeks,
       status: "pending_acceptance",

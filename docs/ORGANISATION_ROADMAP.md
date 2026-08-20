@@ -30,6 +30,7 @@ Stripe Checkout), and organisation-owned **paid jobs**.
 Remaining work before production:
 
 ### 1. Fix cross-member payment — ORG-J08 / STG-29 (release blocker) — DONE
+
 - **Symptom:** only the original poster can pay for an organisation job; any
   other authorised member is rejected at payment finalization.
 - **Root cause:** `finalizePaymentAttempt` (`lib/db/payment-attempts.ts`)
@@ -45,13 +46,16 @@ Remaining work before production:
   transfer), plus a regression that a non-member/removed member is rejected.
 
 ### 2. Technical Audit Stage 0 confirmed defects — DONE
+
 From `TECHNICAL_AUDIT_2026-07-25.md`, verify/resolve before release:
+
 - C1 — SECURITY DEFINER function grants (revoke public/anon/authenticated).
   Migration 032; also run the C1 inventory query against staging + prod.
 - C4 — auto-release cron DB client correctness.
 - H9 — escape untrusted HTML in emails.
 
 ### 2b. C3 — atomic payment finalization — DONE
+
 - `finalizePaymentAttempt` spanned several independent PostgREST calls, so a
   crash/race could leave a funded Stripe payment with partially-advanced state.
 - Moved the whole transition into one locked Postgres function
@@ -65,11 +69,13 @@ From `TECHNICAL_AUDIT_2026-07-25.md`, verify/resolve before release:
   A durable outbox for post-commit side-effects remains a later (H-level) item.
 
 ### 3. Acceptance on staging
+
 - Apply migrations 029–033 to the staging Supabase project.
 - Run `ORGANISATION_PHASE1_ACCEPTANCE.md`; ORG-J08 and payment-consistency
   scenarios must pass; no Severity 1/2 defect open.
 
 ### 4. Ship to production
+
 - Merge `staging` → `main` (also carries the webhook idempotency fix).
 - Apply migrations 029–033 to the production Supabase project.
 - Create **live** Stripe prices (£10/£25/£40 monthly GBP) in the prod account;

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getPublicPlacement } from "@/lib/db/placements";
+import { getPublicPlacement, hasAppliedToPlacement } from "@/lib/db/placements";
 import {
   COMPENSATION_LABELS,
   formatCompensationDetail,
@@ -44,6 +44,10 @@ export default async function PublicPlacementDetailPage({
       .single();
     role = profile?.role ?? null;
   }
+  const alreadyApplied =
+    role === "kinglancer" && user
+      ? await hasAppliedToPlacement(id, user.id)
+      : false;
 
   const dateRange = [
     formatDate(placement.start_date),
@@ -70,7 +74,6 @@ export default async function PublicPlacementDetailPage({
       <PublicHero
         eyebrow={placement.organisation?.name ?? "Organisation"}
         title={placement.title}
-        description="A supervised placement — not a paid job."
       />
       <section className="px-4 py-10 sm:px-6">
         <div className="mx-auto max-w-3xl">
@@ -135,7 +138,13 @@ export default async function PublicPlacementDetailPage({
                 Interested in this placement?
               </p>
               {role === "kinglancer" ? (
-                <ApplyButton placementId={id} />
+                alreadyApplied ? (
+                  <span className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700">
+                    ✓ Application sent
+                  </span>
+                ) : (
+                  <ApplyButton placementId={id} />
+                )
               ) : !user ? (
                 <Link
                   href="/sign-in"

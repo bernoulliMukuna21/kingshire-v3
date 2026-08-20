@@ -79,6 +79,63 @@ export async function notify({
 
 // ── Convenience wrappers ───────────────────────────────────
 
+export async function notifyPlacementApplicationReceived({
+  recipientId,
+  recipientEmail,
+  placementTitle,
+  placementId,
+  organisationId,
+}: {
+  recipientId: string;
+  recipientEmail?: string;
+  placementTitle: string;
+  placementId: string;
+  organisationId: string;
+}) {
+  await notify({
+    userId: recipientId,
+    type: "new_application",
+    title: "New placement application",
+    body: `A Kinglancer has applied to your placement "${placementTitle}".`,
+    link: `/dashboard/organisations/${organisationId}/placements/${placementId}`,
+    email: recipientEmail
+      ? {
+          to: recipientEmail,
+          subject: `New application: ${placementTitle}`,
+          ctaLabel: "Review applicant →",
+        }
+      : undefined,
+  });
+}
+
+export async function notifyPlacementOffer({
+  kinglancerId,
+  kinglancerEmail,
+  placementTitle,
+  agreementId,
+}: {
+  kinglancerId: string;
+  kinglancerEmail?: string;
+  placementTitle: string;
+  agreementId: string;
+}) {
+  await notify({
+    userId: kinglancerId,
+    type: "job_awarded",
+    title: "Placement offer",
+    body: `You've been offered the placement "${placementTitle}". Review and accept the agreement to begin.`,
+    link: `/dashboard/placements/agreements/${agreementId}`,
+    email: kinglancerEmail
+      ? {
+          to: kinglancerEmail,
+          subject: `You've been offered: ${placementTitle}`,
+          ctaLabel: "Review agreement →",
+        }
+      : undefined,
+  });
+}
+
+
 export async function notifyNewApplication({
   clientId,
   clientEmail,

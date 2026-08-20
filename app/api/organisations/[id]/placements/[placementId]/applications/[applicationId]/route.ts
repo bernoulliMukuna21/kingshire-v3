@@ -11,6 +11,7 @@ import {
   getPlacementApplication,
   updatePlacementApplicationStatus,
 } from "@/lib/db/placements";
+import { notifyPlacementOffer } from "@/lib/notifications";
 
 export async function POST(
   request: Request,
@@ -106,6 +107,21 @@ export async function POST(
     orgSignedBy: user.id,
   });
   await updatePlacementApplicationStatus(applicationId, "accepted");
+
+  const { data: kinglancer } = await createServiceClient()
+    .from("profiles")
+    .select("email")
+    .eq("id", application.kinglancer_id)
+    .maybeSingle();
+  await notifyPlacementOffer({
+    kinglancerId: application.kinglancer_id,
+    kinglancerEmail: kinglancer?.email ?? undefined,
+    placementTitle: placement.title,
+    agreementId: agreement.id,
+  }).catch((err) =>
+    console.error("[placements/applications] notify failed:", err),
+  );
+
   return NextResponse.json(
     { ok: true, agreementId: agreement.id },
     { status: 201 },

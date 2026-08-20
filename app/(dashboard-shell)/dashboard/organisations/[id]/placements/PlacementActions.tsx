@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ConfirmModal from "@/components/ConfirmModal";
 
 type Action = "publish" | "close" | "cancel";
 
@@ -16,6 +17,7 @@ export default function PlacementActions({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<Action | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function run(action: Action) {
@@ -67,13 +69,27 @@ export default function PlacementActions({
       )}
       {status !== "cancelled" && status !== "closed" && (
         <button
-          onClick={() => run("cancel")}
+          onClick={() => setConfirmingCancel(true)}
           disabled={busy !== null}
           className={`${btn} text-red-600 hover:bg-red-50`}
         >
           Cancel
         </button>
       )}
+      <ConfirmModal
+        isOpen={confirmingCancel}
+        onClose={() => setConfirmingCancel(false)}
+        onConfirm={async () => {
+          await run("cancel");
+          setConfirmingCancel(false);
+        }}
+        title="Cancel this placement?"
+        message="This removes it from public view and closes it to new applicants. This can't be undone."
+        confirmLabel="Cancel placement"
+        loading={busy === "cancel"}
+        variant="danger"
+        error={error ?? undefined}
+      />
     </div>
   );
 }

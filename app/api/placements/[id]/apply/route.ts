@@ -6,6 +6,7 @@ import {
   getOpenPlacement,
   hasAppliedToPlacement,
 } from "@/lib/db/placements";
+import { notifyPlacementApplicationReceived } from "@/lib/notifications";
 
 export async function POST(
   request: Request,
@@ -61,5 +62,23 @@ export async function POST(
     kinglancerId: user.id,
     message: message || null,
   });
+
+  if (placement.created_by) {
+    const { data: owner } = await createServiceClient()
+      .from("profiles")
+      .select("email")
+      .eq("id", placement.created_by)
+      .maybeSingle();
+    await notifyPlacementApplicationReceived({
+      recipientId: placement.created_by,
+      recipientEmail: owner?.email ?? undefined,
+      placementTitle: placement.title,
+      placementId: placement.id,
+      organisationId: placement.organisation_id,
+    }).catch((err) =>
+      console.error("[placements/apply] notify failed:", err),
+    );
+  }
+
   return NextResponse.json({ ok: true }, { status: 201 });
 }

@@ -69,6 +69,20 @@ export function formatCompensationDetail(
   return typeof detail === "string" ? detail : "";
 }
 
+// Human-readable compensation summary (used for agreement terms/display).
+export function summarizePlacementCompensation(placement: {
+  compensation_types: string[];
+  compensation_details: Record<string, unknown> | null;
+}): string {
+  const details = placement.compensation_details ?? {};
+  const parts = placement.compensation_types.map((type) => {
+    const detail = formatCompensationDetail(type, details[type]);
+    const label = COMPENSATION_LABELS[type] ?? type;
+    return detail ? `${label} — ${detail}` : label;
+  });
+  return parts.join("; ");
+}
+
 export function placementWorkModeSummary(p: {
   work_mode: string;
   days_on_site: number | null;
