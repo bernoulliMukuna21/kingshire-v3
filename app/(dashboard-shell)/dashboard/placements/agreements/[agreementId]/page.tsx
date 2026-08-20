@@ -4,12 +4,9 @@ import { authoriseAgreement } from "@/lib/placement-access";
 import {
   getPlacementTitle,
   listCheckIns,
-  listMilestones,
 } from "@/lib/db/placements";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import MilestoneAddForm from "./MilestoneAddForm";
-import MilestoneConfirmButton from "./MilestoneConfirmButton";
 import CheckInForm from "./CheckInForm";
 import CompleteAgreementForm from "./CompleteAgreementForm";
 import AgreementActions from "@/app/(dashboard-shell)/dashboard/kinglancer/placements/AgreementActions";
@@ -33,11 +30,10 @@ export default async function AgreementPage({
   const isActive = agreement.status === "active";
   const isPendingAcceptance = agreement.status === "pending_acceptance";
 
-  const [organisationName, placementTitle, milestones, checkIns] =
+  const [organisationName, placementTitle, checkIns] =
     await Promise.all([
       getOrganisationName(agreement.organisation_id),
       getPlacementTitle(agreement.placement_id),
-      listMilestones(agreementId),
       listCheckIns(agreementId),
     ]);
 
@@ -91,54 +87,6 @@ export default async function AgreementPage({
           </p>
         </Card>
       </div>
-
-      <section>
-        <h2 className="mb-3 text-lg font-black text-slate-950">Milestones</h2>
-        <Card className="space-y-4 p-5">
-          {isOrgManager && isActive && (
-            <MilestoneAddForm agreementId={agreementId} />
-          )}
-          {!milestones.length ? (
-            <p className="text-sm text-slate-500">No milestones yet.</p>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {milestones.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center justify-between gap-3 py-3"
-                >
-                  <div>
-                    <p className="font-semibold text-slate-900">{m.title}</p>
-                    {m.description && (
-                      <p className="text-sm text-slate-600">{m.description}</p>
-                    )}
-                    {m.due_date && (
-                      <p className="text-xs text-slate-400">
-                        Due{" "}
-                        {new Date(m.due_date).toLocaleDateString("en-GB")}
-                      </p>
-                    )}
-                  </div>
-                  {m.status === "confirmed" ? (
-                    <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                      Confirmed
-                    </span>
-                  ) : isOrgManager && isActive ? (
-                    <MilestoneConfirmButton
-                      agreementId={agreementId}
-                      milestoneId={m.id}
-                    />
-                  ) : (
-                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
-                      Pending
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-      </section>
 
       <section>
         <h2 className="mb-3 text-lg font-black text-slate-950">Check-ins</h2>
