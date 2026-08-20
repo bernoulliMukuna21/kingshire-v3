@@ -96,12 +96,23 @@ export default async function OrganisationPlacementDetailPage({
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
-      <Link
-        href={`/dashboard/organisations/${id}/placements`}
-        className="inline-block text-sm font-bold text-slate-500 hover:text-slate-800"
-      >
-        ← Back to placements
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href={`/dashboard/organisations/${id}/placements`}
+          className="inline-block text-sm font-bold text-slate-500 hover:text-slate-800"
+        >
+          ← Back to placements
+        </Link>
+        {(placement.status === "closed" ||
+          placement.status === "cancelled") && (
+          <Link
+            href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
+            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+          >
+            Repost placement
+          </Link>
+        )}
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">

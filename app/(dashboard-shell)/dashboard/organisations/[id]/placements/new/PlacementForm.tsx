@@ -37,6 +37,21 @@ const DETAIL_PLACEHOLDERS: Record<string, string> = {
 
 type WorkMode = (typeof WORK_MODES)[number]["value"];
 
+export type PlacementFormInitial = {
+  title: string;
+  summary: string;
+  categories: string[];
+  contribution: string;
+  workMode: WorkMode;
+  daysOnSite: string;
+  location: string;
+  compensation: string[];
+  moneyAmount: string;
+  moneyCadence: string;
+  compDetails: Record<string, string>;
+  weeklyHours: string;
+};
+
 function Field({
   label,
   required,
@@ -60,23 +75,33 @@ function Field({
 export default function PlacementForm({
   organisationId,
   categories,
+  initial,
 }: {
   organisationId: string;
   categories: string[];
+  initial?: PlacementFormInitial;
 }) {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
-  const [contribution, setContribution] = useState("");
-  const [workMode, setWorkMode] = useState<WorkMode>("remote");
-  const [daysOnSite, setDaysOnSite] = useState("2");
-  const [location, setLocation] = useState("");
-  const [compensation, setCompensation] = useState<string[]>([]);
-  const [moneyAmount, setMoneyAmount] = useState("");
-  const [moneyCadence, setMoneyCadence] = useState("per_month");
-  const [compDetails, setCompDetails] = useState<Record<string, string>>({});
-  const [weeklyHours, setWeeklyHours] = useState("8");
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [summary, setSummary] = useState(initial?.summary ?? "");
+  const [selected, setSelected] = useState<string[]>(initial?.categories ?? []);
+  const [contribution, setContribution] = useState(initial?.contribution ?? "");
+  const [workMode, setWorkMode] = useState<WorkMode>(
+    initial?.workMode ?? "remote",
+  );
+  const [daysOnSite, setDaysOnSite] = useState(initial?.daysOnSite ?? "2");
+  const [location, setLocation] = useState(initial?.location ?? "");
+  const [compensation, setCompensation] = useState<string[]>(
+    initial?.compensation ?? [],
+  );
+  const [moneyAmount, setMoneyAmount] = useState(initial?.moneyAmount ?? "");
+  const [moneyCadence, setMoneyCadence] = useState(
+    initial?.moneyCadence ?? "per_month",
+  );
+  const [compDetails, setCompDetails] = useState<Record<string, string>>(
+    initial?.compDetails ?? {},
+  );
+  const [weeklyHours, setWeeklyHours] = useState(initial?.weeklyHours ?? "8");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);

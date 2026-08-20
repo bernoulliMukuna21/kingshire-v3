@@ -12,6 +12,7 @@ import MilestoneAddForm from "./MilestoneAddForm";
 import MilestoneConfirmButton from "./MilestoneConfirmButton";
 import CheckInForm from "./CheckInForm";
 import CompleteAgreementForm from "./CompleteAgreementForm";
+import AgreementActions from "@/app/(dashboard-shell)/dashboard/kinglancer/placements/AgreementActions";
 
 const STATUS_LABEL: Record<string, string> = {
   pending_acceptance: "Pending acceptance",
@@ -30,6 +31,7 @@ export default async function AgreementPage({
   if (!access.ok) notFound();
   const { agreement, isOrgManager } = access;
   const isActive = agreement.status === "active";
+  const isPendingAcceptance = agreement.status === "pending_acceptance";
 
   const [organisationName, placementTitle, milestones, checkIns] =
     await Promise.all([
@@ -46,6 +48,30 @@ export default async function AgreementPage({
         title={placementTitle ?? "Placement agreement"}
         description={`${STATUS_LABEL[agreement.status] ?? agreement.status} · ${agreement.weekly_hours}h/week · ${agreement.duration_weeks} weeks`}
       />
+
+      {isPendingAcceptance &&
+        (access.isKinglancer ? (
+          <Card className="border-blue-200 bg-blue-50/60 p-5">
+            <h2 className="text-lg font-black text-slate-950">
+              You&apos;ve been offered this placement
+            </h2>
+            <p className="mb-4 mt-1 text-sm text-slate-600">
+              Review the contribution and agreed value below, then accept to
+              begin. You can decline if it&apos;s not the right fit.
+            </p>
+            <AgreementActions agreementId={agreementId} />
+          </Card>
+        ) : (
+          <Card className="border-amber-200 bg-amber-50/60 p-5">
+            <h2 className="text-lg font-black text-slate-950">
+              Waiting for the Kinglancer to accept
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              You&apos;ve offered this placement. It becomes active once the
+              Kinglancer accepts the agreement.
+            </p>
+          </Card>
+        ))}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card className="p-5">
