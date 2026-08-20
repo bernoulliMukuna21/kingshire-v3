@@ -50,6 +50,7 @@ export type PlacementFormInitial = {
   moneyCadence: string;
   compDetails: Record<string, string>;
   weeklyHours: string;
+  paymentMode: "managed" | "direct";
 };
 
 function Field({
@@ -102,6 +103,9 @@ export default function PlacementForm({
     initial?.compDetails ?? {},
   );
   const [weeklyHours, setWeeklyHours] = useState(initial?.weeklyHours ?? "8");
+  const [paymentMode, setPaymentMode] = useState<"managed" | "direct">(
+    initial?.paymentMode ?? "direct",
+  );
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
@@ -195,6 +199,9 @@ export default function PlacementForm({
           days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
           compensation_types: compensation,
           compensation_details: buildCompensationDetails(),
+          payment_mode: compensation.includes("money")
+            ? paymentMode
+            : "direct",
           weekly_hours: Number(weeklyHours),
           start_date: startDate,
           end_date: endDate,
@@ -312,6 +319,54 @@ export default function PlacementForm({
             </select>
           </Field>
         </div>
+      )}
+      {compensation.includes("money") && (
+        <Field label="How is the money paid?" required>
+          <div className="space-y-2">
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ${
+                paymentMode === "managed"
+                  ? "border-blue-600 bg-blue-50"
+                  : "border-slate-200 hover:border-blue-300"
+              }`}
+            >
+              <input
+                type="radio"
+                name="payment_mode"
+                className="mt-0.5"
+                checked={paymentMode === "managed"}
+                onChange={() => setPaymentMode("managed")}
+              />
+              <span className="text-slate-700">
+                <span className="font-bold text-slate-900">
+                  Managed by KingsHire
+                </span>{" "}
+                — we collect from your organisation and pay the Kinglancer
+                each month. Platform fees apply.
+              </span>
+            </label>
+            <label
+              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition ${
+                paymentMode === "direct"
+                  ? "border-blue-600 bg-blue-50"
+                  : "border-slate-200 hover:border-blue-300"
+              }`}
+            >
+              <input
+                type="radio"
+                name="payment_mode"
+                className="mt-0.5"
+                checked={paymentMode === "direct"}
+                onChange={() => setPaymentMode("direct")}
+              />
+              <span className="text-slate-700">
+                <span className="font-bold text-slate-900">Direct</span> — your
+                organisation pays the Kinglancer directly. KingsHire only
+                records the placement.
+              </span>
+            </label>
+          </div>
+        </Field>
       )}
       {compensation
         .filter((type) => type !== "money")

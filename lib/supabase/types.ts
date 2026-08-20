@@ -350,6 +350,7 @@ export type Database = {
           end_date: string | null;
           status: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review: boolean;
+          payment_mode: "managed" | "direct";
           created_at: string;
           updated_at: string;
         };
@@ -375,6 +376,7 @@ export type Database = {
           end_date?: string | null;
           status?: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review?: boolean;
+          payment_mode?: "managed" | "direct";
         };
         Update: {
           title?: string;
@@ -395,6 +397,7 @@ export type Database = {
           end_date?: string | null;
           status?: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review?: boolean;
+          payment_mode?: "managed" | "direct";
         };
         Relationships: [];
       };

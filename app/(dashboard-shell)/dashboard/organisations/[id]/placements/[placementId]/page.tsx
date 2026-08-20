@@ -284,6 +284,13 @@ export default async function OrganisationPlacementDetailPage({
                   </li>
                 ))}
               </ul>
+              {placement.compensation_types.includes("money") && (
+                <p className="text-xs text-slate-500">
+                  {placement.payment_mode === "managed"
+                    ? "Paid monthly via KingsHire."
+                    : "Paid directly by the organisation."}
+                </p>
+              )}
             </Card>
           )}
 

@@ -113,6 +113,7 @@ export type PlacementInput = {
   durationWeeks: number;
   startDate: string;
   endDate: string;
+  paymentMode: "managed" | "direct";
 };
 
 export class PlacementError extends Error {
@@ -278,6 +279,11 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     durationWeeks,
     startDate,
     endDate,
+    // 'managed' only applies to money placements; everything else is 'direct'.
+    paymentMode:
+      compensationTypes.includes("money") && trimmed(b.payment_mode) === "managed"
+        ? "managed"
+        : "direct",
   };
 }
 

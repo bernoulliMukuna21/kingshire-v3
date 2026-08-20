@@ -59,6 +59,7 @@ export async function createPlacement(params: {
       end_date: input.endDate,
       status: "draft",
       requires_manual_review: params.requiresManualReview,
+      payment_mode: input.paymentMode,
     })
     .select()
     .single();

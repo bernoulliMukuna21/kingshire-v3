@@ -69,6 +69,7 @@ export default async function NewPlacementPage({
         moneyCadence: money?.cadence ?? "per_month",
         compDetails,
         weeklyHours: String(source.weekly_hours ?? 8),
+        paymentMode: source.payment_mode === "managed" ? "managed" : "direct",
       };
     }
   }
