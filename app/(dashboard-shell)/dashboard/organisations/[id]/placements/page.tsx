@@ -11,6 +11,7 @@ import { placementWorkModeSummary } from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
+import JobsTabBar from "@/components/dashboard/JobsTabBar";
 import OrganisationWorkspaceHeader from "../OrganisationWorkspaceHeader";
 import PlacementActions from "./PlacementActions";
 
@@ -30,12 +31,43 @@ const STATUS_CLASS: Record<string, string> = {
   cancelled: "bg-red-100 text-red-600",
 };
 
+// ── Tab definitions ────────────────────────────────────────
+
+type Tab = "all" | "open" | "review" | "draft" | "closed" | "cancelled";
+
+const TAB_STATUSES: Record<Tab, string[]> = {
+  all: [],
+  open: ["open"],
+  review: ["pending_review"],
+  draft: ["draft"],
+  closed: ["closed"],
+  cancelled: ["cancelled"],
+};
+
+const TAB_LABELS: Record<Tab, string> = {
+  all: "All",
+  open: "Open",
+  review: "In review",
+  draft: "Draft",
+  closed: "Closed",
+  cancelled: "Cancelled",
+};
+
+const TAB_ORDER: Tab[] = ["all", "open", "review", "draft", "closed", "cancelled"];
+
+function parseTab(raw: string | undefined): Tab {
+  return TAB_ORDER.includes(raw as Tab) ? (raw as Tab) : "all";
+}
+
 export default async function OrganisationPlacementsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
+  const { tab: tabParam } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -49,7 +81,22 @@ export default async function OrganisationPlacementsPage({
   const organisationName = await getOrganisationName(id);
   if (!organisationName) notFound();
 
-  const placements = await listOrganisationPlacements(id);
+  const allPlacements = await listOrganisationPlacements(id);
+  const tab = parseTab(tabParam);
+
+  const tabCounts = TAB_ORDER.reduce<Record<string, number>>((acc, t) => {
+    acc[t] =
+      TAB_STATUSES[t].length === 0
+        ? allPlacements.length
+        : allPlacements.filter((p) => TAB_STATUSES[t].includes(p.status))
+            .length;
+    return acc;
+  }, {});
+
+  const placements =
+    TAB_STATUSES[tab].length === 0
+      ? allPlacements
+      : allPlacements.filter((p) => TAB_STATUSES[tab].includes(p.status));
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
@@ -62,7 +109,17 @@ export default async function OrganisationPlacementsPage({
           membership.role === "owner" || membership.role === "admin"
         }
       />
-      {!placements.length ? (
+      {allPlacements.length > 0 && (
+        <JobsTabBar
+          tabs={TAB_ORDER}
+          labels={TAB_LABELS}
+          counts={tabCounts}
+          activeTab={tab}
+          basePath={`/dashboard/organisations/${id}/placements`}
+          accentTab="open"
+        />
+      )}
+      {!allPlacements.length ? (
         <EmptyState
           title="No placements yet"
           description="Create your organisation's first experience placement."
@@ -71,6 +128,11 @@ export default async function OrganisationPlacementsPage({
               Create placement
             </ButtonLink>
           }
+        />
+      ) : !placements.length ? (
+        <EmptyState
+          title={`No ${TAB_LABELS[tab].toLowerCase()} placements`}
+          description={`No placements in the ${TAB_LABELS[tab].toLowerCase()} category right now.`}
         />
       ) : (
         <Card className="divide-y divide-slate-100 overflow-hidden">
