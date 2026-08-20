@@ -443,6 +443,8 @@ export type Database = {
           org_signed_at: string | null;
           kinglancer_signed_at: string | null;
           completed_at: string | null;
+          payment_mode: "managed" | "direct";
+          monthly_amount: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -461,6 +463,8 @@ export type Database = {
           org_signed_at?: string | null;
           kinglancer_signed_at?: string | null;
           completed_at?: string | null;
+          payment_mode?: "managed" | "direct";
+          monthly_amount?: number | null;
         };
         Update: {
           version?: number;
@@ -473,6 +477,51 @@ export type Database = {
           org_signed_at?: string | null;
           kinglancer_signed_at?: string | null;
           completed_at?: string | null;
+          payment_mode?: "managed" | "direct";
+          monthly_amount?: number | null;
+        };
+        Relationships: [];
+      };
+      placement_payments: {
+        Row: {
+          id: string;
+          agreement_id: string;
+          organisation_id: string;
+          kinglancer_id: string;
+          period_label: string;
+          amount: number;
+          platform_fee_client: number;
+          platform_fee_kinglancer: number;
+          status: "pending" | "held" | "released" | "failed" | "refunded";
+          stripe_payment_intent_id: string | null;
+          stripe_transfer_id: string | null;
+          released_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          agreement_id: string;
+          organisation_id: string;
+          kinglancer_id: string;
+          period_label: string;
+          amount: number;
+          platform_fee_client?: number;
+          platform_fee_kinglancer?: number;
+          status?: "pending" | "held" | "released" | "failed" | "refunded";
+          stripe_payment_intent_id?: string | null;
+          stripe_transfer_id?: string | null;
+          released_at?: string | null;
+        };
+        Update: {
+          period_label?: string;
+          amount?: number;
+          platform_fee_client?: number;
+          platform_fee_kinglancer?: number;
+          status?: "pending" | "held" | "released" | "failed" | "refunded";
+          stripe_payment_intent_id?: string | null;
+          stripe_transfer_id?: string | null;
+          released_at?: string | null;
         };
         Relationships: [];
       };

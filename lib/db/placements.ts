@@ -8,6 +8,8 @@ export type PlacementApplicationRow =
   Database["public"]["Tables"]["placement_applications"]["Row"];
 export type PlacementAgreementRow =
   Database["public"]["Tables"]["placement_agreements"]["Row"];
+export type PlacementPaymentRow =
+  Database["public"]["Tables"]["placement_payments"]["Row"];
 
 export type PlacementApplicant = PlacementApplicationRow & {
   kinglancer: {
@@ -299,6 +301,16 @@ export async function createAgreementFromPlacement(params: {
 }): Promise<PlacementAgreementRow> {
   const db = createServiceClient();
   const { placement } = params;
+  const money = (placement.compensation_details?.money ?? null) as {
+    amount?: number;
+    cadence?: string;
+  } | null;
+  const isManaged = placement.payment_mode === "managed";
+  // Managed monthly payments need a per-month figure; otherwise left null.
+  const monthlyAmount =
+    isManaged && money?.cadence === "per_month" && money.amount
+      ? money.amount
+      : null;
   const { data, error } = await db
     .from("placement_agreements")
     .insert({
@@ -315,11 +327,111 @@ export async function createAgreementFromPlacement(params: {
       status: "pending_acceptance",
       org_signed_by: params.orgSignedBy,
       org_signed_at: new Date().toISOString(),
+      payment_mode: isManaged ? "managed" : "direct",
+      monthly_amount: monthlyAmount,
     })
     .select()
     .single();
   if (error) throw error;
   return data as PlacementAgreementRow;
+}
+
+// ── Managed monthly payments ──────────────────────────────
+
+export async function listPlacementPayments(
+  agreementId: string,
+): Promise<PlacementPaymentRow[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_payments")
+    .select("*")
+    .eq("agreement_id", agreementId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PlacementPaymentRow[];
+}
+
+export async function getPlacementPayment(
+  paymentId: string,
+): Promise<PlacementPaymentRow | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_payments")
+    .select("*")
+    .eq("id", paymentId)
+    .maybeSingle();
+  return (data as PlacementPaymentRow | null) ?? null;
+}
+
+/** True if a non-failed payment already exists for that month. */
+export async function hasPaymentForPeriod(
+  agreementId: string,
+  periodLabel: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_payments")
+    .select("id")
+    .eq("agreement_id", agreementId)
+    .eq("period_label", periodLabel)
+    .in("status", ["pending", "held", "released"])
+    .maybeSingle();
+  return !!data;
+}
+
+export async function createPlacementPayment(params: {
+  agreementId: string;
+  organisationId: string;
+  kinglancerId: string;
+  periodLabel: string;
+  amount: number;
+  platformFeeClient: number;
+  platformFeeKinglancer: number;
+  status?: PlacementPaymentRow["status"];
+  stripePaymentIntentId?: string | null;
+}): Promise<PlacementPaymentRow> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_payments")
+    .insert({
+      agreement_id: params.agreementId,
+      organisation_id: params.organisationId,
+      kinglancer_id: params.kinglancerId,
+      period_label: params.periodLabel,
+      amount: params.amount,
+      platform_fee_client: params.platformFeeClient,
+      platform_fee_kinglancer: params.platformFeeKinglancer,
+      status: params.status ?? "pending",
+      stripe_payment_intent_id: params.stripePaymentIntentId ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlacementPaymentRow;
+}
+
+export async function updatePlacementPayment(
+  paymentId: string,
+  patch: Database["public"]["Tables"]["placement_payments"]["Update"],
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_payments")
+    .update(patch)
+    .eq("id", paymentId);
+  if (error) throw error;
+}
+
+export async function getPlacementPaymentByIntent(
+  paymentIntentId: string,
+): Promise<PlacementPaymentRow | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_payments")
+    .select("*")
+    .eq("stripe_payment_intent_id", paymentIntentId)
+    .maybeSingle();
+  return (data as PlacementPaymentRow | null) ?? null;
 }
 
 export async function getAgreement(
