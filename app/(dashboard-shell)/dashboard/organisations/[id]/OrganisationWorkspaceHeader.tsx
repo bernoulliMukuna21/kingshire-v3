@@ -18,6 +18,7 @@ export default function OrganisationWorkspaceHeader({
   const base = `/dashboard/organisations/${organisationId}`;
   const tabs = [
     { key: "overview", label: "Overview", href: `${base}?tab=overview` },
+    { key: "jobs", label: "Jobs", href: `${base}/jobs` },
     { key: "team", label: "Team", href: `${base}?tab=team` },
     {
       key: "transactions",

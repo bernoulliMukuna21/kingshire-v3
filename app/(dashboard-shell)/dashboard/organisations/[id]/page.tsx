@@ -80,9 +80,19 @@ export default async function OrganisationDashboardPage({
             </Card>
           </div>
           <section>
-            <h2 className="mb-3 text-xl font-black text-slate-950">
-              Organisation jobs
-            </h2>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-xl font-black text-slate-950">
+                Recent jobs
+              </h2>
+              {jobs.length > 0 && (
+                <ButtonLink
+                  href={`/dashboard/organisations/${id}/jobs`}
+                  variant="secondary"
+                >
+                  View all jobs
+                </ButtonLink>
+              )}
+            </div>
             {!jobs.length ? (
               <EmptyState
                 title="No jobs yet"
