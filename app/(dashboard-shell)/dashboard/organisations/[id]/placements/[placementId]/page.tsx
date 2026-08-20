@@ -131,6 +131,16 @@ export default async function OrganisationPlacementDetailPage({
                     {a.message}
                   </p>
                 )}
+                {a.cv_url && (
+                  <a
+                    href={a.cv_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline"
+                  >
+                    View CV →
+                  </a>
+                )}
               </div>
             ))}
           </Card>

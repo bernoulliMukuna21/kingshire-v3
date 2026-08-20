@@ -404,6 +404,7 @@ export type Database = {
           placement_id: string;
           kinglancer_id: string;
           message: string | null;
+          cv_url: string | null;
           status: "pending" | "accepted" | "rejected" | "withdrawn";
           created_at: string;
           updated_at: string;
@@ -413,10 +414,12 @@ export type Database = {
           placement_id: string;
           kinglancer_id: string;
           message?: string | null;
+          cv_url?: string | null;
           status?: "pending" | "accepted" | "rejected" | "withdrawn";
         };
         Update: {
           message?: string | null;
+          cv_url?: string | null;
           status?: "pending" | "accepted" | "rejected" | "withdrawn";
         };
         Relationships: [];

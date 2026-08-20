@@ -5,13 +5,12 @@ import BrowseModeTabs from "@/components/ui/BrowseModeTabs";
 import BrowseSkeleton from "@/components/ui/BrowseSkeleton";
 import PlacementsBrowse from "./PlacementsBrowse";
 
+export const dynamic = "force-dynamic";
+
 export default function PublicPlacementsPage() {
   return (
     <PublicShell>
-      <PublicHero
-        title="Placements"
-        description="Supervised opportunities offering mentoring, training and a verified experience record. These are not paid jobs."
-      >
+      <PublicHero title="Placements">
         <BrowseModeTabs active="placements" />
       </PublicHero>
       <section className="px-4 py-10 sm:px-6">

@@ -57,10 +57,24 @@ export async function POST(
   const raw = (body as { message?: unknown }).message;
   const message = typeof raw === "string" ? raw.trim().slice(0, 2000) : "";
 
+  const rawCv = (body as { cvUrl?: unknown }).cvUrl;
+  let cvUrl: string | null = null;
+  if (typeof rawCv === "string" && rawCv.trim()) {
+    const expectedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/placement-cvs/`;
+    if (!expectedPrefix || !rawCv.startsWith(expectedPrefix)) {
+      return NextResponse.json(
+        { error: "Invalid CV upload. Please re-attach your CV." },
+        { status: 400 },
+      );
+    }
+    cvUrl = rawCv;
+  }
+
   await createPlacementApplication({
     placementId: id,
     kinglancerId: user.id,
     message: message || null,
+    cvUrl,
   });
 
   if (placement.created_by) {

@@ -1,15 +1,65 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ApplyButton({ placementId }: { placementId: string }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [cvName, setCvName] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [applied, setApplied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function uploadCv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError("CV must be under 5MB.");
+      return;
+    }
+    const allowed = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (!allowed.includes(file.type)) {
+      setError("CV must be a PDF or Word document.");
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setError("Please sign in again to upload your CV.");
+      setUploading(false);
+      return;
+    }
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/${placementId}-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("placement-cvs")
+      .upload(path, file, { upsert: true });
+    if (uploadError) {
+      setError("Failed to upload CV. Please try again.");
+      setUploading(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage
+      .from("placement-cvs")
+      .getPublicUrl(path);
+    setCvUrl(urlData.publicUrl);
+    setCvName(file.name);
+    setUploading(false);
+  }
 
   async function apply() {
     setSaving(true);
@@ -17,7 +67,7 @@ export default function ApplyButton({ placementId }: { placementId: string }) {
     const res = await fetch(`/api/placements/${placementId}/apply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, cvUrl }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -66,11 +116,38 @@ export default function ApplyButton({ placementId }: { placementId: string }) {
         placeholder="Introduce yourself and say why you'd be a great fit (optional)."
         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
+      <div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          onChange={uploadCv}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+        >
+          {uploading
+            ? "Uploading…"
+            : cvName
+              ? "Replace CV"
+              : "Attach CV (optional)"}
+        </button>
+        {cvName && (
+          <p className="mt-1.5 text-xs text-slate-500">
+            Attached: <span className="font-semibold">{cvName}</span>
+          </p>
+        )}
+        <p className="mt-1 text-xs text-slate-400">PDF or Word, up to 5MB.</p>
+      </div>
       {error && <p className="text-xs text-red-600">{error}</p>}
       <div className="flex gap-2">
         <button
           onClick={apply}
-          disabled={saving}
+          disabled={saving || uploading}
           className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? "Sending…" : "Send application"}

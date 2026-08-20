@@ -209,6 +209,7 @@ export async function createPlacementApplication(params: {
   placementId: string;
   kinglancerId: string;
   message: string | null;
+  cvUrl: string | null;
 }): Promise<PlacementApplicationRow> {
   const db = createServiceClient();
   const { data, error } = await db
@@ -217,6 +218,7 @@ export async function createPlacementApplication(params: {
       placement_id: params.placementId,
       kinglancer_id: params.kinglancerId,
       message: params.message,
+      cv_url: params.cvUrl,
     })
     .select()
     .single();
