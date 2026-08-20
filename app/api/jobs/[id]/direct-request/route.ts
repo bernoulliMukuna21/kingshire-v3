@@ -154,11 +154,11 @@ export async function POST(
     }
     if (
       !hasValidCurrencyPrecision(proposedBudget) ||
-      Number(proposedBudget) < 5 ||
+      Number(proposedBudget) < 20 ||
       Number(proposedBudget) > 50000
     ) {
       return NextResponse.json(
-        { error: "Proposed budget must be between £5 and £50,000." },
+        { error: "Proposed budget must be between £20 and £50,000." },
         { status: 400 },
       );
     }

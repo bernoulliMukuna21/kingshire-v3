@@ -144,7 +144,7 @@ export default function SignUpPage() {
         "Free to join",
         "Payments protected by Stripe",
         "Community verified members",
-        "Low platform fees (2.5% client / 5% kinglancer)",
+        "Low platform fees (5% + 30p client / 7.5% kinglancer)",
       ]}
     >
       <div className="w-full max-w-md">

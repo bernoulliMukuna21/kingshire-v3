@@ -81,11 +81,11 @@ export async function POST(request: Request) {
   if (
     !Number.isFinite(budgetNum) ||
     !hasValidCurrencyPrecision(budget) ||
-    normalizedBudget < 5 ||
+    normalizedBudget < 20 ||
     normalizedBudget > 50000
   )
     return NextResponse.json(
-      { error: "Budget must be between £5 and £50,000 with up to 2 decimals." },
+      { error: "Budget must be between £20 and £50,000 with up to 2 decimals." },
       { status: 400 },
     );
   if (

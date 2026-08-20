@@ -6,6 +6,7 @@ import {
   getPaymentIntentIdFromClientSecret,
 } from "@/lib/db/payment-attempts";
 import { getTransactionByPaymentIntent } from "@/lib/db/transactions";
+import { calculateFees } from "@/lib/stripe";
 import PaymentForm from "./PaymentForm";
 
 interface Props {
@@ -60,7 +61,7 @@ export default async function PayPage({ params, searchParams }: Props) {
   const platformFee =
     paymentAttempt?.platform_fee_client ??
     legacyTransaction?.platform_fee_client ??
-    amount * 0.025;
+    calculateFees(amount).platformFeeClient;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-start justify-center py-16 px-4">
@@ -86,7 +87,7 @@ export default async function PayPage({ params, searchParams }: Props) {
               <span className="font-medium shrink-0">£{amount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-gray-500">
-              <span>Platform fee (2.5%)</span>
+              <span>Service fee (5% + 30p)</span>
               <span>£{platformFee.toFixed(2)}</span>
             </div>
             <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900">
