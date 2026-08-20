@@ -39,13 +39,6 @@ describe("calculateFees", () => {
     expect(clientChargePence).toBe(10530);
   });
 
-  it("matches the £20 minimum-job example", () => {
-    const { clientChargeGBP, platformFeeKinglancer } = calculateFees(20);
-    // Client pays £21.30, Kinglancer keeps £18.50.
-    expect(clientChargeGBP).toBe(21.3);
-    expect(20 - platformFeeKinglancer).toBe(18.5);
-  });
-
   it("handles non-round budgets", () => {
     const { platformFeeClient, clientChargeGBP } = calculateFees(250);
     expect(platformFeeClient).toBe(12.8);
@@ -87,5 +80,42 @@ describe("calculateFees", () => {
       const { clientChargeGBP, clientChargePence } = calculateFees(budget);
       expect(clientChargePence).toBe(Math.round(clientChargeGBP * 100));
     });
+  });
+});
+
+// Reproduces the worked example from the fee proposal (STRIPE_FEES_EXEC_SUMMARY)
+// for a £20 minimum job: who pays what, and what the platform actually keeps.
+describe("£20 job simulation (fee proposal)", () => {
+  const budget = 20;
+  const fees = calculateFees(budget);
+  const clientPays = fees.clientChargeGBP;
+  const kinglancerReceives = budget - fees.platformFeeKinglancer;
+  const platformGrossTake = fees.platformFeeClient + fees.platformFeeKinglancer;
+
+  it("client pays £21.30 (budget + 5% + 30p)", () => {
+    expect(clientPays).toBe(21.3);
+    expect(fees.clientChargePence).toBe(2130);
+  });
+
+  it("kinglancer receives £18.50 (budget − 7.5%)", () => {
+    expect(kinglancerReceives).toBe(18.5);
+  });
+
+  it("platform gross take is £2.80 (client £1.30 + kinglancer £1.50)", () => {
+    expect(fees.platformFeeClient).toBe(1.3);
+    expect(fees.platformFeeKinglancer).toBe(1.5);
+    expect(platformGrossTake).toBe(2.8);
+  });
+
+  // Illustrative only — Stripe's own fees are charged by Stripe, not computed
+  // in our code. Card fee 1.5% + 20p on the client charge; payout fee
+  // 0.25% + 10p on the Kinglancer transfer. (Excludes the £2/month active-
+  // account fee, which is per-worker-per-month, not per-job.) This confirms
+  // the proposal's ~£2.13 net figure.
+  it("nets ~£2.13 after Stripe's own fees", () => {
+    const stripeCardFee = clientPays * 0.015 + 0.2;
+    const stripePayoutFee = kinglancerReceives * 0.0025 + 0.1;
+    const platformNet = platformGrossTake - stripeCardFee - stripePayoutFee;
+    expect(Number(platformNet.toFixed(2))).toBe(2.13);
   });
 });
