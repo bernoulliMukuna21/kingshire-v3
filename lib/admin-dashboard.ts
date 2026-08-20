@@ -80,8 +80,13 @@ export function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+const GBP = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP",
+});
+
 export function formatMoney(amount: number) {
-  return `£${Number(amount).toLocaleString()}`;
+  return GBP.format(Number(amount));
 }
 
 export function roleTone(role: string | null) {

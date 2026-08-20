@@ -116,7 +116,7 @@ export default function PostJobForm({
       fe.budget = CURRENCY_VALIDATION_MESSAGE;
     else if (rateType !== "fixed" && (!quantity || qty <= 0))
       fe.quantity = `Please enter how many ${rateType === "per_hour" ? "hours" : "days"} you expect the work to take.`;
-    else if (totalBudget < 5) fe.budget = "Minimum total budget is £5.";
+    else if (totalBudget < 20) fe.budget = "Minimum total budget is £20.";
     else if (totalBudget > 50000)
       fe.budget = "Maximum total budget is £50,000.";
 

@@ -150,10 +150,10 @@ The following features were built in a previous session, then the staging branch
 
 ## 6. Platform Fees
 
-- **Client pays:** budget + 2.5% platform fee
-- **Kinglancer receives:** budget − 5% platform fee
+- **Client pays:** budget + 5% + 30p service fee
+- **Kinglancer receives:** budget − 7.5% platform fee
 - **Total platform take:** 7.5% of job budget
-- Constants in `lib/stripe.ts`: `PLATFORM_FEE_RATE_CLIENT = 0.025`, `PLATFORM_FEE_RATE_KINGLANCER = 0.05`
+- Constants in `lib/stripe.ts`: `PLATFORM_FEE_RATE_CLIENT = 0.05`, `PLATFORM_FEE_RATE_KINGLANCER = 0.075`, `PLATFORM_FEE_FIXED_CLIENT = 0.3`, `MIN_JOB_BUDGET_GBP = 20`
 - Auto-release: **5 working days** after work marked complete with no client response
 
 ---
