@@ -667,6 +667,29 @@ export async function listExperienceRecordsForReview(): Promise<
   return (data ?? []) as unknown as ExperienceRecordForReview[];
 }
 
+/** Distinct approved verified categories for a set of kinglancers (for cards). */
+export async function verifiedCategoriesByKinglancer(
+  kinglancerIds: string[],
+): Promise<Record<string, string[]>> {
+  if (!kinglancerIds.length) return {};
+  const db = createServiceClient();
+  const { data } = await db
+    .from("experience_records")
+    .select("kinglancer_id, categories")
+    .in("kinglancer_id", kinglancerIds)
+    .eq("verification_status", "approved")
+    .eq("is_public", true);
+  const sets: Record<string, Set<string>> = {};
+  for (const row of (data ?? []) as {
+    kinglancer_id: string;
+    categories: string[];
+  }[]) {
+    const set = (sets[row.kinglancer_id] ??= new Set<string>());
+    for (const c of row.categories ?? []) set.add(c);
+  }
+  return Object.fromEntries(Object.entries(sets).map(([k, v]) => [k, [...v]]));
+}
+
 export async function reviewExperienceRecord(
   recordId: string,
   status: "approved" | "rejected",

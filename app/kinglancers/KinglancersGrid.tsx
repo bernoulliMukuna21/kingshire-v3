@@ -31,9 +31,11 @@ function getProfileHeadline(kinglancer: Kinglancer) {
 export default function KinglancersGrid({
   kinglancers,
   searchQuery,
+  verified,
 }: {
   kinglancers: Kinglancer[];
   searchQuery?: string;
+  verified?: Record<string, string[]>;
 }) {
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
@@ -50,6 +52,10 @@ export default function KinglancersGrid({
         >
           {kinglancers.map((k) => {
             const headline = getProfileHeadline(k);
+            const verifiedCats = (verified?.[k.id] ?? []).slice(0, 2);
+            const plainTags = (k.service_tags ?? [])
+              .filter((s) => !verifiedCats.includes(s))
+              .slice(0, Math.max(0, 3 - verifiedCats.length));
 
             return (
               <StaggerItem key={k.id} className="h-full">
@@ -76,7 +82,16 @@ export default function KinglancersGrid({
 
                       {/* Service tags */}
                       <div className="mb-4 flex h-14 content-start flex-wrap gap-1.5 overflow-hidden">
-                        {(k.service_tags ?? []).slice(0, 3).map((s) => (
+                        {verifiedCats.map((c) => (
+                          <span
+                            key={`v-${c}`}
+                            title={`Verified experience: ${c}`}
+                            className="inline-flex max-w-full items-center gap-1 truncate rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-black text-emerald-700"
+                          >
+                            ✓ {c}
+                          </span>
+                        ))}
+                        {plainTags.map((s) => (
                           <span
                             key={s}
                             title={s}

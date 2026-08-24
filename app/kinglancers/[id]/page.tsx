@@ -222,10 +222,22 @@ export default async function KinglancerProfilePage({
                     key={rec.id}
                     className="rounded-2xl border border-slate-100 p-4"
                   >
+                    {rec.categories.length > 0 && (
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        {rec.categories.map((c) => (
+                          <span
+                            key={c}
+                            className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-700"
+                          >
+                            ✓ {c}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-bold text-slate-950">{rec.title}</p>
                       <span className="shrink-0 text-xs text-slate-400">
-                        {rec.organisation?.name ?? "Organisation"}
+                        Verified by {rec.organisation?.name ?? "an organisation"}
                       </span>
                     </div>
                     {rec.summary && (

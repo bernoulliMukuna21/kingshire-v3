@@ -7,6 +7,7 @@ import PublicHero from "@/components/ui/PublicHero";
 import PublicShell from "@/components/ui/PublicShell";
 import Pagination from "@/components/ui/Pagination";
 import { getPageNumber, getPageRange } from "@/lib/pagination";
+import { verifiedCategoriesByKinglancer } from "@/lib/db/placements";
 
 export const revalidate = 3600;
 
@@ -50,6 +51,10 @@ export default async function KinglancersPage({
 
   const { kinglancers, total } = await getKinglancers();
 
+  const verified = await verifiedCategoriesByKinglancer(
+    kinglancers.map((k) => k.id),
+  );
+
   return (
     <PublicShell>
       <FadeIn>
@@ -60,7 +65,11 @@ export default async function KinglancersPage({
         />
       </FadeIn>
       <KinglancersSearch defaultValue={q} />
-      <KinglancersGrid kinglancers={kinglancers} searchQuery={q} />
+      <KinglancersGrid
+        kinglancers={kinglancers}
+        searchQuery={q}
+        verified={verified}
+      />
       <div className="mx-auto max-w-6xl pb-10 px-4 sm:px-6">
         <Pagination
           basePath="/kinglancers"
