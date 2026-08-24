@@ -166,6 +166,9 @@ export default async function OrganisationPlacementsPage({
                 organisationId={id}
                 placementId={p.id}
                 status={p.status}
+                canDelete={
+                  membership.role === "owner" || membership.role === "admin"
+                }
               />
             </Card>
           ))}

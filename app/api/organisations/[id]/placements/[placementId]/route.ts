@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireOrganisationPermission } from "@/lib/organisations";
+import {
+  getOrganisationMembership,
+  requireOrganisationPermission,
+} from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { notifyAdminPlacementForReview } from "@/lib/notifications";
 import { openPlacementLimit } from "@/lib/placements";
@@ -9,7 +12,9 @@ import type { OrganisationPlanId } from "@/modules/organisations/domain/plans";
 import {
   cancelPendingAgreementsForPlacement,
   countOpenPlacements,
+  deletePlacement,
   getOrganisationPlacement,
+  placementHasAgreements,
   updatePlacementStatus,
 } from "@/lib/db/placements";
 
@@ -132,4 +137,51 @@ export async function PATCH(
   const updated = await updatePlacementStatus(placementId, id, "cancelled");
   await cancelPendingAgreementsForPlacement(placementId);
   return NextResponse.json({ placement: updated });
+}
+
+// Permanently delete a cancelled/closed placement that has no participants.
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string; placementId: string }> },
+) {
+  const { id, placementId } = await params;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+
+  const membership = await getOrganisationMembership(id, user.id);
+  if (
+    !membership ||
+    (membership.role !== "owner" && membership.role !== "admin")
+  ) {
+    return NextResponse.json(
+      { error: "Only owners and admins can delete placements." },
+      { status: 403 },
+    );
+  }
+
+  const placement = await getOrganisationPlacement(placementId, id);
+  if (!placement) {
+    return NextResponse.json({ error: "Placement not found." }, { status: 404 });
+  }
+  if (placement.status !== "cancelled" && placement.status !== "closed") {
+    return NextResponse.json(
+      { error: "Only cancelled or closed placements can be deleted." },
+      { status: 409 },
+    );
+  }
+  if (await placementHasAgreements(placementId)) {
+    return NextResponse.json(
+      { error: "This placement has participants and can't be deleted." },
+      { status: 409 },
+    );
+  }
+
+  await deletePlacement(placementId, id);
+  return NextResponse.json({ ok: true });
 }

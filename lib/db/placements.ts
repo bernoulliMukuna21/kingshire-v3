@@ -149,6 +149,32 @@ export async function cancelPendingAgreementsForPlacement(
     .eq("status", "pending_acceptance");
 }
 
+/** Whether any participant agreement (any status) exists for a placement. */
+export async function placementHasAgreements(
+  placementId: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { count } = await db
+    .from("placement_agreements")
+    .select("id", { count: "exact", head: true })
+    .eq("placement_id", placementId);
+  return (count ?? 0) > 0;
+}
+
+/** Permanently delete a placement (guarded by the caller). */
+export async function deletePlacement(
+  placementId: string,
+  organisationId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placements")
+    .delete()
+    .eq("id", placementId)
+    .eq("organisation_id", organisationId);
+  if (error) throw error;
+}
+
 // ── Discovery (kinglancer side) ───────────────────────────
 
 export async function listOpenPlacements(): Promise<PlacementRow[]> {

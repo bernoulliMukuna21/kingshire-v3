@@ -3,7 +3,10 @@ import Link from "next/link";
 import { Calendar, Clock, MapPin, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { requireOrganisationPermission } from "@/lib/organisations";
+import {
+  getOrganisationMembership,
+  requireOrganisationPermission,
+} from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import {
   getOrganisationPlacement,
@@ -85,6 +88,10 @@ export default async function OrganisationPlacementDetailPage({
   const organisationName = await getOrganisationName(id);
   const placement = await getOrganisationPlacement(placementId, id);
   if (!organisationName || !placement) notFound();
+
+  const membership = await getOrganisationMembership(id, user.id);
+  const canDelete =
+    membership?.role === "owner" || membership?.role === "admin";
 
   const [applicants, agreements] = await Promise.all([
     listPlacementApplicants(placementId),
@@ -183,6 +190,7 @@ export default async function OrganisationPlacementDetailPage({
                   organisationId={id}
                   placementId={placement.id}
                   status={placement.status}
+                  canDelete={canDelete}
                 />
               )}
             </div>
