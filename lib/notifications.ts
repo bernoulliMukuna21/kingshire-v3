@@ -199,6 +199,42 @@ export async function notifyPlacementCheckIn({
   });
 }
 
+export async function notifyExperienceVerified({
+  kinglancerId,
+  kinglancerEmail,
+  categories,
+  organisationName,
+  approved,
+}: {
+  kinglancerId: string;
+  kinglancerEmail?: string;
+  categories: string[];
+  organisationName: string;
+  approved: boolean;
+}) {
+  const label = categories[0] ?? "placement";
+  await notify({
+    userId: kinglancerId,
+    type: "review_received",
+    title: approved
+      ? "Verified placement approved"
+      : "Verification not approved",
+    body: approved
+      ? `Your ${label} placement with ${organisationName} is now verified on your profile.`
+      : `Your ${label} placement verification wasn't approved.`,
+    link: "/dashboard/profile",
+    email: kinglancerEmail
+      ? {
+          to: kinglancerEmail,
+          subject: approved
+            ? "Your placement is verified"
+            : "Verification update",
+          ctaLabel: "View profile →",
+        }
+      : undefined,
+  });
+}
+
 export async function notifyNewApplication({
   clientId,
   clientEmail,

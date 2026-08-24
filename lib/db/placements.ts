@@ -599,6 +599,13 @@ export async function createExperienceRecord(params: {
 }): Promise<ExperienceRecordRow> {
   const db = createServiceClient();
   const { agreement } = params;
+  const { data: placementRow } = await db
+    .from("placements")
+    .select("categories")
+    .eq("id", agreement.placement_id)
+    .maybeSingle();
+  const categories =
+    (placementRow?.categories as string[] | undefined) ?? [];
   const { data, error } = await db
     .from("experience_records")
     .insert({
@@ -612,6 +619,7 @@ export async function createExperienceRecord(params: {
       outcome: params.outcome,
       reference_text: params.referenceText,
       is_public: params.isPublic,
+      categories,
     })
     .select()
     .single();
@@ -632,8 +640,52 @@ export async function listPublicExperienceRecords(
     .select("*, organisation:organisations(name)")
     .eq("kinglancer_id", kinglancerId)
     .eq("is_public", true)
+    .eq("verification_status", "approved")
     .order("completed_at", { ascending: false });
   return (data ?? []) as unknown as PublicExperienceRecord[];
+}
+
+// ── Admin verification review ─────────────────────────────
+
+export type ExperienceRecordForReview = ExperienceRecordRow & {
+  organisation: { name: string } | null;
+  kinglancer: { full_name: string } | null;
+};
+
+export async function listExperienceRecordsForReview(): Promise<
+  ExperienceRecordForReview[]
+> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("experience_records")
+    .select(
+      "*, organisation:organisations(name), kinglancer:profiles!kinglancer_id(full_name)",
+    )
+    .eq("verification_status", "pending")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as ExperienceRecordForReview[];
+}
+
+export async function reviewExperienceRecord(
+  recordId: string,
+  status: "approved" | "rejected",
+  adminId: string,
+): Promise<ExperienceRecordRow | null> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("experience_records")
+    .update({
+      verification_status: status,
+      verified_at: new Date().toISOString(),
+      verified_by: adminId,
+    })
+    .eq("id", recordId)
+    .eq("verification_status", "pending")
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return (data as ExperienceRecordRow | null) ?? null;
 }
 
 export async function getPlacementTitle(

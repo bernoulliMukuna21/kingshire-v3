@@ -613,6 +613,10 @@ export type Database = {
           outcome: string | null;
           reference_text: string | null;
           is_public: boolean;
+          categories: string[];
+          verification_status: "pending" | "approved" | "rejected";
+          verified_at: string | null;
+          verified_by: string | null;
           completed_at: string;
           created_at: string;
         };
@@ -628,6 +632,10 @@ export type Database = {
           outcome?: string | null;
           reference_text?: string | null;
           is_public?: boolean;
+          categories?: string[];
+          verification_status?: "pending" | "approved" | "rejected";
+          verified_at?: string | null;
+          verified_by?: string | null;
           completed_at?: string;
         };
         Update: {
@@ -637,6 +645,10 @@ export type Database = {
           outcome?: string | null;
           reference_text?: string | null;
           is_public?: boolean;
+          categories?: string[];
+          verification_status?: "pending" | "approved" | "rejected";
+          verified_at?: string | null;
+          verified_by?: string | null;
         };
         Relationships: [];
       };
