@@ -122,6 +122,14 @@ export async function syncStripePayoutStatus({
         console.error(`[syncStripePayoutStatus] Transfer failed for tx ${tx.id}:`, err),
       );
     }
+
+    // Release any funded-but-untransferred managed placement payments too.
+    const { firePendingPlacementPayouts } = await import(
+      "@/lib/placement-payouts"
+    );
+    await firePendingPlacementPayouts(kinglancerId).catch((err) =>
+      console.error(`[syncStripePayoutStatus] Placement payouts failed:`, err),
+    );
   }
 
   return status;

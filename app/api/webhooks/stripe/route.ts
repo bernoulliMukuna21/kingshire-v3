@@ -8,6 +8,10 @@ import {
 } from "@/lib/db/payment-attempts";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fireTransfer, isStripeAccountPayoutReady } from "@/lib/stripe-connect";
+import {
+  fulfillPlacementPayment,
+  firePendingPlacementPayouts,
+} from "@/lib/placement-payouts";
 import { notifyJobAwarded, notifyPaymentFailed } from "@/lib/notifications";
 import {
   fulfillOrganisationCheckout,
@@ -55,6 +59,13 @@ export async function POST(request: Request) {
         const session = event.data.object;
         if (session.metadata?.purpose === "organisation_subscription") {
           await fulfillOrganisationCheckout(session.id);
+        } else if (session.metadata?.purpose === "placement_payment") {
+          const paymentId = session.metadata.placement_payment_id;
+          const piId =
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : null;
+          if (paymentId) await fulfillPlacementPayment(paymentId, piId);
         }
         break;
       }
@@ -191,6 +202,11 @@ export async function POST(request: Request) {
             console.error(`[webhook] Transfer failed for tx ${tx.id}:`, err),
           );
         }
+
+        // Also release any funded-but-untransferred placement payments.
+        await firePendingPlacementPayouts(profile.id).catch((err) =>
+          console.error(`[webhook] Placement payouts failed:`, err),
+        );
         break;
       }
 

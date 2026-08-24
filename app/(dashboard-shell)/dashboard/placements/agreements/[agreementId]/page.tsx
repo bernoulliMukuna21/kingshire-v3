@@ -10,6 +10,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import CheckInForm from "./CheckInForm";
 import CompleteAgreementForm from "./CompleteAgreementForm";
+import PayMonthButton from "./PayMonthButton";
 import AgreementActions from "@/app/(dashboard-shell)/dashboard/kinglancer/placements/AgreementActions";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -39,10 +40,13 @@ const PAYMENT_STATUS_CLASS: Record<string, string> = {
 
 export default async function AgreementPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ agreementId: string }>;
+  searchParams: Promise<{ paid?: string; cancelled?: string }>;
 }) {
   const { agreementId } = await params;
+  const { paid, cancelled } = await searchParams;
   const access = await authoriseAgreement(agreementId);
   if (!access.ok) notFound();
   const { agreement, isOrgManager } = access;
@@ -66,6 +70,21 @@ export default async function AgreementPage({
         title={placementTitle ?? "Placement agreement"}
         description={`${STATUS_LABEL[agreement.status] ?? agreement.status} · ${agreement.weekly_hours}h/week · ${agreement.duration_weeks} weeks`}
       />
+
+      {paid && (
+        <Card className="border-emerald-200 bg-emerald-50/60 p-4">
+          <p className="text-sm font-semibold text-emerald-800">
+            Payment received. The Kinglancer will be paid once it clears.
+          </p>
+        </Card>
+      )}
+      {cancelled && (
+        <Card className="border-amber-200 bg-amber-50/60 p-4">
+          <p className="text-sm font-semibold text-amber-800">
+            Payment cancelled — no charge was made.
+          </p>
+        </Card>
+      )}
 
       {isPendingAcceptance &&
         (access.isKinglancer ? (
@@ -142,21 +161,31 @@ export default async function AgreementPage({
                         : `You receive £${(p.amount - p.platform_fee_kinglancer).toFixed(2)}`}
                     </p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                      PAYMENT_STATUS_CLASS[p.status] ??
-                      "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {PAYMENT_STATUS_LABEL[p.status] ?? p.status}
-                  </span>
+                  {isOrgManager &&
+                  (p.status === "due" ||
+                    p.status === "failed" ||
+                    p.status === "processing") ? (
+                    <PayMonthButton
+                      agreementId={agreementId}
+                      paymentId={p.id}
+                    />
+                  ) : (
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                        PAYMENT_STATUS_CLASS[p.status] ??
+                        "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {PAYMENT_STATUS_LABEL[p.status] ?? p.status}
+                    </span>
+                  )}
                 </div>
               ))}
             </Card>
           )}
           <p className="mt-2 text-xs text-slate-400">
             {isOrgManager
-              ? "Fund each month to release payment to the Kinglancer. Online payment is coming shortly."
+              ? "Fund each month to release payment to the Kinglancer."
               : "You’ll be paid each month once the organisation funds that month."}
           </p>
         </section>
