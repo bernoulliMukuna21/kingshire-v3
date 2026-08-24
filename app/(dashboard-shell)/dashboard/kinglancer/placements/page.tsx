@@ -4,13 +4,11 @@ import { getDashboardContext } from "@/lib/dashboard-context";
 import {
   listKinglancerAgreements,
   listKinglancerApplications,
-  listOpenPlacements,
 } from "@/lib/db/placements";
-import { summarizePlacementCompensation } from "@/lib/placements";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
+import { ButtonLink } from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
-import ApplyButton from "./ApplyButton";
 import AgreementActions from "./AgreementActions";
 
 export default async function KinglancerPlacementsPage() {
@@ -18,30 +16,44 @@ export default async function KinglancerPlacementsPage() {
   if (profile.role === "client") redirect("/dashboard/client");
   if (profile.role !== "kinglancer") redirect("/onboarding");
 
-  const [open, applications, agreements] = await Promise.all([
-    listOpenPlacements(),
+  const [applications, agreements] = await Promise.all([
     listKinglancerApplications(user.id),
     listKinglancerAgreements(user.id),
   ]);
 
-  const appliedIds = new Set(applications.map((a) => a.placement_id));
-  const pending = agreements.filter((a) => a.status === "pending_acceptance");
+  // Hide anything tied to a cancelled placement.
+  const live = (status: string | undefined) => status !== "cancelled";
+  const offers = agreements.filter(
+    (a) => a.status === "pending_acceptance" && live(a.placement?.status),
+  );
   const active = agreements.filter((a) => a.status === "active");
+  const completed = agreements.filter((a) => a.status === "completed");
+  const applied = applications.filter(
+    (a) => a.status === "pending" && live(a.placement?.status),
+  );
+
+  const hasNothing =
+    !offers.length && !active.length && !completed.length && !applied.length;
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
       <PageHeader
         title="Placements"
         description="Supervised experience opportunities with mentoring, training and a verified record."
+        action={
+          <ButtonLink href="/placements" variant="secondary">
+            Browse open placements
+          </ButtonLink>
+        }
       />
 
-      {pending.length > 0 && (
+      {offers.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-black text-slate-950">
-            Awaiting your acceptance
+            Offers awaiting your response
           </h2>
           <Card className="divide-y divide-slate-100 overflow-hidden">
-            {pending.map((a) => (
+            {offers.map((a) => (
               <div key={a.id} className="space-y-3 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-bold text-slate-950">
@@ -98,66 +110,62 @@ export default async function KinglancerPlacementsPage() {
         </section>
       )}
 
-      <section>
-        <h2 className="mb-3 text-lg font-black text-slate-950">
-          Open placements
-        </h2>
-        {!open.length ? (
-          <EmptyState
-            title="No open placements"
-            description="Check back soon — organisations post experience placements here."
-          />
-        ) : (
+      {completed.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-black text-slate-950">
+            Completed placements
+          </h2>
           <Card className="divide-y divide-slate-100 overflow-hidden">
-            {open.map((p) => (
-              <div key={p.id} className="space-y-3 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-bold text-slate-950">{p.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {p.weekly_hours}h/week · {p.duration_weeks} weeks
-                      {p.is_remote
-                        ? " · Remote"
-                        : p.location
-                          ? ` · ${p.location}`
-                          : ""}
-                    </p>
-                  </div>
-                  {appliedIds.has(p.id) ? (
-                    <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
-                      Applied
-                    </span>
-                  ) : (
-                    <ApplyButton placementId={p.id} />
-                  )}
-                </div>
-                <p className="whitespace-pre-wrap text-sm text-slate-600">
-                  {p.summary}
+            {completed.map((a) => (
+              <Link
+                key={a.id}
+                href={`/dashboard/placements/agreements/${a.id}`}
+                className="flex items-center justify-between p-4 hover:bg-slate-50"
+              >
+                <p className="font-bold text-slate-950">
+                  {a.placement?.title ?? "Placement"}
                 </p>
-                <div className="grid gap-3 text-sm sm:grid-cols-2">
-                  <div className="rounded-xl bg-slate-50 p-3">
-                    <p className="text-xs font-bold uppercase text-slate-400">
-                      You contribute
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap text-slate-700">
-                      {p.contribution}
-                    </p>
-                  </div>
-                  <div className="rounded-xl bg-blue-50 p-3">
-                    <p className="text-xs font-bold uppercase text-blue-400">
-                      You receive
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap text-slate-700">
-                      {summarizePlacementCompensation(p) ||
-                        "A verified experience record."}
-                    </p>
-                  </div>
-                </div>
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+                  Completed
+                </span>
+              </Link>
+            ))}
+          </Card>
+        </section>
+      )}
+
+      {applied.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-black text-slate-950">
+            Your applications
+          </h2>
+          <Card className="divide-y divide-slate-100 overflow-hidden">
+            {applied.map((a) => (
+              <div
+                key={a.id}
+                className="flex items-center justify-between gap-3 p-4"
+              >
+                <p className="font-bold text-slate-950">
+                  {a.placement?.title ?? "Placement"}
+                </p>
+                <span className="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                  Applied
+                </span>
               </div>
             ))}
           </Card>
-        )}
-      </section>
+        </section>
+      )}
+
+      {hasNothing && (
+        <EmptyState
+          title="No placements yet"
+          description="Browse open placements and apply to start building your experience record."
+          action={
+            <ButtonLink href="/placements">Browse open placements</ButtonLink>
+          }
+        />
+      )}
     </div>
   );
 }

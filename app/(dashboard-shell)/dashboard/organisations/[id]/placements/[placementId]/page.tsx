@@ -12,6 +12,7 @@ import {
 } from "@/lib/db/placements";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Avatar } from "@/components/ui/Avatar";
 import EmptyState from "@/components/ui/EmptyState";
 import {
   COMPENSATION_LABELS,
@@ -56,6 +57,13 @@ const PARTICIPANT_STATUS_LABEL: Record<string, string> = {
   active: "Active",
   completed: "Completed",
   cancelled: "Cancelled",
+};
+
+const PARTICIPANT_STATUS_CLASS: Record<string, string> = {
+  pending_acceptance: "bg-amber-100 text-amber-700",
+  active: "bg-emerald-100 text-emerald-700",
+  completed: "bg-slate-100 text-slate-500",
+  cancelled: "bg-red-100 text-red-600",
 };
 
 export default async function OrganisationPlacementDetailPage({
@@ -185,16 +193,26 @@ export default async function OrganisationPlacementDetailPage({
                 {pendingApplicants.map((a) => (
                   <Card key={a.id} className="space-y-2 p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-slate-950">
-                          {a.kinglancer?.full_name ?? "Kinglancer"}
-                        </p>
-                        {a.kinglancer?.location && (
-                          <p className="text-xs text-slate-500">
-                            {a.kinglancer.location}
+                      <Link
+                        href={`/kinglancers/${a.kinglancer_id}`}
+                        className="flex items-center gap-3 hover:underline"
+                      >
+                        <Avatar
+                          name={a.kinglancer?.full_name}
+                          src={a.kinglancer?.avatar_url}
+                          className="h-9 w-9"
+                        />
+                        <div>
+                          <p className="font-bold text-slate-950">
+                            {a.kinglancer?.full_name ?? "Kinglancer"}
                           </p>
-                        )}
-                      </div>
+                          {a.kinglancer?.location && (
+                            <p className="text-xs text-slate-500">
+                              {a.kinglancer.location}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
                       <ApplicantActions
                         organisationId={id}
                         placementId={placementId}
@@ -238,14 +256,26 @@ export default async function OrganisationPlacementDetailPage({
                   >
                     <Link
                       href={`/kinglancers/${ag.kinglancer_id}`}
-                      className="min-w-0 hover:underline"
+                      className="flex min-w-0 items-center gap-3 hover:underline"
                     >
-                      <p className="truncate font-bold text-slate-900">
-                        {ag.kinglancer?.full_name ?? "Kinglancer"}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {PARTICIPANT_STATUS_LABEL[ag.status] ?? ag.status}
-                      </p>
+                      <Avatar
+                        name={ag.kinglancer?.full_name}
+                        src={ag.kinglancer?.avatar_url}
+                        className="h-9 w-9"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-bold text-slate-900">
+                          {ag.kinglancer?.full_name ?? "Kinglancer"}
+                        </p>
+                        <span
+                          className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                            PARTICIPANT_STATUS_CLASS[ag.status] ??
+                            "bg-slate-100 text-slate-600"
+                          }`}
+                        >
+                          {PARTICIPANT_STATUS_LABEL[ag.status] ?? ag.status}
+                        </span>
+                      </div>
                     </Link>
                     <Link
                       href={`/dashboard/placements/agreements/${ag.id}`}

@@ -33,7 +33,8 @@ export default function ApplicantActions({
       setBusy(null);
       return;
     }
-    setBusy(null);
+    // Keep the busy state until the refresh removes this applicant from the
+    // list (avoids the button flicking back to 'Accept' mid-update).
     router.refresh();
   }
 

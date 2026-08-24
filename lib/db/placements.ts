@@ -30,7 +30,7 @@ export type KinglancerApplication = PlacementApplicationRow & {
 };
 
 export type KinglancerAgreement = PlacementAgreementRow & {
-  placement: { title: string } | null;
+  placement: { title: string; status: string } | null;
 };
 
 export async function createPlacement(params: {
@@ -135,6 +135,18 @@ export async function updatePlacementStatus(
     .maybeSingle();
   if (error) throw error;
   return (data as PlacementRow | null) ?? null;
+}
+
+/** Cancel any still-pending offers when a placement is cancelled. */
+export async function cancelPendingAgreementsForPlacement(
+  placementId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  await db
+    .from("placement_agreements")
+    .update({ status: "cancelled" })
+    .eq("placement_id", placementId)
+    .eq("status", "pending_acceptance");
 }
 
 // ── Discovery (kinglancer side) ───────────────────────────
@@ -374,14 +386,14 @@ export async function listKinglancerAgreements(
   const db = createServiceClient();
   const { data } = await db
     .from("placement_agreements")
-    .select("*, placement:placements(title)")
+    .select("*, placement:placements(title, status)")
     .eq("kinglancer_id", kinglancerId)
     .order("created_at", { ascending: false });
   return (data ?? []) as unknown as KinglancerAgreement[];
 }
 
 export type PlacementParticipant = PlacementAgreementRow & {
-  kinglancer: { full_name: string } | null;
+  kinglancer: { full_name: string; avatar_url: string | null } | null;
 };
 
 export async function listPlacementAgreements(
@@ -390,7 +402,7 @@ export async function listPlacementAgreements(
   const db = createServiceClient();
   const { data, error } = await db
     .from("placement_agreements")
-    .select("*, kinglancer:profiles!kinglancer_id(full_name)")
+    .select("*, kinglancer:profiles!kinglancer_id(full_name, avatar_url)")
     .eq("placement_id", placementId)
     .order("created_at", { ascending: true });
   if (error) throw error;

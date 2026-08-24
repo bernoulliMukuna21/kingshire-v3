@@ -300,11 +300,9 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     durationWeeks,
     startDate,
     endDate,
-    // 'managed' only applies to money placements; everything else is 'direct'.
-    paymentMode:
-      compensationTypes.includes("money") && trimmed(b.payment_mode) === "managed"
-        ? "managed"
-        : "direct",
+    // Any placement offering money is managed by KingsHire (we take the fee);
+    // non-monetary placements are 'direct' (record only).
+    paymentMode: compensationTypes.includes("money") ? "managed" : "direct",
   };
 }
 

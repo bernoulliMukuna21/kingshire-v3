@@ -7,6 +7,7 @@ import { notifyAdminPlacementForReview } from "@/lib/notifications";
 import { openPlacementLimit } from "@/lib/placements";
 import type { OrganisationPlanId } from "@/modules/organisations/domain/plans";
 import {
+  cancelPendingAgreementsForPlacement,
   countOpenPlacements,
   getOrganisationPlacement,
   updatePlacementStatus,
@@ -129,5 +130,6 @@ export async function PATCH(
     );
   }
   const updated = await updatePlacementStatus(placementId, id, "cancelled");
+  await cancelPendingAgreementsForPlacement(placementId);
   return NextResponse.json({ placement: updated });
 }
