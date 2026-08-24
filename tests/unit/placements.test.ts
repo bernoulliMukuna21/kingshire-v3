@@ -4,6 +4,8 @@ import {
   openPlacementLimit,
   activeParticipantLimit,
   placementNeedsManualReview,
+  managedMonthlyAmount,
+  monthlyPaymentCount,
   PlacementError,
 } from "@/lib/placements";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
@@ -187,5 +189,49 @@ describe("placementNeedsManualReview", () => {
     expect(placementNeedsManualReview(["Design & Creative"])).toBe(false);
     expect(placementNeedsManualReview(["Technology & IT"])).toBe(false);
     expect(placementNeedsManualReview([])).toBe(false);
+  });
+});
+
+describe("managedMonthlyAmount", () => {
+  it("returns the money amount for a managed money placement", () => {
+    expect(
+      managedMonthlyAmount({
+        payment_mode: "managed",
+        compensation_types: ["money"],
+        compensation_details: { money: { amount: 500, cadence: "per_month" } },
+      }),
+    ).toBe(500);
+  });
+
+  it("is null for direct placements", () => {
+    expect(
+      managedMonthlyAmount({
+        payment_mode: "direct",
+        compensation_types: ["money"],
+        compensation_details: { money: { amount: 500 } },
+      }),
+    ).toBeNull();
+  });
+
+  it("is null when there is no money compensation", () => {
+    expect(
+      managedMonthlyAmount({
+        payment_mode: "managed",
+        compensation_types: ["reference"],
+        compensation_details: { reference: "A written reference" },
+      }),
+    ).toBeNull();
+  });
+});
+
+describe("monthlyPaymentCount", () => {
+  it("is at least one month", () => {
+    expect(monthlyPaymentCount(1)).toBe(1);
+    expect(monthlyPaymentCount(4)).toBe(1);
+  });
+
+  it("scales with duration", () => {
+    expect(monthlyPaymentCount(8)).toBe(2);
+    expect(monthlyPaymentCount(26)).toBe(6);
   });
 });

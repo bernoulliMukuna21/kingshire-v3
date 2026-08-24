@@ -83,6 +83,27 @@ export function summarizePlacementCompensation(placement: {
   return parts.join("; ");
 }
 
+// Monthly £ amount for a managed placement, or null if not managed/no money.
+export function managedMonthlyAmount(placement: {
+  payment_mode: string;
+  compensation_types: string[];
+  compensation_details: Record<string, unknown> | null;
+}): number | null {
+  if (placement.payment_mode !== "managed") return null;
+  if (!placement.compensation_types.includes("money")) return null;
+  const money = placement.compensation_details?.money;
+  const amount =
+    money && typeof money === "object"
+      ? Number((money as { amount?: unknown }).amount)
+      : NaN;
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+// Number of monthly payments a placement of the given duration spans.
+export function monthlyPaymentCount(durationWeeks: number): number {
+  return Math.max(1, Math.round(durationWeeks / 4.345));
+}
+
 export function placementWorkModeSummary(p: {
   work_mode: string;
   days_on_site: number | null;

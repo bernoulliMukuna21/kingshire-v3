@@ -488,13 +488,21 @@ export type Database = {
           agreement_id: string;
           organisation_id: string;
           kinglancer_id: string;
-          period_label: string;
+          period_index: number;
+          due_date: string | null;
           amount: number;
           platform_fee_client: number;
           platform_fee_kinglancer: number;
-          status: "pending" | "held" | "released" | "failed" | "refunded";
+          status:
+            | "due"
+            | "processing"
+            | "held"
+            | "released"
+            | "failed"
+            | "cancelled";
           stripe_payment_intent_id: string | null;
           stripe_transfer_id: string | null;
+          paid_at: string | null;
           released_at: string | null;
           created_at: string;
           updated_at: string;
@@ -504,23 +512,39 @@ export type Database = {
           agreement_id: string;
           organisation_id: string;
           kinglancer_id: string;
-          period_label: string;
+          period_index: number;
+          due_date?: string | null;
           amount: number;
           platform_fee_client?: number;
           platform_fee_kinglancer?: number;
-          status?: "pending" | "held" | "released" | "failed" | "refunded";
+          status?:
+            | "due"
+            | "processing"
+            | "held"
+            | "released"
+            | "failed"
+            | "cancelled";
           stripe_payment_intent_id?: string | null;
           stripe_transfer_id?: string | null;
+          paid_at?: string | null;
           released_at?: string | null;
         };
         Update: {
-          period_label?: string;
+          period_index?: number;
+          due_date?: string | null;
           amount?: number;
           platform_fee_client?: number;
           platform_fee_kinglancer?: number;
-          status?: "pending" | "held" | "released" | "failed" | "refunded";
+          status?:
+            | "due"
+            | "processing"
+            | "held"
+            | "released"
+            | "failed"
+            | "cancelled";
           stripe_payment_intent_id?: string | null;
           stripe_transfer_id?: string | null;
+          paid_at?: string | null;
           released_at?: string | null;
         };
         Relationships: [];

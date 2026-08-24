@@ -5,6 +5,7 @@ import {
   getPlacementTitle,
   listCheckIns,
 } from "@/lib/db/placements";
+import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import CheckInForm from "./CheckInForm";
@@ -18,6 +19,24 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelled",
 };
 
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  due: "Due",
+  processing: "Processing",
+  held: "In escrow",
+  released: "Paid",
+  failed: "Failed",
+  cancelled: "Cancelled",
+};
+
+const PAYMENT_STATUS_CLASS: Record<string, string> = {
+  due: "bg-slate-100 text-slate-600",
+  processing: "bg-amber-100 text-amber-700",
+  held: "bg-blue-100 text-blue-700",
+  released: "bg-emerald-100 text-emerald-700",
+  failed: "bg-red-100 text-red-600",
+  cancelled: "bg-slate-100 text-slate-500",
+};
+
 export default async function AgreementPage({
   params,
 }: {
@@ -29,12 +48,15 @@ export default async function AgreementPage({
   const { agreement, isOrgManager } = access;
   const isActive = agreement.status === "active";
   const isPendingAcceptance = agreement.status === "pending_acceptance";
+  const isManaged =
+    agreement.payment_mode === "managed" && !!agreement.monthly_amount;
 
-  const [organisationName, placementTitle, checkIns] =
+  const [organisationName, placementTitle, checkIns, payments] =
     await Promise.all([
       getOrganisationName(agreement.organisation_id),
       getPlacementTitle(agreement.placement_id),
       listCheckIns(agreementId),
+      isManaged ? ensurePaymentSchedule(agreement) : Promise.resolve([]),
     ]);
 
   return (
@@ -87,6 +109,58 @@ export default async function AgreementPage({
           </p>
         </Card>
       </div>
+
+      {isManaged && (
+        <section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-lg font-black text-slate-950">Payments</h2>
+            <span className="text-sm text-slate-500">
+              £{Number(agreement.monthly_amount).toFixed(2)}/month · managed by
+              KingsHire
+            </span>
+          </div>
+          {!payments.length ? (
+            <Card className="p-5">
+              <p className="text-sm text-slate-500">
+                The payment schedule will appear once the placement is active.
+              </p>
+            </Card>
+          ) : (
+            <Card className="divide-y divide-slate-100 overflow-hidden">
+              {payments.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center justify-between gap-3 p-4"
+                >
+                  <div>
+                    <p className="font-semibold text-slate-900">
+                      Month {p.period_index}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {isOrgManager
+                        ? `You pay £${(p.amount + p.platform_fee_client).toFixed(2)}`
+                        : `You receive £${(p.amount - p.platform_fee_kinglancer).toFixed(2)}`}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                      PAYMENT_STATUS_CLASS[p.status] ??
+                      "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {PAYMENT_STATUS_LABEL[p.status] ?? p.status}
+                  </span>
+                </div>
+              ))}
+            </Card>
+          )}
+          <p className="mt-2 text-xs text-slate-400">
+            {isOrgManager
+              ? "Fund each month to release payment to the Kinglancer. Online payment is coming shortly."
+              : "You’ll be paid each month once the organisation funds that month."}
+          </p>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-3 text-lg font-black text-slate-950">Check-ins</h2>
