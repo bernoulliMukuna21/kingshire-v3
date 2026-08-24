@@ -6,7 +6,10 @@ import {
   requireOrganisationPermission,
 } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
-import { listOrganisationPlacements } from "@/lib/db/placements";
+import {
+  activeParticipantCountsByPlacement,
+  listOrganisationPlacements,
+} from "@/lib/db/placements";
 import { placementWorkModeSummary } from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -33,10 +36,19 @@ const STATUS_CLASS: Record<string, string> = {
 
 // ── Tab definitions ────────────────────────────────────────
 
-type Tab = "all" | "open" | "review" | "draft" | "closed" | "cancelled";
+type Tab =
+  | "all"
+  | "active"
+  | "open"
+  | "review"
+  | "draft"
+  | "closed"
+  | "cancelled";
 
+// Active is cross-cutting (filtered by active participants, not status).
 const TAB_STATUSES: Record<Tab, string[]> = {
   all: [],
+  active: [],
   open: ["open"],
   review: ["pending_review"],
   draft: ["draft"],
@@ -46,6 +58,7 @@ const TAB_STATUSES: Record<Tab, string[]> = {
 
 const TAB_LABELS: Record<Tab, string> = {
   all: "All",
+  active: "Active",
   open: "Open",
   review: "In review",
   draft: "Draft",
@@ -53,7 +66,15 @@ const TAB_LABELS: Record<Tab, string> = {
   cancelled: "Cancelled",
 };
 
-const TAB_ORDER: Tab[] = ["all", "draft", "review", "open", "closed", "cancelled"];
+const TAB_ORDER: Tab[] = [
+  "all",
+  "draft",
+  "review",
+  "open",
+  "active",
+  "closed",
+  "cancelled",
+];
 
 function parseTab(raw: string | undefined): Tab {
   return TAB_ORDER.includes(raw as Tab) ? (raw as Tab) : "all";
@@ -82,21 +103,21 @@ export default async function OrganisationPlacementsPage({
   if (!organisationName) notFound();
 
   const allPlacements = await listOrganisationPlacements(id);
+  const activeCounts = await activeParticipantCountsByPlacement(id);
   const tab = parseTab(tabParam);
 
+  const matchesTab = (t: Tab, p: (typeof allPlacements)[number]) => {
+    if (t === "all") return true;
+    if (t === "active") return (activeCounts[p.id] ?? 0) > 0;
+    return TAB_STATUSES[t].includes(p.status);
+  };
+
   const tabCounts = TAB_ORDER.reduce<Record<string, number>>((acc, t) => {
-    acc[t] =
-      TAB_STATUSES[t].length === 0
-        ? allPlacements.length
-        : allPlacements.filter((p) => TAB_STATUSES[t].includes(p.status))
-            .length;
+    acc[t] = allPlacements.filter((p) => matchesTab(t, p)).length;
     return acc;
   }, {});
 
-  const placements =
-    TAB_STATUSES[tab].length === 0
-      ? allPlacements
-      : allPlacements.filter((p) => TAB_STATUSES[tab].includes(p.status));
+  const placements = allPlacements.filter((p) => matchesTab(tab, p));
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
@@ -156,6 +177,11 @@ export default async function OrganisationPlacementsPage({
                   >
                     {STATUS_LABEL[p.status] ?? p.status}
                   </span>
+                  {(activeCounts[p.id] ?? 0) > 0 && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                      {activeCounts[p.id]} active
+                    </span>
+                  )}
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
                   {p.weekly_hours}h/week · {p.duration_weeks} weeks ·{" "}

@@ -161,6 +161,23 @@ export async function placementHasAgreements(
   return (count ?? 0) > 0;
 }
 
+/** Active-participant count per placement for an organisation. */
+export async function activeParticipantCountsByPlacement(
+  organisationId: string,
+): Promise<Record<string, number>> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_agreements")
+    .select("placement_id")
+    .eq("organisation_id", organisationId)
+    .eq("status", "active");
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { placement_id: string }[]) {
+    counts[row.placement_id] = (counts[row.placement_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
 /** Permanently delete a placement (guarded by the caller). */
 export async function deletePlacement(
   placementId: string,
