@@ -5,6 +5,7 @@ import { authoriseAgreement } from "@/lib/placement-access";
 import {
   getPlacementTitle,
   listCheckIns,
+  placementPromisedReference,
 } from "@/lib/db/placements";
 import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
 import PageHeader from "@/components/ui/PageHeader";
@@ -60,12 +61,13 @@ export default async function AgreementPage({
     ? `/dashboard/organisations/${agreement.organisation_id}/placements/${agreement.placement_id}`
     : "/dashboard/kinglancer/placements";
 
-  const [organisationName, placementTitle, checkIns, payments] =
+  const [organisationName, placementTitle, checkIns, payments, referenceRequired] =
     await Promise.all([
       getOrganisationName(agreement.organisation_id),
       getPlacementTitle(agreement.placement_id),
       listCheckIns(agreementId),
       isManaged ? ensurePaymentSchedule(agreement) : Promise.resolve([]),
+      placementPromisedReference(agreement.placement_id),
     ]);
 
   return (
@@ -249,6 +251,7 @@ export default async function AgreementPage({
             <CompleteAgreementForm
               agreementId={agreementId}
               defaultTitle={placementTitle ?? ""}
+              referenceRequired={referenceRequired}
             />
           </Card>
         </section>

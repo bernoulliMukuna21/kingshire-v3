@@ -9,9 +9,11 @@ const field =
 export default function CompleteAgreementForm({
   agreementId,
   defaultTitle,
+  referenceRequired = false,
 }: {
   agreementId: string;
   defaultTitle: string;
+  referenceRequired?: boolean;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(defaultTitle);
@@ -25,6 +27,10 @@ export default function CompleteAgreementForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (referenceRequired && !referenceText.trim()) {
+      setError("This placement promised a reference — please write one.");
+      return;
+    }
     setSaving(true);
     setError(null);
     const res = await fetch(
@@ -88,7 +94,11 @@ export default function CompleteAgreementForm({
         rows={2}
         value={referenceText}
         onChange={(e) => setReferenceText(e.target.value)}
-        placeholder="Reference (optional)"
+        placeholder={
+          referenceRequired
+            ? "Reference (required — you promised one)"
+            : "Reference (optional)"
+        }
       />
       <label className="flex items-center gap-2 text-sm text-slate-700">
         <input

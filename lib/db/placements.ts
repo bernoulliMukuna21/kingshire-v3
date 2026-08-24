@@ -161,6 +161,21 @@ export async function placementHasAgreements(
   return (count ?? 0) > 0;
 }
 
+/** Whether the placement's compensation promised a reference. */
+export async function placementPromisedReference(
+  placementId: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placements")
+    .select("compensation_types")
+    .eq("id", placementId)
+    .maybeSingle();
+  return ((data?.compensation_types as string[] | undefined) ?? []).includes(
+    "reference",
+  );
+}
+
 /** Active-participant count per placement for an organisation. */
 export async function activeParticipantCountsByPlacement(
   organisationId: string,

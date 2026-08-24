@@ -4,6 +4,7 @@ import { authoriseAgreement } from "@/lib/placement-access";
 import {
   completeAgreement,
   createExperienceRecord,
+  placementPromisedReference,
 } from "@/lib/db/placements";
 
 export async function POST(
@@ -51,6 +52,20 @@ export async function POST(
   if (title.length < 3 || title.length > 200) {
     return NextResponse.json(
       { error: "Give the experience record a title (3–200 characters)." },
+      { status: 400 },
+    );
+  }
+
+  // A promised reference must actually be written before completing.
+  if (
+    !referenceText &&
+    (await placementPromisedReference(access.agreement.placement_id))
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "This placement promised a reference — please write one before completing.",
+      },
       { status: 400 },
     );
   }
