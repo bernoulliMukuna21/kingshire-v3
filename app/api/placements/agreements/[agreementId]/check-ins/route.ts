@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { authoriseAgreement } from "@/lib/placement-access";
 import { createCheckIn } from "@/lib/db/placements";
+import { createServiceClient } from "@/lib/supabase/service";
+import { notifyPlacementCheckIn } from "@/lib/notifications";
 
 export async function POST(
   request: Request,
@@ -37,5 +39,36 @@ export async function POST(
   }
 
   await createCheckIn({ agreementId, authorId: access.userId, note });
+
+  // Notify the other party (fire-and-forget).
+  const svc = createServiceClient();
+  const { data: placement } = await svc
+    .from("placements")
+    .select("title, created_by")
+    .eq("id", access.agreement.placement_id)
+    .maybeSingle();
+  const recipientId = access.isKinglancer
+    ? placement?.created_by
+    : access.agreement.kinglancer_id;
+  if (placement && recipientId) {
+    const [{ data: recipient }, { data: author }] = await Promise.all([
+      svc.from("profiles").select("email").eq("id", recipientId).maybeSingle(),
+      svc
+        .from("profiles")
+        .select("full_name")
+        .eq("id", access.userId)
+        .maybeSingle(),
+    ]);
+    void notifyPlacementCheckIn({
+      recipientId,
+      recipientEmail: recipient?.email ?? undefined,
+      placementTitle: placement.title,
+      agreementId,
+      authorName: author?.full_name ?? "Someone",
+    }).catch((err) =>
+      console.error("[placements/check-ins] notify failed:", err),
+    );
+  }
+
   return NextResponse.json({ ok: true }, { status: 201 });
 }

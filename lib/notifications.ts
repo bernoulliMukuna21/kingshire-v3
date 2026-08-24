@@ -170,6 +170,35 @@ export async function notifyPlacementReviewed({
   });
 }
 
+export async function notifyPlacementCheckIn({
+  recipientId,
+  recipientEmail,
+  placementTitle,
+  agreementId,
+  authorName,
+}: {
+  recipientId: string;
+  recipientEmail?: string;
+  placementTitle: string;
+  agreementId: string;
+  authorName: string;
+}) {
+  await notify({
+    userId: recipientId,
+    type: "work_submitted",
+    title: "New placement check-in",
+    body: `${authorName} posted a check-in on "${placementTitle}".`,
+    link: `/dashboard/placements/agreements/${agreementId}`,
+    email: recipientEmail
+      ? {
+          to: recipientEmail,
+          subject: `New check-in: ${placementTitle}`,
+          ctaLabel: "View check-in →",
+        }
+      : undefined,
+  });
+}
+
 export async function notifyNewApplication({
   clientId,
   clientEmail,

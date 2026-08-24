@@ -210,16 +210,27 @@ export default async function AgreementPage({
             <p className="text-sm text-slate-500">No check-ins yet.</p>
           ) : (
             <div className="space-y-3">
-              {checkIns.map((c) => (
-                <div key={c.id} className="rounded-xl bg-slate-50 p-3">
-                  <p className="whitespace-pre-wrap text-sm text-slate-700">
-                    {c.note}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-400">
-                    {new Date(c.created_at).toLocaleString("en-GB")}
-                  </p>
-                </div>
-              ))}
+              {checkIns.map((c) => {
+                const fromKinglancer = c.author_id === agreement.kinglancer_id;
+                return (
+                  <div key={c.id} className="rounded-xl bg-slate-50 p-3">
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-bold text-slate-700">
+                        {c.author?.full_name ?? "Someone"}
+                        <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+                          {fromKinglancer ? "Kinglancer" : "Organisation"}
+                        </span>
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {new Date(c.created_at).toLocaleString("en-GB")}
+                      </span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-sm text-slate-700">
+                      {c.note}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Card>

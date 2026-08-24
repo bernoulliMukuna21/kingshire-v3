@@ -458,6 +458,9 @@ export type PlacementMilestoneRow =
   Database["public"]["Tables"]["placement_milestones"]["Row"];
 export type PlacementCheckInRow =
   Database["public"]["Tables"]["placement_check_ins"]["Row"];
+export type PlacementCheckIn = PlacementCheckInRow & {
+  author: { full_name: string } | null;
+};
 export type ExperienceRecordRow =
   Database["public"]["Tables"]["experience_records"]["Row"];
 
@@ -526,15 +529,15 @@ export async function confirmMilestone(
 
 export async function listCheckIns(
   agreementId: string,
-): Promise<PlacementCheckInRow[]> {
+): Promise<PlacementCheckIn[]> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("placement_check_ins")
-    .select("*")
+    .select("*, author:profiles!author_id(full_name)")
     .eq("agreement_id", agreementId)
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []) as PlacementCheckInRow[];
+  return (data ?? []) as unknown as PlacementCheckIn[];
 }
 
 export async function createCheckIn(params: {
