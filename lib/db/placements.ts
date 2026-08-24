@@ -380,17 +380,21 @@ export async function listKinglancerAgreements(
   return (data ?? []) as unknown as KinglancerAgreement[];
 }
 
+export type PlacementParticipant = PlacementAgreementRow & {
+  kinglancer: { full_name: string } | null;
+};
+
 export async function listPlacementAgreements(
   placementId: string,
-): Promise<PlacementAgreementRow[]> {
+): Promise<PlacementParticipant[]> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("placement_agreements")
-    .select("*")
+    .select("*, kinglancer:profiles!kinglancer_id(full_name)")
     .eq("placement_id", placementId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as PlacementAgreementRow[];
+  return (data ?? []) as unknown as PlacementParticipant[];
 }
 
 // ── Milestones, check-ins, completion (Placement Passport) ─

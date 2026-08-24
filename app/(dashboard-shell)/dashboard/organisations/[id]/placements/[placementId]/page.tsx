@@ -19,6 +19,7 @@ import {
   placementWorkModeSummary,
 } from "@/lib/placements";
 import ApplicantActions from "./ApplicantActions";
+import PlacementActions from "../PlacementActions";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-slate-100 text-slate-600 ring-slate-200" },
@@ -49,6 +50,13 @@ function formatDate(value: string | null) {
       })
     : null;
 }
+
+const PARTICIPANT_STATUS_LABEL: Record<string, string> = {
+  pending_acceptance: "Awaiting the Kinglancer’s acceptance",
+  active: "Active",
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
 
 export default async function OrganisationPlacementDetailPage({
   params,
@@ -103,14 +111,20 @@ export default async function OrganisationPlacementDetailPage({
         >
           ← Back to placements
         </Link>
-        {(placement.status === "closed" ||
-          placement.status === "cancelled") && (
+        {placement.status === "closed" ||
+        placement.status === "cancelled" ? (
           <Link
             href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
             className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
           >
             Repost placement
           </Link>
+        ) : (
+          <PlacementActions
+            organisationId={id}
+            placementId={placement.id}
+            status={placement.status}
+          />
         )}
       </div>
 
@@ -210,20 +224,28 @@ export default async function OrganisationPlacementDetailPage({
 
           {agreements.length > 0 && (
             <section>
-              <h2 className="mb-3 text-lg font-black text-slate-950">
+              <h2 className="text-lg font-black text-slate-950">
                 Participants
               </h2>
+              <p className="mb-3 mt-0.5 text-sm text-slate-500">
+                Kinglancers you&apos;ve accepted onto this placement.
+              </p>
               <Card className="divide-y divide-slate-100 overflow-hidden">
                 {agreements.map((ag) => (
                   <Link
                     key={ag.id}
                     href={`/dashboard/placements/agreements/${ag.id}`}
-                    className="flex items-center justify-between p-4 text-sm hover:bg-slate-50"
+                    className="flex items-center justify-between gap-3 p-4 text-sm hover:bg-slate-50"
                   >
-                    <span className="capitalize text-slate-700">
-                      {ag.status.replaceAll("_", " ")}
-                    </span>
-                    <span className="text-xs text-slate-500">
+                    <div className="min-w-0">
+                      <p className="truncate font-bold text-slate-900">
+                        {ag.kinglancer?.full_name ?? "Kinglancer"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {PARTICIPANT_STATUS_LABEL[ag.status] ?? ag.status}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-xs text-slate-500">
                       {ag.weekly_hours}h/week · {ag.duration_weeks} weeks
                     </span>
                   </Link>
@@ -262,8 +284,8 @@ export default async function OrganisationPlacementDetailPage({
           </Card>
 
           {placement.compensation_types.length > 0 && (
-            <Card className="space-y-3 p-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+            <Card className="space-y-3 border-blue-200 bg-blue-50/40 p-5">
+              <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
                 Compensation
               </p>
               <ul className="space-y-2">
@@ -272,10 +294,10 @@ export default async function OrganisationPlacementDetailPage({
                     key={type}
                     className="flex flex-wrap items-baseline gap-2 text-sm"
                   >
-                    <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                    <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
                       {COMPENSATION_LABELS[type] ?? type}
                     </span>
-                    <span className="text-slate-600">
+                    <span className="font-semibold text-slate-900">
                       {formatCompensationDetail(
                         type,
                         placement.compensation_details?.[type],
@@ -285,7 +307,7 @@ export default async function OrganisationPlacementDetailPage({
                 ))}
               </ul>
               {placement.compensation_types.includes("money") && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs font-semibold text-blue-700">
                   {placement.payment_mode === "managed"
                     ? "Paid monthly via KingsHire."
                     : "Paid directly by the organisation."}
