@@ -112,29 +112,12 @@ export default async function OrganisationPlacementDetailPage({
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href={`/dashboard/organisations/${id}/placements`}
-          className="inline-block text-sm font-bold text-slate-500 hover:text-slate-800"
-        >
-          ← Back to placements
-        </Link>
-        {placement.status === "closed" ||
-        placement.status === "cancelled" ? (
-          <Link
-            href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
-            className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
-          >
-            Repost placement
-          </Link>
-        ) : (
-          <PlacementActions
-            organisationId={id}
-            placementId={placement.id}
-            status={placement.status}
-          />
-        )}
-      </div>
+      <Link
+        href={`/dashboard/organisations/${id}/placements`}
+        className="inline-block text-sm font-bold text-slate-500 hover:text-slate-800"
+      >
+        ← Back to placements
+      </Link>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
@@ -167,6 +150,42 @@ export default async function OrganisationPlacementDetailPage({
                 ))}
               </div>
             )}
+          </Card>
+
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-black text-slate-950">
+                  Manage placement
+                </h2>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  {placement.status === "pending_review"
+                    ? "Awaiting review before it goes live."
+                    : placement.status === "open"
+                      ? "Live and accepting applicants."
+                      : placement.status === "closed"
+                        ? "Closed to new applicants — repost to open a fresh copy."
+                        : placement.status === "cancelled"
+                          ? "Cancelled — repost to open a fresh copy."
+                          : "Manage this placement."}
+                </p>
+              </div>
+              {placement.status === "closed" ||
+              placement.status === "cancelled" ? (
+                <Link
+                  href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                >
+                  Repost placement
+                </Link>
+              ) : (
+                <PlacementActions
+                  organisationId={id}
+                  placementId={placement.id}
+                  status={placement.status}
+                />
+              )}
+            </div>
           </Card>
 
           <Card className="p-6">
