@@ -6,6 +6,7 @@ import {
   listKinglancerApplications,
   listOpenPlacements,
 } from "@/lib/db/placements";
+import { summarizePlacementCompensation } from "@/lib/placements";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -31,7 +32,7 @@ export default async function KinglancerPlacementsPage() {
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
       <PageHeader
         title="Placements"
-        description="Supervised opportunities offering mentoring, training and a verified experience record. These are not paid jobs."
+        description="Supervised experience opportunities with mentoring, training and a verified record."
       />
 
       {pending.length > 0 && (
@@ -147,7 +148,8 @@ export default async function KinglancerPlacementsPage() {
                       You receive
                     </p>
                     <p className="mt-1 whitespace-pre-wrap text-slate-700">
-                      {p.reward}
+                      {summarizePlacementCompensation(p) ||
+                        "A verified experience record."}
                     </p>
                   </div>
                 </div>

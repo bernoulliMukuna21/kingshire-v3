@@ -135,6 +135,40 @@ export async function notifyPlacementOffer({
   });
 }
 
+export async function notifyPlacementReviewed({
+  recipientId,
+  recipientEmail,
+  placementTitle,
+  organisationId,
+  placementId,
+  approved,
+}: {
+  recipientId: string;
+  recipientEmail?: string;
+  placementTitle: string;
+  organisationId: string;
+  placementId: string;
+  approved: boolean;
+}) {
+  await notify({
+    userId: recipientId,
+    type: "new_job",
+    title: approved ? "Placement approved" : "Placement not approved",
+    body: approved
+      ? `Your placement "${placementTitle}" passed review and is now live.`
+      : `Your placement "${placementTitle}" wasn't approved. Please review it and try again.`,
+    link: `/dashboard/organisations/${organisationId}/placements/${placementId}`,
+    email: recipientEmail
+      ? {
+          to: recipientEmail,
+          subject: approved
+            ? `Approved: ${placementTitle}`
+            : `Not approved: ${placementTitle}`,
+          ctaLabel: "View placement →",
+        }
+      : undefined,
+  });
+}
 
 export async function notifyNewApplication({
   clientId,

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { hasValidAdminSession } from "@/lib/admin-auth";
 import { adminReviewPlacement } from "@/lib/db/placements";
+import { notifyPlacementReviewed } from "@/lib/notifications";
 
 export async function PATCH(
   request: Request,
@@ -42,5 +44,31 @@ export async function PATCH(
       { status: 409 },
     );
   }
+
+  // Notify the organisation member who created the placement.
+  const svc = createServiceClient();
+  const { data: placement } = await svc
+    .from("placements")
+    .select("title, created_by, organisation_id")
+    .eq("id", placementId)
+    .maybeSingle();
+  if (placement?.created_by) {
+    const { data: owner } = await svc
+      .from("profiles")
+      .select("email")
+      .eq("id", placement.created_by)
+      .maybeSingle();
+    void notifyPlacementReviewed({
+      recipientId: placement.created_by,
+      recipientEmail: owner?.email ?? undefined,
+      placementTitle: placement.title,
+      organisationId: placement.organisation_id,
+      placementId,
+      approved: action === "approve",
+    }).catch((err) =>
+      console.error("[admin/placements] notify failed:", err),
+    );
+  }
+
   return NextResponse.json({ ok: true });
 }

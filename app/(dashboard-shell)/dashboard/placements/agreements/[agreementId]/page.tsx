@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { authoriseAgreement } from "@/lib/placement-access";
 import {
@@ -55,6 +56,10 @@ export default async function AgreementPage({
   const isManaged =
     agreement.payment_mode === "managed" && !!agreement.monthly_amount;
 
+  const backHref = isOrgManager
+    ? `/dashboard/organisations/${agreement.organisation_id}/placements/${agreement.placement_id}`
+    : "/dashboard/kinglancer/placements";
+
   const [organisationName, placementTitle, checkIns, payments] =
     await Promise.all([
       getOrganisationName(agreement.organisation_id),
@@ -65,6 +70,12 @@ export default async function AgreementPage({
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
+      <Link
+        href={backHref}
+        className="inline-block text-sm font-bold text-slate-500 hover:text-slate-800"
+      >
+        ← Back
+      </Link>
       <PageHeader
         eyebrow={organisationName ?? "Placement"}
         title={placementTitle ?? "Placement agreement"}

@@ -464,10 +464,10 @@ export default function PlacementForm({
           disabled={saving}
           className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
         >
-          {saving ? "Creating…" : "Create placement"}
+          {saving ? "Submitting…" : "Submit placement"}
         </button>
         <p className="text-xs text-slate-500">
-          Saved as a draft — publish it from the placements list.
+          Placements are reviewed before they go live.
         </p>
       </div>
     </form>

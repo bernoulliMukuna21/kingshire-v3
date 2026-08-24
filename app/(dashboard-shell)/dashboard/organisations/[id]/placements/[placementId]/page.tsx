@@ -232,23 +232,28 @@ export default async function OrganisationPlacementDetailPage({
               </p>
               <Card className="divide-y divide-slate-100 overflow-hidden">
                 {agreements.map((ag) => (
-                  <Link
+                  <div
                     key={ag.id}
-                    href={`/dashboard/placements/agreements/${ag.id}`}
-                    className="flex items-center justify-between gap-3 p-4 text-sm hover:bg-slate-50"
+                    className="flex items-center justify-between gap-3 p-4 text-sm"
                   >
-                    <div className="min-w-0">
+                    <Link
+                      href={`/kinglancers/${ag.kinglancer_id}`}
+                      className="min-w-0 hover:underline"
+                    >
                       <p className="truncate font-bold text-slate-900">
                         {ag.kinglancer?.full_name ?? "Kinglancer"}
                       </p>
                       <p className="text-xs text-slate-500">
                         {PARTICIPANT_STATUS_LABEL[ag.status] ?? ag.status}
                       </p>
-                    </div>
-                    <span className="shrink-0 text-xs text-slate-500">
-                      {ag.weekly_hours}h/week · {ag.duration_weeks} weeks
-                    </span>
-                  </Link>
+                    </Link>
+                    <Link
+                      href={`/dashboard/placements/agreements/${ag.id}`}
+                      className="shrink-0 text-xs font-bold text-blue-600 hover:underline"
+                    >
+                      View agreement →
+                    </Link>
+                  </div>
                 ))}
               </Card>
             </section>

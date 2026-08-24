@@ -83,7 +83,7 @@ export async function POST(
       .select("email")
       .eq("id", placement.created_by)
       .maybeSingle();
-    await notifyPlacementApplicationReceived({
+    void notifyPlacementApplicationReceived({
       recipientId: placement.created_by,
       recipientEmail: owner?.email ?? undefined,
       placementTitle: placement.title,

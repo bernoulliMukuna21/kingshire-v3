@@ -33,6 +33,7 @@ export default function ApplicantActions({
       setBusy(null);
       return;
     }
+    setBusy(null);
     router.refresh();
   }
 

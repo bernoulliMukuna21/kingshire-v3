@@ -113,7 +113,8 @@ export async function POST(
     .select("email")
     .eq("id", application.kinglancer_id)
     .maybeSingle();
-  await notifyPlacementOffer({
+  // Fire-and-forget: a slow email must not hang the accept response.
+  void notifyPlacementOffer({
     kinglancerId: application.kinglancer_id,
     kinglancerEmail: kinglancer?.email ?? undefined,
     placementTitle: placement.title,

@@ -60,7 +60,7 @@ export async function createPlacement(params: {
       duration_weeks: input.durationWeeks,
       start_date: input.startDate,
       end_date: input.endDate,
-      status: "draft",
+      status: params.requiresManualReview ? "pending_review" : "open",
       requires_manual_review: params.requiresManualReview,
       payment_mode: input.paymentMode,
     })
