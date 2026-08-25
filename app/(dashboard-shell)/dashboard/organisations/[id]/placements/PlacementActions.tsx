@@ -92,7 +92,7 @@ export default function PlacementActions({
           className={`${btn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
         >
           <Lock size={15} />
-          {busy === "close" ? "Closing…" : "Stop accepting applicants"}
+          Stop taking new applicants
         </button>
       )}
       {status !== "cancelled" && status !== "closed" && (
@@ -102,7 +102,7 @@ export default function PlacementActions({
           className={`${btn} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
         >
           <Ban size={15} />
-          Cancel placement
+          End placement
         </button>
       )}
       {canDelete && (status === "cancelled" || status === "closed") && (
@@ -122,9 +122,9 @@ export default function PlacementActions({
           await run("close");
           setConfirmingClose(false);
         }}
-        title="Stop accepting applicants?"
-        message="This closes the placement to new applicants and removes it from public search. Anyone already on the placement carries on, and you can repost it later."
-        confirmLabel="Stop accepting"
+        title="Stop taking new applicants?"
+        message="The placement stops appearing in public search and no new applications can come in. Everyone already on it — and any offers you've already sent — carry on as normal. You can reopen it anytime by reposting."
+        confirmLabel="Stop taking applicants"
         loading={busy === "close"}
         error={error ?? undefined}
       />
@@ -135,9 +135,9 @@ export default function PlacementActions({
           await run("cancel");
           setConfirmingCancel(false);
         }}
-        title="Cancel this placement?"
-        message="This calls the placement off completely — it's removed from public view and any pending offers are cancelled. This can't be undone."
-        confirmLabel="Cancel placement"
+        title="End this placement?"
+        message="This ends the placement entirely. It's removed from public view and any offers you've sent that haven't been accepted yet are withdrawn. People already active on the placement aren't affected. This can't be undone."
+        confirmLabel="End placement"
         loading={busy === "cancel"}
         variant="danger"
         error={error ?? undefined}
