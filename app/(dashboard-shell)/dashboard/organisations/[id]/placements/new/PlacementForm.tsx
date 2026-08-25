@@ -56,14 +56,16 @@ export type PlacementFormInitial = {
 function Field({
   label,
   required,
+  id,
   children,
 }: {
   label: string;
   required?: boolean;
+  id?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div>
+    <div id={id} className="scroll-mt-24">
       <label className="mb-1.5 block text-sm font-medium text-slate-700">
         {label}
         {required && <span className="text-red-500"> *</span>}
@@ -107,8 +109,17 @@ export default function PlacementForm({
   const [endDate, setEndDate] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorField, setErrorField] = useState<string | null>(null);
 
   const needsLocation = workMode === "hybrid" || workMode === "onsite";
+
+  // Red border on the field flagged by validation.
+  const inputClass = (name: string) =>
+    `w-full rounded-xl bg-white px-3 py-2 text-sm border focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+      errorField === name
+        ? "border-red-400 ring-2 ring-red-200"
+        : "border-slate-200 focus:border-transparent"
+    }`;
 
   function toggleCategory(c: string) {
     setSelected((prev) =>
@@ -137,35 +148,66 @@ export default function PlacementForm({
     return details;
   }
 
-  function validate(): string | null {
-    if (title.trim().length < 3) return "Add a title (at least 3 characters).";
+  function validate(): { field: string; message: string } | null {
+    if (title.trim().length < 3)
+      return {
+        field: "title",
+        message: "Add a title (at least 3 characters).",
+      };
     if (summary.trim().length < 10)
-      return "Add a summary (at least 10 characters).";
-    if (!selected.length) return "Select at least one category.";
+      return {
+        field: "summary",
+        message: "Add a summary (at least 10 characters).",
+      };
+    if (!selected.length)
+      return { field: "categories", message: "Select at least one category." };
     if (contribution.trim().length < 10)
-      return "Describe what the participant will contribute.";
+      return {
+        field: "contribution",
+        message: "Describe what the participant will contribute.",
+      };
     if (needsLocation && !location.trim())
-      return "Add a location for on-site or hybrid placements.";
+      return {
+        field: "location",
+        message: "Add a location for on-site or hybrid placements.",
+      };
     if (workMode === "hybrid") {
       const days = Number(daysOnSite);
       if (!Number.isInteger(days) || days < 1 || days > 6)
-        return "Set how many days on-site per week (1–6).";
+        return {
+          field: "daysOnSite",
+          message: "Set how many days on-site per week (1–6).",
+        };
     }
-    if (!startDate) return "Add a start date.";
-    if (!endDate) return "Add an end date.";
+    if (!startDate)
+      return { field: "startDate", message: "Add a start date." };
+    if (!endDate) return { field: "endDate", message: "Add an end date." };
     const weeks = Math.ceil(
       (new Date(endDate).getTime() - new Date(startDate).getTime()) /
         (7 * 24 * 60 * 60 * 1000),
     );
-    if (weeks < 1) return "The end date must be after the start date.";
+    if (weeks < 1)
+      return {
+        field: "endDate",
+        message: "The end date must be after the start date.",
+      };
     if (weeks > MAX_PLACEMENT_DURATION_WEEKS)
-      return "A placement can run for at most 6 months.";
+      return {
+        field: "endDate",
+        message: "A placement can run for at most 6 months.",
+      };
     if (compensation.includes("money") && !(Number(moneyAmount) > 0))
-      return "Enter the amount for the money compensation.";
+      return {
+        field: "moneyAmount",
+        message: "Enter the amount for the money compensation.",
+      };
     for (const type of compensation) {
       if (type === "money") continue;
       if ((compDetails[type] ?? "").trim().length < 3)
-        return `Add details for the ${COMPENSATION_LABELS[type]} compensation.`;
+        return {
+          field: `detail-${type}`,
+          message: `Add details for the ${COMPENSATION_LABELS[type]} compensation.`,
+        };
     }
     return null;
   }
@@ -174,11 +216,18 @@ export default function PlacementForm({
     e.preventDefault();
     const validationError = validate();
     if (validationError) {
-      setError(validationError);
+      setError(validationError.message);
+      setErrorField(validationError.field);
+      requestAnimationFrame(() =>
+        document
+          .getElementById(validationError.field)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" }),
+      );
       return;
     }
     setSaving(true);
     setError(null);
+    setErrorField(null);
     const res = await fetch(`/api/organisations/${organisationId}/placements`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -215,18 +264,18 @@ export default function PlacementForm({
           {error}
         </div>
       )}
-      <Field label="Title" required>
+      <Field label="Title" required id="title">
         <input
-          className={fieldClass}
+          className={inputClass("title")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={140}
           placeholder="e.g. Media team assistant placement"
         />
       </Field>
-      <Field label="Summary" required>
+      <Field label="Summary" required id="summary">
         <textarea
-          className={`${fieldClass} resize-none`}
+          className={`${inputClass("summary")} resize-none`}
           rows={3}
           value={summary}
           onChange={(e) => setSummary(e.target.value)}
@@ -234,8 +283,14 @@ export default function PlacementForm({
           placeholder="What the placement is about."
         />
       </Field>
-      <Field label="Categories" required>
-        <div className="flex flex-wrap gap-2">
+      <Field label="Categories" required id="categories">
+        <div
+          className={`flex flex-wrap gap-2 ${
+            errorField === "categories"
+              ? "rounded-xl p-2 ring-2 ring-red-200"
+              : ""
+          }`}
+        >
           {categories.map((c) => (
             <button
               type="button"
@@ -252,9 +307,9 @@ export default function PlacementForm({
           ))}
         </div>
       </Field>
-      <Field label="What the participant will contribute" required>
+      <Field label="What the participant will contribute" required id="contribution">
         <textarea
-          className={`${fieldClass} resize-none`}
+          className={`${inputClass("contribution")} resize-none`}
           rows={3}
           value={contribution}
           onChange={(e) => setContribution(e.target.value)}
@@ -283,13 +338,13 @@ export default function PlacementForm({
       </Field>
       {compensation.includes("money") && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Amount (£)" required>
+          <Field label="Amount (£)" required id="moneyAmount">
             <input
               type="number"
               min="0.01"
               step="0.01"
               inputMode="decimal"
-              className={fieldClass}
+              className={inputClass("moneyAmount")}
               value={moneyAmount}
               onChange={(e) => setMoneyAmount(e.target.value)}
               placeholder="e.g. 30"
@@ -326,9 +381,10 @@ export default function PlacementForm({
             key={type}
             label={`${COMPENSATION_LABELS[type]} details`}
             required
+            id={`detail-${type}`}
           >
             <input
-              className={fieldClass}
+              className={inputClass(`detail-${type}`)}
               value={compDetails[type] ?? ""}
               onChange={(e) => setDetail(type, e.target.value)}
               maxLength={500}
@@ -357,21 +413,21 @@ export default function PlacementForm({
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         {workMode === "hybrid" && (
-          <Field label="Days on-site per week (max 6)" required>
+          <Field label="Days on-site per week (max 6)" required id="daysOnSite">
             <input
               type="number"
               min={1}
               max={6}
-              className={fieldClass}
+              className={inputClass("daysOnSite")}
               value={daysOnSite}
               onChange={(e) => setDaysOnSite(e.target.value)}
             />
           </Field>
         )}
         {needsLocation && (
-          <Field label="Location" required>
+          <Field label="Location" required id="location">
             <input
-              className={fieldClass}
+              className={inputClass("location")}
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="City or address"
@@ -391,18 +447,18 @@ export default function PlacementForm({
         />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Start date" required>
+        <Field label="Start date" required id="startDate">
           <input
             type="date"
-            className={fieldClass}
+            className={inputClass("startDate")}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
         </Field>
-        <Field label="End date" required>
+        <Field label="End date" required id="endDate">
           <input
             type="date"
-            className={fieldClass}
+            className={inputClass("endDate")}
             value={endDate}
             min={startDate || undefined}
             onChange={(e) => setEndDate(e.target.value)}

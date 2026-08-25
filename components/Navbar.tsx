@@ -191,7 +191,11 @@ export default function Navbar({
                       >
                         Sign in
                       </Link>
-                      <ButtonLink href="/get-started" size="sm" className="w-full">
+                      <ButtonLink
+                        href="/get-started"
+                        size="sm"
+                        className="w-full"
+                      >
                         Get started
                       </ButtonLink>
                     </>

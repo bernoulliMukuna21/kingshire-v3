@@ -36,7 +36,10 @@ export async function PATCH(
 
   const agreement = await getAgreement(agreementId);
   if (!agreement || agreement.kinglancer_id !== user.id) {
-    return NextResponse.json({ error: "Agreement not found." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Agreement not found." },
+      { status: 404 },
+    );
   }
   if (agreement.status !== "pending_acceptance") {
     return NextResponse.json(

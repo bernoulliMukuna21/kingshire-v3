@@ -59,9 +59,7 @@ export async function POST(
     kinglancerName: profile?.full_name ?? "A Kinglancer",
     kinglancerEmail: profile?.email ?? "unknown",
     reason: parsed.data.reason,
-  }).catch((err) =>
-    console.error("[placements/report] notify failed:", err),
-  );
+  }).catch((err) => console.error("[placements/report] notify failed:", err));
 
   return NextResponse.json({ ok: true });
 }

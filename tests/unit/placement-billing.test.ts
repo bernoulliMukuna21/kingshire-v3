@@ -6,7 +6,10 @@ const state = vi.hoisted(() => ({
   customer: {
     deleted: false,
     invoice_settings: { default_payment_method: "pm_1" as unknown },
-  } as unknown as { deleted: boolean; invoice_settings: { default_payment_method: unknown } },
+  } as unknown as {
+    deleted: boolean;
+    invoice_settings: { default_payment_method: unknown };
+  },
   cards: [{ id: "pm_list" }] as { id: string }[],
   piResult: { id: "pi_1", status: "succeeded" } as {
     id: string;

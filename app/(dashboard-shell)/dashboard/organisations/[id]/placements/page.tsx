@@ -36,13 +36,7 @@ const STATUS_CLASS: Record<string, string> = {
 
 // ── Tab definitions ────────────────────────────────────────
 
-type Tab =
-  | "all"
-  | "active"
-  | "open"
-  | "review"
-  | "draft"
-  | "ended";
+type Tab = "all" | "active" | "open" | "review" | "draft" | "ended";
 
 // Active is cross-cutting (filtered by active participants, not status).
 const TAB_STATUSES: Record<Tab, string[]> = {
@@ -63,14 +57,7 @@ const TAB_LABELS: Record<Tab, string> = {
   ended: "Ended",
 };
 
-const TAB_ORDER: Tab[] = [
-  "all",
-  "draft",
-  "review",
-  "open",
-  "active",
-  "ended",
-];
+const TAB_ORDER: Tab[] = ["all", "draft", "review", "open", "active", "ended"];
 
 function parseTab(raw: string | undefined): Tab {
   return TAB_ORDER.includes(raw as Tab) ? (raw as Tab) : "all";

@@ -122,7 +122,7 @@ export default function PlacementActions({
                 — no new applications come in.
               </li>
               <li>
-                <span className="font-bold text-slate-900">Withdraw</span> any
+                <span className="font-bold text-slate-900">Withdraw </span> any
                 offers you&apos;ve sent that haven&apos;t been accepted yet.
               </li>
               <li>

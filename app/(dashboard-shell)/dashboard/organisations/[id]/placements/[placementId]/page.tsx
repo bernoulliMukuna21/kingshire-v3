@@ -1,6 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { Calendar, Clock, Gift, MapPin, RotateCcw, UserRound } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  Gift,
+  MapPin,
+  RotateCcw,
+  UserRound,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
