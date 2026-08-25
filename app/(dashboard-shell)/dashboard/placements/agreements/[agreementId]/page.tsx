@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card";
 import CheckInForm from "./CheckInForm";
 import CompleteAgreementForm from "./CompleteAgreementForm";
 import PayMonthButton from "./PayMonthButton";
+import ReportIssueButton from "./ReportIssueButton";
 import AgreementActions from "@/app/(dashboard-shell)/dashboard/kinglancer/placements/AgreementActions";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -260,6 +261,12 @@ export default async function AgreementPage({
             participant&apos;s profile.
           </p>
         </Card>
+      )}
+
+      {access.isKinglancer && agreement.status !== "cancelled" && (
+        <div className="flex justify-center pt-2">
+          <ReportIssueButton agreementId={agreementId} />
+        </div>
       )}
     </div>
   );

@@ -445,6 +445,32 @@ export async function notifyAdminPlacementForReview({
   });
 }
 
+export async function notifyAdminPlacementIssue({
+  placementTitle,
+  organisationName,
+  kinglancerName,
+  kinglancerEmail,
+  reason,
+}: {
+  placementTitle: string;
+  organisationName: string;
+  kinglancerName: string;
+  kinglancerEmail: string;
+  reason: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
+  const adminEmail =
+    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  await sendEmail({
+    to: adminEmail,
+    subject: `[Placement issue] ${placementTitle}`,
+    title: "A Kinglancer reported a placement issue",
+    body: `${kinglancerName} (${kinglancerEmail}) reported an issue on the placement "${placementTitle}" with ${organisationName}.\n\nWhat they said:\n${reason}`,
+    link: `${appUrl}/admin/placements`,
+    ctaLabel: "Open admin →",
+  });
+}
+
 export async function notifyPayoutClaimReady({
   kinglancerId,
   kinglancerEmail,
