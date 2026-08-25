@@ -471,6 +471,30 @@ export async function notifyAdminPlacementIssue({
   });
 }
 
+export async function notifyPlacementReleasePending({
+  organisationEmail,
+  placementTitle,
+  agreementId,
+  periodIndex,
+  releaseDate,
+}: {
+  organisationEmail: string;
+  placementTitle: string;
+  agreementId: string;
+  periodIndex: number;
+  releaseDate: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
+  await sendEmail({
+    to: organisationEmail,
+    subject: `[Placement] Month ${periodIndex} releases on ${releaseDate}`,
+    title: "This month's payment is about to be released",
+    body: `Month ${periodIndex} for "${placementTitle}" will be released to the Kinglancer on ${releaseDate} unless you flag an issue. If something isn't right, open the placement and dispute this month before then.`,
+    link: `${appUrl}/dashboard/placements/agreements/${agreementId}`,
+    ctaLabel: "Review this month →",
+  });
+}
+
 export async function notifyPayoutClaimReady({
   kinglancerId,
   kinglancerEmail,

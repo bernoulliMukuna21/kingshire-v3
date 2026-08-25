@@ -111,6 +111,8 @@ export async function updatePlacementPaymentStatus(
       | "stripe_transfer_id"
       | "paid_at"
       | "released_at"
+      | "notice_sent_at"
+      | "dispute_reason"
     >
   >,
 ): Promise<void> {

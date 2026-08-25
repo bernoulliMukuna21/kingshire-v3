@@ -499,11 +499,15 @@ export type Database = {
             | "held"
             | "released"
             | "failed"
-            | "cancelled";
+            | "cancelled"
+            | "disputed"
+            | "refunded";
           stripe_payment_intent_id: string | null;
           stripe_transfer_id: string | null;
           paid_at: string | null;
           released_at: string | null;
+          notice_sent_at: string | null;
+          dispute_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -523,11 +527,15 @@ export type Database = {
             | "held"
             | "released"
             | "failed"
-            | "cancelled";
+            | "cancelled"
+            | "disputed"
+            | "refunded";
           stripe_payment_intent_id?: string | null;
           stripe_transfer_id?: string | null;
           paid_at?: string | null;
           released_at?: string | null;
+          notice_sent_at?: string | null;
+          dispute_reason?: string | null;
         };
         Update: {
           period_index?: number;
@@ -541,11 +549,15 @@ export type Database = {
             | "held"
             | "released"
             | "failed"
-            | "cancelled";
+            | "cancelled"
+            | "disputed"
+            | "refunded";
           stripe_payment_intent_id?: string | null;
           stripe_transfer_id?: string | null;
           paid_at?: string | null;
           released_at?: string | null;
+          notice_sent_at?: string | null;
+          dispute_reason?: string | null;
         };
         Relationships: [];
       };

@@ -6,6 +6,10 @@ import {
   updateAgreementStatus,
 } from "@/lib/db/placements";
 import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
+import {
+  getOrgPaymentContext,
+  chargeDuePlacementPayment,
+} from "@/lib/placement-billing";
 
 export async function PATCH(
   request: Request,
@@ -49,17 +53,49 @@ export async function PATCH(
   }
 
   if (action === "accept") {
+    const isManaged =
+      agreement.payment_mode === "managed" && !!agreement.monthly_amount;
+
+    if (isManaged) {
+      // A managed placement only starts once the org's first-month payment is
+      // taken and held in escrow.
+      const ctx = await getOrgPaymentContext(agreement.organisation_id);
+      if (!ctx) {
+        return NextResponse.json(
+          {
+            error:
+              "The organisation needs an active subscription with a saved card before this placement can start.",
+          },
+          { status: 402 },
+        );
+      }
+      const schedule = await ensurePaymentSchedule(agreement);
+      const firstMonth = schedule.find((p) => p.period_index === 1);
+      if (
+        firstMonth &&
+        firstMonth.status !== "held" &&
+        firstMonth.status !== "released"
+      ) {
+        const result = await chargeDuePlacementPayment(firstMonth);
+        if (result !== "charged") {
+          return NextResponse.json(
+            {
+              error:
+                "We couldn't take the organisation's first-month payment. The placement will start once that payment clears — the organisation can retry it from the placement.",
+            },
+            { status: 402 },
+          );
+        }
+      }
+      // A successful charge is held in escrow and auto-activates the agreement.
+      return NextResponse.json({ ok: true });
+    }
+
     const activated = await activateAgreement(agreementId);
     if (!activated) {
       return NextResponse.json(
         { error: "This agreement can no longer be accepted." },
         { status: 409 },
-      );
-    }
-    // Managed placements start their monthly payment schedule on acceptance.
-    if (agreement.payment_mode === "managed" && agreement.monthly_amount) {
-      await ensurePaymentSchedule(agreement).catch((err) =>
-        console.error("[placements] payment schedule failed:", err),
       );
     }
     return NextResponse.json({ ok: true });
