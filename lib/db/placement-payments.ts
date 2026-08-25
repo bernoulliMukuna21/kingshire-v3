@@ -145,3 +145,25 @@ export async function updatePlacementPaymentStatus(
     .eq("id", paymentId);
   if (error) throw error;
 }
+
+/**
+ * Settles a managed agreement's payments when it's ended early: future
+ * (uncharged) months are cancelled; months already held in escrow are sent to
+ * admin (disputed) to release or refund.
+ */
+export async function settlePlacementPaymentsOnEarlyEnd(
+  agreementId: string,
+  reason: string,
+): Promise<void> {
+  const db = createServiceClient();
+  await db
+    .from("placement_payments")
+    .update({ status: "cancelled" })
+    .eq("agreement_id", agreementId)
+    .eq("status", "due");
+  await db
+    .from("placement_payments")
+    .update({ status: "disputed", dispute_reason: reason })
+    .eq("agreement_id", agreementId)
+    .eq("status", "held");
+}

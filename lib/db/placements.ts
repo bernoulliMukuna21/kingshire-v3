@@ -460,6 +460,40 @@ export async function updateAgreementStatus(
   if (error) throw error;
 }
 
+/** Records one party's proposal to end an active agreement early. */
+export async function setAgreementEndRequest(
+  agreementId: string,
+  userId: string,
+  reason: string | null,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_agreements")
+    .update({
+      end_requested_by: userId,
+      end_requested_at: new Date().toISOString(),
+      end_reason: reason,
+    })
+    .eq("id", agreementId);
+  if (error) throw error;
+}
+
+/** Clears a pending early-end request (declined or withdrawn). */
+export async function clearAgreementEndRequest(
+  agreementId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_agreements")
+    .update({
+      end_requested_by: null,
+      end_requested_at: null,
+      end_reason: null,
+    })
+    .eq("id", agreementId);
+  if (error) throw error;
+}
+
 export async function listKinglancerAgreements(
   kinglancerId: string,
 ): Promise<KinglancerAgreement[]> {

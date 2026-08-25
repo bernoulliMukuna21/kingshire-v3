@@ -12,6 +12,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import CheckInForm from "./CheckInForm";
 import CompleteAgreementForm from "./CompleteAgreementForm";
+import EndEarlyPanel from "./EndEarlyPanel";
 import PayMonthButton from "./PayMonthButton";
 import PaymentReviewButtons from "./PaymentReviewButtons";
 import ReportIssueButton from "./ReportIssueButton";
@@ -62,6 +63,14 @@ export default async function AgreementPage({
   const isPendingAcceptance = agreement.status === "pending_acceptance";
   const isManaged =
     agreement.payment_mode === "managed" && !!agreement.monthly_amount;
+
+  // Early-end request state (either party may propose; the other confirms).
+  const hasEndRequest = !!agreement.end_requested_by;
+  const proposerIsKinglancer =
+    agreement.end_requested_by === agreement.kinglancer_id;
+  const iAmEndProposer =
+    (access.isKinglancer && proposerIsKinglancer) ||
+    (isOrgManager && !proposerIsKinglancer);
 
   const backHref = isOrgManager
     ? `/dashboard/organisations/${agreement.organisation_id}/placements/${agreement.placement_id}`
@@ -261,6 +270,18 @@ export default async function AgreementPage({
             referenceRequired={referenceRequired}
           />
         </div>
+      )}
+
+      {isActive && (
+        <EndEarlyPanel
+          agreementId={agreementId}
+          hasRequest={hasEndRequest}
+          iAmProposer={iAmEndProposer}
+          endReason={agreement.end_reason}
+          proposerLabel={
+            proposerIsKinglancer ? "The Kinglancer" : "The organisation"
+          }
+        />
       )}
 
       {agreement.status === "completed" && (

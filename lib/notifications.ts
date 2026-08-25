@@ -519,6 +519,46 @@ export async function notifyAdminPlacementDispute({
   });
 }
 
+export async function notifyPlacementEndProposed({
+  toEmail,
+  placementTitle,
+  proposedBy,
+  agreementId,
+}: {
+  toEmail: string;
+  placementTitle: string;
+  proposedBy: string;
+  agreementId: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
+  await sendEmail({
+    to: toEmail,
+    subject: `[Placement] ${proposedBy} wants to end "${placementTitle}" early`,
+    title: "Request to end the placement early",
+    body: `${proposedBy} has asked to end the placement "${placementTitle}" early. Open the placement to confirm or decline.`,
+    link: `${appUrl}/dashboard/placements/agreements/${agreementId}`,
+    ctaLabel: "Review request →",
+  });
+}
+
+export async function notifyPlacementEnded({
+  toEmail,
+  placementTitle,
+}: {
+  toEmail: string;
+  placementTitle: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
+  await sendEmail({
+    to: toEmail,
+    subject: `[Placement] "${placementTitle}" has ended`,
+    title: "The placement has ended early",
+    body: `The placement "${placementTitle}" has been ended early by mutual agreement. Any month already paid is being reviewed by the KingsHire team.`,
+    link: `${appUrl}/dashboard/placements`,
+    ctaLabel: "Open KingsHire →",
+  });
+}
+
 export async function notifyPayoutClaimReady({
   kinglancerId,
   kinglancerEmail,

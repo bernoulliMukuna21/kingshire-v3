@@ -445,6 +445,9 @@ export type Database = {
           completed_at: string | null;
           payment_mode: "managed" | "direct";
           monthly_amount: number | null;
+          end_requested_by: string | null;
+          end_requested_at: string | null;
+          end_reason: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -465,6 +468,9 @@ export type Database = {
           completed_at?: string | null;
           payment_mode?: "managed" | "direct";
           monthly_amount?: number | null;
+          end_requested_by?: string | null;
+          end_requested_at?: string | null;
+          end_reason?: string | null;
         };
         Update: {
           version?: number;
@@ -479,6 +485,9 @@ export type Database = {
           completed_at?: string | null;
           payment_mode?: "managed" | "direct";
           monthly_amount?: number | null;
+          end_requested_by?: string | null;
+          end_requested_at?: string | null;
+          end_reason?: string | null;
         };
         Relationships: [];
       };
