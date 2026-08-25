@@ -166,6 +166,12 @@ export default function PlacementForm({
         field: "contribution",
         message: "Describe what the participant will contribute.",
       };
+    if (!compensation.length)
+      return {
+        field: "compensation",
+        message:
+          "Offer the participant at least one thing in return (money, a reference, training, etc.).",
+      };
     if (needsLocation && !location.trim())
       return {
         field: "location",
@@ -318,8 +324,14 @@ export default function PlacementForm({
         />
       </Field>
 
-      <Field label="Compensation">
-        <div className="flex flex-wrap gap-2">
+      <Field label="What the participant gets in return" required id="compensation">
+        <div
+          className={`flex flex-wrap gap-2 ${
+            errorField === "compensation"
+              ? "rounded-xl p-2 ring-2 ring-red-200"
+              : ""
+          }`}
+        >
           {COMPENSATION_OPTIONS.map((option) => (
             <button
               type="button"

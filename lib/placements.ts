@@ -240,6 +240,11 @@ export function parsePlacementInput(body: unknown): PlacementInput {
       "Add a location for on-site or hybrid placements.",
     );
   }
+  if (!compensationTypes.length) {
+    throw new PlacementError(
+      "A placement must offer the participant at least one thing in return.",
+    );
+  }
   if (
     compensationTypes.some(
       (t) => !(PLACEMENT_COMPENSATION_TYPES as readonly string[]).includes(t),

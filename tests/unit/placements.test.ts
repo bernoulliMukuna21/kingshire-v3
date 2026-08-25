@@ -19,7 +19,8 @@ const valid = {
   contribution: "Assist with filming and editing during weekly services.",
   location: "London",
   work_mode: "onsite",
-  compensation_types: [],
+  compensation_types: ["reference"],
+  compensation_details: { reference: "A written reference on completion." },
   weekly_hours: 8,
   start_date: "2026-09-01",
   end_date: "2026-10-27",
@@ -40,6 +41,16 @@ describe("parsePlacementInput", () => {
     expect(() => parsePlacementInput({ ...valid, title: "ab" })).toThrow(
       PlacementError,
     );
+  });
+
+  it("requires the placement to offer at least one thing in return", () => {
+    expect(() =>
+      parsePlacementInput({
+        ...valid,
+        compensation_types: [],
+        compensation_details: {},
+      }),
+    ).toThrow(/at least one thing/);
   });
 
   it("caps weekly hours at 20", () => {
