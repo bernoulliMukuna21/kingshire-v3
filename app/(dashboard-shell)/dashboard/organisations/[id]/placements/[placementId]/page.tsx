@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { Calendar, Clock, MapPin, UserRound } from "lucide-react";
+import { Calendar, Clock, Gift, MapPin, RotateCcw, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -14,6 +14,7 @@ import {
   listPlacementApplicants,
 } from "@/lib/db/placements";
 import { Card } from "@/components/ui/Card";
+import { ButtonLink } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Avatar } from "@/components/ui/Avatar";
 import {
@@ -171,16 +172,11 @@ export default async function OrganisationPlacementDetailPage({
             )}
           </Card>
 
-          <Card className="p-6">
-            <h2 className="text-lg font-black text-slate-950">
-              Applicants
-              {pendingApplicants.length > 0 && ` (${pendingApplicants.length})`}
-            </h2>
-            {!pendingApplicants.length ? (
-              <p className="mt-2 text-sm text-slate-500">
-                Applications from Kinglancers will appear here.
-              </p>
-            ) : (
+          {pendingApplicants.length > 0 && (
+            <Card className="p-6">
+              <h2 className="text-lg font-black text-slate-950">
+                Applicants ({pendingApplicants.length})
+              </h2>
               <div className="mt-4 divide-y divide-slate-100">
                 {pendingApplicants.map((a) => (
                   <div
@@ -232,8 +228,8 @@ export default async function OrganisationPlacementDetailPage({
                   </div>
                 ))}
               </div>
-            )}
-          </Card>
+            </Card>
+          )}
 
           {agreements.length > 0 && (
             <Card className="p-6">
@@ -284,37 +280,39 @@ export default async function OrganisationPlacementDetailPage({
             </Card>
           )}
 
-          <Card className="p-6">
-            <h2 className="text-lg font-black text-slate-950">
-              Manage placement
-            </h2>
-            <p className="mb-4 mt-1 text-sm text-slate-500">
-              {placement.status === "pending_review"
-                ? "Awaiting review before it goes live."
-                : placement.status === "open"
-                  ? "Live and accepting applicants."
-                  : placement.status === "closed"
-                    ? "Closed to new applicants — repost to open a fresh copy."
-                    : placement.status === "cancelled"
-                      ? "Cancelled — repost to open a fresh copy, or delete it."
-                      : "Manage this placement."}
-            </p>
+          {pendingApplicants.length === 0 &&
+            agreements.length === 0 &&
+            (placement.status === "open" ||
+              placement.status === "pending_review") && (
+              <Card className="p-6 text-center">
+                <p className="text-sm font-bold text-slate-700">
+                  No applicants yet
+                </p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Applications from Kinglancers will appear here.
+                </p>
+              </Card>
+            )}
+
+          <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
             {placement.status === "closed" ||
             placement.status === "cancelled" ? (
-              <div className="flex flex-wrap items-center gap-3">
-                <Link
+              <>
+                <ButtonLink
                   href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
-                  className="inline-block rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                  variant="primary"
+                  size="md"
                 >
+                  <RotateCcw size={15} />
                   Repost placement
-                </Link>
+                </ButtonLink>
                 <PlacementActions
                   organisationId={id}
                   placementId={placement.id}
                   status={placement.status}
                   canDelete={canDelete}
                 />
-              </div>
+              </>
             ) : (
               <PlacementActions
                 organisationId={id}
@@ -323,7 +321,7 @@ export default async function OrganisationPlacementDetailPage({
                 canDelete={canDelete}
               />
             )}
-          </Card>
+          </div>
         </div>
 
         <aside className="space-y-4">
@@ -355,36 +353,36 @@ export default async function OrganisationPlacementDetailPage({
           </Card>
 
           {placement.compensation_types.length > 0 && (
-            <Card className="space-y-3 border-blue-200 bg-blue-50/40 p-5">
-              <p className="text-xs font-bold uppercase tracking-widest text-blue-700">
-                Compensation
-              </p>
-              <ul className="space-y-2">
+            <div className="rounded-3xl bg-linear-to-br from-blue-600 to-indigo-600 p-5 text-white shadow-xl shadow-blue-500/25">
+              <div className="flex items-center gap-2">
+                <Gift size={16} className="text-blue-100" />
+                <p className="text-xs font-bold uppercase tracking-widest text-blue-100">
+                  Compensation
+                </p>
+              </div>
+              <ul className="mt-4 space-y-3">
                 {placement.compensation_types.map((type) => (
-                  <li
-                    key={type}
-                    className="flex flex-wrap items-baseline gap-2 text-sm"
-                  >
-                    <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                  <li key={type}>
+                    <span className="inline-block rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
                       {COMPENSATION_LABELS[type] ?? type}
                     </span>
-                    <span className="font-semibold text-slate-900">
+                    <p className="mt-1.5 text-sm font-semibold leading-snug text-white">
                       {formatCompensationDetail(
                         type,
                         placement.compensation_details?.[type],
                       )}
-                    </span>
+                    </p>
                   </li>
                 ))}
               </ul>
               {placement.compensation_types.includes("money") && (
-                <p className="text-xs font-semibold text-blue-700">
+                <p className="mt-4 border-t border-white/20 pt-3 text-xs font-semibold text-blue-100">
                   {placement.payment_mode === "managed"
                     ? "Paid monthly via KingsHire."
                     : "Paid directly by the organisation."}
                 </p>
               )}
-            </Card>
+            </div>
           )}
 
           <Card className="p-5">

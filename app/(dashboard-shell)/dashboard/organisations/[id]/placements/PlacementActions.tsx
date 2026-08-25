@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Ban, Lock, Rocket, Trash2 } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
 
 type Action = "publish" | "close" | "cancel" | "delete";
@@ -68,17 +69,18 @@ export default function PlacementActions({
   }
 
   const btn =
-    "rounded-xl px-3 py-1.5 text-xs font-bold transition disabled:opacity-50";
+    "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors disabled:opacity-50";
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-2">
+    <div className="flex shrink-0 flex-wrap items-center gap-3">
       {error && <span className="text-xs text-red-600">{error}</span>}
       {status === "draft" && (
         <button
           onClick={() => run("publish")}
           disabled={busy !== null}
-          className={`${btn} bg-blue-600 text-white hover:bg-blue-700`}
+          className={`${btn} bg-blue-600 text-white shadow-sm shadow-blue-500/25 hover:bg-blue-700`}
         >
+          <Rocket size={15} />
           {busy === "publish" ? "Publishing…" : "Publish"}
         </button>
       )}
@@ -86,8 +88,9 @@ export default function PlacementActions({
         <button
           onClick={() => run("close")}
           disabled={busy !== null}
-          className={`${btn} bg-slate-100 text-slate-700 hover:bg-slate-200`}
+          className={`${btn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
         >
+          <Lock size={15} />
           {busy === "close" ? "Closing…" : "Close"}
         </button>
       )}
@@ -95,8 +98,9 @@ export default function PlacementActions({
         <button
           onClick={() => setConfirmingCancel(true)}
           disabled={busy !== null}
-          className={`${btn} text-red-600 hover:bg-red-50`}
+          className={`${btn} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
         >
+          <Ban size={15} />
           Cancel
         </button>
       )}
@@ -104,8 +108,9 @@ export default function PlacementActions({
         <button
           onClick={() => setConfirmingDelete(true)}
           disabled={busy !== null}
-          className={`${btn} text-red-600 hover:bg-red-50`}
+          className={`${btn} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
         >
+          <Trash2 size={15} />
           Delete
         </button>
       )}
