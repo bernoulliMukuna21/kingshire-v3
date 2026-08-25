@@ -495,6 +495,30 @@ export async function notifyPlacementReleasePending({
   });
 }
 
+export async function notifyAdminPlacementDispute({
+  placementTitle,
+  organisationName,
+  periodIndex,
+  reason,
+}: {
+  placementTitle: string;
+  organisationName: string;
+  periodIndex: number;
+  reason: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
+  const adminEmail =
+    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  await sendEmail({
+    to: adminEmail,
+    subject: `[Placement dispute] ${placementTitle} — month ${periodIndex}`,
+    title: "An organisation disputed a placement payment",
+    body: `${organisationName} disputed month ${periodIndex} of "${placementTitle}". The payment is held pending your resolution (release to the Kinglancer or refund the organisation).\n\nReason:\n${reason}`,
+    link: `${appUrl}/admin/placement-disputes`,
+    ctaLabel: "Resolve in admin →",
+  });
+}
+
 export async function notifyPayoutClaimReady({
   kinglancerId,
   kinglancerEmail,

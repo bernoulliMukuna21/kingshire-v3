@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/Card";
 import CheckInForm from "./CheckInForm";
 import CompleteAgreementForm from "./CompleteAgreementForm";
 import PayMonthButton from "./PayMonthButton";
+import PaymentReviewButtons from "./PaymentReviewButtons";
 import ReportIssueButton from "./ReportIssueButton";
 import AgreementActions from "@/app/(dashboard-shell)/dashboard/kinglancer/placements/AgreementActions";
 
@@ -30,6 +31,8 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
   released: "Paid",
   failed: "Payment failed",
   cancelled: "Cancelled",
+  disputed: "Disputed",
+  refunded: "Refunded",
 };
 
 const PAYMENT_STATUS_CLASS: Record<string, string> = {
@@ -39,6 +42,8 @@ const PAYMENT_STATUS_CLASS: Record<string, string> = {
   released: "bg-emerald-100 text-emerald-700",
   failed: "bg-red-100 text-red-600",
   cancelled: "bg-slate-100 text-slate-500",
+  disputed: "bg-red-100 text-red-700",
+  refunded: "bg-slate-100 text-slate-500",
 };
 
 export default async function AgreementPage({
@@ -187,6 +192,11 @@ export default async function AgreementPage({
                       agreementId={agreementId}
                       paymentId={p.id}
                     />
+                  ) : isOrgManager && p.status === "held" ? (
+                    <PaymentReviewButtons
+                      agreementId={agreementId}
+                      paymentId={p.id}
+                    />
                   ) : (
                     <span
                       className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
@@ -203,8 +213,8 @@ export default async function AgreementPage({
           )}
           <p className="mt-2 text-xs text-slate-400">
             {isOrgManager
-              ? "Each month is charged automatically to your saved card. If a charge fails, retry it here."
-              : "You’ll be paid each month once the organisation’s payment clears."}
+              ? "Each month is charged upfront and held in escrow. We release it to the Kinglancer at month-end (after a 7-day notice) unless you dispute it."
+              : "You’re paid at the end of each month, once the organisation’s escrow releases."}
           </p>
         </section>
       )}

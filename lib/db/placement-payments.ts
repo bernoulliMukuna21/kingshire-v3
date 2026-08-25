@@ -101,6 +101,28 @@ export async function listDuePlacementPayments(): Promise<
   ) as unknown as PlacementPaymentRow[];
 }
 
+export type DisputedPlacementPayment = PlacementPaymentRow & {
+  organisation: { name: string } | null;
+  kinglancer: { full_name: string | null } | null;
+  agreement: { placement: { title: string } | null } | null;
+};
+
+/** Held payments the org has disputed, awaiting admin resolution. */
+export async function listDisputedPlacementPayments(): Promise<
+  DisputedPlacementPayment[]
+> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_payments")
+    .select(
+      "*, organisation:organisations!organisation_id(name), kinglancer:profiles!kinglancer_id(full_name), agreement:placement_agreements!agreement_id(placement:placements(title))",
+    )
+    .eq("status", "disputed")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as DisputedPlacementPayment[];
+}
+
 export async function updatePlacementPaymentStatus(
   paymentId: string,
   patch: Partial<
