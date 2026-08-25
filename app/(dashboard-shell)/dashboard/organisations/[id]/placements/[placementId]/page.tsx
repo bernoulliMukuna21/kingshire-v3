@@ -272,7 +272,7 @@ export default async function OrganisationPlacementDetailPage({
                       href={`/dashboard/placements/agreements/${ag.id}`}
                       className="shrink-0 text-xs font-bold text-blue-600 hover:underline"
                     >
-                      View agreement →
+                      Track progress →
                     </Link>
                   </div>
                 ))}

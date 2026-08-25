@@ -129,24 +129,26 @@ export default async function AgreementPage({
           </Card>
         ))}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="p-5">
-          <p className="text-xs font-bold uppercase text-slate-400">
-            Contribution
-          </p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
-            {agreement.contribution_terms}
-          </p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs font-bold uppercase text-slate-400">
-            Agreed value
-          </p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
-            {agreement.reward_terms}
-          </p>
-        </Card>
-      </div>
+      {!isOrgManager && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Card className="p-5">
+            <p className="text-xs font-bold uppercase text-slate-400">
+              Contribution
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+              {agreement.contribution_terms}
+            </p>
+          </Card>
+          <Card className="p-5">
+            <p className="text-xs font-bold uppercase text-slate-400">
+              Agreed value
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">
+              {agreement.reward_terms}
+            </p>
+          </Card>
+        </div>
+      )}
 
       {isManaged && (
         <section>
