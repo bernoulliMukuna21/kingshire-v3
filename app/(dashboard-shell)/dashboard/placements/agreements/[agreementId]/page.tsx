@@ -244,22 +244,13 @@ export default async function AgreementPage({
       </section>
 
       {isOrgManager && isActive && (
-        <section>
-          <h2 className="mb-3 text-lg font-black text-slate-950">
-            Complete placement
-          </h2>
-          <Card className="p-5">
-            <p className="mb-4 text-sm text-slate-600">
-              Completing frees the participant seat and publishes a verified
-              experience record on the participant&apos;s profile.
-            </p>
-            <CompleteAgreementForm
-              agreementId={agreementId}
-              defaultTitle={placementTitle ?? ""}
-              referenceRequired={referenceRequired}
-            />
-          </Card>
-        </section>
+        <div className="flex justify-end">
+          <CompleteAgreementForm
+            agreementId={agreementId}
+            defaultTitle={placementTitle ?? ""}
+            referenceRequired={referenceRequired}
+          />
+        </div>
       )}
 
       {agreement.status === "completed" && (
