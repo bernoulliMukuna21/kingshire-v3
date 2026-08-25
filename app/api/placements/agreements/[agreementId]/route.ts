@@ -5,6 +5,7 @@ import {
   getAgreement,
   updateAgreementStatus,
 } from "@/lib/db/placements";
+import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
 
 export async function PATCH(
   request: Request,
@@ -50,6 +51,12 @@ export async function PATCH(
       return NextResponse.json(
         { error: "This agreement can no longer be accepted." },
         { status: 409 },
+      );
+    }
+    // Managed placements start their monthly payment schedule on acceptance.
+    if (agreement.payment_mode === "managed" && agreement.monthly_amount) {
+      await ensurePaymentSchedule(agreement).catch((err) =>
+        console.error("[placements] payment schedule failed:", err),
       );
     }
     return NextResponse.json({ ok: true });

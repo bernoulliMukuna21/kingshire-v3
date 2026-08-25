@@ -7,6 +7,13 @@ import type { PlacementAgreementRow } from "@/lib/db/placements";
 export type PlacementPaymentRow =
   Database["public"]["Tables"]["placement_payments"]["Row"];
 
+/** Adds whole calendar months to a date. */
+function addMonths(date: Date, months: number): Date {
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+
 export async function listPlacementPayments(
   agreementId: string,
 ): Promise<PlacementPaymentRow[]> {
@@ -48,11 +55,13 @@ export async function ensurePaymentSchedule(
   const amount = Number(agreement.monthly_amount);
   const { platformFeeClient, platformFeeKinglancer } = calculateFees(amount);
   const months = monthlyPaymentCount(agreement.duration_weeks);
+  const anchor = new Date();
   const rows = Array.from({ length: months }, (_, i) => ({
     agreement_id: agreement.id,
     organisation_id: agreement.organisation_id,
     kinglancer_id: agreement.kinglancer_id,
     period_index: i + 1,
+    due_date: addMonths(anchor, i).toISOString().slice(0, 10),
     amount,
     platform_fee_client: platformFeeClient,
     platform_fee_kinglancer: platformFeeKinglancer,
@@ -69,6 +78,27 @@ export async function ensurePaymentSchedule(
     return listPlacementPayments(agreement.id);
   }
   return (data ?? []) as PlacementPaymentRow[];
+}
+
+/** Due, unpaid managed payments whose due date has arrived, for active
+ * agreements only. Used by the monthly auto-charge cron. */
+export async function listDuePlacementPayments(): Promise<
+  PlacementPaymentRow[]
+> {
+  const db = createServiceClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const { data, error } = await db
+    .from("placement_payments")
+    .select("*, agreement:placement_agreements!agreement_id(status)")
+    .eq("status", "due")
+    .lte("due_date", today);
+  if (error) throw error;
+  const rows = (data ?? []) as (PlacementPaymentRow & {
+    agreement: { status: string } | null;
+  })[];
+  return rows.filter(
+    (row) => row.agreement?.status === "active",
+  ) as unknown as PlacementPaymentRow[];
 }
 
 export async function updatePlacementPaymentStatus(

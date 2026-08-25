@@ -12,6 +12,7 @@ import {
   fulfillPlacementPayment,
   firePendingPlacementPayouts,
 } from "@/lib/placement-payouts";
+import { updatePlacementPaymentStatus } from "@/lib/db/placement-payments";
 import { notifyJobAwarded, notifyPaymentFailed } from "@/lib/notifications";
 import {
   fulfillOrganisationCheckout,
@@ -81,6 +82,12 @@ export async function POST(request: Request) {
 
       case "payment_intent.succeeded": {
         const pi = event.data.object;
+        // Managed placement months are charged off-session (not via Checkout).
+        if (pi.metadata?.purpose === "placement_payment") {
+          const paymentId = pi.metadata.placement_payment_id;
+          if (paymentId) await fulfillPlacementPayment(paymentId, pi.id);
+          break;
+        }
         await finalizePaymentAttempt(pi.id);
 
         // Now that payment is confirmed, notify the kinglancer they got the job
@@ -105,6 +112,13 @@ export async function POST(request: Request) {
 
       case "payment_intent.payment_failed": {
         const pi = event.data.object;
+        // A managed placement charge failed — flag it so the org can retry.
+        if (pi.metadata?.purpose === "placement_payment") {
+          const paymentId = pi.metadata.placement_payment_id;
+          if (paymentId)
+            await updatePlacementPaymentStatus(paymentId, { status: "failed" });
+          break;
+        }
         const jobId = pi.metadata?.job_id;
         const clientId = pi.metadata?.client_id;
 

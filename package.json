@@ -10,6 +10,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "cron:auto-release": "node scripts/run-cron.mjs /api/cron/auto-release",
+    "cron:charge-placements": "node scripts/run-cron.mjs /api/cron/charge-placements",
     "cron:cleanup-abandoned-checkouts": "node scripts/run-cron.mjs /api/cron/cleanup-abandoned-checkouts",
     "cron:reveal-reviews": "node scripts/run-cron.mjs /api/cron/reveal-reviews",
     "lint": "eslint",

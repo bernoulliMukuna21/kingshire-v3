@@ -23,11 +23,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  due: "Due",
+  due: "Scheduled",
   processing: "Processing",
   held: "In escrow",
   released: "Paid",
-  failed: "Failed",
+  failed: "Payment failed",
   cancelled: "Cancelled",
 };
 
@@ -179,10 +179,7 @@ export default async function AgreementPage({
                         : `You receive £${(Number(p.amount) - Number(p.platform_fee_kinglancer)).toFixed(2)}`}
                     </p>
                   </div>
-                  {isOrgManager &&
-                  (p.status === "due" ||
-                    p.status === "failed" ||
-                    p.status === "processing") ? (
+                  {isOrgManager && p.status === "failed" ? (
                     <PayMonthButton
                       agreementId={agreementId}
                       paymentId={p.id}
@@ -203,8 +200,8 @@ export default async function AgreementPage({
           )}
           <p className="mt-2 text-xs text-slate-400">
             {isOrgManager
-              ? "Fund each month to release payment to the Kinglancer."
-              : "You’ll be paid each month once the organisation funds that month."}
+              ? "Each month is charged automatically to your saved card. If a charge fails, retry it here."
+              : "You’ll be paid each month once the organisation’s payment clears."}
           </p>
         </section>
       )}

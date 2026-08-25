@@ -35,7 +35,7 @@ export default function PayMonthButton({
         disabled={loading}
         className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
       >
-        {loading ? "Starting…" : "Pay this month"}
+        {loading ? "Starting…" : "Retry payment"}
       </button>
       {error && <span className="text-[11px] text-red-600">{error}</span>}
     </div>
