@@ -89,9 +89,7 @@ export async function POST(
       placementTitle: placement.title,
       placementId: placement.id,
       organisationId: placement.organisation_id,
-    }).catch((err) =>
-      console.error("[placements/apply] notify failed:", err),
-    );
+    }).catch((err) => console.error("[placements/apply] notify failed:", err));
   }
 
   return NextResponse.json({ ok: true }, { status: 201 });

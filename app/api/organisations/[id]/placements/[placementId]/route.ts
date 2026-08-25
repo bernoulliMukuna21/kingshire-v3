@@ -14,7 +14,7 @@ import {
   countOpenPlacements,
   deletePlacement,
   getOrganisationPlacement,
-  placementHasAgreements,
+  placementDeletionBlocker,
   updatePlacementStatus,
 } from "@/lib/db/placements";
 
@@ -167,7 +167,10 @@ export async function DELETE(
 
   const placement = await getOrganisationPlacement(placementId, id);
   if (!placement) {
-    return NextResponse.json({ error: "Placement not found." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Placement not found." },
+      { status: 404 },
+    );
   }
   if (placement.status !== "cancelled" && placement.status !== "closed") {
     return NextResponse.json(
@@ -175,9 +178,10 @@ export async function DELETE(
       { status: 409 },
     );
   }
-  if (await placementHasAgreements(placementId)) {
+  const blocker = await placementDeletionBlocker(placementId);
+  if (blocker) {
     return NextResponse.json(
-      { error: "This placement has participants and can't be deleted." },
+      { error: `This placement has ${blocker} and can't be deleted.` },
       { status: 409 },
     );
   }

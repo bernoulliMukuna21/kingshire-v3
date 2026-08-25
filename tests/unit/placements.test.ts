@@ -42,8 +42,8 @@ describe("parsePlacementInput", () => {
     );
   });
 
-  it("caps weekly hours at 16", () => {
-    expect(() => parsePlacementInput({ ...valid, weekly_hours: 20 })).toThrow(
+  it("caps weekly hours at 20", () => {
+    expect(() => parsePlacementInput({ ...valid, weekly_hours: 24 })).toThrow(
       /Weekly hours/,
     );
   });
@@ -97,7 +97,11 @@ describe("parsePlacementInput", () => {
 
   it("requires days on-site for hybrid placements", () => {
     expect(() =>
-      parsePlacementInput({ ...valid, work_mode: "hybrid", location: "London" }),
+      parsePlacementInput({
+        ...valid,
+        work_mode: "hybrid",
+        location: "London",
+      }),
     ).toThrow(/days on-site/);
   });
 

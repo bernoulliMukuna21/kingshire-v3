@@ -149,16 +149,38 @@ export async function cancelPendingAgreementsForPlacement(
     .eq("status", "pending_acceptance");
 }
 
-/** Whether any participant agreement (any status) exists for a placement. */
-export async function placementHasAgreements(
+/**
+ * Reason a placement can't be permanently deleted, or null if it can.
+ * Cancelling preserves history; deleting is destructive, so we only block it
+ * when there is real activity to protect — a live participant or money that has
+ * actually moved. Cancelled/completed participants don't block deletion:
+ * their verified experience records survive (placement_id is set null).
+ */
+export async function placementDeletionBlocker(
   placementId: string,
-): Promise<boolean> {
+): Promise<string | null> {
   const db = createServiceClient();
-  const { count } = await db
+  const { data } = await db
     .from("placement_agreements")
-    .select("id", { count: "exact", head: true })
+    .select("id, status")
     .eq("placement_id", placementId);
-  return (count ?? 0) > 0;
+  const agreements = (data ?? []) as { id: string; status: string }[];
+
+  if (agreements.some((a) => a.status === "active")) {
+    return "an active participant";
+  }
+
+  const agreementIds = agreements.map((a) => a.id);
+  if (agreementIds.length) {
+    const { count } = await db
+      .from("placement_payments")
+      .select("id", { count: "exact", head: true })
+      .in("agreement_id", agreementIds)
+      .in("status", ["processing", "held", "released"]);
+    if ((count ?? 0) > 0) return "recorded payments";
+  }
+
+  return null;
 }
 
 /** Whether the placement's compensation promised a reference. */
@@ -604,8 +626,7 @@ export async function createExperienceRecord(params: {
     .select("categories")
     .eq("id", agreement.placement_id)
     .maybeSingle();
-  const categories =
-    (placementRow?.categories as string[] | undefined) ?? [];
+  const categories = (placementRow?.categories as string[] | undefined) ?? [];
   const { data, error } = await db
     .from("experience_records")
     .insert({

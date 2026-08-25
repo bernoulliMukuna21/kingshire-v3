@@ -65,9 +65,7 @@ export async function PATCH(
       organisationId: placement.organisation_id,
       placementId,
       approved: action === "approve",
-    }).catch((err) =>
-      console.error("[admin/placements] notify failed:", err),
-    );
+    }).catch((err) => console.error("[admin/placements] notify failed:", err));
   }
 
   return NextResponse.json({ ok: true });

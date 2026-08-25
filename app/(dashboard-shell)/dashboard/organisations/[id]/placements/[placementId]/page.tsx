@@ -16,7 +16,6 @@ import {
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Avatar } from "@/components/ui/Avatar";
-import EmptyState from "@/components/ui/EmptyState";
 import {
   COMPENSATION_LABELS,
   formatCompensationDetail,
@@ -26,7 +25,10 @@ import ApplicantActions from "./ApplicantActions";
 import PlacementActions from "../PlacementActions";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: "Draft", color: "bg-slate-100 text-slate-600 ring-slate-200" },
+  draft: {
+    label: "Draft",
+    color: "bg-slate-100 text-slate-600 ring-slate-200",
+  },
   pending_review: {
     label: "In review",
     color: "bg-amber-50 text-amber-700 ring-amber-100",
@@ -127,7 +129,7 @@ export default async function OrganisationPlacementDetailPage({
       </Link>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-5">
+        <div className="space-y-4">
           <Card className="p-6">
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <StatusBadge className={statusConfig.color}>
@@ -157,68 +159,34 @@ export default async function OrganisationPlacementDetailPage({
                 ))}
               </div>
             )}
-          </Card>
-
-          <Card className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-black text-slate-950">
-                  Manage placement
+            {placement.contribution && (
+              <div className="mt-6 border-t border-slate-100 pt-5">
+                <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
+                  What the placement involves
                 </h2>
-                <p className="mt-0.5 text-sm text-slate-500">
-                  {placement.status === "pending_review"
-                    ? "Awaiting review before it goes live."
-                    : placement.status === "open"
-                      ? "Live and accepting applicants."
-                      : placement.status === "closed"
-                        ? "Closed to new applicants — repost to open a fresh copy."
-                        : placement.status === "cancelled"
-                          ? "Cancelled — repost to open a fresh copy."
-                          : "Manage this placement."}
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                  {placement.contribution}
                 </p>
               </div>
-              {placement.status === "closed" ||
-              placement.status === "cancelled" ? (
-                <Link
-                  href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
-                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
-                >
-                  Repost placement
-                </Link>
-              ) : (
-                <PlacementActions
-                  organisationId={id}
-                  placementId={placement.id}
-                  status={placement.status}
-                  canDelete={canDelete}
-                />
-              )}
-            </div>
+            )}
           </Card>
 
           <Card className="p-6">
             <h2 className="text-lg font-black text-slate-950">
-              Participant contributes
-            </h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-              {placement.contribution}
-            </p>
-          </Card>
-
-          <section>
-            <h2 className="mb-3 text-lg font-black text-slate-950">
               Applicants
               {pendingApplicants.length > 0 && ` (${pendingApplicants.length})`}
             </h2>
             {!pendingApplicants.length ? (
-              <EmptyState
-                title="No pending applicants"
-                description="Applications from Kinglancers will appear here."
-              />
+              <p className="mt-2 text-sm text-slate-500">
+                Applications from Kinglancers will appear here.
+              </p>
             ) : (
-              <div className="space-y-3">
+              <div className="mt-4 divide-y divide-slate-100">
                 {pendingApplicants.map((a) => (
-                  <Card key={a.id} className="space-y-2 p-4">
+                  <div
+                    key={a.id}
+                    className="space-y-2 py-4 first:pt-0 last:pb-0"
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <Link
                         href={`/kinglancers/${a.kinglancer_id}`}
@@ -261,25 +229,25 @@ export default async function OrganisationPlacementDetailPage({
                         View CV →
                       </a>
                     )}
-                  </Card>
+                  </div>
                 ))}
               </div>
             )}
-          </section>
+          </Card>
 
           {agreements.length > 0 && (
-            <section>
+            <Card className="p-6">
               <h2 className="text-lg font-black text-slate-950">
                 Participants
               </h2>
-              <p className="mb-3 mt-0.5 text-sm text-slate-500">
+              <p className="mb-4 mt-1 text-sm text-slate-500">
                 Kinglancers you&apos;ve accepted onto this placement.
               </p>
-              <Card className="divide-y divide-slate-100 overflow-hidden">
+              <div className="divide-y divide-slate-100">
                 {agreements.map((ag) => (
                   <div
                     key={ag.id}
-                    className="flex items-center justify-between gap-3 p-4 text-sm"
+                    className="flex items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0"
                   >
                     <Link
                       href={`/kinglancers/${ag.kinglancer_id}`}
@@ -312,9 +280,50 @@ export default async function OrganisationPlacementDetailPage({
                     </Link>
                   </div>
                 ))}
-              </Card>
-            </section>
+              </div>
+            </Card>
           )}
+
+          <Card className="p-6">
+            <h2 className="text-lg font-black text-slate-950">
+              Manage placement
+            </h2>
+            <p className="mb-4 mt-1 text-sm text-slate-500">
+              {placement.status === "pending_review"
+                ? "Awaiting review before it goes live."
+                : placement.status === "open"
+                  ? "Live and accepting applicants."
+                  : placement.status === "closed"
+                    ? "Closed to new applicants — repost to open a fresh copy."
+                    : placement.status === "cancelled"
+                      ? "Cancelled — repost to open a fresh copy, or delete it."
+                      : "Manage this placement."}
+            </p>
+            {placement.status === "closed" ||
+            placement.status === "cancelled" ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
+                  className="inline-block rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                >
+                  Repost placement
+                </Link>
+                <PlacementActions
+                  organisationId={id}
+                  placementId={placement.id}
+                  status={placement.status}
+                  canDelete={canDelete}
+                />
+              </div>
+            ) : (
+              <PlacementActions
+                organisationId={id}
+                placementId={placement.id}
+                status={placement.status}
+                canDelete={canDelete}
+              />
+            )}
+          </Card>
         </div>
 
         <aside className="space-y-4">

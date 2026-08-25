@@ -11,7 +11,10 @@ export async function POST(
   const { agreementId } = await params;
   const access = await authoriseAgreement(agreementId);
   if (!access.ok) {
-    return NextResponse.json({ error: access.error }, { status: access.status });
+    return NextResponse.json(
+      { error: access.error },
+      { status: access.status },
+    );
   }
   if (access.agreement.status !== "active") {
     return NextResponse.json(

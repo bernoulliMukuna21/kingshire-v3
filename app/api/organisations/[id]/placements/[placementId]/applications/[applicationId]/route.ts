@@ -30,7 +30,9 @@ export async function POST(
   if (!user) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
-  if (!(await requireOrganisationPermission(id, user.id, "manage_applicants"))) {
+  if (
+    !(await requireOrganisationPermission(id, user.id, "manage_applicants"))
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -50,7 +52,10 @@ export async function POST(
 
   const placement = await getOrganisationPlacement(placementId, id);
   if (!placement) {
-    return NextResponse.json({ error: "Placement not found." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Placement not found." },
+      { status: 404 },
+    );
   }
   const application = await getPlacementApplication(applicationId);
   if (!application || application.placement_id !== placementId) {
@@ -89,7 +94,9 @@ export async function POST(
     );
   }
   if (subscription) {
-    const limit = activeParticipantLimit(subscription.plan as OrganisationPlanId);
+    const limit = activeParticipantLimit(
+      subscription.plan as OrganisationPlanId,
+    );
     const reserved = await countReservedParticipants(id);
     if (reserved >= limit) {
       return NextResponse.json(

@@ -237,7 +237,8 @@ export default async function KinglancerProfilePage({
                     <div className="flex items-center justify-between gap-3">
                       <p className="font-bold text-slate-950">{rec.title}</p>
                       <span className="shrink-0 text-xs text-slate-400">
-                        Verified by {rec.organisation?.name ?? "an organisation"}
+                        Verified by{" "}
+                        {rec.organisation?.name ?? "an organisation"}
                       </span>
                     </div>
                     {rec.summary && (

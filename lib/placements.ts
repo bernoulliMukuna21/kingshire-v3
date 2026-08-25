@@ -146,7 +146,7 @@ export class PlacementError extends Error {
   }
 }
 
-export const MAX_PLACEMENT_WEEKLY_HOURS = 16;
+export const MAX_PLACEMENT_WEEKLY_HOURS = 20;
 export const MAX_PLACEMENT_DURATION_WEEKS = 26;
 
 function trimmed(value: unknown) {
@@ -221,9 +221,7 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     throw new PlacementError("The end date must be after the start date.");
   }
   if (durationWeeks > MAX_PLACEMENT_DURATION_WEEKS) {
-    throw new PlacementError(
-      "A placement can run for at most 6 months.",
-    );
+    throw new PlacementError("A placement can run for at most 6 months.");
   }
   if (!(["remote", "hybrid", "onsite"] as string[]).includes(workMode)) {
     throw new PlacementError("Choose how the placement will be carried out.");
@@ -238,7 +236,9 @@ export function parsePlacementInput(body: unknown): PlacementInput {
     }
   }
   if ((workMode === "hybrid" || workMode === "onsite") && !location) {
-    throw new PlacementError("Add a location for on-site or hybrid placements.");
+    throw new PlacementError(
+      "Add a location for on-site or hybrid placements.",
+    );
   }
   if (
     compensationTypes.some(
@@ -262,7 +262,9 @@ export function parsePlacementInput(body: unknown): PlacementInput {
         );
       }
       if (
-        !(PLACEMENT_COMPENSATION_CADENCES as readonly string[]).includes(cadence)
+        !(PLACEMENT_COMPENSATION_CADENCES as readonly string[]).includes(
+          cadence,
+        )
       ) {
         throw new PlacementError("Choose how often the money is paid.");
       }

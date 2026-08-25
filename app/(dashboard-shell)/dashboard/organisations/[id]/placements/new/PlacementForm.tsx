@@ -118,9 +118,7 @@ export default function PlacementForm({
 
   function toggleCompensation(value: string) {
     setCompensation((prev) =>
-      prev.includes(value)
-        ? prev.filter((x) => x !== value)
-        : [...prev, value],
+      prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value],
     );
   }
 
@@ -181,28 +179,25 @@ export default function PlacementForm({
     }
     setSaving(true);
     setError(null);
-    const res = await fetch(
-      `/api/organisations/${organisationId}/placements`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          summary,
-          categories: selected,
-          contribution,
-          location: needsLocation ? location.trim() || null : null,
-          work_mode: workMode,
-          days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
-          compensation_types: compensation,
-          compensation_details: buildCompensationDetails(),
-          payment_mode: compensation.includes("money") ? "managed" : "direct",
-          weekly_hours: Number(weeklyHours),
-          start_date: startDate,
-          end_date: endDate,
-        }),
-      },
-    );
+    const res = await fetch(`/api/organisations/${organisationId}/placements`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        summary,
+        categories: selected,
+        contribution,
+        location: needsLocation ? location.trim() || null : null,
+        work_mode: workMode,
+        days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
+        compensation_types: compensation,
+        compensation_details: buildCompensationDetails(),
+        payment_mode: compensation.includes("money") ? "managed" : "direct",
+        weekly_hours: Number(weeklyHours),
+        start_date: startDate,
+        end_date: endDate,
+      }),
+    });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Could not create the placement.");
@@ -385,11 +380,11 @@ export default function PlacementForm({
         )}
       </div>
 
-      <Field label="Weekly hours (max 16)" required>
+      <Field label="Weekly hours (max 20)" required>
         <input
           type="number"
           min={1}
-          max={16}
+          max={20}
           className={fieldClass}
           value={weeklyHours}
           onChange={(e) => setWeeklyHours(e.target.value)}

@@ -61,14 +61,19 @@ export default async function AgreementPage({
     ? `/dashboard/organisations/${agreement.organisation_id}/placements/${agreement.placement_id}`
     : "/dashboard/kinglancer/placements";
 
-  const [organisationName, placementTitle, checkIns, payments, referenceRequired] =
-    await Promise.all([
-      getOrganisationName(agreement.organisation_id),
-      getPlacementTitle(agreement.placement_id),
-      listCheckIns(agreementId),
-      isManaged ? ensurePaymentSchedule(agreement) : Promise.resolve([]),
-      placementPromisedReference(agreement.placement_id),
-    ]);
+  const [
+    organisationName,
+    placementTitle,
+    checkIns,
+    payments,
+    referenceRequired,
+  ] = await Promise.all([
+    getOrganisationName(agreement.organisation_id),
+    getPlacementTitle(agreement.placement_id),
+    listCheckIns(agreementId),
+    isManaged ? ensurePaymentSchedule(agreement) : Promise.resolve([]),
+    placementPromisedReference(agreement.placement_id),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
@@ -263,8 +268,8 @@ export default async function AgreementPage({
             This placement is complete.
           </p>
           <p className="mt-1 text-sm text-slate-600">
-            A verified experience record has been added to the participant&apos;s
-            profile.
+            A verified experience record has been added to the
+            participant&apos;s profile.
           </p>
         </Card>
       )}
