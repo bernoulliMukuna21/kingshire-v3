@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
+import { getOrganisationMembership } from "@/lib/organisations";
 import { authoriseAgreement } from "@/lib/placement-access";
 import {
   getPlacementTitle,
@@ -71,6 +72,17 @@ export default async function AgreementPage({
   const iAmEndProposer =
     (access.isKinglancer && proposerIsKinglancer) ||
     (isOrgManager && !proposerIsKinglancer);
+
+  // Only the participant, or an org owner/admin, may end a placement early.
+  let canEndEarly = access.isKinglancer;
+  if (isOrgManager) {
+    const membership = await getOrganisationMembership(
+      agreement.organisation_id,
+      access.userId,
+    );
+    canEndEarly =
+      membership?.role === "owner" || membership?.role === "admin";
+  }
 
   const backHref = isOrgManager
     ? `/dashboard/organisations/${agreement.organisation_id}/placements/${agreement.placement_id}`
@@ -272,7 +284,7 @@ export default async function AgreementPage({
         </div>
       )}
 
-      {isActive && (
+      {isActive && canEndEarly && (
         <EndEarlyPanel
           agreementId={agreementId}
           hasRequest={hasEndRequest}

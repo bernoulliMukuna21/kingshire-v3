@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authoriseAgreement } from "@/lib/placement-access";
+import { getOrganisationMembership } from "@/lib/organisations";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   setAgreementEndRequest,
@@ -37,6 +38,23 @@ export async function POST(
       { error: "Only an active placement can be ended early." },
       { status: 409 },
     );
+  }
+
+  // On the org side, only owners/admins may end a placement early.
+  if (isOrgManager) {
+    const membership = await getOrganisationMembership(
+      agreement.organisation_id,
+      userId,
+    );
+    if (
+      !membership ||
+      (membership.role !== "owner" && membership.role !== "admin")
+    ) {
+      return NextResponse.json(
+        { error: "Only owners and admins can end a placement early." },
+        { status: 403 },
+      );
+    }
   }
 
   let json: unknown;
