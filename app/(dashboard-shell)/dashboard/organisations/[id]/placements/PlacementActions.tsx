@@ -112,7 +112,30 @@ export default function PlacementActions({
           setConfirmingCancel(false);
         }}
         title="End this placement?"
-        message="This ends the placement: it's removed from public search and any offers you've sent that haven't been accepted are withdrawn. Anyone already active keeps their placement — you still complete them individually. This can't be undone, but you can repost it."
+        message={
+          <>
+            <p className="mb-2">Ending this placement will:</p>
+            <ul className="list-disc space-y-1.5 pl-5">
+              <li>
+                Remove it from{" "}
+                <span className="font-bold text-slate-900">public search</span>{" "}
+                — no new applications come in.
+              </li>
+              <li>
+                <span className="font-bold text-slate-900">Withdraw</span> any
+                offers you&apos;ve sent that haven&apos;t been accepted yet.
+              </li>
+              <li>
+                Keep anyone{" "}
+                <span className="font-bold text-slate-900">already active</span>{" "}
+                going — you still complete them individually.
+              </li>
+            </ul>
+            <p className="mt-2.5 font-bold text-red-600">
+              This can&apos;t be undone — but you can repost it later.
+            </p>
+          </>
+        }
         confirmLabel="End placement"
         loading={busy === "cancel"}
         variant="danger"

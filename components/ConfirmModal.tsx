@@ -94,7 +94,7 @@ export default function ConfirmModal({
           </button>
         </div>
 
-        <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+        <div className="text-gray-600 text-sm leading-relaxed">{message}</div>
 
         {error && (
           <p className="rounded-xl bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700">

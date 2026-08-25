@@ -175,8 +175,8 @@ export default async function AgreementPage({
                     </p>
                     <p className="mt-0.5 text-xs text-slate-500">
                       {isOrgManager
-                        ? `You pay £${(p.amount + p.platform_fee_client).toFixed(2)}`
-                        : `You receive £${(p.amount - p.platform_fee_kinglancer).toFixed(2)}`}
+                        ? `You pay £${(Number(p.amount) + Number(p.platform_fee_client)).toFixed(2)}`
+                        : `You receive £${(Number(p.amount) - Number(p.platform_fee_kinglancer)).toFixed(2)}`}
                     </p>
                   </div>
                   {isOrgManager &&

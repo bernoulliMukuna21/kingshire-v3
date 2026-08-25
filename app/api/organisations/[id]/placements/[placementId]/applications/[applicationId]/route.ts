@@ -50,14 +50,16 @@ export async function POST(
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   }
 
-  const placement = await getOrganisationPlacement(placementId, id);
+  const [placement, application] = await Promise.all([
+    getOrganisationPlacement(placementId, id),
+    getPlacementApplication(applicationId),
+  ]);
   if (!placement) {
     return NextResponse.json(
       { error: "Placement not found." },
       { status: 404 },
     );
   }
-  const application = await getPlacementApplication(applicationId);
   if (!application || application.placement_id !== placementId) {
     return NextResponse.json(
       { error: "Application not found." },
@@ -76,12 +78,23 @@ export async function POST(
     return NextResponse.json({ ok: true });
   }
 
-  // Accept — reserve a participant seat against the plan allowance.
-  const { data: subscription } = await createServiceClient()
-    .from("organisation_subscriptions")
-    .select("plan, status")
-    .eq("organisation_id", id)
-    .maybeSingle();
+  // Accept — run the seat/subscription checks and the notify-email lookup
+  // together rather than one sequential round trip after another.
+  const service = createServiceClient();
+  const [{ data: subscription }, reserved, { data: kinglancer }] =
+    await Promise.all([
+      service
+        .from("organisation_subscriptions")
+        .select("plan, status")
+        .eq("organisation_id", id)
+        .maybeSingle(),
+      countReservedParticipants(id),
+      service
+        .from("profiles")
+        .select("email")
+        .eq("id", application.kinglancer_id)
+        .maybeSingle(),
+    ]);
 
   if (
     subscription &&
@@ -97,7 +110,6 @@ export async function POST(
     const limit = activeParticipantLimit(
       subscription.plan as OrganisationPlanId,
     );
-    const reserved = await countReservedParticipants(id);
     if (reserved >= limit) {
       return NextResponse.json(
         {
@@ -108,18 +120,15 @@ export async function POST(
     }
   }
 
-  const agreement = await createAgreementFromPlacement({
-    placement,
-    kinglancerId: application.kinglancer_id,
-    orgSignedBy: user.id,
-  });
-  await updatePlacementApplicationStatus(applicationId, "accepted");
+  const [agreement] = await Promise.all([
+    createAgreementFromPlacement({
+      placement,
+      kinglancerId: application.kinglancer_id,
+      orgSignedBy: user.id,
+    }),
+    updatePlacementApplicationStatus(applicationId, "accepted"),
+  ]);
 
-  const { data: kinglancer } = await createServiceClient()
-    .from("profiles")
-    .select("email")
-    .eq("id", application.kinglancer_id)
-    .maybeSingle();
   // Fire-and-forget: a slow email must not hang the accept response.
   void notifyPlacementOffer({
     kinglancerId: application.kinglancer_id,

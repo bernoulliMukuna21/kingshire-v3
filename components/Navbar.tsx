@@ -25,6 +25,14 @@ const clientNavLinks = [
   { label: "Organisations", href: "/organisation" },
 ];
 
+// Kinglancers don't run Organisations, so that link is hidden for them.
+const kinglancerNavLinks = [
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Browse Jobs", href: "/jobs" },
+  { label: "Placements", href: "/placements" },
+  { label: "Kinglancers", href: "/kinglancers" },
+];
+
 export default function Navbar({
   variant = "transparent",
 }: {
@@ -51,7 +59,12 @@ export default function Navbar({
   }, []);
 
   const isSolid = variant === "solid" || scrolled;
-  const visibleNavLinks = role === "client" ? clientNavLinks : navLinks;
+  const visibleNavLinks =
+    role === "client"
+      ? clientNavLinks
+      : role === "kinglancer"
+        ? kinglancerNavLinks
+        : navLinks;
 
   return (
     <motion.header
