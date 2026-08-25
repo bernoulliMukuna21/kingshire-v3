@@ -39,12 +39,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     color: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   },
   closed: {
-    label: "Closed",
+    label: "Ended",
     color: "bg-slate-100 text-slate-500 ring-slate-200",
   },
   cancelled: {
-    label: "Cancelled",
-    color: "bg-red-50 text-red-700 ring-red-100",
+    label: "Ended",
+    color: "bg-slate-100 text-slate-500 ring-slate-200",
   },
 };
 

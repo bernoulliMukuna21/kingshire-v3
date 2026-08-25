@@ -22,8 +22,8 @@ const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
   pending_review: "In review",
   open: "Open",
-  closed: "Closed",
-  cancelled: "Cancelled",
+  closed: "Ended",
+  cancelled: "Ended",
 };
 
 const STATUS_CLASS: Record<string, string> = {
@@ -31,7 +31,7 @@ const STATUS_CLASS: Record<string, string> = {
   pending_review: "bg-amber-100 text-amber-700",
   open: "bg-emerald-100 text-emerald-700",
   closed: "bg-slate-100 text-slate-500",
-  cancelled: "bg-red-100 text-red-600",
+  cancelled: "bg-slate-100 text-slate-500",
 };
 
 // ── Tab definitions ────────────────────────────────────────
@@ -42,8 +42,7 @@ type Tab =
   | "open"
   | "review"
   | "draft"
-  | "closed"
-  | "cancelled";
+  | "ended";
 
 // Active is cross-cutting (filtered by active participants, not status).
 const TAB_STATUSES: Record<Tab, string[]> = {
@@ -52,8 +51,7 @@ const TAB_STATUSES: Record<Tab, string[]> = {
   open: ["open"],
   review: ["pending_review"],
   draft: ["draft"],
-  closed: ["closed"],
-  cancelled: ["cancelled"],
+  ended: ["closed", "cancelled"],
 };
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -62,8 +60,7 @@ const TAB_LABELS: Record<Tab, string> = {
   open: "Open",
   review: "In review",
   draft: "Draft",
-  closed: "Closed",
-  cancelled: "Cancelled",
+  ended: "Ended",
 };
 
 const TAB_ORDER: Tab[] = [
@@ -72,8 +69,7 @@ const TAB_ORDER: Tab[] = [
   "review",
   "open",
   "active",
-  "closed",
-  "cancelled",
+  "ended",
 ];
 
 function parseTab(raw: string | undefined): Tab {

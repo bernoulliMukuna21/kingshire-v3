@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, Lock, Rocket, Trash2 } from "lucide-react";
+import { Ban, Rocket, Trash2 } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
 
 type Action = "publish" | "close" | "cancel" | "delete";
@@ -20,7 +20,6 @@ export default function PlacementActions({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<Action | null>(null);
-  const [confirmingClose, setConfirmingClose] = useState(false);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,16 +84,6 @@ export default function PlacementActions({
           {busy === "publish" ? "Publishing…" : "Publish"}
         </button>
       )}
-      {(status === "open" || status === "pending_review") && (
-        <button
-          onClick={() => setConfirmingClose(true)}
-          disabled={busy !== null}
-          className={`${btn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
-        >
-          <Lock size={15} />
-          Stop taking new applicants
-        </button>
-      )}
       {status !== "cancelled" && status !== "closed" && (
         <button
           onClick={() => setConfirmingCancel(true)}
@@ -116,19 +105,6 @@ export default function PlacementActions({
         </button>
       )}
       <ConfirmModal
-        isOpen={confirmingClose}
-        onClose={() => setConfirmingClose(false)}
-        onConfirm={async () => {
-          await run("close");
-          setConfirmingClose(false);
-        }}
-        title="Stop taking new applicants?"
-        message="The placement stops appearing in public search and no new applications can come in. Everyone already on it — and any offers you've already sent — carry on as normal. You can reopen it anytime by reposting."
-        confirmLabel="Stop taking applicants"
-        loading={busy === "close"}
-        error={error ?? undefined}
-      />
-      <ConfirmModal
         isOpen={confirmingCancel}
         onClose={() => setConfirmingCancel(false)}
         onConfirm={async () => {
@@ -136,7 +112,7 @@ export default function PlacementActions({
           setConfirmingCancel(false);
         }}
         title="End this placement?"
-        message="This ends the placement entirely. It's removed from public view and any offers you've sent that haven't been accepted yet are withdrawn. People already active on the placement aren't affected. This can't be undone."
+        message="This ends the placement: it's removed from public search and any offers you've sent that haven't been accepted are withdrawn. Anyone already active keeps their placement — you still complete them individually. This can't be undone, but you can repost it."
         confirmLabel="End placement"
         loading={busy === "cancel"}
         variant="danger"
