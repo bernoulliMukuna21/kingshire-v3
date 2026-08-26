@@ -575,12 +575,14 @@ export async function notifyPlacementEnded({
   });
 }
 
-export async function notifyPlacementPaymentNeeded({
+export async function notifyPlacementReadyToFund({
   organisationId,
   placementId,
+  agreementId,
 }: {
   organisationId: string;
   placementId: string;
+  agreementId: string;
 }) {
   const db = createServiceClient();
   const [{ data: owner }, { data: placement }] = await Promise.all([
@@ -605,15 +607,15 @@ export async function notifyPlacementPaymentNeeded({
   const title = placement?.title ?? "your placement";
   await notify({
     userId: ownerId,
-    type: "dispute_raised",
-    title: "Payment needed to start a placement",
-    body: `A Kinglancer is ready to start "${title}", but your organisation has no saved card. Add a payment method so the placement can begin.`,
-    link: `/dashboard/organisations/${organisationId}`,
+    type: "dispute_raised", // reuse existing type — no schema change needed
+    title: "Fund a placement to start it",
+    body: `The Kinglancer has accepted "${title}". Fund the first month to start the placement — you'll be charged the monthly amount and it's held in escrow until month-end.`,
+    link: `/dashboard/placements/agreements/${agreementId}`,
     email: email
       ? {
           to: email,
-          subject: `Add a card to start "${title}"`,
-          ctaLabel: "Set up payment →",
+          subject: `Fund "${title}" to get started`,
+          ctaLabel: "Fund the first month →",
         }
       : undefined,
   });

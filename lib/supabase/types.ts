@@ -438,7 +438,12 @@ export type Database = {
           reward_terms: string;
           weekly_hours: number;
           duration_weeks: number;
-          status: "pending_acceptance" | "active" | "completed" | "cancelled";
+          status:
+            | "pending_acceptance"
+            | "pending_funding"
+            | "active"
+            | "completed"
+            | "cancelled";
           org_signed_by: string | null;
           org_signed_at: string | null;
           kinglancer_signed_at: string | null;
@@ -461,7 +466,12 @@ export type Database = {
           reward_terms: string;
           weekly_hours: number;
           duration_weeks: number;
-          status?: "pending_acceptance" | "active" | "completed" | "cancelled";
+          status?:
+            | "pending_acceptance"
+            | "pending_funding"
+            | "active"
+            | "completed"
+            | "cancelled";
           org_signed_by?: string | null;
           org_signed_at?: string | null;
           kinglancer_signed_at?: string | null;
@@ -478,7 +488,12 @@ export type Database = {
           reward_terms?: string;
           weekly_hours?: number;
           duration_weeks?: number;
-          status?: "pending_acceptance" | "active" | "completed" | "cancelled";
+          status?:
+            | "pending_acceptance"
+            | "pending_funding"
+            | "active"
+            | "completed"
+            | "cancelled";
           org_signed_by?: string | null;
           org_signed_at?: string | null;
           kinglancer_signed_at?: string | null;

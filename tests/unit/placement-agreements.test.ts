@@ -38,6 +38,15 @@ describe("deriveAgreementView", () => {
     expect(v.pill.label).toBe("Awaiting acceptance");
   });
 
+  it("a pending-funding agreement is awaiting the org and not yet active", () => {
+    const v = deriveAgreementView({ ...base, status: "pending_funding" });
+    expect(v.isPendingFunding).toBe(true);
+    expect(v.isActive).toBe(false);
+    expect(v.canComplete).toBe(false);
+    expect(v.canCheckIn).toBe(false);
+    expect(v.pill.label).toBe("Awaiting funding");
+  });
+
   it("a completed agreement offers no further actions", () => {
     const v = deriveAgreementView({ ...base, status: "completed" });
     expect(v.canComplete).toBe(false);

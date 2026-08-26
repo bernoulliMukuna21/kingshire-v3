@@ -30,7 +30,10 @@ export async function POST(
       { status: 403 },
     );
   }
-  if (access.agreement.status !== "active") {
+  if (
+    access.agreement.status !== "active" &&
+    access.agreement.status !== "pending_funding"
+  ) {
     return NextResponse.json(
       { error: "The placement isn't active yet." },
       { status: 409 },
@@ -40,6 +43,17 @@ export async function POST(
   const payment = await getPlacementPayment(paymentId);
   if (!payment || payment.agreement_id !== agreementId) {
     return NextResponse.json({ error: "Payment not found." }, { status: 404 });
+  }
+  // Before the placement starts, only the first month is fundable — that's what
+  // activates it.
+  if (
+    access.agreement.status === "pending_funding" &&
+    payment.period_index !== 1
+  ) {
+    return NextResponse.json(
+      { error: "Fund the first month to start the placement." },
+      { status: 409 },
+    );
   }
   if (
     payment.status !== "due" &&

@@ -26,6 +26,9 @@ export default async function KinglancerPlacementsPage() {
   const offers = agreements.filter(
     (a) => a.status === "pending_acceptance" && live(a.placement?.status),
   );
+  const awaitingFunding = agreements.filter(
+    (a) => a.status === "pending_funding" && live(a.placement?.status),
+  );
   const active = agreements.filter((a) => a.status === "active");
   const completed = agreements.filter((a) => a.status === "completed");
   const applied = applications.filter(
@@ -33,7 +36,11 @@ export default async function KinglancerPlacementsPage() {
   );
 
   const hasNothing =
-    !offers.length && !active.length && !completed.length && !applied.length;
+    !offers.length &&
+    !awaitingFunding.length &&
+    !active.length &&
+    !completed.length &&
+    !applied.length;
 
   return (
     <div className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
@@ -81,6 +88,30 @@ export default async function KinglancerPlacementsPage() {
                   {a.weekly_hours}h/week · {a.duration_weeks} weeks
                 </p>
               </div>
+            ))}
+          </Card>
+        </section>
+      )}
+
+      {awaitingFunding.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-black text-slate-950">
+            Awaiting the organisation
+          </h2>
+          <Card className="divide-y divide-slate-100 overflow-hidden">
+            {awaitingFunding.map((a) => (
+              <Link
+                key={a.id}
+                href={`/dashboard/placements/agreements/${a.id}`}
+                className="flex items-center justify-between p-4 hover:bg-slate-50"
+              >
+                <p className="font-bold text-slate-950">
+                  {a.placement?.title ?? "Placement"}
+                </p>
+                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-700">
+                  Awaiting funding
+                </span>
+              </Link>
             ))}
           </Card>
         </section>

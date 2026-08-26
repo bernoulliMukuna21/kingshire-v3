@@ -146,7 +146,7 @@ export async function cancelPendingAgreementsForPlacement(
     .from("placement_agreements")
     .update({ status: "cancelled" })
     .eq("placement_id", placementId)
-    .eq("status", "pending_acceptance");
+    .in("status", ["pending_acceptance", "pending_funding"]);
 }
 
 /**
@@ -383,7 +383,7 @@ export async function countReservedParticipants(
     .from("placement_agreements")
     .select("id", { count: "exact", head: true })
     .eq("organisation_id", organisationId)
-    .in("status", ["active", "pending_acceptance"]);
+    .in("status", ["active", "pending_acceptance", "pending_funding"]);
   return count ?? 0;
 }
 
@@ -438,6 +438,29 @@ export async function activateAgreement(agreementId: string): Promise<boolean> {
     .from("placement_agreements")
     .update({
       status: "active",
+      kinglancer_signed_at: new Date().toISOString(),
+    })
+    .eq("id", agreementId)
+    .in("status", ["pending_acceptance", "pending_funding"])
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+/**
+ * Kinglancer accepts a managed offer: they sign now, but the placement waits
+ * in 'pending_funding' until the org funds the first month. Returns true if
+ * the transition happened.
+ */
+export async function markAgreementPendingFunding(
+  agreementId: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_agreements")
+    .update({
+      status: "pending_funding",
       kinglancer_signed_at: new Date().toISOString(),
     })
     .eq("id", agreementId)

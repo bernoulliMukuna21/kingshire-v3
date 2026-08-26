@@ -77,6 +77,8 @@ export default async function AgreementPage({
     placementPromisedReference(agreement.placement_id),
   ]);
 
+  const monthOne = payments.find((p) => p.period_index === 1);
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
       <Link
@@ -126,6 +128,42 @@ export default async function AgreementPage({
             <p className="mt-1 text-sm text-slate-600">
               You&apos;ve offered this placement. It becomes active once the
               Kinglancer accepts the agreement.
+            </p>
+          </Card>
+        ))}
+
+      {view.isPendingFunding &&
+        (isOrgManager ? (
+          <Card className="border-blue-200 bg-blue-50/60 p-5">
+            <h2 className="text-lg font-black text-slate-950">
+              Fund the first month to start
+            </h2>
+            <p className="mb-4 mt-1 text-sm text-slate-600">
+              The Kinglancer has accepted. Pay the first month
+              {monthOne
+                ? ` (£${(Number(monthOne.amount) + Number(monthOne.platform_fee_client)).toFixed(2)})`
+                : ""}{" "}
+              to activate the placement — it&apos;s held in escrow and released
+              to them at month-end. Each following month is charged
+              automatically, with a heads-up before the charge.
+            </p>
+            {monthOne && (
+              <PayMonthButton
+                agreementId={agreementId}
+                paymentId={monthOne.id}
+                label="Fund the first month"
+              />
+            )}
+          </Card>
+        ) : (
+          <Card className="border-amber-200 bg-amber-50/60 p-5">
+            <h2 className="text-lg font-black text-slate-950">
+              You&apos;ve accepted — waiting on the organisation
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              The organisation needs to fund the first month before your
+              placement starts. We&apos;ll let you know as soon as it&apos;s
+              active.
             </p>
           </Card>
         ))}

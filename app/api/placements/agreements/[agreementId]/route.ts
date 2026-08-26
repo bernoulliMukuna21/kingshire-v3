@@ -3,14 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import {
   activateAgreement,
   getAgreement,
+  markAgreementPendingFunding,
   updateAgreementStatus,
 } from "@/lib/db/placements";
 import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
-import {
-  getOrgPaymentContext,
-  chargeDuePlacementPayment,
-} from "@/lib/placement-billing";
-import { notifyPlacementPaymentNeeded } from "@/lib/notifications";
+import { notifyPlacementReadyToFund } from "@/lib/notifications";
 
 export async function PATCH(
   request: Request,
@@ -58,38 +55,24 @@ export async function PATCH(
       agreement.payment_mode === "managed" && !!agreement.monthly_amount;
 
     if (isManaged) {
-      // The org's payment readiness is a precondition of *offering* a paid
-      // placement (enforced when the org accepts an applicant). If the card
-      // has since lapsed, don't surface an org-facing error to the Kinglancer
-      // — nudge the org and keep the offer open.
-      const ctx = await getOrgPaymentContext(agreement.organisation_id);
-      let started = false;
-      if (ctx) {
-        const schedule = await ensurePaymentSchedule(agreement);
-        const firstMonth = schedule.find((p) => p.period_index === 1);
-        started =
-          !firstMonth ||
-          firstMonth.status === "held" ||
-          firstMonth.status === "released" ||
-          (await chargeDuePlacementPayment(firstMonth)) === "charged";
-      }
-      if (!started) {
-        void notifyPlacementPaymentNeeded({
-          organisationId: agreement.organisation_id,
-          placementId: agreement.placement_id,
-        }).catch((err) =>
-          console.error("[placements] payment-needed notify failed:", err),
-        );
+      // The Kinglancer commits now, but the placement only starts once the org
+      // explicitly funds the first month. Build the schedule and hand off.
+      await ensurePaymentSchedule(agreement);
+      const moved = await markAgreementPendingFunding(agreementId);
+      if (!moved) {
         return NextResponse.json(
-          {
-            error:
-              "This placement can't start just yet — the organisation still needs to set up payment. We've let them know, so you can accept once it's sorted.",
-          },
+          { error: "This agreement can no longer be accepted." },
           { status: 409 },
         );
       }
-      // A successful charge is held in escrow and auto-activates the agreement.
-      return NextResponse.json({ ok: true });
+      void notifyPlacementReadyToFund({
+        organisationId: agreement.organisation_id,
+        placementId: agreement.placement_id,
+        agreementId,
+      }).catch((err) =>
+        console.error("[placements] ready-to-fund notify failed:", err),
+      );
+      return NextResponse.json({ ok: true, status: "pending_funding" });
     }
 
     const activated = await activateAgreement(agreementId);

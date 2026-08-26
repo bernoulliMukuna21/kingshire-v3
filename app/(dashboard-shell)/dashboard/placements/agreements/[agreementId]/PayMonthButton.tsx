@@ -5,9 +5,11 @@ import { useState } from "react";
 export default function PayMonthButton({
   agreementId,
   paymentId,
+  label = "Retry payment",
 }: {
   agreementId: string;
   paymentId: string;
+  label?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export default function PayMonthButton({
         disabled={loading}
         className="rounded-xl bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
       >
-        {loading ? "Starting…" : "Retry payment"}
+        {loading ? "Starting…" : label}
       </button>
       {error && <span className="text-[11px] text-red-600">{error}</span>}
     </div>

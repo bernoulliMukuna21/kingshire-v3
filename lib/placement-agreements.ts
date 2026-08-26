@@ -4,6 +4,7 @@
 
 export type AgreementStatus =
   | "pending_acceptance"
+  | "pending_funding"
   | "active"
   | "completed"
   | "cancelled";
@@ -12,6 +13,10 @@ const AGREEMENT_PILLS: Record<string, { label: string; className: string }> = {
   pending_acceptance: {
     label: "Awaiting acceptance",
     className: "bg-amber-100 text-amber-700",
+  },
+  pending_funding: {
+    label: "Awaiting funding",
+    className: "bg-blue-100 text-blue-700",
   },
   active: { label: "Active", className: "bg-emerald-100 text-emerald-700" },
   completed: { label: "Completed", className: "bg-slate-100 text-slate-500" },
@@ -56,6 +61,8 @@ export function placementPaymentPill(status: string): {
 export interface AgreementView {
   pill: { label: string; className: string };
   isPending: boolean;
+  /** Kinglancer has accepted; waiting for the org to fund the first month. */
+  isPendingFunding: boolean;
   isActive: boolean;
   isManaged: boolean;
   /** Org can mark the placement complete (issues the verified record). */
@@ -80,6 +87,7 @@ export function deriveAgreementView(agreement: {
   return {
     pill: agreementStatusPill(agreement.status),
     isPending: agreement.status === "pending_acceptance",
+    isPendingFunding: agreement.status === "pending_funding",
     isActive,
     isManaged,
     canComplete: isActive && !hasEndRequest,
