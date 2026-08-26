@@ -27,6 +27,25 @@ export async function getOrgPaymentContext(
   const defaultPm = customer.invoice_settings?.default_payment_method;
   let paymentMethodId =
     typeof defaultPm === "string" ? defaultPm : (defaultPm?.id ?? null);
+
+  // Checkout attaches the subscription card as the *subscription's* default
+  // payment method, not always the customer's invoice_settings default, so
+  // check the live subscription before giving up.
+  if (!paymentMethodId) {
+    const subs = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 3,
+    });
+    const usable =
+      subs.data.find((s) =>
+        ["active", "trialing", "past_due"].includes(s.status),
+      ) ?? subs.data[0];
+    const subPm = usable?.default_payment_method;
+    paymentMethodId =
+      typeof subPm === "string" ? subPm : (subPm?.id ?? null);
+  }
+
   if (!paymentMethodId) {
     const cards = await stripe.paymentMethods.list({
       customer: customerId,

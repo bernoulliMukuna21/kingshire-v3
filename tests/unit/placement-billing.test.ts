@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
     invoice_settings: { default_payment_method: unknown };
   },
   cards: [{ id: "pm_list" }] as { id: string }[],
+  subscriptions: [] as { status: string; default_payment_method: unknown }[],
   piResult: { id: "pi_1", status: "succeeded" } as {
     id: string;
     status: string;
@@ -42,6 +43,7 @@ vi.mock("@/lib/stripe", () => ({
   stripe: {
     customers: { retrieve: async () => state.customer },
     paymentMethods: { list: async () => ({ data: state.cards }) },
+    subscriptions: { list: async () => ({ data: state.subscriptions }) },
     paymentIntents: {
       create: async (...args: unknown[]) => {
         createIntent(...args);
@@ -88,6 +90,7 @@ describe("chargeDuePlacementPayment", () => {
       invoice_settings: { default_payment_method: "pm_1" },
     };
     state.cards = [{ id: "pm_list" }];
+    state.subscriptions = [];
     state.piResult = { id: "pi_1", status: "succeeded" };
     state.piThrows = false;
     createIntent.mockClear();
@@ -118,6 +121,24 @@ describe("chargeDuePlacementPayment", () => {
     expect(result).toBe("no_payment_method");
     expect(createIntent).not.toHaveBeenCalled();
     expect(updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the subscription's default card when the customer has none", async () => {
+    // Checkout attaches the card to the subscription, not invoice_settings.
+    state.customer = {
+      deleted: false,
+      invoice_settings: { default_payment_method: null },
+    };
+    state.cards = [];
+    state.subscriptions = [
+      { status: "active", default_payment_method: "pm_sub" },
+    ];
+    const result = await chargeDuePlacementPayment(payment);
+    expect(result).toBe("charged");
+    expect(createIntent).toHaveBeenCalledWith(
+      expect.objectContaining({ payment_method: "pm_sub" }),
+      expect.anything(),
+    );
   });
 
   it("marks the payment failed when the card is declined", async () => {
