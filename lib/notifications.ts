@@ -575,6 +575,50 @@ export async function notifyPlacementEnded({
   });
 }
 
+export async function notifyPlacementPaymentNeeded({
+  organisationId,
+  placementId,
+}: {
+  organisationId: string;
+  placementId: string;
+}) {
+  const db = createServiceClient();
+  const [{ data: owner }, { data: placement }] = await Promise.all([
+    db
+      .from("organisation_members")
+      .select("user_id, profiles:profiles!user_id(email)")
+      .eq("organisation_id", organisationId)
+      .eq("role", "owner")
+      .maybeSingle(),
+    db.from("placements").select("title").eq("id", placementId).maybeSingle(),
+  ]);
+  const ownerId = (owner as { user_id?: string } | null)?.user_id;
+  if (!ownerId) return;
+  const p = (
+    owner as unknown as {
+      profiles: { email: string | null }[] | { email: string | null } | null;
+    }
+  ).profiles;
+  const email = Array.isArray(p)
+    ? (p[0]?.email ?? undefined)
+    : (p?.email ?? undefined);
+  const title = placement?.title ?? "your placement";
+  await notify({
+    userId: ownerId,
+    type: "dispute_raised",
+    title: "Payment needed to start a placement",
+    body: `A Kinglancer is ready to start "${title}", but your organisation has no saved card. Add a payment method so the placement can begin.`,
+    link: `/dashboard/organisations/${organisationId}`,
+    email: email
+      ? {
+          to: email,
+          subject: `Add a card to start "${title}"`,
+          ctaLabel: "Set up payment →",
+        }
+      : undefined,
+  });
+}
+
 export async function notifyPayoutClaimReady({
   kinglancerId,
   kinglancerEmail,

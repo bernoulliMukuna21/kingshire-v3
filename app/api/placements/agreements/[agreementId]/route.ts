@@ -10,6 +10,7 @@ import {
   getOrgPaymentContext,
   chargeDuePlacementPayment,
 } from "@/lib/placement-billing";
+import { notifyPlacementPaymentNeeded } from "@/lib/notifications";
 
 export async function PATCH(
   request: Request,
@@ -57,35 +58,35 @@ export async function PATCH(
       agreement.payment_mode === "managed" && !!agreement.monthly_amount;
 
     if (isManaged) {
-      // A managed placement only starts once the org's first-month payment is
-      // taken and held in escrow.
+      // The org's payment readiness is a precondition of *offering* a paid
+      // placement (enforced when the org accepts an applicant). If the card
+      // has since lapsed, don't surface an org-facing error to the Kinglancer
+      // — nudge the org and keep the offer open.
       const ctx = await getOrgPaymentContext(agreement.organisation_id);
-      if (!ctx) {
+      let started = false;
+      if (ctx) {
+        const schedule = await ensurePaymentSchedule(agreement);
+        const firstMonth = schedule.find((p) => p.period_index === 1);
+        started =
+          !firstMonth ||
+          firstMonth.status === "held" ||
+          firstMonth.status === "released" ||
+          (await chargeDuePlacementPayment(firstMonth)) === "charged";
+      }
+      if (!started) {
+        void notifyPlacementPaymentNeeded({
+          organisationId: agreement.organisation_id,
+          placementId: agreement.placement_id,
+        }).catch((err) =>
+          console.error("[placements] payment-needed notify failed:", err),
+        );
         return NextResponse.json(
           {
             error:
-              "The organisation needs an active subscription with a saved card before this placement can start.",
+              "This placement can't start just yet — the organisation still needs to set up payment. We've let them know, so you can accept once it's sorted.",
           },
-          { status: 402 },
+          { status: 409 },
         );
-      }
-      const schedule = await ensurePaymentSchedule(agreement);
-      const firstMonth = schedule.find((p) => p.period_index === 1);
-      if (
-        firstMonth &&
-        firstMonth.status !== "held" &&
-        firstMonth.status !== "released"
-      ) {
-        const result = await chargeDuePlacementPayment(firstMonth);
-        if (result !== "charged") {
-          return NextResponse.json(
-            {
-              error:
-                "We couldn't take the organisation's first-month payment. The placement will start once that payment clears — the organisation can retry it from the placement.",
-            },
-            { status: 402 },
-          );
-        }
       }
       // A successful charge is held in escrow and auto-activates the agreement.
       return NextResponse.json({ ok: true });

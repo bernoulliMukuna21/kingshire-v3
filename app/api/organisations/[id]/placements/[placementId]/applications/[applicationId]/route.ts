@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { activeParticipantLimit } from "@/lib/placements";
+import { getOrgPaymentContext } from "@/lib/placement-billing";
 import type { OrganisationPlanId } from "@/modules/organisations/domain/plans";
 import {
   countReservedParticipants,
@@ -116,6 +117,21 @@ export async function POST(
           error: `Your plan allows ${limit} active participant${limit === 1 ? "" : "s"}. Complete or cancel a placement to free a seat.`,
         },
         { status: 409 },
+      );
+    }
+  }
+
+  // A paid (managed) placement needs a saved card BEFORE the offer is sent, so
+  // the Kinglancer never hits an org-payment problem when they accept.
+  if (placement.payment_mode === "managed") {
+    const ctx = await getOrgPaymentContext(id);
+    if (!ctx) {
+      return NextResponse.json(
+        {
+          error:
+            "Add a payment method to your organisation before offering a paid placement.",
+        },
+        { status: 402 },
       );
     }
   }
