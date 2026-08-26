@@ -14,6 +14,7 @@ import {
   placementWorkModeSummary,
   derivePlacementView,
 } from "@/lib/placements";
+import { resolveTab, countTabs } from "@/lib/tabs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -46,10 +47,6 @@ const TAB_LABELS: Record<Tab, string> = {
 
 const TAB_ORDER: Tab[] = ["all", "draft", "review", "open", "active", "ended"];
 
-function parseTab(raw: string | undefined): Tab {
-  return TAB_ORDER.includes(raw as Tab) ? (raw as Tab) : "all";
-}
-
 export default async function OrganisationPlacementsPage({
   params,
   searchParams,
@@ -74,7 +71,7 @@ export default async function OrganisationPlacementsPage({
 
   const allPlacements = await listOrganisationPlacements(id);
   const activeCounts = await activeParticipantCountsByPlacement(id);
-  const tab = parseTab(tabParam);
+  const tab = resolveTab(TAB_ORDER, tabParam, "all");
 
   const matchesTab = (t: Tab, p: (typeof allPlacements)[number]) => {
     if (t === "all") return true;
@@ -82,10 +79,7 @@ export default async function OrganisationPlacementsPage({
     return TAB_STATUSES[t].includes(p.status);
   };
 
-  const tabCounts = TAB_ORDER.reduce<Record<string, number>>((acc, t) => {
-    acc[t] = allPlacements.filter((p) => matchesTab(t, p)).length;
-    return acc;
-  }, {});
+  const tabCounts = countTabs(TAB_ORDER, allPlacements, matchesTab);
 
   const placements = allPlacements.filter((p) => matchesTab(tab, p));
 

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   AlertTriangle,
   Briefcase,
@@ -7,8 +6,8 @@ import {
   CheckCircle2,
   ChevronRight,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
 import { type JobStatus, JOBS_PAGE_SIZE } from "@/lib/jobs";
+import { applicationStatusPill } from "@/lib/applications";
 import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import PageHeader from "@/components/ui/PageHeader";
@@ -432,22 +431,10 @@ export default async function KinglancerJobsPage({
 
 // ── ApplicationCard ────────────────────────────────────────
 
-const APP_STATUS_CONFIG: Record<
-  ApplicationRow["status"],
-  { label: string; className: string }
-> = {
-  pending: {
-    label: "Pending review",
-    className: "bg-yellow-50 text-yellow-700",
-  },
-  accepted: { label: "Selected", className: "bg-green-50 text-green-700" },
-  rejected: { label: "Not selected", className: "bg-gray-100 text-gray-500" },
-};
-
 function ApplicationCard({ app }: { app: ApplicationRow }) {
   if (!app.job) return null;
   const { job } = app;
-  const statusCfg = APP_STATUS_CONFIG[app.status];
+  const statusCfg = applicationStatusPill(app.status);
   const href =
     app.status === "accepted"
       ? `/dashboard/kinglancer/jobs/${job.id}`

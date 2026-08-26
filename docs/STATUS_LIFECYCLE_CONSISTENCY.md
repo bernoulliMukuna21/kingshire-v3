@@ -26,6 +26,8 @@ Reference implementations: `lib/placements.ts` (`derivePlacementView`) and
 |---|---|---|
 | Placement (listing) | `lib/placements.ts` → `derivePlacementView` | list + detail read from it; `PlacementActions` is a dumb renderer; unit-tested |
 | Placement agreement | `lib/placement-agreements.ts` → `deriveAgreementView`, `agreementStatusPill`, `placementPaymentPill` | agreement page + org participants list read from it; `/complete` guard derives from the same `canComplete`; unit-tested |
+| Job application | `lib/applications.ts` → `applicationStatusPill` | dashboard section + kinglancer jobs card read from it (removed 2 duplicated maps); unit-tested |
+| Tab bars | `lib/tabs.ts` → `resolveTab`, `countTabs`, `statusTabMatcher` | applied to the placements list page; unit-tested |
 
 ## Remaining (ranked by payoff / risk)
 
@@ -44,13 +46,15 @@ inline `job.status === …` branches. Touches escrow/payment UI.
 
 ### 2. Job applications — small, safe
 Near-identical `APP_STATUS` / `APP_STATUS_CONFIG` in 2 files.
-- `app/(dashboard-shell)/dashboard/kinglancer/_sections/KinglancerApplicationsSection.tsx`
-- `app/(dashboard-shell)/dashboard/kinglancer/jobs/page.tsx`
-- Target: `lib/applications.ts` → `applicationStatusPill(status)` (3 states).
+- ✅ **Done** — `lib/applications.ts` → `applicationStatusPill`.
 
 ### 3. Tab filters — small, safe
 `TAB_STATUSES` (tab → statuses) duplicated across jobs (×3) and placements (×1).
-- Target: a shared `statusTabs` helper / config so tabs are declared once.
+- ✅ Shared primitive `lib/tabs.ts` created + applied to the placements page.
+- ⏳ The **jobs** tab bars are NOT yet migrated: the kinglancer jobs page has an
+  "applied" tab that counts the applications table (not jobs-by-status), so it
+  needs `deriveJobView`-aware handling rather than the generic matcher. Fold
+  into the Jobs pass below.
 
 ### 4. Direct requests — medium (couple with the Jobs pass)
 `direct_request_status` filtering is scattered across action-centre + the three
