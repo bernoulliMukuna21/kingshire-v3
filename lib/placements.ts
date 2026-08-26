@@ -177,6 +177,124 @@ export function placementStatusPill(
     map[status] ?? { label: status, className: "bg-slate-100 text-slate-600" }
   );
 }
+
+// ── Placement lifecycle state machine ──────────────────────
+// A single source of truth mapping a placement's stage (+ runtime context) to
+// the management actions available. All UI reads from here, so adding/altering
+// a stage happens in one place instead of scattered `status !== x` checks.
+
+export type PlacementActionKind = "publish" | "cancel" | "delete" | "repost";
+
+export interface PlacementActionSpec {
+  kind: PlacementActionKind;
+  label: string;
+  tone: "primary" | "neutral" | "danger";
+  icon: "rocket" | "lock" | "trash" | "repost";
+  confirm?: {
+    title: string;
+    bullets?: string[];
+    note?: string;
+    confirmLabel: string;
+    danger?: boolean;
+  };
+}
+
+export interface PlacementView {
+  pill: { label: string; className: string };
+  actions: PlacementActionSpec[];
+}
+
+const PUBLISH: PlacementActionSpec = {
+  kind: "publish",
+  label: "Publish",
+  tone: "primary",
+  icon: "rocket",
+};
+
+const REPOST: PlacementActionSpec = {
+  kind: "repost",
+  label: "Repost placement",
+  tone: "primary",
+  icon: "repost",
+};
+
+const DELETE: PlacementActionSpec = {
+  kind: "delete",
+  label: "Delete placement",
+  tone: "danger",
+  icon: "trash",
+  confirm: {
+    title: "Delete this placement?",
+    bullets: ["This permanently removes the placement."],
+    confirmLabel: "Delete placement",
+    danger: true,
+  },
+};
+
+const STOP_APPLICANTS: PlacementActionSpec = {
+  kind: "cancel",
+  label: "Stop taking applicants",
+  tone: "neutral",
+  icon: "lock",
+  confirm: {
+    title: "Stop taking new applicants?",
+    bullets: [
+      "Removes it from public search — no new applications come in.",
+      "Withdraws any offers you've sent that haven't been accepted yet.",
+      "Anyone already active keeps going — you complete or end them individually.",
+    ],
+    note: "You can repost it later to open a fresh intake.",
+    confirmLabel: "Stop taking applicants",
+  },
+};
+
+const WITHDRAW_REVIEW: PlacementActionSpec = {
+  kind: "cancel",
+  label: "Withdraw from review",
+  tone: "neutral",
+  icon: "lock",
+  confirm: {
+    title: "Withdraw from review?",
+    bullets: ["It won't go live and leaves the review queue."],
+    note: "You can repost it later.",
+    confirmLabel: "Withdraw",
+  },
+};
+
+/**
+ * The full management view (status pill + available actions) for a placement.
+ * `activeCount` = participants still active; `canDelete` = viewer is owner/admin.
+ */
+export function derivePlacementView(
+  status: string,
+  ctx: { activeCount: number; canDelete: boolean },
+): PlacementView {
+  const pill = placementStatusPill(status, ctx.activeCount);
+  const actions: PlacementActionSpec[] = [];
+
+  switch (status) {
+    case "draft":
+      actions.push(PUBLISH);
+      break;
+    case "pending_review":
+      actions.push(WITHDRAW_REVIEW);
+      break;
+    case "open":
+      actions.push(STOP_APPLICANTS);
+      break;
+    case "closed":
+    case "cancelled":
+      // Only a fully wound-down placement (no active participants) can be
+      // reposted or deleted.
+      if (ctx.activeCount === 0) {
+        actions.push(REPOST);
+        if (ctx.canDelete) actions.push(DELETE);
+      }
+      break;
+  }
+
+  return { pill, actions };
+}
 export const MAX_PLACEMENT_DURATION_WEEKS = 26;
 
 function trimmed(value: unknown) {

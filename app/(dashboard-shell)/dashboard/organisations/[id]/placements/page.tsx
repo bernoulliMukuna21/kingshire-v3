@@ -10,7 +10,7 @@ import {
   activeParticipantCountsByPlacement,
   listOrganisationPlacements,
 } from "@/lib/db/placements";
-import { placementWorkModeSummary, placementStatusPill } from "@/lib/placements";
+import { placementWorkModeSummary, derivePlacementView } from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
@@ -126,7 +126,11 @@ export default async function OrganisationPlacementsPage({
         <div className="space-y-3">
           {placements.map((p) => {
             const activeCount = activeCounts[p.id] ?? 0;
-            const pill = placementStatusPill(p.status, activeCount);
+            const view = derivePlacementView(p.status, {
+              activeCount,
+              canDelete:
+                membership.role === "owner" || membership.role === "admin",
+            });
             return (
               <Card
                 key={p.id}
@@ -141,9 +145,9 @@ export default async function OrganisationPlacementsPage({
                       {p.title}
                     </Link>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${pill.className}`}
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${view.pill.className}`}
                     >
-                      {pill.label}
+                      {view.pill.label}
                     </span>
                     {activeCount > 0 && (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
@@ -159,10 +163,7 @@ export default async function OrganisationPlacementsPage({
                 <PlacementActions
                   organisationId={id}
                   placementId={p.id}
-                  status={p.status}
-                  canDelete={
-                    membership.role === "owner" || membership.role === "admin"
-                  }
+                  actions={view.actions}
                 />
               </Card>
             );

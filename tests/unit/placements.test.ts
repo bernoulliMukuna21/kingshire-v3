@@ -6,6 +6,7 @@ import {
   placementNeedsManualReview,
   managedMonthlyAmount,
   monthlyPaymentCount,
+  derivePlacementView,
   PlacementError,
 } from "@/lib/placements";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
@@ -25,6 +26,48 @@ const valid = {
   start_date: "2026-09-01",
   end_date: "2026-10-27",
 };
+
+describe("derivePlacementView", () => {
+  const ctx = { activeCount: 0, canDelete: true };
+  const kinds = (status: string, c = ctx) =>
+    derivePlacementView(status, c).actions.map((a) => a.kind);
+
+  it("draft offers only Publish", () => {
+    expect(kinds("draft")).toEqual(["publish"]);
+  });
+
+  it("a placement in review can only be withdrawn (not 'stop taking applicants')", () => {
+    const view = derivePlacementView("pending_review", ctx);
+    expect(view.actions.map((a) => a.kind)).toEqual(["cancel"]);
+    expect(view.actions[0].label).toBe("Withdraw from review");
+    expect(view.pill.label).toBe("In review");
+  });
+
+  it("an open placement can stop taking applicants", () => {
+    const view = derivePlacementView("open", ctx);
+    expect(view.actions[0].kind).toBe("cancel");
+    expect(view.actions[0].label).toBe("Stop taking applicants");
+  });
+
+  it("a wound-down placement can be reposted and deleted (owner/admin)", () => {
+    expect(kinds("cancelled", { activeCount: 0, canDelete: true })).toEqual([
+      "repost",
+      "delete",
+    ]);
+    expect(kinds("cancelled", { activeCount: 0, canDelete: false })).toEqual([
+      "repost",
+    ]);
+  });
+
+  it("an ended placement with active participants offers no listing actions", () => {
+    const view = derivePlacementView("cancelled", {
+      activeCount: 1,
+      canDelete: true,
+    });
+    expect(view.actions).toEqual([]);
+    expect(view.pill.label).toBe("No longer taking applicants");
+  });
+});
 
 describe("parsePlacementInput", () => {
   it("accepts a valid placement and normalises fields", () => {

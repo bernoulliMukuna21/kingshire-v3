@@ -5,7 +5,6 @@ import {
   Clock,
   Gift,
   MapPin,
-  RotateCcw,
   UserRound,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -21,14 +20,13 @@ import {
   listPlacementApplicants,
 } from "@/lib/db/placements";
 import { Card } from "@/components/ui/Card";
-import { ButtonLink } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   COMPENSATION_LABELS,
   formatCompensationDetail,
   placementWorkModeSummary,
-  placementStatusPill,
+  derivePlacementView,
 } from "@/lib/placements";
 import ApplicantActions from "./ApplicantActions";
 import PlacementActions from "../PlacementActions";
@@ -98,7 +96,10 @@ export default async function OrganisationPlacementDetailPage({
     postedByName = data?.full_name ?? null;
   }
 
-  const statusPill = placementStatusPill(placement.status, activeCount);
+  const view = derivePlacementView(placement.status, {
+    activeCount,
+    canDelete,
+  });
   const dateRange = [
     formatDate(placement.start_date),
     formatDate(placement.end_date),
@@ -119,8 +120,8 @@ export default async function OrganisationPlacementDetailPage({
         <div className="space-y-4">
           <Card className="p-6">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <StatusBadge className={statusPill.className}>
-                {statusPill.label}
+              <StatusBadge className={view.pill.className}>
+                {view.pill.label}
               </StatusBadge>
               <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
                 {organisationName}
@@ -280,36 +281,15 @@ export default async function OrganisationPlacementDetailPage({
               </Card>
             )}
 
-          <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
-            {placement.status === "closed" ||
-            placement.status === "cancelled" ? (
-              <>
-                {activeCount === 0 && (
-                  <ButtonLink
-                    href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
-                    variant="primary"
-                    size="md"
-                  >
-                    <RotateCcw size={15} />
-                    Repost placement
-                  </ButtonLink>
-                )}
-                <PlacementActions
-                  organisationId={id}
-                  placementId={placement.id}
-                  status={placement.status}
-                  canDelete={canDelete}
-                />
-              </>
-            ) : (
+          {view.actions.length > 0 && (
+            <div className="flex flex-wrap items-center justify-end gap-3 pt-1">
               <PlacementActions
                 organisationId={id}
                 placementId={placement.id}
-                status={placement.status}
-                canDelete={canDelete}
+                actions={view.actions}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         <aside className="space-y-4">
