@@ -520,42 +520,58 @@ export async function notifyAdminPlacementDispute({
 }
 
 export async function notifyPlacementEndProposed({
-  toEmail,
+  recipientId,
+  recipientEmail,
   placementTitle,
   proposedBy,
   agreementId,
 }: {
-  toEmail: string;
+  recipientId: string;
+  recipientEmail?: string;
   placementTitle: string;
   proposedBy: string;
   agreementId: string;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
-  await sendEmail({
-    to: toEmail,
-    subject: `[Placement] ${proposedBy} wants to end "${placementTitle}" early`,
-    title: "Request to end the placement early",
-    body: `${proposedBy} has asked to end the placement "${placementTitle}" early. Open the placement to confirm or decline.`,
-    link: `${appUrl}/dashboard/placements/agreements/${agreementId}`,
-    ctaLabel: "Review request →",
+  await notify({
+    userId: recipientId,
+    type: "dispute_raised",
+    title: "Request to end a placement early",
+    body: `${proposedBy} has asked to end "${placementTitle}" early. Open it to confirm or decline.`,
+    link: `/dashboard/placements/agreements/${agreementId}`,
+    email: recipientEmail
+      ? {
+          to: recipientEmail,
+          subject: `${proposedBy} wants to end "${placementTitle}" early`,
+          ctaLabel: "Review request →",
+        }
+      : undefined,
   });
 }
 
 export async function notifyPlacementEnded({
-  toEmail,
+  recipientId,
+  recipientEmail,
   placementTitle,
+  agreementId,
 }: {
-  toEmail: string;
+  recipientId: string;
+  recipientEmail?: string;
   placementTitle: string;
+  agreementId: string;
 }) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
-  await sendEmail({
-    to: toEmail,
-    subject: `[Placement] "${placementTitle}" has ended`,
-    title: "The placement has ended early",
-    body: `The placement "${placementTitle}" has been ended early by mutual agreement. Any month already paid is being reviewed by the KingsHire team.`,
-    link: `${appUrl}/dashboard/placements`,
-    ctaLabel: "Open KingsHire →",
+  await notify({
+    userId: recipientId,
+    type: "new_job",
+    title: "Placement ended early",
+    body: `"${placementTitle}" has been ended early by mutual agreement. Any month already paid is being reviewed by KingsHire.`,
+    link: `/dashboard/placements/agreements/${agreementId}`,
+    email: recipientEmail
+      ? {
+          to: recipientEmail,
+          subject: `"${placementTitle}" has ended`,
+          ctaLabel: "Open KingsHire →",
+        }
+      : undefined,
   });
 }
 

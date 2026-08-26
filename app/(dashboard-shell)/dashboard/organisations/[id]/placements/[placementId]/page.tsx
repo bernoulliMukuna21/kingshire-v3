@@ -28,32 +28,10 @@ import {
   COMPENSATION_LABELS,
   formatCompensationDetail,
   placementWorkModeSummary,
+  placementStatusPill,
 } from "@/lib/placements";
 import ApplicantActions from "./ApplicantActions";
 import PlacementActions from "../PlacementActions";
-
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: {
-    label: "Draft",
-    color: "bg-slate-100 text-slate-600 ring-slate-200",
-  },
-  pending_review: {
-    label: "In review",
-    color: "bg-amber-50 text-amber-700 ring-amber-100",
-  },
-  open: {
-    label: "Open",
-    color: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-  },
-  closed: {
-    label: "Ended",
-    color: "bg-slate-100 text-slate-500 ring-slate-200",
-  },
-  cancelled: {
-    label: "Ended",
-    color: "bg-slate-100 text-slate-500 ring-slate-200",
-  },
-};
 
 function formatDate(value: string | null) {
   return value
@@ -69,7 +47,7 @@ const PARTICIPANT_STATUS_LABEL: Record<string, string> = {
   pending_acceptance: "Awaiting the Kinglancer’s acceptance",
   active: "Active",
   completed: "Completed",
-  cancelled: "Cancelled",
+  cancelled: "Ended early",
 };
 
 const PARTICIPANT_STATUS_CLASS: Record<string, string> = {
@@ -108,6 +86,7 @@ export default async function OrganisationPlacementDetailPage({
     listPlacementAgreements(placementId),
   ]);
   const pendingApplicants = applicants.filter((a) => a.status === "pending");
+  const activeCount = agreements.filter((a) => a.status === "active").length;
 
   let postedByName: string | null = null;
   if (placement.created_by) {
@@ -119,7 +98,7 @@ export default async function OrganisationPlacementDetailPage({
     postedByName = data?.full_name ?? null;
   }
 
-  const statusConfig = STATUS_CONFIG[placement.status] ?? STATUS_CONFIG.draft;
+  const statusPill = placementStatusPill(placement.status, activeCount);
   const dateRange = [
     formatDate(placement.start_date),
     formatDate(placement.end_date),
@@ -140,8 +119,8 @@ export default async function OrganisationPlacementDetailPage({
         <div className="space-y-4">
           <Card className="p-6">
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <StatusBadge className={statusConfig.color}>
-                {statusConfig.label}
+              <StatusBadge className={statusPill.className}>
+                {statusPill.label}
               </StatusBadge>
               <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
                 {organisationName}
@@ -279,7 +258,7 @@ export default async function OrganisationPlacementDetailPage({
                       href={`/dashboard/placements/agreements/${ag.id}`}
                       className="shrink-0 text-xs font-bold text-blue-600 hover:underline"
                     >
-                      Track progress →
+                      {ag.status === "active" ? "Track progress →" : "View →"}
                     </Link>
                   </div>
                 ))}
@@ -305,14 +284,16 @@ export default async function OrganisationPlacementDetailPage({
             {placement.status === "closed" ||
             placement.status === "cancelled" ? (
               <>
-                <ButtonLink
-                  href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
-                  variant="primary"
-                  size="md"
-                >
-                  <RotateCcw size={15} />
-                  Repost placement
-                </ButtonLink>
+                {activeCount === 0 && (
+                  <ButtonLink
+                    href={`/dashboard/organisations/${id}/placements/new?from=${placement.id}`}
+                    variant="primary"
+                    size="md"
+                  >
+                    <RotateCcw size={15} />
+                    Repost placement
+                  </ButtonLink>
+                )}
                 <PlacementActions
                   organisationId={id}
                   placementId={placement.id}

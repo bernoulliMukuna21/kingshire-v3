@@ -67,6 +67,15 @@ export async function POST(
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
+  if (
+    parsed.data.action === "propose" &&
+    (parsed.data.reason ?? "").trim().length < 5
+  ) {
+    return NextResponse.json(
+      { error: "Please give a reason for ending early (at least 5 characters)." },
+      { status: 400 },
+    );
+  }
 
   const hasRequest = !!agreement.end_requested_by;
   const proposerIsKinglancer =
@@ -82,20 +91,17 @@ export async function POST(
     }
     await setAgreementEndRequest(agreementId, userId, parsed.data.reason ?? null);
 
-    // Notify the other party to confirm or decline.
+    // Notify the other party (in-app + email) to confirm or decline.
     const [placementTitle, organisationName] = await Promise.all([
       getPlacementTitle(agreement.placement_id),
       getOrganisationName(agreement.organisation_id),
     ]);
     if (isKinglancer) {
-      const { data: org } = await db
-        .from("organisations")
-        .select("email")
-        .eq("id", agreement.organisation_id)
-        .maybeSingle();
-      if (org?.email) {
+      const owner = await getOrgOwner(agreement.organisation_id);
+      if (owner) {
         void notifyPlacementEndProposed({
-          toEmail: org.email,
+          recipientId: owner.userId,
+          recipientEmail: owner.email ?? undefined,
           placementTitle: placementTitle ?? "your placement",
           proposedBy: "The Kinglancer",
           agreementId,
@@ -107,14 +113,13 @@ export async function POST(
         .select("email")
         .eq("id", agreement.kinglancer_id)
         .maybeSingle();
-      if (kinglancer?.email) {
-        void notifyPlacementEndProposed({
-          toEmail: kinglancer.email,
-          placementTitle: placementTitle ?? "your placement",
-          proposedBy: organisationName ?? "The organisation",
-          agreementId,
-        }).catch(() => {});
-      }
+      void notifyPlacementEndProposed({
+        recipientId: agreement.kinglancer_id,
+        recipientEmail: kinglancer?.email ?? undefined,
+        placementTitle: placementTitle ?? "your placement",
+        proposedBy: organisationName ?? "The organisation",
+        agreementId,
+      }).catch(() => {});
     }
     return NextResponse.json({ ok: true });
   }
@@ -154,28 +159,52 @@ export async function POST(
     "Placement ended early by mutual agreement",
   );
 
-  // Let both parties know it's ended.
+  // Let both parties know it's ended (in-app + email).
   const placementTitle =
     (await getPlacementTitle(agreement.placement_id)) ?? "the placement";
-  const [{ data: kinglancer }, { data: org }] = await Promise.all([
+  const [{ data: kinglancer }, owner] = await Promise.all([
     db
       .from("profiles")
       .select("email")
       .eq("id", agreement.kinglancer_id)
       .maybeSingle(),
-    db
-      .from("organisations")
-      .select("email")
-      .eq("id", agreement.organisation_id)
-      .maybeSingle(),
+    getOrgOwner(agreement.organisation_id),
   ]);
-  for (const email of [kinglancer?.email, org?.email]) {
-    if (email) {
-      void notifyPlacementEnded({ toEmail: email, placementTitle }).catch(
-        () => {},
-      );
-    }
+  void notifyPlacementEnded({
+    recipientId: agreement.kinglancer_id,
+    recipientEmail: kinglancer?.email ?? undefined,
+    placementTitle,
+    agreementId,
+  }).catch(() => {});
+  if (owner) {
+    void notifyPlacementEnded({
+      recipientId: owner.userId,
+      recipientEmail: owner.email ?? undefined,
+      placementTitle,
+      agreementId,
+    }).catch(() => {});
   }
 
   return NextResponse.json({ ok: true });
+}
+
+/** The org owner's user id + email, for notifications. */
+async function getOrgOwner(
+  organisationId: string,
+): Promise<{ userId: string; email: string | null } | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("organisation_members")
+    .select("user_id, profiles:profiles!user_id(email)")
+    .eq("organisation_id", organisationId)
+    .eq("role", "owner")
+    .maybeSingle();
+  if (!data?.user_id) return null;
+  const p = (
+    data as unknown as {
+      profiles: { email: string | null }[] | { email: string | null } | null;
+    }
+  ).profiles;
+  const email = Array.isArray(p) ? (p[0]?.email ?? null) : (p?.email ?? null);
+  return { userId: data.user_id as string, email };
 }

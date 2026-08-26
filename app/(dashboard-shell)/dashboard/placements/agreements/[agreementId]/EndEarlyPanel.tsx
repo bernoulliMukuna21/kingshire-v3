@@ -28,6 +28,10 @@ export default function EndEarlyPanel({
     action: "propose" | "confirm" | "decline",
     withReason = false,
   ) {
+    if (action === "propose" && reason.trim().length < 5) {
+      setError("Please give a reason for ending early (at least 5 characters).");
+      return;
+    }
     setBusy(action);
     setError(null);
     const res = await fetch(`/api/placements/agreements/${agreementId}/end`, {
@@ -137,7 +141,7 @@ export default function EndEarlyPanel({
               rows={2}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Reason (optional)"
+              placeholder="Reason (required)"
               maxLength={2000}
             />
             <div className="flex gap-3">

@@ -10,29 +10,13 @@ import {
   activeParticipantCountsByPlacement,
   listOrganisationPlacements,
 } from "@/lib/db/placements";
-import { placementWorkModeSummary } from "@/lib/placements";
+import { placementWorkModeSummary, placementStatusPill } from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import JobsTabBar from "@/components/dashboard/JobsTabBar";
 import OrganisationWorkspaceHeader from "../OrganisationWorkspaceHeader";
 import PlacementActions from "./PlacementActions";
-
-const STATUS_LABEL: Record<string, string> = {
-  draft: "Draft",
-  pending_review: "In review",
-  open: "Open",
-  closed: "Ended",
-  cancelled: "Ended",
-};
-
-const STATUS_CLASS: Record<string, string> = {
-  draft: "bg-slate-100 text-slate-600",
-  pending_review: "bg-amber-100 text-amber-700",
-  open: "bg-emerald-100 text-emerald-700",
-  closed: "bg-slate-100 text-slate-500",
-  cancelled: "bg-slate-100 text-slate-500",
-};
 
 // ── Tab definitions ────────────────────────────────────────
 
@@ -140,47 +124,49 @@ export default async function OrganisationPlacementsPage({
         />
       ) : (
         <div className="space-y-3">
-          {placements.map((p) => (
-            <Card
-              key={p.id}
-              className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Link
-                    href={`/dashboard/organisations/${id}/placements/${p.id}`}
-                    className="truncate font-bold text-slate-950 hover:text-blue-700"
-                  >
-                    {p.title}
-                  </Link>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                      STATUS_CLASS[p.status] ?? "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {STATUS_LABEL[p.status] ?? p.status}
-                  </span>
-                  {(activeCounts[p.id] ?? 0) > 0 && (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                      {activeCounts[p.id]} active
+          {placements.map((p) => {
+            const activeCount = activeCounts[p.id] ?? 0;
+            const pill = placementStatusPill(p.status, activeCount);
+            return (
+              <Card
+                key={p.id}
+                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/dashboard/organisations/${id}/placements/${p.id}`}
+                      className="truncate font-bold text-slate-950 hover:text-blue-700"
+                    >
+                      {p.title}
+                    </Link>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${pill.className}`}
+                    >
+                      {pill.label}
                     </span>
-                  )}
+                    {activeCount > 0 && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                        {activeCount} active
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {p.weekly_hours}h/week · {p.duration_weeks} weeks ·{" "}
+                    {placementWorkModeSummary(p)}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  {p.weekly_hours}h/week · {p.duration_weeks} weeks ·{" "}
-                  {placementWorkModeSummary(p)}
-                </p>
-              </div>
-              <PlacementActions
-                organisationId={id}
-                placementId={p.id}
-                status={p.status}
-                canDelete={
-                  membership.role === "owner" || membership.role === "admin"
-                }
-              />
-            </Card>
-          ))}
+                <PlacementActions
+                  organisationId={id}
+                  placementId={p.id}
+                  status={p.status}
+                  canDelete={
+                    membership.role === "owner" || membership.role === "admin"
+                  }
+                />
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

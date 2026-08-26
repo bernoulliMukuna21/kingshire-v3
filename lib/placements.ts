@@ -147,6 +147,36 @@ export class PlacementError extends Error {
 }
 
 export const MAX_PLACEMENT_WEEKLY_HOURS = 20;
+
+/**
+ * Status pill for a placement, factoring in whether participants are still
+ * active. A closed/cancelled placement that still has active participants
+ * reads as "No longer taking applicants" (ongoing) rather than "Ended".
+ */
+export function placementStatusPill(
+  status: string,
+  activeCount: number,
+): { label: string; className: string } {
+  if (status === "cancelled" || status === "closed") {
+    return activeCount > 0
+      ? {
+          label: "No longer taking applicants",
+          className: "bg-amber-100 text-amber-700",
+        }
+      : { label: "Ended", className: "bg-slate-100 text-slate-500" };
+  }
+  const map: Record<string, { label: string; className: string }> = {
+    draft: { label: "Draft", className: "bg-slate-100 text-slate-600" },
+    pending_review: {
+      label: "In review",
+      className: "bg-amber-100 text-amber-700",
+    },
+    open: { label: "Open", className: "bg-emerald-100 text-emerald-700" },
+  };
+  return (
+    map[status] ?? { label: status, className: "bg-slate-100 text-slate-600" }
+  );
+}
 export const MAX_PLACEMENT_DURATION_WEEKS = 26;
 
 function trimmed(value: unknown) {
