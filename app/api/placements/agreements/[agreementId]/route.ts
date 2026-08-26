@@ -4,6 +4,7 @@ import {
   activateAgreement,
   getAgreement,
   markAgreementPendingFunding,
+  setAgreementArchivedByKinglancer,
   updateAgreementStatus,
 } from "@/lib/db/placements";
 import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
@@ -32,7 +33,7 @@ export async function PATCH(
     );
   }
   const action = (body as { action?: unknown }).action;
-  if (action !== "accept" && action !== "decline") {
+  if (action !== "accept" && action !== "decline" && action !== "archive") {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   }
 
@@ -43,6 +44,19 @@ export async function PATCH(
       { status: 404 },
     );
   }
+
+  if (action === "archive") {
+    // Hides a finished agreement from the Kinglancer's list only.
+    if (agreement.status !== "completed" && agreement.status !== "cancelled") {
+      return NextResponse.json(
+        { error: "Only finished placements can be hidden." },
+        { status: 409 },
+      );
+    }
+    await setAgreementArchivedByKinglancer(agreementId, user.id);
+    return NextResponse.json({ ok: true });
+  }
+
   if (agreement.status !== "pending_acceptance") {
     return NextResponse.json(
       { error: "This agreement can no longer be changed." },

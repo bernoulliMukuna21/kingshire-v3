@@ -15,10 +15,11 @@ import {
   deletePlacement,
   getOrganisationPlacement,
   placementDeletionBlocker,
+  setPlacementArchived,
   updatePlacementStatus,
 } from "@/lib/db/placements";
 
-const ACTIONS = ["publish", "close", "cancel"] as const;
+const ACTIONS = ["publish", "close", "cancel", "archive"] as const;
 type Action = (typeof ACTIONS)[number];
 
 export async function PATCH(
@@ -125,6 +126,19 @@ export async function PATCH(
     }
     const updated = await updatePlacementStatus(placementId, id, "closed");
     return NextResponse.json({ placement: updated });
+  }
+
+  if (action === "archive") {
+    // Hides the placement from the org's lists only; the Kinglancer's side and
+    // all history are untouched. Only for wound-down placements.
+    if (placement.status !== "cancelled" && placement.status !== "closed") {
+      return NextResponse.json(
+        { error: "Only cancelled or closed placements can be hidden." },
+        { status: 409 },
+      );
+    }
+    await setPlacementArchived(placementId, id, true);
+    return NextResponse.json({ ok: true });
   }
 
   // cancel

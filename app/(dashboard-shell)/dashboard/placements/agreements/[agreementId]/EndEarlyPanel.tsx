@@ -19,15 +19,15 @@ export default function EndEarlyPanel({
   const router = useRouter();
   const [proposing, setProposing] = useState(false);
   const [reason, setReason] = useState("");
-  const [busy, setBusy] = useState<"propose" | "confirm" | "decline" | null>(
-    null,
-  );
+  const [busy, setBusy] = useState<
+    "propose" | "confirm" | "decline" | "escalate" | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
 
   const wordCount = reason.trim().split(/\s+/).filter(Boolean).length;
 
   async function send(
-    action: "propose" | "confirm" | "decline",
+    action: "propose" | "confirm" | "decline" | "escalate",
     withReason = false,
   ) {
     if (action === "propose" && wordCount < 20) {
@@ -75,7 +75,7 @@ export default function EndEarlyPanel({
             issued for an early end.
           </p>
           {err}
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
             <button
               type="button"
               onClick={() => send("decline")}
@@ -93,6 +93,16 @@ export default function EndEarlyPanel({
               {busy === "confirm" ? "Ending…" : "Confirm & end"}
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => send("escalate")}
+            disabled={busy !== null}
+            className="mt-3 text-xs font-bold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline disabled:opacity-50"
+          >
+            {busy === "escalate"
+              ? "Contacting KingsHire…"
+              : "Can't agree? Ask KingsHire to decide"}
+          </button>
         </div>
       </section>
     );
@@ -111,14 +121,26 @@ export default function EndEarlyPanel({
             other party confirms.
           </p>
           {err}
-          <button
-            type="button"
-            onClick={() => send("decline")}
-            disabled={busy !== null}
-            className="mt-3 text-xs font-bold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline disabled:opacity-50"
-          >
-            Withdraw request
-          </button>
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              onClick={() => send("decline")}
+              disabled={busy !== null}
+              className="text-xs font-bold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline disabled:opacity-50"
+            >
+              Withdraw request
+            </button>
+            <button
+              type="button"
+              onClick={() => send("escalate")}
+              disabled={busy !== null}
+              className="text-xs font-bold text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline disabled:opacity-50"
+            >
+              {busy === "escalate"
+                ? "Contacting KingsHire…"
+                : "No response? Ask KingsHire to decide"}
+            </button>
+          </div>
         </div>
       </section>
     );

@@ -1,7 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 import { calculateFees } from "@/lib/stripe";
-import { monthlyPaymentCount } from "@/lib/placements";
+import { placementMonthlyAmounts } from "@/lib/placements";
 import type { PlacementAgreementRow } from "@/lib/db/placements";
 
 export type PlacementPaymentRow =
@@ -52,21 +52,25 @@ export async function ensurePaymentSchedule(
     return existing;
   }
 
-  const amount = Number(agreement.monthly_amount);
-  const { platformFeeClient, platformFeeKinglancer } = calculateFees(amount);
-  const months = monthlyPaymentCount(agreement.duration_weeks);
+  const amounts = placementMonthlyAmounts(
+    agreement.duration_weeks,
+    Number(agreement.monthly_amount),
+  );
   const anchor = new Date();
-  const rows = Array.from({ length: months }, (_, i) => ({
-    agreement_id: agreement.id,
-    organisation_id: agreement.organisation_id,
-    kinglancer_id: agreement.kinglancer_id,
-    period_index: i + 1,
-    due_date: addMonths(anchor, i).toISOString().slice(0, 10),
-    amount,
-    platform_fee_client: platformFeeClient,
-    platform_fee_kinglancer: platformFeeKinglancer,
-    status: "due" as const,
-  }));
+  const rows = amounts.map((amt, i) => {
+    const { platformFeeClient, platformFeeKinglancer } = calculateFees(amt);
+    return {
+      agreement_id: agreement.id,
+      organisation_id: agreement.organisation_id,
+      kinglancer_id: agreement.kinglancer_id,
+      period_index: i + 1,
+      due_date: addMonths(anchor, i).toISOString().slice(0, 10),
+      amount: amt,
+      platform_fee_client: platformFeeClient,
+      platform_fee_kinglancer: platformFeeKinglancer,
+      status: "due" as const,
+    };
+  });
 
   const db = createServiceClient();
   const { data, error } = await db

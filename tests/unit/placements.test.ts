@@ -6,6 +6,7 @@ import {
   placementNeedsManualReview,
   managedMonthlyAmount,
   monthlyPaymentCount,
+  placementMonthlyAmounts,
   derivePlacementView,
   PlacementError,
 } from "@/lib/placements";
@@ -49,13 +50,15 @@ describe("derivePlacementView", () => {
     expect(view.actions[0].label).toBe("Stop taking applicants");
   });
 
-  it("a wound-down placement can be reposted and deleted (owner/admin)", () => {
+  it("a wound-down placement can be reposted, hidden and deleted (owner/admin)", () => {
     expect(kinds("cancelled", { activeCount: 0, canDelete: true })).toEqual([
       "repost",
+      "archive",
       "delete",
     ]);
     expect(kinds("cancelled", { activeCount: 0, canDelete: false })).toEqual([
       "repost",
+      "archive",
     ]);
   });
 
@@ -291,5 +294,28 @@ describe("monthlyPaymentCount", () => {
   it("scales with duration", () => {
     expect(monthlyPaymentCount(8)).toBe(2);
     expect(monthlyPaymentCount(26)).toBe(6);
+  });
+});
+
+describe("placementMonthlyAmounts", () => {
+  it("bills whole months at the monthly rate", () => {
+    const a = placementMonthlyAmounts(26, 500);
+    expect(a).toHaveLength(6);
+    expect(a.slice(0, 5)).toEqual([500, 500, 500, 500, 500]);
+  });
+
+  it("prorates the final part-month", () => {
+    const a = placementMonthlyAmounts(5, 500); // ~1.15 months
+    expect(a).toHaveLength(2);
+    expect(a[0]).toBe(500);
+    expect(a[1]).toBeGreaterThan(60);
+    expect(a[1]).toBeLessThan(90);
+  });
+
+  it("bills a sub-month placement entirely pro-rata", () => {
+    const a = placementMonthlyAmounts(2, 500); // ~0.46 months
+    expect(a).toHaveLength(1);
+    expect(a[0]).toBeGreaterThan(200);
+    expect(a[0]).toBeLessThan(260);
   });
 });

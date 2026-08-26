@@ -101,7 +101,35 @@ export function managedMonthlyAmount(placement: {
 
 // Number of monthly payments a placement of the given duration spans.
 export function monthlyPaymentCount(durationWeeks: number): number {
-  return Math.max(1, Math.round(durationWeeks / 4.345));
+  return placementBillingFractions(durationWeeks).length;
+}
+
+const WEEKS_PER_MONTH = 4.345;
+// Ignore a trailing part-month shorter than ~4 days rather than bill a sliver.
+const PRORATE_MIN = 0.15;
+
+/** Fractions of a month to bill: whole months (1) plus a prorated tail. */
+function placementBillingFractions(durationWeeks: number): number[] {
+  const totalMonths = durationWeeks / WEEKS_PER_MONTH;
+  const fullMonths = Math.floor(totalMonths);
+  const remainder = totalMonths - fullMonths;
+  const fractions = Array.from({ length: fullMonths }, () => 1);
+  if (remainder >= PRORATE_MIN) fractions.push(remainder);
+  if (fractions.length === 0) fractions.push(remainder > 0 ? remainder : 1);
+  return fractions;
+}
+
+/**
+ * Monthly charge amounts (£) for a managed placement: full months at the
+ * monthly rate, with the final part-month billed pro-rata.
+ */
+export function placementMonthlyAmounts(
+  durationWeeks: number,
+  monthlyAmount: number,
+): number[] {
+  return placementBillingFractions(durationWeeks).map((f) =>
+    f === 1 ? monthlyAmount : Math.round(monthlyAmount * f * 100) / 100,
+  );
 }
 
 export function placementWorkModeSummary(p: {
@@ -183,13 +211,18 @@ export function placementStatusPill(
 // the management actions available. All UI reads from here, so adding/altering
 // a stage happens in one place instead of scattered `status !== x` checks.
 
-export type PlacementActionKind = "publish" | "cancel" | "delete" | "repost";
+export type PlacementActionKind =
+  | "publish"
+  | "cancel"
+  | "delete"
+  | "repost"
+  | "archive";
 
 export interface PlacementActionSpec {
   kind: PlacementActionKind;
   label: string;
   tone: "primary" | "neutral" | "danger";
-  icon: "rocket" | "lock" | "trash" | "repost";
+  icon: "rocket" | "lock" | "trash" | "repost" | "archive";
   confirm?: {
     title: string;
     bullets?: string[];
@@ -228,6 +261,21 @@ const DELETE: PlacementActionSpec = {
     bullets: ["This permanently removes the placement."],
     confirmLabel: "Delete placement",
     danger: true,
+  },
+};
+
+const ARCHIVE: PlacementActionSpec = {
+  kind: "archive",
+  label: "Hide from my list",
+  tone: "neutral",
+  icon: "archive",
+  confirm: {
+    title: "Hide this placement?",
+    bullets: [
+      "Removes it from your organisation's lists.",
+      "It stays on the Kinglancer's side and keeps all its history.",
+    ],
+    confirmLabel: "Hide placement",
   },
 };
 
@@ -285,9 +333,10 @@ export function derivePlacementView(
     case "closed":
     case "cancelled":
       // Only a fully wound-down placement (no active participants) can be
-      // reposted or deleted.
+      // reposted, hidden or deleted.
       if (ctx.activeCount === 0) {
         actions.push(REPOST);
+        actions.push(ARCHIVE);
         if (ctx.canDelete) actions.push(DELETE);
       }
       break;

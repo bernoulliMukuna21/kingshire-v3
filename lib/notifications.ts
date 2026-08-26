@@ -523,6 +523,59 @@ export async function notifyAdminPlacementDispute({
   });
 }
 
+export async function notifyPlacementEndDeclined({
+  recipientId,
+  recipientEmail,
+  placementTitle,
+  declinedBy,
+  agreementId,
+}: {
+  recipientId: string;
+  recipientEmail?: string;
+  placementTitle: string;
+  declinedBy: string;
+  agreementId: string;
+}) {
+  await notify({
+    userId: recipientId,
+    type: "dispute_raised", // reuse existing type — no schema change needed
+    title: "Your early-end request was declined",
+    body: `${declinedBy} declined ending "${placementTitle}" early, so it continues. If you can't reach agreement, you can ask KingsHire to step in from the placement.`,
+    link: `/dashboard/placements/agreements/${agreementId}`,
+    email: recipientEmail
+      ? {
+          to: recipientEmail,
+          subject: `Early-end declined: ${placementTitle}`,
+          ctaLabel: "Open placement →",
+        }
+      : undefined,
+  });
+}
+
+export async function notifyAdminPlacementEndDispute({
+  placementTitle,
+  organisationName,
+  raisedBy,
+  reason,
+}: {
+  placementTitle: string;
+  organisationName: string;
+  raisedBy: string;
+  reason: string;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
+  const adminEmail =
+    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  await sendEmail({
+    to: adminEmail,
+    subject: `[Placement early-end dispute] ${placementTitle}`,
+    title: "An early-end disagreement needs mediation",
+    body: `${raisedBy} asked KingsHire to settle a disagreement about ending "${placementTitle}" (${organisationName}) early. The placement is still active and any funded month is held in escrow.\n\nContext:\n${reason || "(no reason given)"}`,
+    link: `${appUrl}/admin/placements`,
+    ctaLabel: "Open admin →",
+  });
+}
+
 export async function notifyPlacementEndProposed({
   recipientId,
   recipientEmail,

@@ -14,10 +14,12 @@ import { getOrganisationName } from "@/infrastructure/supabase/queries/organisat
 import {
   notifyPlacementEndProposed,
   notifyPlacementEnded,
+  notifyPlacementEndDeclined,
+  notifyAdminPlacementEndDispute,
 } from "@/lib/notifications";
 
 const schema = z.object({
-  action: z.enum(["propose", "confirm", "decline"]),
+  action: z.enum(["propose", "confirm", "decline", "escalate"]),
   reason: z.string().trim().max(2000).optional(),
 });
 
@@ -136,6 +138,79 @@ export async function POST(
       );
     }
     await clearAgreementEndRequest(agreementId);
+
+    // Let the proposer know it was declined (and that they can escalate).
+    const placementTitle =
+      (await getPlacementTitle(agreement.placement_id)) ?? "the placement";
+    if (proposerIsKinglancer) {
+      const { data: kinglancer } = await db
+        .from("profiles")
+        .select("email")
+        .eq("id", agreement.kinglancer_id)
+        .maybeSingle();
+      void notifyPlacementEndDeclined({
+        recipientId: agreement.kinglancer_id,
+        recipientEmail: kinglancer?.email ?? undefined,
+        placementTitle,
+        declinedBy: "The organisation",
+        agreementId,
+      }).catch(() => {});
+    } else {
+      const owner = await getOrgOwner(agreement.organisation_id);
+      if (owner) {
+        void notifyPlacementEndDeclined({
+          recipientId: owner.userId,
+          recipientEmail: owner.email ?? undefined,
+          placementTitle,
+          declinedBy: "The Kinglancer",
+          agreementId,
+        }).catch(() => {});
+      }
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  if (parsed.data.action === "escalate") {
+    // Either party can pull KingsHire in to settle an early-end disagreement.
+    // The placement stays active and any funded month stays in escrow.
+    const [placementTitle, organisationName] = await Promise.all([
+      getPlacementTitle(agreement.placement_id),
+      getOrganisationName(agreement.organisation_id),
+    ]);
+    void notifyAdminPlacementEndDispute({
+      placementTitle: placementTitle ?? "a placement",
+      organisationName: organisationName ?? "an organisation",
+      raisedBy: isKinglancer ? "The Kinglancer" : "The organisation",
+      reason: parsed.data.reason ?? agreement.end_reason ?? "",
+    }).catch((err) =>
+      console.error("[placement end] escalate notify failed:", err),
+    );
+    // Notify the other party that it's been escalated.
+    if (isKinglancer) {
+      const owner = await getOrgOwner(agreement.organisation_id);
+      if (owner) {
+        void notifyPlacementEndProposed({
+          recipientId: owner.userId,
+          recipientEmail: owner.email ?? undefined,
+          placementTitle: placementTitle ?? "your placement",
+          proposedBy: "KingsHire (escalated by the Kinglancer)",
+          agreementId,
+        }).catch(() => {});
+      }
+    } else {
+      const { data: kinglancer } = await db
+        .from("profiles")
+        .select("email")
+        .eq("id", agreement.kinglancer_id)
+        .maybeSingle();
+      void notifyPlacementEndProposed({
+        recipientId: agreement.kinglancer_id,
+        recipientEmail: kinglancer?.email ?? undefined,
+        placementTitle: placementTitle ?? "your placement",
+        proposedBy: "KingsHire (escalated by the organisation)",
+        agreementId,
+      }).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   }
 

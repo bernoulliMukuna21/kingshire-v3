@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Lock, Rocket, Trash2, RotateCcw } from "lucide-react";
+import { Lock, Rocket, Trash2, RotateCcw, Archive } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
 import type { PlacementActionSpec } from "@/lib/placements";
 
@@ -12,6 +12,7 @@ const ICONS = {
   lock: Lock,
   trash: Trash2,
   repost: RotateCcw,
+  archive: Archive,
 } as const;
 
 const TONES = {
@@ -57,7 +58,7 @@ export default function PlacementActions({
         router.refresh();
         return;
       }
-      const action = spec.kind === "publish" ? "publish" : "cancel";
+      const action = spec.kind === "publish" ? "publish" : spec.kind;
       const res = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -69,6 +70,9 @@ export default function PlacementActions({
         return;
       }
       setConfirming(null);
+      if (spec.kind === "archive") {
+        router.push(`/dashboard/organisations/${organisationId}/placements`);
+      }
       router.refresh();
     } finally {
       setBusy(null);

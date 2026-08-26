@@ -28,11 +28,14 @@ export default function ApplicantActions({
   const [error, setError] = useState<string | null>(null);
   const [needsPayment, setNeedsPayment] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [accepted, setAccepted] = useState(false);
 
   async function run(action: "accept" | "reject") {
     setBusy(action);
     setError(null);
     setNeedsPayment(false);
+    // Optimistically show the offer as sent — accept is fast (no Stripe call).
+    if (action === "accept") setAccepted(true);
     const res = await fetch(
       `/api/organisations/${organisationId}/placements/${placementId}/applications/${applicationId}`,
       {
@@ -46,11 +49,12 @@ export default function ApplicantActions({
       setError(data.error ?? "Something went wrong.");
       // 402 = the org has no reusable card yet; offer a route to fix it.
       setNeedsPayment(res.status === 402);
+      setAccepted(false);
       setBusy(null);
       return;
     }
-    // Keep the busy state until the refresh removes this applicant from the
-    // list (avoids the button flicking back to 'Accept' mid-update).
+    // Keep the busy/accepted state until the refresh removes this applicant
+    // from the list (avoids the row flicking back mid-update).
     router.refresh();
   }
 
@@ -97,20 +101,28 @@ export default function ApplicantActions({
           </div>
         </Link>
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            onClick={() => run("accept")}
-            disabled={busy !== null}
-            className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-          >
-            {busy === "accept" ? "Accepting…" : "Accept"}
-          </button>
-          <button
-            onClick={() => run("reject")}
-            disabled={busy !== null}
-            className="rounded-xl px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 disabled:opacity-50"
-          >
-            Reject
-          </button>
+          {accepted ? (
+            <span className="rounded-xl bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+              Selected ✓
+            </span>
+          ) : (
+            <>
+              <button
+                onClick={() => run("accept")}
+                disabled={busy !== null}
+                className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {busy === "accept" ? "Accepting…" : "Accept"}
+              </button>
+              <button
+                onClick={() => run("reject")}
+                disabled={busy !== null}
+                className="rounded-xl px-3 py-1.5 text-xs font-bold text-slate-500 hover:bg-slate-100 disabled:opacity-50"
+              >
+                Reject
+              </button>
+            </>
+          )}
         </div>
       </div>
 

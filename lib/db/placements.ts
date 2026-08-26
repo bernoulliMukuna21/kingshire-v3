@@ -78,6 +78,7 @@ export async function listOrganisationPlacements(
     .from("placements")
     .select("*")
     .eq("organisation_id", organisationId)
+    .is("archived_at", null)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as PlacementRow[];
@@ -216,6 +217,35 @@ export async function activeParticipantCountsByPlacement(
 }
 
 /** Permanently delete a placement (guarded by the caller). */
+/** Hides (or unhides) a placement from the organisation's own lists. */
+export async function setPlacementArchived(
+  placementId: string,
+  organisationId: string,
+  archived: boolean,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placements")
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq("id", placementId)
+    .eq("organisation_id", organisationId);
+  if (error) throw error;
+}
+
+/** Hides a finished agreement from the Kinglancer's own list. */
+export async function setAgreementArchivedByKinglancer(
+  agreementId: string,
+  kinglancerId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_agreements")
+    .update({ kinglancer_archived_at: new Date().toISOString() })
+    .eq("id", agreementId)
+    .eq("kinglancer_id", kinglancerId);
+  if (error) throw error;
+}
+
 export async function deletePlacement(
   placementId: string,
   organisationId: string,
@@ -525,6 +555,7 @@ export async function listKinglancerAgreements(
     .from("placement_agreements")
     .select("*, placement:placements(title, status)")
     .eq("kinglancer_id", kinglancerId)
+    .is("kinglancer_archived_at", null)
     .order("created_at", { ascending: false });
   return (data ?? []) as unknown as KinglancerAgreement[];
 }

@@ -351,6 +351,7 @@ export type Database = {
           status: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review: boolean;
           payment_mode: "managed" | "direct";
+          archived_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -377,6 +378,7 @@ export type Database = {
           status?: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review?: boolean;
           payment_mode?: "managed" | "direct";
+          archived_at?: string | null;
         };
         Update: {
           title?: string;
@@ -398,6 +400,7 @@ export type Database = {
           status?: "draft" | "pending_review" | "open" | "closed" | "cancelled";
           requires_manual_review?: boolean;
           payment_mode?: "managed" | "direct";
+          archived_at?: string | null;
         };
         Relationships: [];
       };
@@ -453,6 +456,7 @@ export type Database = {
           end_requested_by: string | null;
           end_requested_at: string | null;
           end_reason: string | null;
+          kinglancer_archived_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -481,6 +485,7 @@ export type Database = {
           end_requested_by?: string | null;
           end_requested_at?: string | null;
           end_reason?: string | null;
+          kinglancer_archived_at?: string | null;
         };
         Update: {
           version?: number;
@@ -503,6 +508,7 @@ export type Database = {
           end_requested_by?: string | null;
           end_requested_at?: string | null;
           end_reason?: string | null;
+          kinglancer_archived_at?: string | null;
         };
         Relationships: [];
       };

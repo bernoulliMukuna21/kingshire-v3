@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import AgreementActions from "./AgreementActions";
+import HideAgreementButton from "./HideAgreementButton";
 
 export default async function KinglancerPlacementsPage() {
   const { user, profile } = await getDashboardContext();
@@ -148,18 +149,25 @@ export default async function KinglancerPlacementsPage() {
           </h2>
           <Card className="divide-y divide-slate-100 overflow-hidden">
             {completed.map((a) => (
-              <Link
+              <div
                 key={a.id}
-                href={`/dashboard/placements/agreements/${a.id}`}
-                className="flex items-center justify-between p-4 hover:bg-slate-50"
+                className="flex items-center justify-between gap-3 p-4"
               >
-                <p className="font-bold text-slate-950">
-                  {a.placement?.title ?? "Placement"}
-                </p>
-                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
-                  Completed
-                </span>
-              </Link>
+                <Link
+                  href={`/dashboard/placements/agreements/${a.id}`}
+                  className="min-w-0 flex-1 hover:underline"
+                >
+                  <p className="truncate font-bold text-slate-950">
+                    {a.placement?.title ?? "Placement"}
+                  </p>
+                </Link>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500">
+                    Completed
+                  </span>
+                  <HideAgreementButton agreementId={a.id} />
+                </div>
+              </div>
             ))}
           </Card>
         </section>
