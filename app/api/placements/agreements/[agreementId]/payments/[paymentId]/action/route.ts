@@ -8,7 +8,10 @@ import {
 import { firePlacementPayout } from "@/lib/placement-payouts";
 import { getPlacementTitle } from "@/lib/db/placements";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
-import { notifyAdminPlacementDispute } from "@/lib/notifications";
+import {
+  notifyAdminPlacementDispute,
+  notifyPlacementPayoutSetupNeeded,
+} from "@/lib/notifications";
 
 const schema = z.object({
   action: z.enum(["approve", "dispute"]),
@@ -54,8 +57,25 @@ export async function POST(
 
   if (parsed.data.action === "approve") {
     // Release the held escrow to the Kinglancer now, ahead of month-end.
-    await firePlacementPayout(payment);
-    return NextResponse.json({ ok: true });
+    const result = await firePlacementPayout(payment);
+    if (result === "pending_onboarding") {
+      const placementTitle = await getPlacementTitle(
+        access.agreement.placement_id,
+      );
+      void notifyPlacementPayoutSetupNeeded({
+        kinglancerId: payment.kinglancer_id,
+        placementTitle: placementTitle ?? "your placement",
+      }).catch((err) =>
+        console.error("[placement payout] setup-needed notify failed:", err),
+      );
+      return NextResponse.json({
+        ok: true,
+        released: false,
+        message:
+          "The Kinglancer hasn't set up payouts yet, so the money stays safely in escrow. We've reminded them — it's sent automatically once they finish.",
+      });
+    }
+    return NextResponse.json({ ok: true, released: true });
   }
 
   // dispute — hold for admin resolution.

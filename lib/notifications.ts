@@ -621,6 +621,35 @@ export async function notifyPlacementReadyToFund({
   });
 }
 
+export async function notifyPlacementPayoutSetupNeeded({
+  kinglancerId,
+  placementTitle,
+}: {
+  kinglancerId: string;
+  placementTitle: string;
+}) {
+  const db = createServiceClient();
+  const { data: profile } = await db
+    .from("profiles")
+    .select("email")
+    .eq("id", kinglancerId)
+    .maybeSingle();
+  await notify({
+    userId: kinglancerId,
+    type: "payout_ready",
+    title: "Set up payouts to receive your placement pay",
+    body: `The organisation released your first month for "${placementTitle}", but it's held safely until you set up payouts. Connect your bank account to receive it — it takes less than 2 minutes.`,
+    link: "/dashboard/kinglancer/payouts",
+    email: profile?.email
+      ? {
+          to: profile.email,
+          subject: `Set up payouts to receive your "${placementTitle}" pay`,
+          ctaLabel: "Set up payouts →",
+        }
+      : undefined,
+  });
+}
+
 export async function notifyPayoutClaimReady({
   kinglancerId,
   kinglancerEmail,

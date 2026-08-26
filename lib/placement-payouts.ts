@@ -59,13 +59,19 @@ export async function fulfillPlacementPayment(
 
 /**
  * Transfers the Kinglancer's net (amount − fee) to their connected account.
- * No-op if not onboarded (stays 'held' until they complete onboarding) or if
- * a transfer already exists.
+ * Returns why nothing moved when it can't (e.g. they haven't set up payouts),
+ * so callers can give feedback instead of silently no-oping.
  */
+export type PlacementPayoutResult =
+  | "released"
+  | "pending_onboarding"
+  | "skipped"
+  | "already_transferred";
+
 export async function firePlacementPayout(
   payment: PlacementPaymentRow,
-): Promise<void> {
-  if (payment.stripe_transfer_id) return;
+): Promise<PlacementPayoutResult> {
+  if (payment.stripe_transfer_id) return "already_transferred";
 
   const db = createServiceClient();
   const { data: profile } = await db
@@ -75,13 +81,13 @@ export async function firePlacementPayout(
     .single();
 
   if (!profile?.stripe_onboarding_complete || !profile.stripe_account_id) {
-    return;
+    return "pending_onboarding";
   }
 
   const netPence = Math.round(
     (Number(payment.amount) - Number(payment.platform_fee_kinglancer)) * 100,
   );
-  if (netPence <= 0) return;
+  if (netPence <= 0) return "skipped";
 
   // Pull from the specific charge (separate charges + transfers), as jobs do.
   let sourceTransaction: string | undefined;
@@ -121,6 +127,7 @@ export async function firePlacementPayout(
     stripe_transfer_id: transfer.id,
     released_at: new Date().toISOString(),
   });
+  return "released";
 }
 
 /** Fire any released-but-untransferred payouts for a Kinglancer
@@ -172,10 +179,11 @@ export async function processPlacementReleases(): Promise<{
     const periodEndMs = placementPeriodEnd(payment.due_date).getTime();
 
     if (now >= periodEndMs) {
-      await firePlacementPayout(payment).catch((err) =>
-        console.error(`[placement release] failed for ${payment.id}:`, err),
-      );
-      released += 1;
+      const result = await firePlacementPayout(payment).catch((err) => {
+        console.error(`[placement release] failed for ${payment.id}:`, err);
+        return "skipped" as const;
+      });
+      if (result === "released") released += 1;
       continue;
     }
 

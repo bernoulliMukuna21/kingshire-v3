@@ -213,13 +213,22 @@ export default async function OrganisationPlacementDetailPage({
                         >
                           {agreementStatusPill(ag.status).label}
                         </span>
+                        {ag.status === "pending_funding" && (
+                          <p className="mt-1 text-xs font-semibold text-blue-700">
+                            Not started — fund the first month to begin.
+                          </p>
+                        )}
                       </div>
                     </Link>
                     <Link
                       href={`/dashboard/placements/agreements/${ag.id}`}
                       className="shrink-0 text-xs font-bold text-blue-600 hover:underline"
                     >
-                      {ag.status === "active" ? "Track progress →" : "View →"}
+                      {ag.status === "active"
+                        ? "Track progress →"
+                        : ag.status === "pending_funding"
+                          ? "Fund to start →"
+                          : "View →"}
                     </Link>
                   </div>
                 ))}
