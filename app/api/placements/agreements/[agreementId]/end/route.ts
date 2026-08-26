@@ -69,10 +69,10 @@ export async function POST(
   }
   if (
     parsed.data.action === "propose" &&
-    (parsed.data.reason ?? "").trim().length < 5
+    (parsed.data.reason ?? "").trim().split(/\s+/).filter(Boolean).length < 20
   ) {
     return NextResponse.json(
-      { error: "Please give a reason for ending early (at least 5 characters)." },
+      { error: "Please give a reason for ending early (at least 20 words)." },
       { status: 400 },
     );
   }

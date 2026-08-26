@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban, Rocket, Trash2 } from "lucide-react";
+import { Lock, Rocket, Trash2 } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
 
 type Action = "publish" | "close" | "cancel" | "delete";
@@ -88,10 +88,10 @@ export default function PlacementActions({
         <button
           onClick={() => setConfirmingCancel(true)}
           disabled={busy !== null}
-          className={`${btn} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`}
+          className={`${btn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-50`}
         >
-          <Ban size={15} />
-          End placement
+          <Lock size={15} />
+          Stop taking applicants
         </button>
       )}
       {canDelete && (status === "cancelled" || status === "closed") && (
@@ -111,10 +111,10 @@ export default function PlacementActions({
           await run("cancel");
           setConfirmingCancel(false);
         }}
-        title="End this placement?"
+        title="Stop taking new applicants?"
         message={
           <>
-            <p className="mb-2">Ending this placement will:</p>
+            <p className="mb-2">This will:</p>
             <ul className="list-disc space-y-1.5 pl-5">
               <li>
                 Remove it from{" "}
@@ -126,19 +126,18 @@ export default function PlacementActions({
                 offers you&apos;ve sent that haven&apos;t been accepted yet.
               </li>
               <li>
-                Keep anyone{" "}
+                Anyone{" "}
                 <span className="font-bold text-slate-900">already active</span>{" "}
-                going — you still complete them individually.
+                keeps going — you complete or end them individually.
               </li>
             </ul>
-            <p className="mt-2.5 font-bold text-red-600">
-              This can&apos;t be undone — but you can repost it later.
+            <p className="mt-2.5 text-slate-600">
+              You can repost it later to open a fresh intake.
             </p>
           </>
         }
-        confirmLabel="End placement"
+        confirmLabel="Stop taking applicants"
         loading={busy === "cancel"}
-        variant="danger"
         error={error ?? undefined}
       />
       <ConfirmModal

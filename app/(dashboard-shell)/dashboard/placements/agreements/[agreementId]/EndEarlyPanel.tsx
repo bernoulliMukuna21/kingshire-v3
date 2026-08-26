@@ -24,12 +24,14 @@ export default function EndEarlyPanel({
   );
   const [error, setError] = useState<string | null>(null);
 
+  const wordCount = reason.trim().split(/\s+/).filter(Boolean).length;
+
   async function send(
     action: "propose" | "confirm" | "decline",
     withReason = false,
   ) {
-    if (action === "propose" && reason.trim().length < 5) {
-      setError("Please give a reason for ending early (at least 5 characters).");
+    if (action === "propose" && wordCount < 20) {
+      setError("Please give a reason for ending early (at least 20 words).");
       return;
     }
     setBusy(action);
@@ -138,12 +140,19 @@ export default function EndEarlyPanel({
             {err}
             <textarea
               className="w-full resize-none rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={2}
+              rows={3}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Reason (required)"
+              placeholder="Reason (required, at least 20 words)"
               maxLength={2000}
             />
+            <p
+              className={`text-xs ${
+                wordCount >= 20 ? "text-slate-400" : "text-slate-500"
+              }`}
+            >
+              {wordCount}/20 words
+            </p>
             <div className="flex gap-3">
               <button
                 type="button"

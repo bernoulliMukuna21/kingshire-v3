@@ -274,7 +274,7 @@ export default async function AgreementPage({
         </Card>
       </section>
 
-      {isOrgManager && isActive && (
+      {isOrgManager && isActive && !hasEndRequest && (
         <div className="flex justify-end">
           <CompleteAgreementForm
             agreementId={agreementId}
