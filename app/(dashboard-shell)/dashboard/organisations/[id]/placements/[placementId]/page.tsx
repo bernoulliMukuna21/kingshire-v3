@@ -151,33 +151,15 @@ export default async function OrganisationPlacementDetailPage({
                     key={a.id}
                     className="space-y-2 py-4 first:pt-0 last:pb-0"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <Link
-                        href={`/kinglancers/${a.kinglancer_id}`}
-                        className="flex items-center gap-3 hover:underline"
-                      >
-                        <Avatar
-                          name={a.kinglancer?.full_name}
-                          src={a.kinglancer?.avatar_url}
-                          className="h-9 w-9"
-                        />
-                        <div>
-                          <p className="font-bold text-slate-950">
-                            {a.kinglancer?.full_name ?? "Kinglancer"}
-                          </p>
-                          {a.kinglancer?.location && (
-                            <p className="text-xs text-slate-500">
-                              {a.kinglancer.location}
-                            </p>
-                          )}
-                        </div>
-                      </Link>
-                      <ApplicantActions
-                        organisationId={id}
-                        placementId={placementId}
-                        applicationId={a.id}
-                      />
-                    </div>
+                    <ApplicantActions
+                      organisationId={id}
+                      placementId={placementId}
+                      applicationId={a.id}
+                      kinglancerId={a.kinglancer_id}
+                      fullName={a.kinglancer?.full_name ?? null}
+                      avatarUrl={a.kinglancer?.avatar_url ?? null}
+                      location={a.kinglancer?.location ?? null}
+                    />
                     {a.message && (
                       <p className="whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
                         {a.message}
