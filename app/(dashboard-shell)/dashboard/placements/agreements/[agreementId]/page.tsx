@@ -23,6 +23,15 @@ import PaymentReviewButtons from "./PaymentReviewButtons";
 import ReportIssueButton from "./ReportIssueButton";
 import AgreementActions from "@/app/(dashboard-shell)/dashboard/kinglancer/placements/AgreementActions";
 
+function formatPayDate(value: string | null): string {
+  if (!value) return "";
+  return new Date(value).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default async function AgreementPage({
   params,
   searchParams,
@@ -71,9 +80,7 @@ export default async function AgreementPage({
     getOrganisationName(agreement.organisation_id),
     getPlacementTitle(agreement.placement_id),
     listCheckIns(agreementId),
-    view.isManaged
-      ? ensurePaymentSchedule(agreement)
-      : Promise.resolve([]),
+    view.isManaged ? ensurePaymentSchedule(agreement) : Promise.resolve([]),
     placementPromisedReference(agreement.placement_id),
   ]);
 
@@ -254,6 +261,11 @@ export default async function AgreementPage({
                         ? `You pay £${(Number(p.amount) + Number(p.platform_fee_client)).toFixed(2)}`
                         : `You receive £${(Number(p.amount) - Number(p.platform_fee_kinglancer)).toFixed(2)}`}
                     </p>
+                    {p.due_date && (p.status === "due" || p.status === "processing") && (
+                      <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                        To be paid on {formatPayDate(p.due_date)}
+                      </p>
+                    )}
                   </div>
                   {isOrgManager && p.status === "failed" ? (
                     <PayMonthButton
@@ -264,7 +276,9 @@ export default async function AgreementPage({
                     <PaymentReviewButtons
                       agreementId={agreementId}
                       paymentId={p.id}
-                      amount={Number(p.amount) - Number(p.platform_fee_kinglancer)}
+                      amount={
+                        Number(p.amount) - Number(p.platform_fee_kinglancer)
+                      }
                     />
                   ) : (
                     (() => {
@@ -289,7 +303,6 @@ export default async function AgreementPage({
           </p>
         </section>
       )}
-
 
       {isOrgManager && view.canComplete && (
         <div className="flex justify-end">

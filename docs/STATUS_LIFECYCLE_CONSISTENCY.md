@@ -22,19 +22,21 @@ Reference implementations: `lib/placements.ts` (`derivePlacementView`) and
 
 ## Done
 
-| Entity | Module | Notes |
-|---|---|---|
-| Placement (listing) | `lib/placements.ts` → `derivePlacementView` | list + detail read from it; `PlacementActions` is a dumb renderer; unit-tested |
+| Entity              | Module                                                                                               | Notes                                                                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Placement (listing) | `lib/placements.ts` → `derivePlacementView`                                                          | list + detail read from it; `PlacementActions` is a dumb renderer; unit-tested                                          |
 | Placement agreement | `lib/placement-agreements.ts` → `deriveAgreementView`, `agreementStatusPill`, `placementPaymentPill` | agreement page + org participants list read from it; `/complete` guard derives from the same `canComplete`; unit-tested |
-| Job application | `lib/applications.ts` → `applicationStatusPill` | dashboard section + kinglancer jobs card read from it (removed 2 duplicated maps); unit-tested |
-| Tab bars | `lib/tabs.ts` → `resolveTab`, `countTabs`, `statusTabMatcher` | applied to the placements list page; unit-tested |
+| Job application     | `lib/applications.ts` → `applicationStatusPill`                                                      | dashboard section + kinglancer jobs card read from it (removed 2 duplicated maps); unit-tested                          |
+| Tab bars            | `lib/tabs.ts` → `resolveTab`, `countTabs`, `statusTabMatcher`                                        | applied to the placements list page; unit-tested                                                                        |
 
 ## Remaining (ranked by payoff / risk)
 
 ### 1. Jobs — biggest payoff, highest risk (do as its own PR)
+
 The same `STATUS_CONFIG` (`open, in_progress, completed, approved, disputed,
 cancelled`) is re-declared in ~6 files, `TAB_STATUSES` in 3, and there are 50+
 inline `job.status === …` branches. Touches escrow/payment UI.
+
 - `app/(dashboard-shell)/dashboard/client/jobs/[id]/page.tsx` (+ list)
 - `app/(dashboard-shell)/dashboard/kinglancer/jobs/[id]/page.tsx` (+ list)
 - `app/(dashboard-shell)/dashboard/organisations/[id]/jobs/page.tsx`
@@ -45,11 +47,15 @@ inline `job.status === …` branches. Touches escrow/payment UI.
   capabilities. Do with a heavy test pass (escrow paths).
 
 ### 2. Job applications — small, safe
+
 Near-identical `APP_STATUS` / `APP_STATUS_CONFIG` in 2 files.
+
 - ✅ **Done** — `lib/applications.ts` → `applicationStatusPill`.
 
 ### 3. Tab filters — small, safe
+
 `TAB_STATUSES` (tab → statuses) duplicated across jobs (×3) and placements (×1).
+
 - ✅ Shared primitive `lib/tabs.ts` created + applied to the placements page.
 - ⏳ The **jobs** tab bars are NOT yet migrated: the kinglancer jobs page has an
   "applied" tab that counts the applications table (not jobs-by-status), so it
@@ -57,15 +63,18 @@ Near-identical `APP_STATUS` / `APP_STATUS_CONFIG` in 2 files.
   into the Jobs pass below.
 
 ### 4. Direct requests — medium (couple with the Jobs pass)
+
 `direct_request_status` filtering is scattered across action-centre + the three
 job list pages. It's a sub-state of jobs, so fold it into `deriveJobView`.
 
 ## Deliberately left alone (low ROI)
+
 - **Transactions** (`client/transactions/page.tsx`) — one isolated map.
 - **Disputes / verification / subscriptions** — near-binary status, minimal
   branching; centralising adds indirection without payoff.
 
 ## Rules going forward
+
 - To add or change a stage/action for an entity that has a `derive<Entity>View`,
   edit that function **only**. Do not add `status ===` conditionals in pages.
 - New status → label/color goes in the domain module, never inline in a page.

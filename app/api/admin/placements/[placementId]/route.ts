@@ -35,6 +35,8 @@ export async function PATCH(
   if (action !== "approve" && action !== "reject") {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   }
+  const reason =
+    typeof body?.reason === "string" ? body.reason.trim().slice(0, 2000) : "";
 
   const status = action === "approve" ? "open" : "cancelled";
   const changed = await adminReviewPlacement(placementId, status);
@@ -65,6 +67,7 @@ export async function PATCH(
       organisationId: placement.organisation_id,
       placementId,
       approved: action === "approve",
+      reason: reason || undefined,
     }).catch((err) => console.error("[admin/placements] notify failed:", err));
   }
 

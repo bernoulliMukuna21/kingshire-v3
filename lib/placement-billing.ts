@@ -42,8 +42,7 @@ export async function getOrgPaymentContext(
         ["active", "trialing", "past_due"].includes(s.status),
       ) ?? subs.data[0];
     const subPm = usable?.default_payment_method;
-    paymentMethodId =
-      typeof subPm === "string" ? subPm : (subPm?.id ?? null);
+    paymentMethodId = typeof subPm === "string" ? subPm : (subPm?.id ?? null);
   }
 
   if (!paymentMethodId) {

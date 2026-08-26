@@ -123,9 +123,10 @@ export default function PaymentReviewButtons({
         message={
           <>
             This pays the Kinglancer
-            {typeof amount === "number" ? ` £${amount.toFixed(2)}` : ""} for this
-            month <strong>now</strong>, ahead of the month-end release. Only do
-            this once you&apos;re happy with their work — it can&apos;t be undone.
+            {typeof amount === "number" ? ` £${amount.toFixed(2)}` : ""} for
+            this month <strong>now</strong>, ahead of the month-end release.
+            Only do this once you&apos;re happy with their work — it can&apos;t
+            be undone.
           </>
         }
         confirmLabel="Release payment"

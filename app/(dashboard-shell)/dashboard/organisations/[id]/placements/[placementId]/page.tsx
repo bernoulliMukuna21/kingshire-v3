@@ -193,43 +193,45 @@ export default async function OrganisationPlacementDetailPage({
                 {agreements.map((ag) => (
                   <div
                     key={ag.id}
-                    className="flex items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0"
+                    className="py-3 text-sm first:pt-0 last:pb-0"
                   >
-                    <Link
-                      href={`/kinglancers/${ag.kinglancer_id}`}
-                      className="flex min-w-0 items-center gap-3 hover:underline"
-                    >
-                      <Avatar
-                        name={ag.kinglancer?.full_name}
-                        src={ag.kinglancer?.avatar_url}
-                        className="h-9 w-9"
-                      />
-                      <div className="min-w-0">
-                        <p className="truncate font-bold text-slate-900">
-                          {ag.kinglancer?.full_name ?? "Kinglancer"}
-                        </p>
-                        <span
-                          className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${agreementStatusPill(ag.status).className}`}
-                        >
-                          {agreementStatusPill(ag.status).label}
-                        </span>
-                        {ag.status === "pending_funding" && (
-                          <p className="mt-1 text-xs font-semibold text-blue-700">
-                            Not started — fund the first month to begin.
+                    <div className="flex items-center justify-between gap-3">
+                      <Link
+                        href={`/kinglancers/${ag.kinglancer_id}`}
+                        className="flex min-w-0 items-center gap-3 hover:underline"
+                      >
+                        <Avatar
+                          name={ag.kinglancer?.full_name}
+                          src={ag.kinglancer?.avatar_url}
+                          className="h-9 w-9"
+                        />
+                        <div className="min-w-0">
+                          <p className="truncate font-bold text-slate-900">
+                            {ag.kinglancer?.full_name ?? "Kinglancer"}
                           </p>
-                        )}
-                      </div>
-                    </Link>
-                    <Link
-                      href={`/dashboard/placements/agreements/${ag.id}`}
-                      className="shrink-0 text-xs font-bold text-blue-600 hover:underline"
-                    >
-                      {ag.status === "active"
-                        ? "Track progress →"
-                        : ag.status === "pending_funding"
-                          ? "Fund to start →"
-                          : "View →"}
-                    </Link>
+                          <span
+                            className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${agreementStatusPill(ag.status).className}`}
+                          >
+                            {agreementStatusPill(ag.status).label}
+                          </span>
+                        </div>
+                      </Link>
+                      <Link
+                        href={`/dashboard/placements/agreements/${ag.id}`}
+                        className="shrink-0 text-xs font-bold text-blue-600 hover:underline"
+                      >
+                        {ag.status === "active"
+                          ? "Track progress →"
+                          : ag.status === "pending_funding"
+                            ? "Fund to start →"
+                            : "View →"}
+                      </Link>
+                    </div>
+                    {ag.status === "pending_funding" && (
+                      <p className="mt-1.5 text-xs font-semibold text-blue-700">
+                        Not started — fund the first month to begin.
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

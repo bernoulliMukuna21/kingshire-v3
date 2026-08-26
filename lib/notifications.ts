@@ -142,6 +142,7 @@ export async function notifyPlacementReviewed({
   organisationId,
   placementId,
   approved,
+  reason,
 }: {
   recipientId: string;
   recipientEmail?: string;
@@ -149,6 +150,7 @@ export async function notifyPlacementReviewed({
   organisationId: string;
   placementId: string;
   approved: boolean;
+  reason?: string;
 }) {
   await notify({
     userId: recipientId,
@@ -156,7 +158,9 @@ export async function notifyPlacementReviewed({
     title: approved ? "Placement approved" : "Placement not approved",
     body: approved
       ? `Your placement "${placementTitle}" passed review and is now live.`
-      : `Your placement "${placementTitle}" wasn't approved. Please review it and try again.`,
+      : `Your placement "${placementTitle}" wasn't approved.${
+          reason ? ` Reason: ${reason}` : ""
+        } Please review it and try again.`,
     link: `/dashboard/organisations/${organisationId}/placements/${placementId}`,
     email: recipientEmail
       ? {
