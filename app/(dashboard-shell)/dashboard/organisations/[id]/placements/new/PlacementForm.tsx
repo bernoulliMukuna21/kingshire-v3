@@ -185,8 +185,7 @@ export default function PlacementForm({
           message: "Set how many days on-site per week (1–6).",
         };
     }
-    if (!startDate)
-      return { field: "startDate", message: "Add a start date." };
+    if (!startDate) return { field: "startDate", message: "Add a start date." };
     if (!endDate) return { field: "endDate", message: "Add an end date." };
     const weeks = Math.ceil(
       (new Date(endDate).getTime() - new Date(startDate).getTime()) /
@@ -313,7 +312,11 @@ export default function PlacementForm({
           ))}
         </div>
       </Field>
-      <Field label="What the participant will contribute" required id="contribution">
+      <Field
+        label="What the participant will contribute"
+        required
+        id="contribution"
+      >
         <textarea
           className={`${inputClass("contribution")} resize-none`}
           rows={3}
@@ -324,7 +327,11 @@ export default function PlacementForm({
         />
       </Field>
 
-      <Field label="What the participant gets in return" required id="compensation">
+      <Field
+        label="What the participant gets in return"
+        required
+        id="compensation"
+      >
         <div
           className={`flex flex-wrap gap-2 ${
             errorField === "compensation"

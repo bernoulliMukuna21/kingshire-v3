@@ -73,9 +73,7 @@ export async function POST(
     organisationName: organisationName ?? "an organisation",
     periodIndex: payment.period_index,
     reason: parsed.data.reason ?? "(no reason given)",
-  }).catch((err) =>
-    console.error("[placement dispute] notify failed:", err),
-  );
+  }).catch((err) => console.error("[placement dispute] notify failed:", err));
 
   return NextResponse.json({ ok: true });
 }

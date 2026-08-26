@@ -10,7 +10,10 @@ import {
   activeParticipantCountsByPlacement,
   listOrganisationPlacements,
 } from "@/lib/db/placements";
-import { placementWorkModeSummary, derivePlacementView } from "@/lib/placements";
+import {
+  placementWorkModeSummary,
+  derivePlacementView,
+} from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";

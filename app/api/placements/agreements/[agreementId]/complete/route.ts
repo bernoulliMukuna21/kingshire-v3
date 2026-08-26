@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { authoriseAgreement } from "@/lib/placement-access";
+import { deriveAgreementView } from "@/lib/placement-agreements";
 import {
   completeAgreement,
   createExperienceRecord,
@@ -23,6 +24,13 @@ export async function POST(
     return NextResponse.json(
       { error: "Only the organisation can complete a placement." },
       { status: 403 },
+    );
+  }
+  // Mirror the UI: can't complete unless it's active and not mid early-end.
+  if (!deriveAgreementView(access.agreement).canComplete) {
+    return NextResponse.json(
+      { error: "This placement can't be completed right now." },
+      { status: 409 },
     );
   }
 

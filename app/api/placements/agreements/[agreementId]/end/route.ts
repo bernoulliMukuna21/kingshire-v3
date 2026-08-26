@@ -89,7 +89,11 @@ export async function POST(
         { status: 409 },
       );
     }
-    await setAgreementEndRequest(agreementId, userId, parsed.data.reason ?? null);
+    await setAgreementEndRequest(
+      agreementId,
+      userId,
+      parsed.data.reason ?? null,
+    );
 
     // Notify the other party (in-app + email) to confirm or decline.
     const [placementTitle, organisationName] = await Promise.all([

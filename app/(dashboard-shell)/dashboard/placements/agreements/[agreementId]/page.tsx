@@ -4,6 +4,10 @@ import { getOrganisationName } from "@/infrastructure/supabase/queries/organisat
 import { getOrganisationMembership } from "@/lib/organisations";
 import { authoriseAgreement } from "@/lib/placement-access";
 import {
+  deriveAgreementView,
+  placementPaymentPill,
+} from "@/lib/placement-agreements";
+import {
   getPlacementTitle,
   listCheckIns,
   placementPromisedReference,
@@ -19,35 +23,6 @@ import PaymentReviewButtons from "./PaymentReviewButtons";
 import ReportIssueButton from "./ReportIssueButton";
 import AgreementActions from "@/app/(dashboard-shell)/dashboard/kinglancer/placements/AgreementActions";
 
-const STATUS_LABEL: Record<string, string> = {
-  pending_acceptance: "Pending acceptance",
-  active: "Active",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
-
-const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  due: "Scheduled",
-  processing: "Processing",
-  held: "In escrow",
-  released: "Paid",
-  failed: "Payment failed",
-  cancelled: "Cancelled",
-  disputed: "Disputed",
-  refunded: "Refunded",
-};
-
-const PAYMENT_STATUS_CLASS: Record<string, string> = {
-  due: "bg-slate-100 text-slate-600",
-  processing: "bg-amber-100 text-amber-700",
-  held: "bg-blue-100 text-blue-700",
-  released: "bg-emerald-100 text-emerald-700",
-  failed: "bg-red-100 text-red-600",
-  cancelled: "bg-slate-100 text-slate-500",
-  disputed: "bg-red-100 text-red-700",
-  refunded: "bg-slate-100 text-slate-500",
-};
-
 export default async function AgreementPage({
   params,
   searchParams,
@@ -60,10 +35,7 @@ export default async function AgreementPage({
   const access = await authoriseAgreement(agreementId);
   if (!access.ok) notFound();
   const { agreement, isOrgManager } = access;
-  const isActive = agreement.status === "active";
-  const isPendingAcceptance = agreement.status === "pending_acceptance";
-  const isManaged =
-    agreement.payment_mode === "managed" && !!agreement.monthly_amount;
+  const view = deriveAgreementView(agreement);
 
   // Early-end request state (either party may propose; the other confirms).
   const hasEndRequest = !!agreement.end_requested_by;
@@ -73,14 +45,15 @@ export default async function AgreementPage({
     (access.isKinglancer && proposerIsKinglancer) ||
     (isOrgManager && !proposerIsKinglancer);
 
-  // Only the participant, or an org owner/admin, may end a placement early.
-  let canEndEarly = access.isKinglancer;
+  // Ending early also needs the right role: the participant, or an org
+  // owner/admin.
+  let endEarlyAllowedByRole = access.isKinglancer;
   if (isOrgManager) {
     const membership = await getOrganisationMembership(
       agreement.organisation_id,
       access.userId,
     );
-    canEndEarly =
+    endEarlyAllowedByRole =
       membership?.role === "owner" || membership?.role === "admin";
   }
 
@@ -98,7 +71,9 @@ export default async function AgreementPage({
     getOrganisationName(agreement.organisation_id),
     getPlacementTitle(agreement.placement_id),
     listCheckIns(agreementId),
-    isManaged ? ensurePaymentSchedule(agreement) : Promise.resolve([]),
+    view.isManaged
+      ? ensurePaymentSchedule(agreement)
+      : Promise.resolve([]),
     placementPromisedReference(agreement.placement_id),
   ]);
 
@@ -113,7 +88,7 @@ export default async function AgreementPage({
       <PageHeader
         eyebrow={organisationName ?? "Placement"}
         title={placementTitle ?? "Placement agreement"}
-        description={`${STATUS_LABEL[agreement.status] ?? agreement.status} · ${agreement.weekly_hours}h/week · ${agreement.duration_weeks} weeks`}
+        description={`${view.pill.label} · ${agreement.weekly_hours}h/week · ${agreement.duration_weeks} weeks`}
       />
 
       {paid && (
@@ -131,7 +106,7 @@ export default async function AgreementPage({
         </Card>
       )}
 
-      {isPendingAcceptance &&
+      {view.isPending &&
         (access.isKinglancer ? (
           <Card className="border-blue-200 bg-blue-50/60 p-5">
             <h2 className="text-lg font-black text-slate-950">
@@ -176,7 +151,7 @@ export default async function AgreementPage({
         </div>
       )}
 
-      {isManaged && (
+      {view.isManaged && (
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-black text-slate-950">Payments</h2>
@@ -219,14 +194,16 @@ export default async function AgreementPage({
                       paymentId={p.id}
                     />
                   ) : (
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-                        PAYMENT_STATUS_CLASS[p.status] ??
-                        "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {PAYMENT_STATUS_LABEL[p.status] ?? p.status}
-                    </span>
+                    (() => {
+                      const pill = placementPaymentPill(p.status);
+                      return (
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${pill.className}`}
+                        >
+                          {pill.label}
+                        </span>
+                      );
+                    })()
                   )}
                 </div>
               ))}
@@ -243,7 +220,7 @@ export default async function AgreementPage({
       <section>
         <h2 className="mb-3 text-lg font-black text-slate-950">Check-ins</h2>
         <Card className="space-y-4 p-5">
-          {isActive && <CheckInForm agreementId={agreementId} />}
+          {view.canCheckIn && <CheckInForm agreementId={agreementId} />}
           {!checkIns.length ? (
             <p className="text-sm text-slate-500">No check-ins yet.</p>
           ) : (
@@ -274,7 +251,7 @@ export default async function AgreementPage({
         </Card>
       </section>
 
-      {isOrgManager && isActive && !hasEndRequest && (
+      {isOrgManager && view.canComplete && (
         <div className="flex justify-end">
           <CompleteAgreementForm
             agreementId={agreementId}
@@ -284,7 +261,7 @@ export default async function AgreementPage({
         </div>
       )}
 
-      {isActive && canEndEarly && (
+      {view.canEndEarly && endEarlyAllowedByRole && (
         <EndEarlyPanel
           agreementId={agreementId}
           hasRequest={hasEndRequest}

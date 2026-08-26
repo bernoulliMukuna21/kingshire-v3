@@ -1,12 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  Calendar,
-  Clock,
-  Gift,
-  MapPin,
-  UserRound,
-} from "lucide-react";
+import { Calendar, Clock, Gift, MapPin, UserRound } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
@@ -28,6 +22,7 @@ import {
   placementWorkModeSummary,
   derivePlacementView,
 } from "@/lib/placements";
+import { agreementStatusPill } from "@/lib/placement-agreements";
 import ApplicantActions from "./ApplicantActions";
 import PlacementActions from "../PlacementActions";
 
@@ -40,20 +35,6 @@ function formatDate(value: string | null) {
       })
     : null;
 }
-
-const PARTICIPANT_STATUS_LABEL: Record<string, string> = {
-  pending_acceptance: "Awaiting the Kinglancer’s acceptance",
-  active: "Active",
-  completed: "Completed",
-  cancelled: "Ended early",
-};
-
-const PARTICIPANT_STATUS_CLASS: Record<string, string> = {
-  pending_acceptance: "bg-amber-100 text-amber-700",
-  active: "bg-emerald-100 text-emerald-700",
-  completed: "bg-slate-100 text-slate-500",
-  cancelled: "bg-red-100 text-red-600",
-};
 
 export default async function OrganisationPlacementDetailPage({
   params,
@@ -246,12 +227,9 @@ export default async function OrganisationPlacementDetailPage({
                           {ag.kinglancer?.full_name ?? "Kinglancer"}
                         </p>
                         <span
-                          className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                            PARTICIPANT_STATUS_CLASS[ag.status] ??
-                            "bg-slate-100 text-slate-600"
-                          }`}
+                          className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-bold ${agreementStatusPill(ag.status).className}`}
                         >
-                          {PARTICIPANT_STATUS_LABEL[ag.status] ?? ag.status}
+                          {agreementStatusPill(ag.status).label}
                         </span>
                       </div>
                     </Link>

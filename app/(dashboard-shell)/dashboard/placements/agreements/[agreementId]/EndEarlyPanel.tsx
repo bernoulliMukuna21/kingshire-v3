@@ -107,8 +107,8 @@ export default function EndEarlyPanel({
         </h2>
         <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
           <p className="text-sm text-slate-600">
-            You&apos;ve asked to end this placement early. It ends once the other
-            party confirms.
+            You&apos;ve asked to end this placement early. It ends once the
+            other party confirms.
           </p>
           {err}
           <button
