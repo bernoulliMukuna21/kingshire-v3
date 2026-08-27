@@ -148,8 +148,10 @@ export async function PATCH(
       { status: 409 },
     );
   }
-  const updated = await updatePlacementStatus(placementId, id, "cancelled");
-  await cancelPendingAgreementsForPlacement(placementId);
+  const [updated] = await Promise.all([
+    updatePlacementStatus(placementId, id, "cancelled"),
+    cancelPendingAgreementsForPlacement(placementId),
+  ]);
   return NextResponse.json({ placement: updated });
 }
 
@@ -195,7 +197,9 @@ export async function DELETE(
   const blocker = await placementDeletionBlocker(placementId);
   if (blocker) {
     return NextResponse.json(
-      { error: `This placement has ${blocker} and can't be deleted.` },
+      {
+        error: `This placement has ${blocker}, so it can't be deleted. Use “Hide from my list” to remove it from your view instead.`,
+      },
       { status: 409 },
     );
   }

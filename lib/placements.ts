@@ -259,6 +259,7 @@ const DELETE: PlacementActionSpec = {
   confirm: {
     title: "Delete this placement?",
     bullets: ["This permanently removes the placement."],
+    note: "If it has recorded payments it can’t be deleted — use “Hide from my list” to remove it from your view instead.",
     confirmLabel: "Delete placement",
     danger: true,
   },
