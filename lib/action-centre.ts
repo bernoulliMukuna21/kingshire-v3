@@ -66,6 +66,8 @@ export type ActionCentreItem = {
   badge: string;
   tone: ActionTone;
   meta?: string;
+  /** Organisation name, when the action belongs to a workspace (not personal). */
+  context?: string;
 };
 
 export type ActionCentre = {
@@ -492,11 +494,37 @@ const PROVIDERS: Record<ActionCentreRole, ActionProvider[]> = {
   kinglancer: [kinglancerJobsProvider, reviewsProvider, placementsProvider],
 };
 
-export async function getActionCentre(
-  ctx: ActionContext,
-): Promise<ActionCentre> {
-  const results = await Promise.all(PROVIDERS[ctx.role].map((p) => p(ctx)));
-  const items = dedupeById(results.flat());
+export type AccountOrganisation = { id: string; name: string };
+
+/**
+ * The single, account-level Action Centre for the logged-in user: their own
+ * role actions PLUS the actions for every organisation they belong to, each
+ * tagged with its workspace name. This is what the sidebar + dashboard land on.
+ */
+export async function getAccountActionCentre(ctx: {
+  supabase: ServerClient;
+  userId: string;
+  role: ActionCentreRole;
+  organisations: AccountOrganisation[];
+}): Promise<ActionCentre> {
+  const [personalResults, orgResults] = await Promise.all([
+    Promise.all(
+      PROVIDERS[ctx.role].map((provider) =>
+        provider({
+          supabase: ctx.supabase,
+          userId: ctx.userId,
+          role: ctx.role,
+        }),
+      ),
+    ),
+    Promise.all(
+      ctx.organisations.map(async (org) => {
+        const items = await collectOrgActionItems(org.id);
+        return items.map((item) => ({ ...item, context: org.name }));
+      }),
+    ),
+  ]);
+  const items = dedupeById([...personalResults.flat(), ...orgResults.flat()]);
   return {
     items,
     actionCount: items.filter((item) => item.kind === "action").length,
@@ -504,56 +532,46 @@ export async function getActionCentre(
   };
 }
 
-// ── Organisation scope (org = a collection of clients acting as one unit) ─
+// ── Organisation actions (folded into the account Action Centre) ─
+// Org-wide reads use the service client (bypasses RLS); membership is verified
+// by the caller — the dashboard context only lists the user's own workspaces.
 
-export type OrganisationActionContext = {
-  organisationId: string;
-};
-
-type OrgActionProvider = (
-  ctx: OrganisationActionContext,
-) => Promise<ActionCentreItem[]>;
-
-// Org-wide reads use the service client (bypasses RLS); the caller has already
-// verified the viewer's org membership.
-const orgJobsProvider: OrgActionProvider = ({ organisationId }) =>
-  fetchClientStyleJobItems(
+async function orgJobItems(
+  organisationId: string,
+): Promise<ActionCentreItem[]> {
+  return fetchClientStyleJobItems(
     createServiceClient() as unknown as ServerClient,
     "organisation_id",
     organisationId,
   );
+}
 
-const orgPlacementPaymentsProvider: OrgActionProvider = async ({
-  organisationId,
-}) => {
+async function orgPaymentItems(
+  organisationId: string,
+): Promise<ActionCentreItem[]> {
   const payments = await listHeldPlacementPaymentsForOrg(organisationId);
   return buildOrgPlacementPaymentItems(payments);
-};
+}
 
-const orgApplicationsProvider: OrgActionProvider = async ({
-  organisationId,
-}) => {
+async function orgApplicationItems(
+  organisationId: string,
+): Promise<ActionCentreItem[]> {
   const applications =
     await listPendingPlacementApplicationsForOrg(organisationId);
   return buildOrgApplicationItems(applications, organisationId);
-};
+}
 
-const ORGANISATION_PROVIDERS: OrgActionProvider[] = [
-  orgJobsProvider,
-  orgPlacementPaymentsProvider,
-  orgApplicationsProvider,
+const ORGANISATION_PROVIDERS = [
+  orgJobItems,
+  orgPaymentItems,
+  orgApplicationItems,
 ];
 
-export async function getOrganisationActionCentre(
-  ctx: OrganisationActionContext,
-): Promise<ActionCentre> {
+async function collectOrgActionItems(
+  organisationId: string,
+): Promise<ActionCentreItem[]> {
   const results = await Promise.all(
-    ORGANISATION_PROVIDERS.map((provider) => provider(ctx)),
+    ORGANISATION_PROVIDERS.map((provider) => provider(organisationId)),
   );
-  const items = dedupeById(results.flat());
-  return {
-    items,
-    actionCount: items.filter((item) => item.kind === "action").length,
-    waitingCount: items.filter((item) => item.kind === "waiting").length,
-  };
+  return results.flat();
 }

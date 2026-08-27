@@ -1,15 +1,16 @@
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
-import { getActionCentre } from "@/lib/action-centre";
+import { getAccountActionCentre } from "@/lib/action-centre";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
 
 export async function ClientActionCentreSection() {
-  const { supabase, user } = await getDashboardContext();
+  const { supabase, user, organisations } = await getDashboardContext();
 
-  const { actionCount, waitingCount } = await getActionCentre({
+  const { actionCount, waitingCount } = await getAccountActionCentre({
     supabase,
     userId: user.id,
     role: "client",
+    organisations,
   });
 
   return (

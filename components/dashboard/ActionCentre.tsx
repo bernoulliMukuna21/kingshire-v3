@@ -46,6 +46,7 @@ export type ActionItem = {
   badge: string;
   tone: Tone;
   meta?: string;
+  context?: string;
 };
 
 export function ActionCentreHeader({
@@ -243,6 +244,11 @@ export function ActionItemCard({ item }: { item: ActionItem }) {
               <h3 className="font-black leading-tight text-slate-950">
                 {item.title}
               </h3>
+              {item.context && (
+                <p className="mt-0.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+                  {item.context}
+                </p>
+              )}
               <p className="mt-1 text-sm leading-6 text-slate-500">
                 {item.description}
               </p>
@@ -282,6 +288,11 @@ export function ActionItemCard({ item }: { item: ActionItem }) {
               </h3>
               <StatusBadge tone={item.tone}>{item.badge}</StatusBadge>
             </div>
+            {item.context && (
+              <p className="mt-0.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+                {item.context}
+              </p>
+            )}
             <p className="mt-1 text-sm leading-6 text-slate-500">
               {item.description}
             </p>
@@ -319,6 +330,11 @@ export function WaitingItemCard({ item }: { item: ActionItem }) {
           </h3>
           <StatusBadge tone={item.tone}>{item.badge}</StatusBadge>
         </div>
+        {item.context && (
+          <p className="mt-0.5 text-xs font-bold uppercase tracking-wide text-slate-400">
+            {item.context}
+          </p>
+        )}
         <p className="mt-1 text-sm leading-6 text-slate-500">
           {item.description}
         </p>
@@ -360,6 +376,7 @@ function toActionItem(item: ActionCentreItem, from: string | null): ActionItem {
     badge: item.badge,
     tone: item.tone,
     meta: item.meta,
+    context: item.context,
   };
 }
 

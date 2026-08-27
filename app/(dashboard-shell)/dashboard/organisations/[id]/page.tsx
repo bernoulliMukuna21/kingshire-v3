@@ -3,13 +3,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganisationMembership } from "@/lib/organisations";
 import { getOrganisationOverview } from "@/infrastructure/supabase/queries/organisation-queries";
-import { getOrganisationActionCentre } from "@/lib/action-centre";
 import { listOrganisationPlacements } from "@/lib/db/placements";
 import { placementWorkModeSummary } from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
-import { ActionItemsView } from "@/components/dashboard/ActionCentre";
 import OrganisationWorkspaceHeader from "./OrganisationWorkspaceHeader";
 import InviteMemberForm from "./InviteMemberForm";
 import MemberActions from "./MemberActions";
@@ -41,7 +39,6 @@ export default async function OrganisationDashboardPage({
   const { organisation, jobs, members, stats, subscription } = overview;
   const canManageMembers =
     membership.role === "owner" || membership.role === "admin";
-  const orgActions = await getOrganisationActionCentre({ organisationId: id });
   const recentPlacements = canManageMembers
     ? (await listOrganisationPlacements(id)).slice(0, 5)
     : [];
@@ -75,14 +72,6 @@ export default async function OrganisationDashboardPage({
 
       {activeTab === "overview" && (
         <div className="space-y-7">
-          {orgActions.actionCount > 0 && (
-            <section>
-              <h2 className="mb-3 text-xl font-black text-slate-950">
-                Action Centre
-              </h2>
-              <ActionItemsView items={orgActions.items} from={null} />
-            </section>
-          )}
           <div className="grid gap-4 sm:grid-cols-3">
             <Card className="p-5">
               <p className="text-xs font-bold uppercase text-slate-400">Jobs</p>
@@ -105,9 +94,7 @@ export default async function OrganisationDashboardPage({
           </div>
           <section>
             <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-xl font-black text-slate-950">
-                Recent jobs
-              </h2>
+              <h2 className="text-xl font-black text-slate-950">Recent jobs</h2>
               {jobs.length > 0 && (
                 <ButtonLink
                   href={`/dashboard/organisations/${id}/jobs`}

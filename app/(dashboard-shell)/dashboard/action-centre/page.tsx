@@ -1,6 +1,9 @@
 import { CheckCircle2 } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
-import { getActionCentre, type ActionCentreRole } from "@/lib/action-centre";
+import {
+  getAccountActionCentre,
+  type ActionCentreRole,
+} from "@/lib/action-centre";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import {
@@ -10,14 +13,16 @@ import {
 } from "@/components/dashboard/ActionCentre";
 
 export default async function ActionCentrePage() {
-  const { supabase, user, profile } = await getDashboardContext();
+  const { supabase, user, profile, organisations } =
+    await getDashboardContext();
 
   const role: ActionCentreRole =
     profile.role === "client" ? "client" : "kinglancer";
-  const { items, actionCount, waitingCount } = await getActionCentre({
+  const { items, actionCount, waitingCount } = await getAccountActionCentre({
     supabase,
     userId: user.id,
     role,
+    organisations,
   });
 
   const roleLabel = role === "client" ? "Client" : "Kinglancer";
