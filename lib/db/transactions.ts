@@ -1,10 +1,18 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
+import { coerceNumeric } from "@/lib/db/coerce";
 
 type TransactionRow = Database["public"]["Tables"]["transactions"]["Row"];
 type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"];
 
 export type { TransactionRow };
+
+// `numeric` columns arrive as strings — coerce so callers can do money math.
+const TRANSACTION_NUMERIC = [
+  "amount",
+  "platform_fee_client",
+  "platform_fee_kinglancer",
+] as const;
 
 export async function createTransaction(data: TransactionInsert) {
   const db = createServiceClient();
@@ -14,7 +22,7 @@ export async function createTransaction(data: TransactionInsert) {
     .select()
     .single();
   if (error) throw error;
-  return tx as TransactionRow;
+  return coerceNumeric(tx as TransactionRow, TRANSACTION_NUMERIC);
 }
 
 export async function getTransactionByJob(jobId: string) {
@@ -25,7 +33,7 @@ export async function getTransactionByJob(jobId: string) {
     .eq("job_id", jobId)
     .single();
   if (error) return null;
-  return data as TransactionRow;
+  return coerceNumeric(data as TransactionRow, TRANSACTION_NUMERIC);
 }
 
 export async function getTransactionByPaymentIntent(
@@ -38,7 +46,9 @@ export async function getTransactionByPaymentIntent(
     .eq("stripe_payment_intent_id", stripePaymentIntentId)
     .maybeSingle();
   if (error) return null;
-  return data as TransactionRow | null;
+  return data
+    ? coerceNumeric(data as TransactionRow, TRANSACTION_NUMERIC)
+    : null;
 }
 
 export async function updateTransactionStatus(

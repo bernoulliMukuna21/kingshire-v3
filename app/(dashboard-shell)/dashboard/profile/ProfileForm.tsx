@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/types";
+import { parseProfileServices } from "@/lib/profiles";
 import {
   CURRENCY_VALIDATION_MESSAGE,
   isValidCurrencyAmount,
@@ -81,7 +82,7 @@ export default function ProfileForm({ profile }: Props) {
   );
 
   const [services, setServices] = useState<ServiceEntry[]>(() => {
-    const saved = profile.services ?? [];
+    const saved = parseProfileServices(profile.services);
     return saved.length > 0
       ? saved.map((s) => ({
           name: s.name,

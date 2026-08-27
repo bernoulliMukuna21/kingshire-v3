@@ -11,6 +11,8 @@ import { getDashboardContext } from "@/lib/dashboard-context";
 import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
+import { jobStatusPill } from "@/lib/jobs";
+import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
 import {
   getJobReviewState,
   isReviewWindowClosed,
@@ -43,35 +45,6 @@ type InvitedKinglancer = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
-};
-
-type RateType = "fixed" | "per_hour" | "per_day";
-
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  open: {
-    label: "Open",
-    color: "bg-green-50 text-green-700 ring-green-100",
-  },
-  in_progress: {
-    label: "In Progress",
-    color: "bg-blue-50 text-blue-700 ring-blue-100",
-  },
-  completed: {
-    label: "Work Submitted",
-    color: "bg-amber-50 text-amber-700 ring-amber-100",
-  },
-  approved: {
-    label: "Approved",
-    color: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-  },
-  disputed: {
-    label: "Disputed",
-    color: "bg-red-50 text-red-700 ring-red-100",
-  },
-  cancelled: {
-    label: "Cancelled",
-    color: "bg-slate-100 text-slate-500 ring-slate-200",
-  },
 };
 
 function getCounterRateType(value: string | null): RateType | null {
@@ -116,7 +89,7 @@ export default async function ClientJobWorkspacePage({
   }
 
   const isDirectRequest = !!job.invited_kinglancer_id;
-  const statusConfig = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.open;
+  const statusConfig = jobStatusPill(job.status);
   const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
 
   const [applications, kinglancerResult] = await Promise.all([
@@ -190,7 +163,7 @@ export default async function ClientJobWorkspacePage({
                   Direct request
                 </StatusBadge>
               )}
-              <StatusBadge className={statusConfig.color}>
+              <StatusBadge className={statusConfig.className}>
                 {statusConfig.label}
               </StatusBadge>
             </div>
@@ -231,7 +204,7 @@ export default async function ClientJobWorkspacePage({
                 viewerRole={profile.role}
                 isOwner={true}
                 isInvitedKinglancer={false}
-                status={job.direct_request_status}
+                status={job.direct_request_status as DirectRequestStatus}
                 message={job.direct_request_message}
                 counterBudget={job.counter_budget}
                 counterRateType={getCounterRateType(job.counter_rate_type)}
@@ -363,8 +336,8 @@ export default async function ClientJobWorkspacePage({
                   description: job.description,
                   categories: job.categories,
                   budget: Number(job.budget),
-                  rate_type: job.rate_type,
-                  work_mode: job.work_mode,
+                  rate_type: job.rate_type as RateType,
+                  work_mode: job.work_mode as WorkMode,
                   location: job.location,
                   days_on_site: job.days_on_site,
                   organisation_id: job.organisation_id,

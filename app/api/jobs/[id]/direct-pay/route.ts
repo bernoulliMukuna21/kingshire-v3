@@ -40,7 +40,10 @@ export async function POST(
 
   if (!(await requireTermsAccepted(user.id))) {
     return NextResponse.json(
-      { error: "Please accept our updated terms to continue.", needsTerms: true },
+      {
+        error: "Please accept our updated terms to continue.",
+        needsTerms: true,
+      },
       { status: 403 },
     );
   }

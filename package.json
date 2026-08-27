@@ -14,6 +14,7 @@
     "cron:release-placements": "node scripts/run-cron.mjs /api/cron/release-placements",
     "cron:cleanup-abandoned-checkouts": "node scripts/run-cron.mjs /api/cron/cleanup-abandoned-checkouts",
     "cron:reveal-reviews": "node scripts/run-cron.mjs /api/cron/reveal-reviews",
+    "gen:types": "supabase gen types typescript --linked --schema public > lib/supabase/types.ts",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",

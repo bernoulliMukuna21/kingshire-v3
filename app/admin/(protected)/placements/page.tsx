@@ -1,7 +1,6 @@
 import { listPlacementsForReview } from "@/lib/db/placements";
 import {
-  COMPENSATION_LABELS,
-  formatCompensationDetail,
+  displayPlacementCompensation,
   placementWorkModeSummary,
 } from "@/lib/placements";
 import { Card } from "@/components/ui/Card";
@@ -124,20 +123,15 @@ export default async function AdminPlacementsPage() {
                   </p>
                   {p.compensation_types.length ? (
                     <ul className="mt-2 space-y-1.5">
-                      {p.compensation_types.map((type) => (
+                      {displayPlacementCompensation(p).map((item) => (
                         <li
-                          key={type}
+                          key={item.type}
                           className="flex flex-wrap items-baseline gap-2 text-sm"
                         >
                           <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
-                            {COMPENSATION_LABELS[type] ?? type}
+                            {item.label}
                           </span>
-                          <span className="text-slate-700">
-                            {formatCompensationDetail(
-                              type,
-                              p.compensation_details?.[type],
-                            )}
-                          </span>
+                          <span className="text-slate-700">{item.detail}</span>
                         </li>
                       ))}
                     </ul>

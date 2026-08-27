@@ -7,6 +7,15 @@ import {
 } from "@/lib/placements";
 
 export type PlacementRow = Database["public"]["Tables"]["placements"]["Row"];
+
+/** `compensation_details` is jsonb; values are strings or nested objects (money). */
+export type CompensationDetails = Record<string, unknown>;
+
+/** Domain placement: the generated Row with its jsonb column narrowed. */
+export type Placement = Omit<PlacementRow, "compensation_details"> & {
+  compensation_details: CompensationDetails | null;
+};
+
 export type PlacementApplicationRow =
   Database["public"]["Tables"]["placement_applications"]["Row"];
 export type PlacementAgreementRow =
@@ -87,7 +96,7 @@ export async function listOrganisationPlacements(
 export async function getOrganisationPlacement(
   placementId: string,
   organisationId: string,
-): Promise<PlacementRow | null> {
+): Promise<Placement | null> {
   const db = createServiceClient();
   const { data } = await db
     .from("placements")
@@ -95,7 +104,7 @@ export async function getOrganisationPlacement(
     .eq("id", placementId)
     .eq("organisation_id", organisationId)
     .maybeSingle();
-  return (data as PlacementRow | null) ?? null;
+  return (data as unknown as Placement | null) ?? null;
 }
 
 export async function countOpenPlacements(
@@ -275,7 +284,7 @@ export async function listOpenPlacements(): Promise<PlacementRow[]> {
 
 export async function getOpenPlacement(
   placementId: string,
-): Promise<PlacementRow | null> {
+): Promise<Placement | null> {
   const db = createServiceClient();
   const { data } = await db
     .from("placements")
@@ -283,10 +292,10 @@ export async function getOpenPlacement(
     .eq("id", placementId)
     .eq("status", "open")
     .maybeSingle();
-  return (data as PlacementRow | null) ?? null;
+  return (data as unknown as Placement | null) ?? null;
 }
 
-export type PublicPlacement = PlacementRow & {
+export type PublicPlacement = Placement & {
   organisation: { name: string } | null;
 };
 
@@ -364,6 +373,38 @@ export async function getPlacementApplication(
   return (data as PlacementApplicationRow | null) ?? null;
 }
 
+export type OrgPendingApplication = {
+  placementId: string;
+  placementTitle: string;
+};
+
+/** Pending applications across an org's placements (one row per application). */
+export async function listPendingPlacementApplicationsForOrg(
+  organisationId: string,
+): Promise<OrgPendingApplication[]> {
+  const db = createServiceClient();
+  const { data: placements } = await db
+    .from("placements")
+    .select("id, title")
+    .eq("organisation_id", organisationId);
+  const list = placements ?? [];
+  if (list.length === 0) return [];
+  const titleById = new Map(list.map((p) => [p.id, p.title]));
+  const { data, error } = await db
+    .from("placement_applications")
+    .select("placement_id")
+    .eq("status", "pending")
+    .in(
+      "placement_id",
+      list.map((p) => p.id),
+    );
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    placementId: row.placement_id,
+    placementTitle: titleById.get(row.placement_id) ?? "Placement",
+  }));
+}
+
 export async function listPlacementApplicants(
   placementId: string,
 ): Promise<PlacementApplicant[]> {
@@ -418,7 +459,7 @@ export async function countReservedParticipants(
 }
 
 export async function createAgreementFromPlacement(params: {
-  placement: PlacementRow;
+  placement: Placement;
   kinglancerId: string;
   orgSignedBy: string;
 }): Promise<PlacementAgreementRow> {
@@ -834,7 +875,7 @@ export async function getPlacementTitle(
 
 // ── Admin review ──────────────────────────────────────────
 
-export type PlacementForReview = PlacementRow & {
+export type PlacementForReview = Placement & {
   organisation: { name: string } | null;
 };
 

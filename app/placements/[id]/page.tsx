@@ -3,8 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getPublicPlacement, hasAppliedToPlacement } from "@/lib/db/placements";
 import {
-  COMPENSATION_LABELS,
-  formatCompensationDetail,
+  displayPlacementCompensation,
   placementWorkModeSummary,
 } from "@/lib/placements";
 import PublicShell from "@/components/ui/PublicShell";
@@ -113,20 +112,15 @@ export default async function PublicPlacementDetailPage({
                   Compensation
                 </h2>
                 <ul className="mt-2 space-y-1.5">
-                  {placement.compensation_types.map((type) => (
+                  {displayPlacementCompensation(placement).map((item) => (
                     <li
-                      key={type}
+                      key={item.type}
                       className="flex flex-wrap items-baseline gap-2 text-sm"
                     >
                       <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-bold text-blue-700">
-                        {COMPENSATION_LABELS[type] ?? type}
+                        {item.label}
                       </span>
-                      <span className="text-slate-700">
-                        {formatCompensationDetail(
-                          type,
-                          placement.compensation_details?.[type],
-                        )}
-                      </span>
+                      <span className="text-slate-700">{item.detail}</span>
                     </li>
                   ))}
                 </ul>

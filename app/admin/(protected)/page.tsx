@@ -20,11 +20,11 @@ import {
   type AdminDispute,
   type AdminJob,
   type AdminUser,
-  formatMoney,
-  jobStatusClasses,
   roleTone,
   timeAgo,
 } from "@/lib/admin-dashboard";
+import { formatMoneyPrecise as formatMoney } from "@/lib/utils";
+import { jobStatusPill } from "@/lib/jobs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 
@@ -365,7 +365,7 @@ export default async function AdminDashboard() {
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${jobStatusClasses(job.status)}`}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${jobStatusPill(job.status).className}`}
                       >
                         {job.status.replace("_", " ")}
                       </span>

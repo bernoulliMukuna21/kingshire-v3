@@ -11,6 +11,8 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
+import { jobStatusPill } from "@/lib/jobs";
+import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { formatDeadline } from "@/lib/utils";
@@ -126,18 +128,7 @@ export default async function JobDetailPage({
     !alreadyApplied;
   const isAdmin = profile?.role === "admin";
 
-  const statusConfig: Record<string, { label: string; color: string }> = {
-    open: {
-      label: "Open for Applications",
-      color: "bg-green-100 text-green-700",
-    },
-    in_progress: { label: "In Progress", color: "bg-blue-100 text-blue-700" },
-    completed: { label: "Completed", color: "bg-gray-100 text-gray-600" },
-    cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" },
-    disputed: { label: "Disputed", color: "bg-orange-100 text-orange-700" },
-  };
-
-  const s = statusConfig[job.status] ?? statusConfig.open;
+  const s = jobStatusPill(job.status);
   const rateType = job.rate_type ?? "fixed";
   const budgetSuffix =
     rateType === "per_hour"
@@ -174,7 +165,7 @@ export default async function JobDetailPage({
         <div className="lg:col-span-2 space-y-5">
           <Card className={cardPadding}>
             <div className="flex items-center gap-2 mb-3">
-              <StatusBadge className={s.color}>{s.label}</StatusBadge>
+              <StatusBadge className={s.className}>{s.label}</StatusBadge>
             </div>
 
             <h1 className="text-xl font-black text-slate-950 mb-4">
@@ -271,10 +262,10 @@ export default async function JobDetailPage({
                 viewerRole={profile?.role}
                 isOwner={isOwner}
                 isInvitedKinglancer={!!isInvitedKinglancer}
-                status={job.direct_request_status}
+                status={job.direct_request_status as DirectRequestStatus}
                 message={job.direct_request_message}
                 counterBudget={job.counter_budget}
-                counterRateType={job.counter_rate_type}
+                counterRateType={job.counter_rate_type as RateType | null}
                 counterDeadline={job.counter_deadline}
                 invitedKinglancer={invitedKinglancer}
               />

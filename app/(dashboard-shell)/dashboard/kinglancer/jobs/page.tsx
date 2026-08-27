@@ -6,7 +6,7 @@ import {
   CheckCircle2,
   ChevronRight,
 } from "lucide-react";
-import { type JobStatus, JOBS_PAGE_SIZE } from "@/lib/jobs";
+import { type JobStatus, type RateType, JOBS_PAGE_SIZE, jobStatusPill } from "@/lib/jobs";
 import { applicationStatusPill } from "@/lib/applications";
 import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import { getDashboardContext } from "@/lib/dashboard-context";
@@ -58,40 +58,14 @@ function parseTab(raw: string | undefined): Tab {
 
 // ── Status display config ─────────────────────────────────
 
-const STATUS_CONFIG: Record<
-  JobStatus,
-  { label: string; className: string; description: string }
-> = {
-  open: {
-    label: "Open",
-    className: "bg-green-100 text-green-700",
-    description: "",
-  },
-  in_progress: {
-    label: "In progress",
-    className: "bg-blue-100 text-blue-700",
-    description: "Deliver the work, then submit it for client review.",
-  },
-  completed: {
-    label: "Awaiting approval",
-    className: "bg-amber-100 text-amber-700",
-    description: "You submitted this work. The client needs to approve it.",
-  },
-  disputed: {
-    label: "Disputed",
-    className: "bg-red-100 text-red-700",
-    description: "This job is being handled through the dispute process.",
-  },
-  approved: {
-    label: "Completed",
-    className: "bg-emerald-100 text-emerald-700",
-    description: "This job was approved and payment has been released.",
-  },
-  cancelled: {
-    label: "Cancelled",
-    className: "bg-gray-100 text-gray-500",
-    description: "This job was cancelled.",
-  },
+// Kinglancer-facing guidance per status (audience-specific); the label and
+// colour come from jobStatusPill.
+const STATUS_HINT: Record<string, string> = {
+  in_progress: "Deliver the work, then submit it for client review.",
+  completed: "You submitted this work. The client needs to approve it.",
+  disputed: "This job is being handled through the dispute process.",
+  approved: "This job was approved and payment has been released.",
+  cancelled: "This job was cancelled.",
 };
 
 // ── Types ─────────────────────────────────────────────────
@@ -100,7 +74,7 @@ type JobRow = {
   id: string;
   title: string;
   budget: number;
-  rate_type: "fixed" | "per_hour" | "per_day";
+  rate_type: RateType;
   status: JobStatus;
   deadline: string | null;
   updated_at: string;
@@ -122,7 +96,7 @@ type ApplicationRow = {
     id: string;
     title: string;
     budget: number;
-    rate_type: "fixed" | "per_hour" | "per_day";
+    rate_type: RateType;
     status: JobStatus;
     deadline: string | null;
     categories: string[];
@@ -334,7 +308,8 @@ export default async function KinglancerJobsPage({
       ) : (
         <div className="space-y-3">
           {jobs.map((job) => {
-            const statusConfig = STATUS_CONFIG[job.status];
+            const status = jobStatusPill(job.status);
+            const description = STATUS_HINT[job.status];
             const transaction = transactionByJob.get(job.id);
             const heldAmount =
               transaction && transaction.status === "held"
@@ -356,13 +331,13 @@ export default async function KinglancerJobsPage({
                       <h2 className="truncate text-lg font-black text-slate-950 transition-colors group-hover:text-blue-700">
                         {job.title}
                       </h2>
-                      <StatusBadge className={statusConfig.className}>
-                        {statusConfig.label}
+                      <StatusBadge className={status.className}>
+                        {status.label}
                       </StatusBadge>
                     </div>
-                    {statusConfig.description && (
+                    {description && (
                       <p className="mt-1 text-sm text-slate-500">
-                        {statusConfig.description}
+                        {description}
                       </p>
                     )}
                     <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-500">

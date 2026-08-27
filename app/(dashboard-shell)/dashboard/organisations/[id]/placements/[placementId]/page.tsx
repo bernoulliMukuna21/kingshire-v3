@@ -17,8 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Avatar } from "@/components/ui/Avatar";
 import {
-  COMPENSATION_LABELS,
-  formatCompensationDetail,
+  displayPlacementCompensation,
   placementWorkModeSummary,
   derivePlacementView,
 } from "@/lib/placements";
@@ -300,16 +299,13 @@ export default async function OrganisationPlacementDetailPage({
                 </p>
               </div>
               <ul className="mt-4 space-y-3">
-                {placement.compensation_types.map((type) => (
-                  <li key={type}>
+                {displayPlacementCompensation(placement).map((item) => (
+                  <li key={item.type}>
                     <span className="inline-block rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
-                      {COMPENSATION_LABELS[type] ?? type}
+                      {item.label}
                     </span>
                     <p className="mt-1.5 text-sm font-semibold leading-snug text-white">
-                      {formatCompensationDetail(
-                        type,
-                        placement.compensation_details?.[type],
-                      )}
+                      {item.detail}
                     </p>
                   </li>
                 ))}

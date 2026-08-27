@@ -14,6 +14,8 @@ import {
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
+import { jobStatusPill } from "@/lib/jobs";
+import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
@@ -30,7 +32,7 @@ type JobWorkspace = {
   title: string;
   description: string;
   budget: number;
-  rate_type: "fixed" | "per_hour" | "per_day";
+  rate_type: RateType;
   status:
     | "open"
     | "in_progress"
@@ -43,16 +45,10 @@ type JobWorkspace = {
   client_id: string;
   kinglancer_id: string | null;
   invited_kinglancer_id: string | null;
-  direct_request_status:
-    | "pending"
-    | "changes_requested"
-    | "accepted_pending_payment"
-    | "declined"
-    | "cancelled"
-    | null;
+  direct_request_status: DirectRequestStatus;
   direct_request_message: string | null;
   counter_budget: number | null;
-  counter_rate_type: "fixed" | "per_hour" | "per_day" | null;
+  counter_rate_type: RateType | null;
   counter_deadline: string | null;
   created_at: string;
   client: {
@@ -73,17 +69,6 @@ type Transaction = {
   platform_fee_kinglancer: number;
   status: "pending" | "held" | "released" | "refunded" | "disputed";
   released_at: string | null;
-};
-
-const statusConfig: Record<string, { label: string; className: string }> = {
-  in_progress: { label: "In progress", className: "bg-blue-100 text-blue-700" },
-  completed: {
-    label: "Awaiting approval",
-    className: "bg-amber-100 text-amber-700",
-  },
-  disputed: { label: "Disputed", className: "bg-red-100 text-red-700" },
-  approved: { label: "Approved", className: "bg-green-100 text-green-700" },
-  cancelled: { label: "Cancelled", className: "bg-slate-100 text-slate-500" },
 };
 
 function nextAction({
@@ -229,7 +214,8 @@ export default async function KinglancerJobWorkspacePage({
   const openStatus = isInvited
     ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
     : { label: "Open", className: "bg-green-100 text-green-700" };
-  const status = statusConfig[job.status] ?? openStatus;
+  const status =
+    job.status === "open" ? openStatus : jobStatusPill(job.status);
   const action = nextAction({ job, application, transaction });
   const netHeld =
     transaction && transaction.status === "held"

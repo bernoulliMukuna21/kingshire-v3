@@ -37,7 +37,10 @@ export async function POST(request: Request) {
 
   if (!(await requireTermsAccepted(user.id))) {
     return NextResponse.json(
-      { error: "Please accept our updated terms to continue.", needsTerms: true },
+      {
+        error: "Please accept our updated terms to continue.",
+        needsTerms: true,
+      },
       { status: 403 },
     );
   }
@@ -151,7 +154,9 @@ export async function POST(request: Request) {
     normalizedBudget > 50000
   )
     return NextResponse.json(
-      { error: "Budget must be between £20 and £50,000 with up to 2 decimals." },
+      {
+        error: "Budget must be between £20 and £50,000 with up to 2 decimals.",
+      },
       { status: 400 },
     );
   if (
@@ -283,7 +288,9 @@ export async function POST(request: Request) {
 
   // Every job now carries a start/end window; the end date backs the legacy
   // deadline column (job expiry, list displays) for continuity.
-  const resolvedDeadline = endsAtIso ? endsAtIso.slice(0, 10) : deadline || null;
+  const resolvedDeadline = endsAtIso
+    ? endsAtIso.slice(0, 10)
+    : deadline || null;
 
   if (invitedKinglancerId) {
     const { data: invitedKinglancer } = await supabase

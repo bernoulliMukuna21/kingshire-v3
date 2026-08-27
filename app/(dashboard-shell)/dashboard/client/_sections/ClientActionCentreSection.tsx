@@ -1,50 +1,16 @@
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
-import { getClientActionCounts } from "@/lib/dashboard-action-rules";
-import { getPendingReviewJobs } from "@/lib/db/reviews";
+import { getActionCentre } from "@/lib/action-centre";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
 
 export async function ClientActionCentreSection() {
   const { supabase, user } = await getDashboardContext();
 
-  const [jobsResult, transactionsResult, pendingReviews] = await Promise.all([
-    supabase
-      .from("jobs")
-      .select(
-        "id, status, invited_kinglancer_id, direct_request_status, applications:applications(count)",
-      )
-      .eq("client_id", user.id)
-      .or("status.eq.open,status.eq.completed")
-      .limit(100),
-    supabase
-      .from("transactions")
-      .select("job_id")
-      .eq("client_id", user.id)
-      .in("status", ["held", "released", "disputed"]),
-    getPendingReviewJobs(user.id, "client"),
-  ]);
-
-  const fundedJobIds = new Set(
-    (transactionsResult.data ?? []).map((t) => t.job_id),
-  );
-  const rawJobs = (jobsResult.data ?? []) as unknown as Array<{
-    id: string;
-    status: string;
-    invited_kinglancer_id: string | null;
-    direct_request_status: string | null;
-    applications: [{ count: number }] | null;
-  }>;
-  const jobs = rawJobs.map((job) => ({
-    ...job,
-    has_funded_transaction: fundedJobIds.has(job.id),
-  }));
-
-  const counts = getClientActionCounts(
-    jobs,
-    (job) => (job.applications as [{ count: number }] | null)?.[0]?.count ?? 0,
-  );
-  const actionCount = counts.actionCount + pendingReviews.length;
-  const waitingCount = counts.waitingCount;
+  const { actionCount, waitingCount } = await getActionCentre({
+    supabase,
+    userId: user.id,
+    role: "client",
+  });
 
   return (
     <div>

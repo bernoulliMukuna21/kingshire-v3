@@ -261,11 +261,12 @@ export default async function AgreementPage({
                         ? `You pay £${(Number(p.amount) + Number(p.platform_fee_client)).toFixed(2)}`
                         : `You receive £${(Number(p.amount) - Number(p.platform_fee_kinglancer)).toFixed(2)}`}
                     </p>
-                    {p.due_date && (p.status === "due" || p.status === "processing") && (
-                      <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
-                        To be paid on {formatPayDate(p.due_date)}
-                      </p>
-                    )}
+                    {p.due_date &&
+                      (p.status === "due" || p.status === "processing") && (
+                        <p className="mt-0.5 text-[11px] font-semibold text-slate-400">
+                          To be paid on {formatPayDate(p.due_date)}
+                        </p>
+                      )}
                   </div>
                   {isOrgManager && p.status === "failed" ? (
                     <PayMonthButton

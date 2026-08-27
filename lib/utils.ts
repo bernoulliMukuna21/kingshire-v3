@@ -67,6 +67,11 @@ export function formatMoney(value: number): string {
   return (value % 1 === 0 ? GBP_INTEGER : GBP_DECIMAL).format(value);
 }
 
+/** Always two decimals (£345.00) — for financial/accounting views (admin). */
+export function formatMoneyPrecise(value: number): string {
+  return GBP_DECIMAL.format(value);
+}
+
 /**
  * Human label for a job rate type.
  * Returns "/hr", "/day", or "fixed" (empty string suffix for display).

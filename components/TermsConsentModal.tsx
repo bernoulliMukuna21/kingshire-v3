@@ -48,7 +48,9 @@ export default function TermsConsentModal() {
           <li>
             • A clear breakdown of the platform fee on every job and placement.
           </li>
-          <li>• What you see at checkout is what you pay — no hidden charges.</li>
+          <li>
+            • What you see at checkout is what you pay — no hidden charges.
+          </li>
         </ul>
         <p className="mt-3 text-sm text-slate-600">
           Read the full{" "}
@@ -77,8 +79,8 @@ export default function TermsConsentModal() {
             disabled={loading}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading && <Loader2 size={16} className="animate-spin" />}
-            I understand and agree
+            {loading && <Loader2 size={16} className="animate-spin" />}I
+            understand and agree
           </button>
         </div>
       </div>

@@ -8,12 +8,12 @@ import PageHeader from "@/components/ui/PageHeader";
 import {
   ADMIN_PAGE_SIZE,
   type AdminJob,
-  formatMoney,
   getPageNumber,
   getPageRange,
-  jobStatusClasses,
   timeAgo,
 } from "@/lib/admin-dashboard";
+import { formatMoneyPrecise as formatMoney } from "@/lib/utils";
+import { jobStatusPill } from "@/lib/jobs";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export default async function AdminJobsPage({
@@ -86,7 +86,7 @@ export default async function AdminJobsPage({
                   </div>
                   <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-bold capitalize ${jobStatusClasses(job.status)}`}
+                      className={`rounded-full px-2.5 py-1 text-xs font-bold capitalize ${jobStatusPill(job.status).className}`}
                     >
                       {job.status.replace("_", " ")}
                     </span>

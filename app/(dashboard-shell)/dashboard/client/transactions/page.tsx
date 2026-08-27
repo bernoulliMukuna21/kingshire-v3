@@ -7,14 +7,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: "Awaiting payment", color: "bg-gray-100 text-gray-600" },
-  held: { label: "In escrow", color: "bg-blue-50 text-blue-700" },
-  released: { label: "Released", color: "bg-green-50 text-green-700" },
-  refunded: { label: "Refunded", color: "bg-orange-50 text-orange-700" },
-  disputed: { label: "Disputed", color: "bg-red-50 text-red-700" },
-};
+import { transactionStatusPill } from "@/lib/transactions";
 
 export default async function TransactionsPage() {
   const supabase = await createClient();
@@ -132,7 +125,7 @@ export default async function TransactionsPage() {
             </div>
 
             {transactions.map((tx) => {
-              const s = STATUS_CONFIG[tx.status] ?? STATUS_CONFIG.pending;
+              const s = transactionStatusPill(tx.status);
               const total = tx.amount + tx.platform_fee_client;
               const date = new Date(tx.created_at).toLocaleDateString("en-GB", {
                 day: "numeric",
@@ -175,7 +168,7 @@ export default async function TransactionsPage() {
                   </div>
 
                   <div>
-                    <StatusBadge className={s.color}>{s.label}</StatusBadge>
+                    <StatusBadge className={s.className}>{s.label}</StatusBadge>
                   </div>
                 </div>
               );

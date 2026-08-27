@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import type { DirectRequestStatus } from "@/lib/jobs";
 import {
   Loader2,
   CheckCircle,
@@ -181,13 +182,6 @@ export function ApplyForm({ jobId }: { jobId: string }) {
 
 // ── Direct request actions ────────────────────────────────
 
-type DirectRequestStatus =
-  | "pending"
-  | "changes_requested"
-  | "accepted_pending_payment"
-  | "declined"
-  | "cancelled"
-  | null;
 
 export function DirectRequestActions({
   jobId,

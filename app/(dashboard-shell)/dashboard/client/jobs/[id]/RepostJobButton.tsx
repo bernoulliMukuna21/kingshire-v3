@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import ConfirmModal from "@/components/ConfirmModal";
+import type { RateType, WorkMode } from "@/lib/jobs";
 
 type RepostJob = {
   id: string;
@@ -11,8 +12,8 @@ type RepostJob = {
   description: string;
   categories: string[];
   budget: number;
-  rate_type: "fixed" | "per_hour" | "per_day";
-  work_mode: "online" | "in_person" | "hybrid";
+  rate_type: RateType;
+  work_mode: WorkMode;
   location: string | null;
   days_on_site: number | null;
   organisation_id: string | null;

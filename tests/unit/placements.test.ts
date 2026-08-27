@@ -8,11 +8,29 @@ import {
   monthlyPaymentCount,
   placementMonthlyAmounts,
   derivePlacementView,
+  displayPlacementCompensation,
   PlacementError,
 } from "@/lib/placements";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
 
 const category = (JOB_CATEGORIES as readonly string[])[0];
+
+describe("displayPlacementCompensation", () => {
+  it("returns one label + formatted detail per compensation type", () => {
+    const rows = displayPlacementCompensation({
+      compensation_types: ["reference", "money"],
+      compensation_details: {
+        reference: "A written reference",
+        money: { amount: 30, cadence: "per_week" },
+      },
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows.find((r) => r.type === "reference")?.detail).toBe(
+      "A written reference",
+    );
+    expect(rows.find((r) => r.type === "money")?.detail).toContain("£30");
+  });
+});
 
 const valid = {
   title: "Media team assistant",

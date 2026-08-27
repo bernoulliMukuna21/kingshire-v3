@@ -27,7 +27,7 @@ export const getDashboardContext = cache(async () => {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "full_name, role, avatar_url, rating, jobs_completed, stripe_account_id, stripe_onboarding_complete, bio, services, terms_accepted_version"
+      "full_name, role, avatar_url, rating, jobs_completed, stripe_account_id, stripe_onboarding_complete, bio, services, terms_accepted_version",
     )
     .eq("id", user.id)
     .single();
@@ -38,5 +38,10 @@ export const getDashboardContext = cache(async () => {
 
   const organisations = await getUserOrganisationSummaries(user.id, 5);
 
-  return { supabase, user, profile: profile as DashboardProfile, organisations };
+  return {
+    supabase,
+    user,
+    profile: profile as DashboardProfile,
+    organisations,
+  };
 });

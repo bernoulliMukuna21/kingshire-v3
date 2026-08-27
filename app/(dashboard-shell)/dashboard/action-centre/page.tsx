@@ -1,410 +1,39 @@
-import {
-  AlertCircle,
-  CheckCircle2,
-  CreditCard,
-  GraduationCap,
-  Send,
-  Star,
-  Users,
-} from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { CheckCircle2 } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
-import { getPendingReviewJobs, reviewWindowRemaining } from "@/lib/db/reviews";
-import { listKinglancerAgreements } from "@/lib/db/placements";
-import { formatMoney, formatRateType } from "@/lib/utils";
+import { getActionCentre, type ActionCentreRole } from "@/lib/action-centre";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
 import {
   ActionCentreHeader,
-  ActionItemCard,
-  ActionSection,
+  ActionItemsView,
   ActionSummary,
-  WaitingItemCard,
-  type ActionItem,
 } from "@/components/dashboard/ActionCentre";
-import {
-  isClientApplicantReviewAction,
-  isClientDirectRequestAction,
-  isClientDirectRequestWaiting,
-  isClientReviewWorkAction,
-  isKinglancerDirectRequestAction,
-  isKinglancerDirectRequestWaiting,
-} from "@/lib/dashboard-action-rules";
-
-type ClientActionJob = {
-  id: string;
-  title: string;
-  status: string;
-  budget: number;
-  rate_type: string;
-  invited_kinglancer_id: string | null;
-  direct_request_status: string | null;
-  has_funded_transaction?: boolean;
-  counter_budget: number | null;
-  counter_rate_type: string | null;
-  counter_deadline: string | null;
-  kinglancer: { full_name: string | null } | null;
-  invited_kinglancer: { full_name: string | null } | null;
-};
-
-type KinglancerActionJob = {
-  id: string;
-  title: string;
-  status: string;
-  budget: number;
-  rate_type: string;
-  direct_request_status: string | null;
-  has_funded_transaction?: boolean;
-  client: { full_name: string | null } | null;
-};
-
-function uniqueActions(actions: ActionItem[]) {
-  const seen = new Set<string>();
-  return actions.filter((action) => {
-    if (seen.has(action.id)) return false;
-    seen.add(action.id);
-    return true;
-  });
-}
-
-function actionCentreHref(href: string) {
-  return `${href}?from=action-centre`;
-}
-
-async function getPendingReviewItems(
-  userId: string,
-  role: "client" | "kinglancer",
-): Promise<ActionItem[]> {
-  const pending = await getPendingReviewJobs(userId, role);
-  return pending.map((job) => {
-    const name =
-      job.counterpartName ??
-      (role === "client" ? "your Kinglancer" : "the client");
-    const remaining = reviewWindowRemaining(job.closesAt);
-    return {
-      id: `${job.jobId}:leave-review`,
-      title: job.jobTitle,
-      description: `This job is complete. Share your honest feedback on working with ${name}.`,
-      href: `${actionCentreHref(`/dashboard/${role}/jobs/${job.jobId}`)}#leave-review`,
-      icon: <Star size={18} />,
-      badge: remaining?.urgent ? "Closes soon" : "Leave a review",
-      tone: remaining?.urgent ? "red" : "amber",
-      meta: remaining?.label,
-    };
-  });
-}
-
-async function getFundedJobIds(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  jobIds: string[],
-) {
-  if (jobIds.length === 0) return new Set<string>();
-
-  const { data } = await supabase
-    .from("transactions")
-    .select("job_id")
-    .in("job_id", jobIds)
-    .in("status", ["held", "released", "disputed"]);
-
-  return new Set((data ?? []).map((transaction) => transaction.job_id));
-}
-
-async function getClientActionData(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-) {
-  const { data: jobsRaw } = await supabase
-    .from("jobs")
-    .select(
-      `
-      id, title, status, budget, rate_type,
-      invited_kinglancer_id, direct_request_status,
-      counter_budget, counter_rate_type, counter_deadline,
-      kinglancer:profiles!kinglancer_id(full_name),
-      invited_kinglancer:profiles!invited_kinglancer_id(full_name)
-    `,
-    )
-    .eq("client_id", userId)
-    .or(
-      "status.eq.completed,status.eq.open,direct_request_status.eq.changes_requested,direct_request_status.eq.accepted_pending_payment,direct_request_status.eq.pending",
-    )
-    .order("updated_at", { ascending: false })
-    .limit(100);
-
-  const jobs = (jobsRaw ?? []) as unknown as ClientActionJob[];
-  const jobIds = jobs.map((job) => job.id);
-  const [applicationsResult, fundedJobIds] = await Promise.all([
-    jobIds.length
-      ? supabase
-          .from("applications")
-          .select("job_id")
-          .in("job_id", jobIds)
-          .eq("status", "pending")
-      : Promise.resolve({ data: [] }),
-    getFundedJobIds(supabase, jobIds),
-  ]);
-  const applicationsRaw = applicationsResult.data ?? [];
-  const jobsWithFunding = jobs.map((job) => ({
-    ...job,
-    has_funded_transaction: fundedJobIds.has(job.id),
-  }));
-
-  const applicationCountByJob = (applicationsRaw ?? []).reduce<
-    Record<string, number>
-  >((acc, row) => {
-    acc[row.job_id] = (acc[row.job_id] ?? 0) + 1;
-    return acc;
-  }, {});
-
-  const actionItems = uniqueActions(
-    jobsWithFunding
-      .flatMap<ActionItem>((job) => {
-        const items: ActionItem[] = [];
-        const budget = `${formatMoney(Number(job.budget))} ${formatRateType(job.rate_type)}`;
-
-        if (
-          isClientDirectRequestAction(job) &&
-          job.direct_request_status === "changes_requested"
-        ) {
-          items.push({
-            id: `${job.id}:changes-requested`,
-            title: job.title,
-            description: `${
-              job.invited_kinglancer?.full_name ?? "The Kinglancer"
-            } requested changes. Review the proposed terms before funding escrow.`,
-            href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
-            icon: <Send size={18} />,
-            badge: "Review changes",
-            tone: "purple",
-            meta: budget,
-          });
-        }
-
-        if (
-          isClientDirectRequestAction(job) &&
-          job.direct_request_status === "accepted_pending_payment"
-        ) {
-          items.push({
-            id: `${job.id}:payment-required`,
-            title: job.title,
-            description: `${
-              job.invited_kinglancer?.full_name ?? "The Kinglancer"
-            } accepted your request. Fund escrow to start the job.`,
-            href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
-            icon: <CreditCard size={18} />,
-            badge: "Payment required",
-            tone: "blue",
-            meta: budget,
-          });
-        }
-
-        if (isClientReviewWorkAction(job)) {
-          items.push({
-            id: `${job.id}:review-work`,
-            title: job.title,
-            description: `${
-              job.kinglancer?.full_name ?? "Your Kinglancer"
-            } submitted this work. Approve it to release payment.`,
-            href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
-            icon: <CheckCircle2 size={18} />,
-            badge: "Review work",
-            tone: "amber",
-            meta: budget,
-          });
-        }
-
-        const applicantCount = applicationCountByJob[job.id] ?? 0;
-        if (isClientApplicantReviewAction(job, applicantCount)) {
-          items.push({
-            id: `${job.id}:applicants`,
-            title: job.title,
-            description: `${applicantCount} applicant${
-              applicantCount !== 1 ? "s" : ""
-            } waiting for your decision.`,
-            href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
-            icon: <Users size={18} />,
-            badge: "Review applicants",
-            tone: "green",
-            meta: budget,
-          });
-        }
-
-        return items;
-      })
-      .sort((a, b) => a.title.localeCompare(b.title)),
-  );
-
-  const waitingItems = jobsWithFunding
-    .filter((job) => isClientDirectRequestWaiting(job))
-    .map<ActionItem>((job) => ({
-      id: `${job.id}:waiting-kinglancer`,
-      title: job.title,
-      description: `Waiting for ${
-        job.invited_kinglancer?.full_name ?? "the Kinglancer"
-      } to respond to your direct request.`,
-      href: actionCentreHref(`/dashboard/client/jobs/${job.id}`),
-      icon: <Send size={18} />,
-      badge: "Waiting",
-      tone: "slate",
-      meta: `${formatMoney(Number(job.budget))} ${formatRateType(job.rate_type)}`,
-    }));
-
-  return { actionItems, waitingItems };
-}
-
-async function getKinglancerPlacementItems(
-  userId: string,
-): Promise<{ actionItems: ActionItem[]; waitingItems: ActionItem[] }> {
-  const agreements = await listKinglancerAgreements(userId);
-  const actionItems: ActionItem[] = [];
-  const waitingItems: ActionItem[] = [];
-  for (const a of agreements) {
-    const title = a.placement?.title ?? "Placement";
-    if (
-      a.status === "pending_acceptance" &&
-      a.placement?.status !== "cancelled"
-    ) {
-      actionItems.push({
-        id: `${a.id}:placement-offer`,
-        title,
-        description:
-          "You've been offered this placement. Accept or decline to continue.",
-        href: actionCentreHref(`/dashboard/placements/agreements/${a.id}`),
-        icon: <GraduationCap size={18} />,
-        badge: "Placement offer",
-        tone: "purple",
-      });
-    } else if (a.status === "pending_funding") {
-      waitingItems.push({
-        id: `${a.id}:placement-funding`,
-        title,
-        description:
-          "You've accepted. Waiting for the organisation to fund the first month before it starts.",
-        href: actionCentreHref(`/dashboard/placements/agreements/${a.id}`),
-        icon: <CreditCard size={18} />,
-        badge: "Awaiting funding",
-        tone: "slate",
-      });
-    }
-  }
-  return { actionItems, waitingItems };
-}
-
-async function getKinglancerActionData(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-) {
-  const { data: jobsRaw } = await supabase
-    .from("jobs")
-    .select(
-      "id, title, status, budget, rate_type, direct_request_status, client:profiles!client_id(full_name)",
-    )
-    .eq("invited_kinglancer_id", userId)
-    .in("direct_request_status", [
-      "pending",
-      "changes_requested",
-      "accepted_pending_payment",
-    ])
-    .order("updated_at", { ascending: false })
-    .limit(100);
-
-  const jobs = (jobsRaw ?? []) as unknown as KinglancerActionJob[];
-  const fundedJobIds = await getFundedJobIds(
-    supabase,
-    jobs.map((job) => job.id),
-  );
-  const jobsWithFunding = jobs.map((job) => ({
-    ...job,
-    has_funded_transaction: fundedJobIds.has(job.id),
-  }));
-
-  const actionItems = jobsWithFunding
-    .filter((job) => isKinglancerDirectRequestAction(job))
-    .map<ActionItem>((job) => ({
-      id: `${job.id}:respond`,
-      title: job.title,
-      description: `${
-        job.client?.full_name ?? "A client"
-      } sent you a direct request. Accept, decline, or request changes.`,
-      href: actionCentreHref(`/dashboard/kinglancer/jobs/${job.id}`),
-      icon: <Send size={18} />,
-      badge: "Reply needed",
-      tone: "purple",
-      meta: `${formatMoney(Number(job.budget))} ${formatRateType(job.rate_type)}`,
-    }));
-
-  const waitingItems = jobsWithFunding
-    .filter((job) => isKinglancerDirectRequestWaiting(job))
-    .map<ActionItem>((job) => ({
-      id: `${job.id}:waiting`,
-      title: job.title,
-      description:
-        job.direct_request_status === "changes_requested"
-          ? "Waiting for the client to review your requested changes."
-          : "You accepted this request. Waiting for the client to fund escrow.",
-      href: actionCentreHref(`/dashboard/kinglancer/jobs/${job.id}`),
-      icon:
-        job.direct_request_status === "changes_requested" ? (
-          <AlertCircle size={18} />
-        ) : (
-          <CreditCard size={18} />
-        ),
-      badge:
-        job.direct_request_status === "changes_requested"
-          ? "Waiting on client"
-          : "Awaiting payment",
-      tone: "slate",
-      meta: `${formatMoney(Number(job.budget))} ${formatRateType(job.rate_type)}`,
-    }));
-
-  return { actionItems, waitingItems };
-}
 
 export default async function ActionCentrePage() {
   const { supabase, user, profile } = await getDashboardContext();
 
-  const role = profile.role === "client" ? "client" : "kinglancer";
-  const [{ actionItems: roleActions, waitingItems: roleWaiting }, reviewItems, placementItems] =
-    await Promise.all([
-      role === "client"
-        ? getClientActionData(supabase, user.id)
-        : getKinglancerActionData(supabase, user.id),
-      getPendingReviewItems(user.id, role),
-      role === "kinglancer"
-        ? getKinglancerPlacementItems(user.id)
-        : Promise.resolve({
-            actionItems: [] as ActionItem[],
-            waitingItems: [] as ActionItem[],
-          }),
-    ]);
+  const role: ActionCentreRole =
+    profile.role === "client" ? "client" : "kinglancer";
+  const { items, actionCount, waitingCount } = await getActionCentre({
+    supabase,
+    userId: user.id,
+    role,
+  });
 
-  const actionItems = [
-    ...roleActions,
-    ...reviewItems,
-    ...placementItems.actionItems,
-  ];
-  const waitingItems = [...roleWaiting, ...placementItems.waitingItems];
-
-  const roleLabel = profile.role === "client" ? "Client" : "Kinglancer";
+  const roleLabel = role === "client" ? "Client" : "Kinglancer";
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-      <ActionCentreHeader
-        roleLabel={roleLabel}
-        actionCount={actionItems.length}
-      />
-      <ActionSummary
-        actionCount={actionItems.length}
-        waitingCount={waitingItems.length}
-      />
+      <ActionCentreHeader roleLabel={roleLabel} actionCount={actionCount} />
+      <ActionSummary actionCount={actionCount} waitingCount={waitingCount} />
 
-      {actionItems.length === 0 && waitingItems.length === 0 ? (
+      {actionCount === 0 && waitingCount === 0 ? (
         <EmptyState
           icon={<CheckCircle2 size={22} />}
           title="You are all caught up"
           description="When a job needs a reply, decision, approval, or escrow payment, it will appear here."
           action={
-            profile.role === "client" ? (
+            role === "client" ? (
               <ButtonLink href="/jobs/post" size="sm">
                 Post a job
               </ButtonLink>
@@ -416,29 +45,7 @@ export default async function ActionCentrePage() {
           }
         />
       ) : (
-        <div className="space-y-8">
-          {actionItems.length > 0 && (
-            <ActionSection
-              title="Needs action"
-              description="These items are waiting for you."
-            >
-              {actionItems.map((item) => (
-                <ActionItemCard key={item.id} item={item} />
-              ))}
-            </ActionSection>
-          )}
-
-          {waitingItems.length > 0 && (
-            <ActionSection
-              title="Waiting on others"
-              description="These are useful to track, but they do not need action from you right now."
-            >
-              {waitingItems.map((item) => (
-                <WaitingItemCard key={item.id} item={item} />
-              ))}
-            </ActionSection>
-          )}
-        </div>
+        <ActionItemsView items={items} />
       )}
     </div>
   );

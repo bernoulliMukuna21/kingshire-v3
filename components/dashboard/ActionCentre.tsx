@@ -1,10 +1,21 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertCircle, CheckCircle2, ChevronRight, Clock3 } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  CreditCard,
+  GraduationCap,
+  Send,
+  Star,
+  Users,
+} from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { cn } from "@/lib/utils";
+import type { ActionCentreItem, ActionIcon } from "@/lib/action-centre";
 
 type Tone = "blue" | "green" | "amber" | "red" | "slate" | "purple";
 
@@ -318,5 +329,80 @@ export function WaitingItemCard({ item }: { item: ActionItem }) {
         )}
       </div>
     </Card>
+  );
+}
+
+const ICONS: Record<ActionIcon, ReactNode> = {
+  review: <Star size={18} />,
+  "review-work": <CheckCircle2 size={18} />,
+  applicants: <Users size={18} />,
+  request: <Send size={18} />,
+  payment: <CreditCard size={18} />,
+  placement: <GraduationCap size={18} />,
+  alert: <AlertCircle size={18} />,
+};
+
+/** Append an Action Centre source tag, preserving any `#fragment`. */
+function withSource(href: string, from: string): string {
+  const [path, fragment] = href.split("#");
+  const sep = path.includes("?") ? "&" : "?";
+  const decorated = `${path}${sep}from=${from}`;
+  return fragment ? `${decorated}#${fragment}` : decorated;
+}
+
+function toActionItem(item: ActionCentreItem, from: string | null): ActionItem {
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    href: from ? withSource(item.href, from) : item.href,
+    icon: ICONS[item.icon],
+    badge: item.badge,
+    tone: item.tone,
+    meta: item.meta,
+  };
+}
+
+/** Renders action-centre items into Needs action + Waiting sections. Shared by
+ * the personal Action Centre page and the organisation workspace. `from` tags
+ * links so the destination shows a "Back to Action Centre" link; pass `null`
+ * (e.g. from the org workspace) to leave links undecorated. */
+export function ActionItemsView({
+  items,
+  from = "action-centre",
+}: {
+  items: ActionCentreItem[];
+  from?: string | null;
+}) {
+  const actionItems = items
+    .filter((item) => item.kind === "action")
+    .map((item) => toActionItem(item, from));
+  const waitingItems = items
+    .filter((item) => item.kind === "waiting")
+    .map((item) => toActionItem(item, from));
+
+  return (
+    <div className="space-y-8">
+      {actionItems.length > 0 && (
+        <ActionSection
+          title="Needs action"
+          description="These items are waiting for you."
+        >
+          {actionItems.map((item) => (
+            <ActionItemCard key={item.id} item={item} />
+          ))}
+        </ActionSection>
+      )}
+      {waitingItems.length > 0 && (
+        <ActionSection
+          title="Waiting on others"
+          description="These are useful to track, but they do not need action from you right now."
+        >
+          {waitingItems.map((item) => (
+            <WaitingItemCard key={item.id} item={item} />
+          ))}
+        </ActionSection>
+      )}
+    </div>
   );
 }

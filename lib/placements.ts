@@ -83,6 +83,19 @@ export function summarizePlacementCompensation(placement: {
   return parts.join("; ");
 }
 
+// One row per compensation type for UI (label + formatted detail).
+export function displayPlacementCompensation(placement: {
+  compensation_types: string[];
+  compensation_details: Record<string, unknown> | null;
+}): Array<{ type: string; label: string; detail: string }> {
+  const details = placement.compensation_details ?? {};
+  return placement.compensation_types.map((type) => ({
+    type,
+    label: COMPENSATION_LABELS[type] ?? type,
+    detail: formatCompensationDetail(type, details[type]),
+  }));
+}
+
 // Monthly £ amount for a managed placement, or null if not managed/no money.
 export function managedMonthlyAmount(placement: {
   payment_mode: string;

@@ -86,7 +86,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { role, phone, service_tags, services, portfolio_url, cv_url, bio } = body;
+  const { role, phone, service_tags, services, portfolio_url, cv_url, bio } =
+    body;
 
   if (role !== "client" && role !== "kinglancer") {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
@@ -120,10 +121,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    role === "kinglancer" &&
-    !normalized.services.some((s) => s.rate > 0)
-  ) {
+  if (role === "kinglancer" && !normalized.services.some((s) => s.rate > 0)) {
     return NextResponse.json(
       { error: "Please set a rate for at least one service." },
       { status: 400 },

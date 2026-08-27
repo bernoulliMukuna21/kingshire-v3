@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getJobById } from "@/lib/db/jobs";
+import type { RateType } from "@/lib/jobs";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { notifyJobCancelled } from "@/lib/notifications";
@@ -200,7 +201,7 @@ export async function PATCH(
     categories: string[];
     deadline: string | null;
     budget?: number;
-    rate_type?: "fixed" | "per_hour" | "per_day";
+    rate_type?: RateType;
   };
 
   const updatePayload: JobUpdate = {

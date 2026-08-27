@@ -1,11 +1,19 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
+import { coerceNumeric, coerceNumericList } from "@/lib/db/coerce";
 import { calculateFees } from "@/lib/stripe";
 import { placementMonthlyAmounts } from "@/lib/placements";
 import type { PlacementAgreementRow } from "@/lib/db/placements";
 
 export type PlacementPaymentRow =
   Database["public"]["Tables"]["placement_payments"]["Row"];
+
+// `numeric` columns arrive as strings — coerce so callers can do money math.
+const PLACEMENT_PAYMENT_NUMERIC = [
+  "amount",
+  "platform_fee_client",
+  "platform_fee_kinglancer",
+] as const;
 
 /** Adds whole calendar months to a date. */
 function addMonths(date: Date, months: number): Date {
@@ -24,7 +32,10 @@ export async function listPlacementPayments(
     .eq("agreement_id", agreementId)
     .order("period_index", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as PlacementPaymentRow[];
+  return coerceNumericList(
+    (data ?? []) as PlacementPaymentRow[],
+    PLACEMENT_PAYMENT_NUMERIC,
+  );
 }
 
 export async function getPlacementPayment(
@@ -36,7 +47,9 @@ export async function getPlacementPayment(
     .select("*")
     .eq("id", paymentId)
     .maybeSingle();
-  return (data as PlacementPaymentRow | null) ?? null;
+  return data
+    ? coerceNumeric(data as PlacementPaymentRow, PLACEMENT_PAYMENT_NUMERIC)
+    : null;
 }
 
 /**
@@ -81,7 +94,10 @@ export async function ensurePaymentSchedule(
     // A concurrent render may have inserted first (unique agreement+period).
     return listPlacementPayments(agreement.id);
   }
-  return (data ?? []) as PlacementPaymentRow[];
+  return coerceNumericList(
+    (data ?? []) as PlacementPaymentRow[],
+    PLACEMENT_PAYMENT_NUMERIC,
+  );
 }
 
 /** Due, unpaid managed payments whose due date has arrived, for active
@@ -100,9 +116,12 @@ export async function listDuePlacementPayments(): Promise<
   const rows = (data ?? []) as (PlacementPaymentRow & {
     agreement: { status: string } | null;
   })[];
-  return rows.filter(
-    (row) => row.agreement?.status === "active",
-  ) as unknown as PlacementPaymentRow[];
+  return coerceNumericList(
+    rows.filter(
+      (row) => row.agreement?.status === "active",
+    ) as unknown as PlacementPaymentRow[],
+    PLACEMENT_PAYMENT_NUMERIC,
+  );
 }
 
 export type DisputedPlacementPayment = PlacementPaymentRow & {
@@ -124,7 +143,35 @@ export async function listDisputedPlacementPayments(): Promise<
     .eq("status", "disputed")
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as unknown as DisputedPlacementPayment[];
+  return coerceNumericList(
+    (data ?? []) as unknown as DisputedPlacementPayment[],
+    PLACEMENT_PAYMENT_NUMERIC,
+  );
+}
+
+export type OrgHeldPlacementPayment = PlacementPaymentRow & {
+  kinglancer: { full_name: string | null } | null;
+  agreement: { placement: { title: string } | null } | null;
+};
+
+/** Held (escrowed) months for an org, awaiting the org's approve/dispute. */
+export async function listHeldPlacementPaymentsForOrg(
+  organisationId: string,
+): Promise<OrgHeldPlacementPayment[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_payments")
+    .select(
+      "*, kinglancer:profiles!kinglancer_id(full_name), agreement:placement_agreements!agreement_id(placement:placements(title))",
+    )
+    .eq("organisation_id", organisationId)
+    .eq("status", "held")
+    .order("due_date", { ascending: true });
+  if (error) throw error;
+  return coerceNumericList(
+    (data ?? []) as unknown as OrgHeldPlacementPayment[],
+    PLACEMENT_PAYMENT_NUMERIC,
+  );
 }
 
 export async function updatePlacementPaymentStatus(

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Plus, ChevronRight, Send } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
-import { type JobStatus, JOBS_PAGE_SIZE } from "@/lib/jobs";
+import { type JobStatus, JOBS_PAGE_SIZE, jobStatusPill } from "@/lib/jobs";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
@@ -57,44 +57,6 @@ function parseTab(raw: string | undefined): Tab {
     return raw;
   return "active";
 }
-
-// ── Status display config ─────────────────────────────────
-
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; color: string; dot: string }
-> = {
-  open: {
-    label: "Open",
-    color: "bg-green-50 text-green-700 ring-green-100",
-    dot: "bg-green-500",
-  },
-  in_progress: {
-    label: "In Progress",
-    color: "bg-blue-50 text-blue-700 ring-blue-100",
-    dot: "bg-blue-500",
-  },
-  completed: {
-    label: "Awaiting Approval",
-    color: "bg-yellow-50 text-yellow-700 ring-yellow-100",
-    dot: "bg-yellow-500",
-  },
-  disputed: {
-    label: "Disputed",
-    color: "bg-red-50 text-red-700 ring-red-100",
-    dot: "bg-red-500",
-  },
-  cancelled: {
-    label: "Cancelled",
-    color: "bg-gray-100 text-gray-500 ring-gray-200",
-    dot: "bg-gray-400",
-  },
-  approved: {
-    label: "Completed",
-    color: "bg-emerald-50 text-emerald-700 ring-emerald-100",
-    dot: "bg-emerald-500",
-  },
-};
 
 // ── Helpers ───────────────────────────────────────────────
 
@@ -279,7 +241,7 @@ function JobCard({
   countMap: Record<string, number>;
 }) {
   const isDirectRequest = !!job.invited_kinglancer_id;
-  const config = STATUS_CONFIG[job.status] ?? STATUS_CONFIG.open;
+  const config = jobStatusPill(job.status);
   const appCount = countMap[job.id] ?? 0;
   const categories = compactCategories(job.categories ?? []);
   const needsAttention =
@@ -355,7 +317,7 @@ function JobCard({
           </div>
 
           <div className="flex shrink-0 items-center gap-3">
-            <StatusBadge className={config.color}>
+            <StatusBadge className={config.className}>
               <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
               {config.label}
             </StatusBadge>

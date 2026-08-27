@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
+import { coerceNumeric, coerceNumericList } from "@/lib/db/coerce";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type JobInsert = Database["public"]["Tables"]["jobs"]["Insert"];
@@ -15,6 +16,9 @@ export type JobWithClient = Job & {
   };
   application_count?: number;
 };
+
+// `numeric` columns arrive as strings — coerce so callers can do money math.
+const JOB_NUMERIC = ["budget", "counter_budget"] as const;
 
 export { JOB_CATEGORIES } from "@/lib/job-categories";
 
@@ -31,7 +35,10 @@ export async function getOpenJobs(): Promise<JobWithClient[]> {
     .limit(100);
 
   if (error) throw error;
-  return (data ?? []) as unknown as JobWithClient[];
+  return coerceNumericList(
+    (data ?? []) as unknown as JobWithClient[],
+    JOB_NUMERIC,
+  );
 }
 
 export async function getJobById(
@@ -50,7 +57,7 @@ export async function getJobById(
     .single();
 
   if (error) return null;
-  return data as unknown as JobWithClient;
+  return coerceNumeric(data as unknown as JobWithClient, JOB_NUMERIC);
 }
 
 export async function createJob(
