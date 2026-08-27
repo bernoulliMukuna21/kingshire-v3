@@ -2,6 +2,7 @@ import {
   AlertCircle,
   CheckCircle2,
   CreditCard,
+  GraduationCap,
   Send,
   Star,
   Users,
@@ -9,6 +10,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { getPendingReviewJobs, reviewWindowRemaining } from "@/lib/db/reviews";
+import { listKinglancerAgreements } from "@/lib/db/placements";
 import { formatMoney, formatRateType } from "@/lib/utils";
 import EmptyState from "@/components/ui/EmptyState";
 import { ButtonLink } from "@/components/ui/Button";
@@ -250,6 +252,44 @@ async function getClientActionData(
   return { actionItems, waitingItems };
 }
 
+async function getKinglancerPlacementItems(
+  userId: string,
+): Promise<{ actionItems: ActionItem[]; waitingItems: ActionItem[] }> {
+  const agreements = await listKinglancerAgreements(userId);
+  const actionItems: ActionItem[] = [];
+  const waitingItems: ActionItem[] = [];
+  for (const a of agreements) {
+    const title = a.placement?.title ?? "Placement";
+    if (
+      a.status === "pending_acceptance" &&
+      a.placement?.status !== "cancelled"
+    ) {
+      actionItems.push({
+        id: `${a.id}:placement-offer`,
+        title,
+        description:
+          "You've been offered this placement. Accept or decline to continue.",
+        href: actionCentreHref(`/dashboard/placements/agreements/${a.id}`),
+        icon: <GraduationCap size={18} />,
+        badge: "Placement offer",
+        tone: "purple",
+      });
+    } else if (a.status === "pending_funding") {
+      waitingItems.push({
+        id: `${a.id}:placement-funding`,
+        title,
+        description:
+          "You've accepted. Waiting for the organisation to fund the first month before it starts.",
+        href: actionCentreHref(`/dashboard/placements/agreements/${a.id}`),
+        icon: <CreditCard size={18} />,
+        badge: "Awaiting funding",
+        tone: "slate",
+      });
+    }
+  }
+  return { actionItems, waitingItems };
+}
+
 async function getKinglancerActionData(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string,
@@ -324,15 +364,26 @@ export default async function ActionCentrePage() {
   const { supabase, user, profile } = await getDashboardContext();
 
   const role = profile.role === "client" ? "client" : "kinglancer";
-  const [{ actionItems: roleActions, waitingItems }, reviewItems] =
+  const [{ actionItems: roleActions, waitingItems: roleWaiting }, reviewItems, placementItems] =
     await Promise.all([
       role === "client"
         ? getClientActionData(supabase, user.id)
         : getKinglancerActionData(supabase, user.id),
       getPendingReviewItems(user.id, role),
+      role === "kinglancer"
+        ? getKinglancerPlacementItems(user.id)
+        : Promise.resolve({
+            actionItems: [] as ActionItem[],
+            waitingItems: [] as ActionItem[],
+          }),
     ]);
 
-  const actionItems = [...roleActions, ...reviewItems];
+  const actionItems = [
+    ...roleActions,
+    ...reviewItems,
+    ...placementItems.actionItems,
+  ];
+  const waitingItems = [...roleWaiting, ...placementItems.waitingItems];
 
   const roleLabel = profile.role === "client" ? "Client" : "Kinglancer";
 
