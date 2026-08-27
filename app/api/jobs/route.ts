@@ -11,6 +11,7 @@ import {
 import { emailJobAlert } from "@/lib/notifications";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { requireTermsAccepted } from "@/lib/terms";
 
 export async function GET() {
   try {
@@ -32,6 +33,13 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+
+  if (!(await requireTermsAccepted(user.id))) {
+    return NextResponse.json(
+      { error: "Please accept our updated terms to continue.", needsTerms: true },
+      { status: 403 },
+    );
   }
 
   const body = await request.json().catch(() => null);

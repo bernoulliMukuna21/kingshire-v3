@@ -5,6 +5,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 type ServiceInput = {
   name?: unknown;
@@ -141,6 +142,10 @@ export async function POST(request: Request) {
       service_tags: role === "kinglancer" ? normalized.serviceTags : [],
       portfolio_url: portfolio_url || null,
       cv_url: cv_url || null,
+      // New users agree to the current terms at sign-up — record it so they
+      // aren't re-prompted immediately.
+      terms_accepted_version: CURRENT_TERMS_VERSION,
+      terms_accepted_at: new Date().toISOString(),
     })
     .eq("id", user.id)
     .select("id, role");

@@ -9,6 +9,7 @@ import {
 } from "@/lib/db/placements";
 import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
 import { notifyPlacementReadyToFund } from "@/lib/notifications";
+import { requireTermsAccepted } from "@/lib/terms";
 
 export async function PATCH(
   request: Request,
@@ -65,6 +66,15 @@ export async function PATCH(
   }
 
   if (action === "accept") {
+    if (!(await requireTermsAccepted(user.id))) {
+      return NextResponse.json(
+        {
+          error: "Please accept our updated terms to continue.",
+          needsTerms: true,
+        },
+        { status: 403 },
+      );
+    }
     const isManaged =
       agreement.payment_mode === "managed" && !!agreement.monthly_amount;
 

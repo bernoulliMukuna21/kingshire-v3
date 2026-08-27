@@ -276,6 +276,8 @@ export type Database = {
           stripe_account_id: string | null;
           stripe_onboarding_complete: boolean;
           open_to_placements: boolean;
+          terms_accepted_version: number;
+          terms_accepted_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -324,6 +326,8 @@ export type Database = {
           stripe_account_id?: string | null;
           stripe_onboarding_complete?: boolean;
           open_to_placements?: boolean;
+          terms_accepted_version?: number;
+          terms_accepted_at?: string | null;
         };
         Relationships: [];
       };

@@ -13,6 +13,7 @@ export type DashboardProfile = {
   stripe_onboarding_complete: boolean;
   bio: string | null;
   services: Array<{ name: string; rate: number; rate_type: string }> | null;
+  terms_accepted_version: number;
 };
 
 export const getDashboardContext = cache(async () => {
@@ -26,7 +27,7 @@ export const getDashboardContext = cache(async () => {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "full_name, role, avatar_url, rating, jobs_completed, stripe_account_id, stripe_onboarding_complete, bio, services"
+      "full_name, role, avatar_url, rating, jobs_completed, stripe_account_id, stripe_onboarding_complete, bio, services, terms_accepted_version"
     )
     .eq("id", user.id)
     .single();

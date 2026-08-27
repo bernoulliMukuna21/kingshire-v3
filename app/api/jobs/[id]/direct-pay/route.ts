@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/payment-attempts";
 import { canManageJob } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { requireTermsAccepted } from "@/lib/terms";
 
 type DirectPayJob = {
   id: string;
@@ -35,6 +36,13 @@ export async function POST(
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+  }
+
+  if (!(await requireTermsAccepted(user.id))) {
+    return NextResponse.json(
+      { error: "Please accept our updated terms to continue.", needsTerms: true },
+      { status: 403 },
+    );
   }
 
   const { data: jobRaw } = await createServiceClient()

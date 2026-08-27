@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { activeParticipantLimit } from "@/lib/placements";
+import { requireTermsAccepted } from "@/lib/terms";
 import type { OrganisationPlanId } from "@/modules/organisations/domain/plans";
 import {
   countReservedParticipants,
@@ -76,6 +77,13 @@ export async function POST(
   if (action === "reject") {
     await updatePlacementApplicationStatus(applicationId, "rejected");
     return NextResponse.json({ ok: true });
+  }
+
+  if (!(await requireTermsAccepted(user.id))) {
+    return NextResponse.json(
+      { error: "Please accept our updated terms to continue.", needsTerms: true },
+      { status: 403 },
+    );
   }
 
   // Accept — run the seat/subscription checks and the notify-email lookup
