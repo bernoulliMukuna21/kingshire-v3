@@ -109,7 +109,8 @@ export default async function MyJobsPage({
   const { data: allStatuses } = await supabase
     .from("jobs")
     .select("status")
-    .eq("client_id", user.id);
+    .eq("client_id", user.id)
+    .is("organisation_id", null);
 
   const statusRows = allStatuses ?? [];
   const tabCounts: Record<Tab, number> = {
@@ -132,6 +133,7 @@ export default async function MyJobsPage({
     .from("jobs")
     .select(JOB_SELECT, { count: "exact" })
     .eq("client_id", user.id)
+    .is("organisation_id", null)
     .order("created_at", { ascending: false })
     .range(from, to);
 

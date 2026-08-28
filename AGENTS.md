@@ -36,6 +36,12 @@ only cross-user source of truth; the browser holds ephemeral UI state only.
 - Know your client: the **cookie** client (`lib/supabase/server.ts`) enforces
   RLS; the **service** client (`lib/supabase/service.ts`) bypasses it. `lib/db/*`
   uses the service client, so authorization must be enforced in code there.
+- Job ownership is one axis: a job is **personal** (`organisation_id IS NULL`,
+  owned by `client_id`) or **org-owned** (`organisation_id` set). Personal
+  surfaces MUST filter `client_id = user AND organisation_id IS NULL`; org
+  surfaces filter `organisation_id`. Never scope a personal view by `client_id`
+  alone — org jobs leak in. Authorisation is `canManageJob` (personal →
+  client_id; org → membership), independent of who posted.
 
 ## Migrations
 

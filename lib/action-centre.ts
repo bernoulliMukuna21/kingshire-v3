@@ -404,7 +404,7 @@ async function fetchClientStyleJobItems(
   column: "client_id" | "organisation_id",
   value: string,
 ): Promise<ActionCentreItem[]> {
-  const { data: jobsRaw } = await supabase
+  let query = supabase
     .from("jobs")
     .select(
       `
@@ -415,7 +415,12 @@ async function fetchClientStyleJobItems(
       invited_kinglancer:profiles!invited_kinglancer_id(full_name)
     `,
     )
-    .eq(column, value)
+    .eq(column, value);
+
+  // Personal scope excludes org-owned jobs — they belong to the org workspace.
+  if (column === "client_id") query = query.is("organisation_id", null);
+
+  const { data: jobsRaw } = await query
     .or(
       "status.eq.completed,status.eq.open,direct_request_status.eq.changes_requested,direct_request_status.eq.accepted_pending_payment,direct_request_status.eq.pending",
     )
