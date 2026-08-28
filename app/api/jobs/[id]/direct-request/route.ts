@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { canManageJob } from "@/lib/organisations";
 import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
@@ -11,6 +12,7 @@ const VALID_RATE_TYPES = ["fixed", "per_hour", "per_day"];
 type DirectRequestJob = {
   id: string;
   client_id: string;
+  organisation_id: string | null;
   invited_kinglancer_id: string | null;
   direct_request_status:
     | "pending"
@@ -39,7 +41,7 @@ export async function POST(
   const { data: jobRaw } = await supabase
     .from("jobs")
     .select(
-      "id, client_id, invited_kinglancer_id, direct_request_status, status",
+      "id, client_id, organisation_id, invited_kinglancer_id, direct_request_status, status",
     )
     .eq("id", jobId)
     .single();
@@ -211,7 +213,7 @@ export async function POST(
   }
 
   if (action === "accept_changes") {
-    if (user.id !== job.client_id) {
+    if (!(await canManageJob(job, user.id))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -241,7 +243,6 @@ export async function POST(
         counter_deadline: null,
       })
       .eq("id", jobId)
-      .eq("client_id", user.id)
       .eq("status", "open")
       .eq("direct_request_status", "changes_requested")
       .select("id")
@@ -264,7 +265,7 @@ export async function POST(
   }
 
   if (action === "cancel") {
-    if (user.id !== job.client_id) {
+    if (!(await canManageJob(job, user.id))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -272,7 +273,6 @@ export async function POST(
       .from("jobs")
       .update({ direct_request_status: "cancelled" })
       .eq("id", jobId)
-      .eq("client_id", user.id)
       .eq("status", "open")
       .in("direct_request_status", [
         "pending",
