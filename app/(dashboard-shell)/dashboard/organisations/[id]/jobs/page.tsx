@@ -221,7 +221,12 @@ export default async function OrganisationJobsPage({
       ) : (
         <div className="space-y-3">
           {jobs.map((job) => (
-            <JobCard key={job.id} job={job} countMap={countMap} />
+            <JobCard
+              key={job.id}
+              job={job}
+              countMap={countMap}
+              organisationId={id}
+            />
           ))}
           <JobsPagination
             basePath={basePath}
@@ -241,9 +246,11 @@ export default async function OrganisationJobsPage({
 function JobCard({
   job,
   countMap,
+  organisationId,
 }: {
   job: JobRow;
   countMap: Record<string, number>;
+  organisationId: string;
 }) {
   const isDirectRequest = !!job.invited_kinglancer_id;
   const config = jobStatusPill(job.status);
@@ -269,7 +276,7 @@ function JobCard({
       }`}
     >
       <Link
-        href={`/dashboard/client/jobs/${job.id}`}
+        href={`/dashboard/organisations/${organisationId}/jobs/${job.id}`}
         className="block p-5 sm:p-6"
       >
         <div className="flex items-start justify-between gap-4">

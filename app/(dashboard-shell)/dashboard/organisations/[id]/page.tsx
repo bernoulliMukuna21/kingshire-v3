@@ -119,7 +119,7 @@ export default async function OrganisationDashboardPage({
                 {jobs.map((job) => (
                   <Link
                     key={job.id}
-                    href={`/dashboard/client/jobs/${job.id}`}
+                    href={`/dashboard/organisations/${id}/jobs/${job.id}`}
                     className="flex items-center justify-between gap-4 p-4 hover:bg-slate-50"
                   >
                     <div>

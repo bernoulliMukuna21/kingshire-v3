@@ -57,7 +57,7 @@ export default async function OrganisationTransactionsPage({
               >
                 <div>
                   <Link
-                    href={`/dashboard/client/jobs/${transaction.jobId}`}
+                    href={`/dashboard/organisations/${id}/jobs/${transaction.jobId}`}
                     className="font-bold text-slate-950 hover:text-blue-700"
                   >
                     {transaction.jobTitle}
