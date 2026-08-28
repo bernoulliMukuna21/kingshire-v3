@@ -1,7 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getOrganisationMembership } from "@/lib/organisations";
+import {
+  getOrganisationMembership,
+  hasOrganisationPermission,
+} from "@/lib/organisations";
 import { getOrganisationOverview } from "@/infrastructure/supabase/queries/organisation-queries";
 import { listOrganisationPlacements } from "@/lib/db/placements";
 import { placementWorkModeSummary } from "@/lib/placements";
@@ -39,7 +42,11 @@ export default async function OrganisationDashboardPage({
   const { organisation, jobs, members, stats, subscription } = overview;
   const canManageMembers =
     membership.role === "owner" || membership.role === "admin";
-  const recentPlacements = canManageMembers
+  const canManageApplicants = hasOrganisationPermission(
+    membership.role,
+    "manage_applicants",
+  );
+  const recentPlacements = canManageApplicants
     ? (await listOrganisationPlacements(id)).slice(0, 5)
     : [];
 
@@ -137,7 +144,7 @@ export default async function OrganisationDashboardPage({
             )}
           </section>
 
-          {canManageMembers && (
+          {canManageApplicants && (
             <section>
               <div className="mb-3 flex items-center justify-between gap-3">
                 <h2 className="text-xl font-black text-slate-950">

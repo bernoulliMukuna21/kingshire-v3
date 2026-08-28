@@ -1,6 +1,10 @@
 import Link from "next/link";
 import PageHeader from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
+import {
+  hasOrganisationPermission,
+  type OrganisationMemberRole,
+} from "@/lib/organisations";
 
 export default function OrganisationWorkspaceHeader({
   organisationId,
@@ -11,15 +15,20 @@ export default function OrganisationWorkspaceHeader({
 }: {
   organisationId: string;
   organisationName: string;
-  role: string;
+  role: OrganisationMemberRole;
   active: string;
   canManageMembers: boolean;
 }) {
   const base = `/dashboard/organisations/${organisationId}`;
+  // Placements are applicant management, which every member can do.
+  const canManageApplicants = hasOrganisationPermission(
+    role,
+    "manage_applicants",
+  );
   const tabs = [
     { key: "overview", label: "Overview", href: `${base}?tab=overview` },
     { key: "jobs", label: "Jobs", href: `${base}/jobs` },
-    ...(canManageMembers
+    ...(canManageApplicants
       ? [
           {
             key: "placements",
@@ -47,7 +56,7 @@ export default function OrganisationWorkspaceHeader({
         action={
           <div className="flex flex-wrap gap-2">
             <ButtonLink href={`${base}/jobs/post`}>Post a job</ButtonLink>
-            {canManageMembers && (
+            {canManageApplicants && (
               <ButtonLink href={`${base}/placements/new`} variant="secondary">
                 Post a placement
               </ButtonLink>
