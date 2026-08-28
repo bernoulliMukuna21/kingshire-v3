@@ -5,7 +5,10 @@ import {
   getOrganisationMembership,
   requireOrganisationPermission,
 } from "@/lib/organisations";
-import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
+import {
+  getOrganisationName,
+  getUserOrganisationSummaries,
+} from "@/infrastructure/supabase/queries/organisation-queries";
 import { Card } from "@/components/ui/Card";
 import OrganisationWorkspaceHeader from "../../OrganisationWorkspaceHeader";
 import PostJobForm from "@/app/(dashboard-shell)/jobs/post/PostJobForm";
@@ -24,6 +27,9 @@ export default async function OrganisationPostJobPage({
   if (!membership) notFound();
   const organisationName = await getOrganisationName(id);
   if (!organisationName) notFound();
+  const organisations = (await getUserOrganisationSummaries(user.id)).map(
+    (o) => ({ id: o.id, name: o.name }),
+  );
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       <OrganisationWorkspaceHeader
@@ -51,7 +57,7 @@ export default async function OrganisationPostJobPage({
           </p>
         </div>
         <Card className="p-6">
-          <PostJobForm organisationId={id} />
+          <PostJobForm organisationId={id} organisations={organisations} />
         </Card>
       </div>
     </div>

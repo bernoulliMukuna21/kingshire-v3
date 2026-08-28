@@ -40,12 +40,17 @@ export default function PostJobForm({
   preferredKinglancer,
   onSuccess,
   organisationId,
+  organisations,
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
   onSuccess?: () => void;
   organisationId?: string;
+  organisations?: { id: string; name: string }[];
 }) {
   const router = useRouter();
+
+  // "" = personal job; an org id = that organisation owns the job.
+  const [contextOrgId, setContextOrgId] = useState(organisationId ?? "");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -179,7 +184,7 @@ export default function PostJobForm({
         scheduled_at: scheduledAt || null,
         ends_at: endsAt || null,
         days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
-        organisation_id: organisationId ?? null,
+        organisation_id: contextOrgId || null,
       }),
     });
 
@@ -195,8 +200,8 @@ export default function PostJobForm({
       onSuccess();
     } else {
       router.push(
-        organisationId
-          ? `/dashboard/organisations/${organisationId}`
+        contextOrgId
+          ? `/dashboard/organisations/${contextOrgId}`
           : `/dashboard/client/jobs/${data.id}`,
       );
     }
@@ -204,6 +209,31 @@ export default function PostJobForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {organisations && organisations.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Who is this job for? <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={contextOrgId}
+            onChange={(e) => setContextOrgId(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          >
+            <option value="">Personal — your own job</option>
+            {organisations.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name} (organisation)
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            {contextOrgId
+              ? "This job belongs to the organisation — any member can manage it and it lives in the organisation workspace."
+              : "This is your personal job — only you can manage it."}
+          </p>
+        </div>
+      )}
+
       {preferredKinglancer && (
         <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
           <div className="flex items-start gap-3">

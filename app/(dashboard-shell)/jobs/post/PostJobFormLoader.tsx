@@ -18,14 +18,17 @@ type PreferredKinglancer = {
 export default function PostJobFormLoader({
   preferredKinglancer,
   onSuccess,
+  organisations,
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
   onSuccess?: () => void;
+  organisations?: { id: string; name: string }[];
 }) {
   return (
     <PostJobForm
       preferredKinglancer={preferredKinglancer}
       onSuccess={onSuccess}
+      organisations={organisations}
     />
   );
 }
