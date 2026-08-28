@@ -2,12 +2,23 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import ConfirmModal from "@/components/ConfirmModal";
 
-export default function ApplyButton({ placementId }: { placementId: string }) {
+export default function ApplyButton({
+  placementId,
+  openToPlacements,
+}: {
+  placementId: string;
+  openToPlacements: boolean;
+}) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
+  // Tracks in-session consent for a Kinglancer who had not opted in before.
+  const [consented, setConsented] = useState(openToPlacements);
   const [message, setMessage] = useState("");
   const [cvUrl, setCvUrl] = useState<string | null>(null);
   const [cvName, setCvName] = useState<string | null>(null);
@@ -15,6 +26,22 @@ export default function ApplyButton({ placementId }: { placementId: string }) {
   const [saving, setSaving] = useState(false);
   const [applied, setApplied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Apply is opt-in: an un-opted-in Kinglancer sees the consent modal first;
+  // confirming records consent and opens the application form.
+  function startApply() {
+    if (consented) {
+      setOpen(true);
+    } else {
+      setConsentOpen(true);
+    }
+  }
+
+  function confirmConsent() {
+    setConsented(true);
+    setConsentOpen(false);
+    setOpen(true);
+  }
 
   async function uploadCv(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -67,7 +94,11 @@ export default function ApplyButton({ placementId }: { placementId: string }) {
     const res = await fetch(`/api/placements/${placementId}/apply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, cvUrl }),
+      body: JSON.stringify({
+        message,
+        cvUrl,
+        optIn: openToPlacements ? undefined : consented,
+      }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -79,6 +110,13 @@ export default function ApplyButton({ placementId }: { placementId: string }) {
         return;
       }
       const data = await res.json().catch(() => ({}));
+      // Consent drifted (e.g. opt-in cleared elsewhere) — re-capture it.
+      if (res.status === 403 && data.error === "opt_in_required") {
+        setConsented(false);
+        setOpen(false);
+        setConsentOpen(true);
+        return;
+      }
       setError(data.error ?? "Could not apply.");
       return;
     }
@@ -97,12 +135,45 @@ export default function ApplyButton({ placementId }: { placementId: string }) {
 
   if (!open) {
     return (
-      <button
-        onClick={() => setOpen(true)}
-        className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
-      >
-        Apply
-      </button>
+      <>
+        <button
+          onClick={startApply}
+          className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+        >
+          Apply
+        </button>
+        <ConfirmModal
+          isOpen={consentOpen}
+          onClose={() => setConsentOpen(false)}
+          onConfirm={confirmConsent}
+          title="Opt in to placements"
+          confirmLabel="I understand — continue"
+          message={
+            <span className="space-y-2 text-sm text-slate-600">
+              <span className="block">
+                Placements are supervised experience opportunities. The value
+                you receive is whatever the Organisation has explicitly agreed
+                and recorded — this may include mentoring, training,
+                certification, expenses or pay, and is not a promise of paid
+                work.
+              </span>
+              <span className="block">
+                Continuing turns on <strong>Open to placements</strong> on your
+                profile so you can apply. You can switch it off anytime in your
+                profile. See our{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  className="font-semibold text-blue-600 hover:underline"
+                >
+                  terms
+                </Link>{" "}
+                for details.
+              </span>
+            </span>
+          }
+        />
+      </>
     );
   }
 

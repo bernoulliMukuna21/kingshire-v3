@@ -23,7 +23,7 @@ export async function POST(
 
   const { data: profile } = await createServiceClient()
     .from("profiles")
-    .select("role")
+    .select("role, open_to_placements")
     .eq("id", user.id)
     .single();
   if (!profile || profile.role !== "kinglancer") {
@@ -68,6 +68,26 @@ export async function POST(
       );
     }
     cvUrl = rawCv;
+  }
+
+  // Placements are opt-in. A Kinglancer who has not enabled "Open to
+  // placements" must explicitly consent (optIn) at the point of applying;
+  // that consent is recorded as the single source of truth on their profile.
+  if (!profile.open_to_placements) {
+    const optIn = (body as { optIn?: unknown }).optIn === true;
+    if (!optIn) {
+      return NextResponse.json({ error: "opt_in_required" }, { status: 403 });
+    }
+    const { error: optInError } = await createServiceClient()
+      .from("profiles")
+      .update({ open_to_placements: true })
+      .eq("id", user.id);
+    if (optInError) {
+      return NextResponse.json(
+        { error: "Could not record your placement opt-in. Please try again." },
+        { status: 500 },
+      );
+    }
   }
 
   await createPlacementApplication({

@@ -35,13 +35,15 @@ export default async function PublicPlacementDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
   let role: string | null = null;
+  let openToPlacements = false;
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, open_to_placements")
       .eq("id", user.id)
       .single();
     role = profile?.role ?? null;
+    openToPlacements = profile?.open_to_placements ?? false;
   }
   const alreadyApplied =
     role === "kinglancer" && user
@@ -137,7 +139,10 @@ export default async function PublicPlacementDetailPage({
                     ✓ Application sent
                   </span>
                 ) : (
-                  <ApplyButton placementId={id} />
+                  <ApplyButton
+                    placementId={id}
+                    openToPlacements={openToPlacements}
+                  />
                 )
               ) : !user ? (
                 <Link
