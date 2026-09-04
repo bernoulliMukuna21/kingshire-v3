@@ -223,6 +223,7 @@ export function DirectRequestActions({
   );
   const [counterMessage, setCounterMessage] = useState(message ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
 
   const submitAction = async (
     action: string,
@@ -252,17 +253,31 @@ export function DirectRequestActions({
     }
   };
 
-  const startPayment = async () => {
+  const startPayment = async (method: "card" | "bank_transfer" = "card") => {
     setError(null);
-    setLoadingAction("direct_pay");
+    setLoadingAction(
+      method === "bank_transfer" ? "direct_pay_bank" : "direct_pay",
+    );
     try {
       const res = await fetch(`/api/jobs/${jobId}/direct-pay`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method }),
       });
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         setError(data.error ?? "Failed to start payment.");
+        return;
+      }
+
+      if (data.method === "bank_transfer") {
+        setBankInfo({
+          reference: data.reference,
+          amountDue: data.amountDue ?? null,
+          workerName: invitedKinglancer?.full_name ?? "the Kinglancer",
+          bankDetails: data.bankDetails ?? null,
+        });
         return;
       }
 
@@ -518,17 +533,86 @@ export function DirectRequestActions({
       )}
 
       {isOwner && status === "accepted_pending_payment" && (
-        <button
-          type="button"
-          onClick={startPayment}
-          disabled={loadingAction !== null}
-          className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loadingAction === "direct_pay"
-            ? "Starting payment..."
-            : "Fund escrow and start job"}
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => startPayment("card")}
+            disabled={loadingAction !== null}
+            className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:opacity-50"
+          >
+            {loadingAction === "direct_pay"
+              ? "Starting payment..."
+              : "Fund escrow by card"}
+          </button>
+          <button
+            type="button"
+            onClick={() => startPayment("bank_transfer")}
+            disabled={loadingAction !== null}
+            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-50 disabled:opacity-50"
+          >
+            {loadingAction === "direct_pay_bank"
+              ? "Preparing..."
+              : "Pay by bank transfer (no card fee)"}
+          </button>
+        </div>
       )}
+
+      <ConfirmModal
+        isOpen={bankInfo !== null}
+        onClose={() => {
+          setBankInfo(null);
+          router.refresh();
+        }}
+        onConfirm={() => {
+          setBankInfo(null);
+          router.refresh();
+        }}
+        title="Pay by bank transfer"
+        confirmLabel="Done"
+        message={
+          bankInfo && (
+            <div className="space-y-3 text-sm text-slate-600">
+              <p>
+                Transfer{" "}
+                {bankInfo.amountDue != null && (
+                  <strong className="text-slate-900">
+                    £{bankInfo.amountDue.toFixed(2)}
+                  </strong>
+                )}{" "}
+                to us using the reference below.
+              </p>
+              {bankInfo.bankDetails ? (
+                <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs">
+                  <div>Account name: {bankInfo.bankDetails.accountName}</div>
+                  <div>Sort code: {bankInfo.bankDetails.sortCode}</div>
+                  <div>
+                    Account number: {bankInfo.bankDetails.accountNumber}
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  Contact us to get our bank details and complete the transfer.
+                </p>
+              )}
+              {bankInfo.bankDetails?.isPlaceholder && (
+                <p className="text-xs font-bold text-amber-700">
+                  These are TEST details — do not send real money.
+                </p>
+              )}
+              <p>
+                Payment reference:{" "}
+                <strong className="font-mono text-slate-900">
+                  {bankInfo.reference.slice(0, 8)}
+                </strong>
+              </p>
+              <p className="text-xs text-slate-500">
+                Once we confirm your transfer, {bankInfo.workerName} is hired and
+                the job starts. We&apos;ll email you when it&apos;s confirmed.
+              </p>
+            </div>
+          )
+        }
+      />
 
       {isOwner &&
         ["pending", "changes_requested", "accepted_pending_payment"].includes(
