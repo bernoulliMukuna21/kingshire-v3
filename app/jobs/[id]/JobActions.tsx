@@ -610,6 +610,7 @@ function BankTransferModal({
       onConfirm={onClose}
       title="Pay by bank transfer"
       confirmLabel="Close"
+      hideCancel
       message={
         info && (
           <div className="space-y-3 text-sm text-slate-600">
