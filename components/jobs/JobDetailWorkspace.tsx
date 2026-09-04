@@ -1,5 +1,12 @@
 import { notFound, redirect } from "next/navigation";
-import { Briefcase, Calendar, CreditCard, Tag, UserRound } from "lucide-react";
+import {
+  Briefcase,
+  Calendar,
+  CreditCard,
+  Phone,
+  Tag,
+  UserRound,
+} from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
@@ -34,6 +41,7 @@ type InvitedKinglancer = {
   id: string;
   full_name: string | null;
   avatar_url: string | null;
+  phone: string | null;
 };
 
 function getCounterRateType(value: string | null): RateType | null {
@@ -94,7 +102,7 @@ export default async function JobDetailWorkspace({
     kinglancerProfileId
       ? supabase
           .from("profiles")
-          .select("id, full_name, avatar_url")
+          .select("id, full_name, avatar_url, phone")
           .eq("id", kinglancerProfileId)
           .single()
       : Promise.resolve({ data: null }),
@@ -104,6 +112,8 @@ export default async function JobDetailWorkspace({
   const kinglancerName = kinglancerProfileId
     ? (kinglancer?.full_name ?? "Selected Kinglancer")
     : null;
+  // Contact details are shared only once the worker is actually hired.
+  const contactRevealed = !!job.kinglancer_id;
   const categories = job.categories ?? [];
   const deadline = formatDeadline(job.deadline);
 
@@ -399,6 +409,14 @@ export default async function JobDetailWorkspace({
                   <p className="text-sm text-slate-500">
                     {job.kinglancer_id ? "Assigned" : "Invited"}
                   </p>
+                  {contactRevealed && kinglancer?.phone && (
+                    <a
+                      href={`tel:${kinglancer.phone}`}
+                      className="mt-1 flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline"
+                    >
+                      <Phone size={13} /> {kinglancer.phone}
+                    </a>
+                  )}
                 </div>
               </div>
             ) : (

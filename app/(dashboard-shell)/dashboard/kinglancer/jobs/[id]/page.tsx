@@ -5,6 +5,7 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  Phone,
   Tag,
 } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
@@ -54,6 +55,7 @@ type JobWorkspace = {
   client: {
     full_name: string | null;
     avatar_url: string | null;
+    phone: string | null;
   } | null;
 };
 
@@ -171,7 +173,7 @@ export default async function KinglancerJobWorkspacePage({
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
-          client:profiles!client_id(full_name, avatar_url)
+          client:profiles!client_id(full_name, avatar_url, phone)
         `,
       )
       .eq("id", id)
@@ -286,6 +288,14 @@ export default async function KinglancerJobWorkspacePage({
                 {job.client?.full_name ?? "Client"}
               </span>
             </div>
+            {isAssigned && job.client?.phone && (
+              <a
+                href={`tel:${job.client.phone}`}
+                className="mt-1 flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline"
+              >
+                <Phone size={13} /> {job.client.phone}
+              </a>
+            )}
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
