@@ -721,6 +721,38 @@ export type Database = {
           },
         ]
       }
+      payout_accounts: {
+        Row: {
+          created_at: string
+          payout_link: string
+          payout_provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          payout_link: string
+          payout_provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          payout_link?: string
+          payout_provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payout_accounts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       placement_agreements: {
         Row: {
           completed_at: string | null

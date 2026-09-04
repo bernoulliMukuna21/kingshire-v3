@@ -121,13 +121,16 @@ export type ManualPayoutQueueItem = {
   workerId: string;
   workerName: string | null;
   workerEmail: string | null;
+  payoutProvider: string | null;
+  payoutLink: string | null;
   netAmount: number;
   createdAt: string;
 };
 
 /**
  * Admin "Awaiting payout" queue — held bank_transfer transactions whose job the
- * client has already approved, so we owe the worker a manual payout.
+ * client has already approved, so we owe the worker a manual payout. Each item
+ * carries the worker's payout link (where the admin sends the money).
  */
 export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
   const db = createServiceClient();
@@ -157,7 +160,7 @@ export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
     worker: { full_name: string | null; email: string | null } | null;
   };
 
-  return ((data ?? []) as unknown as Row[])
+  const items = ((data ?? []) as unknown as Row[])
     .filter((r) => r.job?.status === "approved")
     .map((r) => ({
       jobId: r.job_id,
@@ -166,7 +169,29 @@ export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
       workerId: r.kinglancer_id,
       workerName: r.worker?.full_name ?? null,
       workerEmail: r.worker?.email ?? null,
+      payoutProvider: null as string | null,
+      payoutLink: null as string | null,
       netAmount: Number(r.amount) - Number(r.platform_fee_kinglancer),
       createdAt: r.created_at,
     }));
+
+  if (items.length > 0) {
+    const { data: accounts } = await db
+      .from("payout_accounts")
+      .select("user_id, payout_provider, payout_link")
+      .in(
+        "user_id",
+        items.map((i) => i.workerId),
+      );
+    const byUser = new Map(
+      (accounts ?? []).map((a) => [a.user_id, a] as const),
+    );
+    for (const item of items) {
+      const acc = byUser.get(item.workerId);
+      item.payoutProvider = acc?.payout_provider ?? null;
+      item.payoutLink = acc?.payout_link ?? null;
+    }
+  }
+
+  return items;
 }

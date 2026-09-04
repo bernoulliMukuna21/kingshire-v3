@@ -109,7 +109,18 @@ create table public.payment_attempts (
   created_at                timestamptz not null default now(),
   updated_at                timestamptz not null default now()
 );
-
+-- ── PAYOUT ACCOUNTS ───────────────────────────────────────
+-- Private kinglancer payout method for manual payouts. A worker-controlled
+-- payout LINK (PayPal.me / Wise / Monzo.me / Revolut.me) rather than raw bank
+-- numbers — minimises sensitive data. Kept off `profiles` (publicly readable).
+create table public.payout_accounts (
+  user_id         uuid primary key references public.profiles(id) on delete cascade,
+  payout_provider text not null
+    check (payout_provider in ('paypal', 'wise', 'monzo', 'revolut', 'other')),
+  payout_link     text not null,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
 -- ── REVIEWS ───────────────────────────────────────────────
 -- Two-sided double-blind: reviews are created hidden and become public
 -- (is_published) once both parties review or the 7-day window elapses.
@@ -203,6 +214,9 @@ $$;
 create trigger on_profiles_updated before update on public.profiles
   for each row execute function public.handle_updated_at();
 
+create trigger on_payout_accounts_updated before update on public.payout_accounts
+  for each row execute function public.handle_updated_at();
+
 create trigger on_jobs_updated before update on public.jobs
   for each row execute function public.handle_updated_at();
 
@@ -248,6 +262,11 @@ alter table public.payment_attempts enable row level security;
 alter table public.transactions enable row level security;
 alter table public.reviews      enable row level security;
 alter table public.disputes     enable row level security;
+alter table public.payout_accounts enable row level security;
+
+-- Payout accounts: private bank details — owner-only read, service-only writes.
+create policy "Users read own payout account" on public.payout_accounts
+  for select using (auth.uid() = user_id);
 
 -- Profiles: anyone can read, only owner can write user-editable fields.
 -- System-managed fields (role, rating, jobs_completed, is_verified,

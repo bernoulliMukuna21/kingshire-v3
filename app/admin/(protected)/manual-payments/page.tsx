@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { getPendingManualAttempts } from "@/lib/db/payment-attempts";
 import { getManualPayoutQueue } from "@/lib/db/transactions";
+import { payoutProviderLabel } from "@/lib/payout-links";
 import { Card } from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -81,6 +82,21 @@ export default async function AdminManualPaymentsPage() {
                     Pay {p.workerName ?? "worker"}
                     {p.workerEmail ? ` · ${p.workerEmail}` : ""}
                   </p>
+                  {p.payoutLink ? (
+                    <a
+                      href={p.payoutLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:underline"
+                    >
+                      {payoutProviderLabel(p.payoutProvider ?? "")}: {p.payoutLink}
+                    </a>
+                  ) : (
+                    <p className="mt-1 text-xs font-bold text-amber-700">
+                      No payout link on file — ask the worker to add one in their
+                      profile.
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-black text-emerald-600">
