@@ -557,62 +557,12 @@ export function DirectRequestActions({
         </div>
       )}
 
-      <ConfirmModal
-        isOpen={bankInfo !== null}
+      <BankTransferModal
+        info={bankInfo}
         onClose={() => {
           setBankInfo(null);
           router.refresh();
         }}
-        onConfirm={() => {
-          setBankInfo(null);
-          router.refresh();
-        }}
-        title="Pay by bank transfer"
-        confirmLabel="Done"
-        message={
-          bankInfo && (
-            <div className="space-y-3 text-sm text-slate-600">
-              <p>
-                Transfer{" "}
-                {bankInfo.amountDue != null && (
-                  <strong className="text-slate-900">
-                    £{bankInfo.amountDue.toFixed(2)}
-                  </strong>
-                )}{" "}
-                to us using the reference below.
-              </p>
-              {bankInfo.bankDetails ? (
-                <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs">
-                  <div>Account name: {bankInfo.bankDetails.accountName}</div>
-                  <div>Sort code: {bankInfo.bankDetails.sortCode}</div>
-                  <div>
-                    Account number: {bankInfo.bankDetails.accountNumber}
-                  </div>
-                </div>
-              ) : (
-                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                  Contact us to get our bank details and complete the transfer.
-                </p>
-              )}
-              {bankInfo.bankDetails?.isPlaceholder && (
-                <p className="text-xs font-bold text-amber-700">
-                  These are TEST details — do not send real money.
-                </p>
-              )}
-              <p>
-                Payment reference:{" "}
-                <strong className="font-mono text-slate-900">
-                  {bankInfo.reference.slice(0, 8)}
-                </strong>
-              </p>
-              <p className="text-xs text-slate-500">
-                Once we confirm your transfer, {bankInfo.workerName} is hired
-                and the job starts. We&apos;ll email you when it&apos;s
-                confirmed.
-              </p>
-            </div>
-          )
-        }
       />
 
       {isOwner &&
@@ -645,6 +595,66 @@ type BankTransferInfo = {
     isPlaceholder?: boolean;
   } | null;
 };
+
+function BankTransferModal({
+  info,
+  onClose,
+}: {
+  info: BankTransferInfo | null;
+  onClose: () => void;
+}) {
+  return (
+    <ConfirmModal
+      isOpen={info !== null}
+      onClose={onClose}
+      onConfirm={onClose}
+      title="Pay by bank transfer"
+      confirmLabel="Close"
+      message={
+        info && (
+          <div className="space-y-3 text-sm text-slate-600">
+            <p>
+              Transfer{" "}
+              {info.amountDue != null && (
+                <strong className="text-slate-900">
+                  £{info.amountDue.toFixed(2)}
+                </strong>
+              )}{" "}
+              to us using the reference below.
+            </p>
+            {info.bankDetails ? (
+              <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs">
+                <div>Account name: {info.bankDetails.accountName}</div>
+                <div>Sort code: {info.bankDetails.sortCode}</div>
+                <div>Account number: {info.bankDetails.accountNumber}</div>
+              </div>
+            ) : (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Contact us to get our bank details and complete the transfer.
+              </p>
+            )}
+            {info.bankDetails?.isPlaceholder && (
+              <p className="text-xs font-bold text-amber-700">
+                These are TEST details — do not send real money.
+              </p>
+            )}
+            <p>
+              Payment reference:{" "}
+              <strong className="font-mono text-slate-900">
+                {info.reference.slice(0, 8)}
+              </strong>
+            </p>
+            <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+              Closing this does <strong>not</strong> confirm payment. We&apos;ll
+              check your transfer has arrived, then hire {info.workerName} and
+              email you — they won&apos;t start until we&apos;ve confirmed it.
+            </p>
+          </div>
+        )
+      }
+    />
+  );
+}
 
 export function ApplicantsList({
   applications,
@@ -777,62 +787,12 @@ export function ApplicantsList({
         variant="success"
         loading={selectingId !== null}
       />
-      <ConfirmModal
-        isOpen={bankInfo !== null}
+      <BankTransferModal
+        info={bankInfo}
         onClose={() => {
           setBankInfo(null);
           router.refresh();
         }}
-        onConfirm={() => {
-          setBankInfo(null);
-          router.refresh();
-        }}
-        title="Pay by bank transfer"
-        confirmLabel="Done"
-        message={
-          bankInfo && (
-            <div className="space-y-3 text-sm text-slate-600">
-              <p>
-                Transfer{" "}
-                {bankInfo.amountDue != null && (
-                  <strong className="text-slate-900">
-                    £{bankInfo.amountDue.toFixed(2)}
-                  </strong>
-                )}{" "}
-                to us using the reference below.
-              </p>
-              {bankInfo.bankDetails ? (
-                <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs">
-                  <div>Account name: {bankInfo.bankDetails.accountName}</div>
-                  <div>Sort code: {bankInfo.bankDetails.sortCode}</div>
-                  <div>
-                    Account number: {bankInfo.bankDetails.accountNumber}
-                  </div>
-                </div>
-              ) : (
-                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                  Contact us to get our bank details and complete the transfer.
-                </p>
-              )}
-              {bankInfo.bankDetails?.isPlaceholder && (
-                <p className="text-xs font-bold text-amber-700">
-                  These are TEST details — do not send real money.
-                </p>
-              )}
-              <p>
-                Payment reference:{" "}
-                <strong className="font-mono text-slate-900">
-                  {bankInfo.reference.slice(0, 8)}
-                </strong>
-              </p>
-              <p className="text-xs text-slate-500">
-                Once we confirm your transfer, {bankInfo.workerName} is hired
-                and the job starts. We&apos;ll email you when it&apos;s
-                confirmed.
-              </p>
-            </div>
-          )
-        }
       />
       <div className="space-y-3">
         {error && (
