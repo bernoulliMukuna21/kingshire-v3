@@ -549,6 +549,18 @@ export function DirectRequestActions({
 
 // ── Applicants list (for the client who owns the job) ────
 
+type BankTransferInfo = {
+  reference: string;
+  amountDue: number | null;
+  workerName: string;
+  bankDetails: {
+    accountName: string;
+    sortCode: string;
+    accountNumber: string;
+    isPlaceholder?: boolean;
+  } | null;
+};
+
 export function ApplicantsList({
   applications,
 }: {
@@ -558,6 +570,8 @@ export function ApplicantsList({
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [pendingSelectId, setPendingSelectId] = useState<string | null>(null);
+  const [payMethod, setPayMethod] = useState<"card" | "bank_transfer">("card");
+  const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (applications.length === 0) {
@@ -571,11 +585,14 @@ export function ApplicantsList({
   const handleSelect = async (applicationId: string) => {
     setError(null);
     setSelectingId(applicationId);
+    const workerName =
+      applications.find((a) => a.id === applicationId)?.kinglancer.full_name ??
+      "the Kinglancer";
 
     const res = await fetch(`/api/applications/${applicationId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "accept" }),
+      body: JSON.stringify({ action: "accept", method: payMethod }),
     });
 
     const data = await res.json();
@@ -586,7 +603,18 @@ export function ApplicantsList({
       return;
     }
 
-    // Redirect to payment page with Stripe client secret
+    // Bank transfer: show our details + reference instead of Stripe checkout.
+    if (data.method === "bank_transfer") {
+      setBankInfo({
+        reference: data.reference,
+        amountDue: data.amountDue ?? null,
+        workerName,
+        bankDetails: data.bankDetails ?? null,
+      });
+      return;
+    }
+
+    // Card: redirect to the Stripe payment page.
     router.push(
       `/jobs/${data.jobId}/pay?cs=${encodeURIComponent(data.clientSecret)}`,
     );
@@ -607,18 +635,118 @@ export function ApplicantsList({
         }}
         title="Select this Kinglancer?"
         message={
-          <>
-            You&apos;re about to hire{" "}
-            <strong>
-              {pendingApp?.kinglancer.full_name ?? "this Kinglancer"}
-            </strong>{" "}
-            for the job. This will move the job to payment — the selection
-            cannot be undone.
-          </>
+          <div className="space-y-4">
+            <p>
+              You&apos;re about to hire{" "}
+              <strong>
+                {pendingApp?.kinglancer.full_name ?? "this Kinglancer"}
+              </strong>{" "}
+              for the job. This will move the job to payment — the selection
+              cannot be undone.
+            </p>
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                How would you like to pay?
+              </p>
+              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                <input
+                  type="radio"
+                  name="pay-method"
+                  className="mt-0.5"
+                  checked={payMethod === "card"}
+                  onChange={() => setPayMethod("card")}
+                />
+                <span>
+                  <span className="font-bold text-slate-900">Pay by card</span>
+                  <span className="block text-xs text-slate-500">
+                    Instant — held in escrow automatically.
+                  </span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                <input
+                  type="radio"
+                  name="pay-method"
+                  className="mt-0.5"
+                  checked={payMethod === "bank_transfer"}
+                  onChange={() => setPayMethod("bank_transfer")}
+                />
+                <span>
+                  <span className="font-bold text-slate-900">
+                    Pay by bank transfer
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    No card fee. We confirm once funds arrive, then the job
+                    starts.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
         }
-        confirmLabel="Yes, select them"
+        confirmLabel={
+          payMethod === "card"
+            ? "Continue to card payment"
+            : "Get bank transfer details"
+        }
         variant="success"
         loading={selectingId !== null}
+      />
+      <ConfirmModal
+        isOpen={bankInfo !== null}
+        onClose={() => {
+          setBankInfo(null);
+          router.refresh();
+        }}
+        onConfirm={() => {
+          setBankInfo(null);
+          router.refresh();
+        }}
+        title="Pay by bank transfer"
+        confirmLabel="Done"
+        message={
+          bankInfo && (
+            <div className="space-y-3 text-sm text-slate-600">
+              <p>
+                Transfer{" "}
+                {bankInfo.amountDue != null && (
+                  <strong className="text-slate-900">
+                    £{bankInfo.amountDue.toFixed(2)}
+                  </strong>
+                )}{" "}
+                to us using the reference below.
+              </p>
+              {bankInfo.bankDetails ? (
+                <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs">
+                  <div>Account name: {bankInfo.bankDetails.accountName}</div>
+                  <div>Sort code: {bankInfo.bankDetails.sortCode}</div>
+                  <div>
+                    Account number: {bankInfo.bankDetails.accountNumber}
+                  </div>
+                </div>
+              ) : (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  Contact us to get our bank details and complete the transfer.
+                </p>
+              )}
+              {bankInfo.bankDetails?.isPlaceholder && (
+                <p className="text-xs font-bold text-amber-700">
+                  These are TEST details — do not send real money.
+                </p>
+              )}
+              <p>
+                Payment reference:{" "}
+                <strong className="font-mono text-slate-900">
+                  {bankInfo.reference.slice(0, 8)}
+                </strong>
+              </p>
+              <p className="text-xs text-slate-500">
+                Once we confirm your transfer, {bankInfo.workerName} is hired and
+                the job starts. We&apos;ll email you when it&apos;s confirmed.
+              </p>
+            </div>
+          )
+        }
       />
       <div className="space-y-3">
         {error && (
