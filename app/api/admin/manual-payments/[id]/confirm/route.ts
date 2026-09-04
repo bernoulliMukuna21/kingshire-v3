@@ -46,7 +46,11 @@ export async function POST(
   if (result.finalizedNow && attempt) {
     const db = createServiceClient();
     const [{ data: worker }, { data: job }] = await Promise.all([
-      db.from("profiles").select("email").eq("id", attempt.kinglancer_id).single(),
+      db
+        .from("profiles")
+        .select("email")
+        .eq("id", attempt.kinglancer_id)
+        .single(),
       db.from("jobs").select("title").eq("id", attempt.job_id).single(),
     ]);
     if (worker?.email && job?.title) {
@@ -58,5 +62,8 @@ export async function POST(
     }
   }
 
-  return NextResponse.json({ success: true, finalizedNow: result.finalizedNow });
+  return NextResponse.json({
+    success: true,
+    finalizedNow: result.finalizedNow,
+  });
 }

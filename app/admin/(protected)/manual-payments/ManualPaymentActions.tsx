@@ -11,10 +11,9 @@ export function ConfirmFundsButton({ attemptId }: { attemptId: string }) {
   async function confirm() {
     setLoading(true);
     setError(null);
-    const res = await fetch(
-      `/api/admin/manual-payments/${attemptId}/confirm`,
-      { method: "POST" },
-    );
+    const res = await fetch(`/api/admin/manual-payments/${attemptId}/confirm`, {
+      method: "POST",
+    });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Could not confirm");

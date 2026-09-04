@@ -7,10 +7,7 @@ import { Card } from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import { formatMoneyPrecise as formatMoney } from "@/lib/utils";
-import {
-  ConfirmFundsButton,
-  RecordPayoutButton,
-} from "./ManualPaymentActions";
+import { ConfirmFundsButton, RecordPayoutButton } from "./ManualPaymentActions";
 
 export default async function AdminManualPaymentsPage() {
   const [awaitingFunds, awaitingPayout] = await Promise.all([
@@ -89,12 +86,13 @@ export default async function AdminManualPaymentsPage() {
                       rel="noopener noreferrer"
                       className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:underline"
                     >
-                      {payoutProviderLabel(p.payoutProvider ?? "")}: {p.payoutLink}
+                      {payoutProviderLabel(p.payoutProvider ?? "")}:{" "}
+                      {p.payoutLink}
                     </a>
                   ) : (
                     <p className="mt-1 text-xs font-bold text-amber-700">
-                      No payout link on file — ask the worker to add one in their
-                      profile.
+                      No payout link on file — ask the worker to add one in
+                      their profile.
                     </p>
                   )}
                 </div>

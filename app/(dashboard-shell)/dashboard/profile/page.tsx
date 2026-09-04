@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ProfileForm from "./ProfileForm";
-import PayoutAccountForm from "./PayoutAccountForm";
-import { getPayoutAccount } from "@/lib/db/payout-accounts";
 import { BadgeCheck, Sparkles } from "lucide-react";
 
 export default async function ProfilePage() {
@@ -23,7 +21,6 @@ export default async function ProfilePage() {
   if (!profile.role) redirect("/onboarding");
 
   const isKinglancer = profile.role === "kinglancer";
-  const payoutAccount = isKinglancer ? await getPayoutAccount(user.id) : null;
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
@@ -51,14 +48,6 @@ export default async function ProfilePage() {
         </div>
       </div>
       <ProfileForm profile={profile} />
-      {isKinglancer && (
-        <div className="mt-6">
-          <PayoutAccountForm
-            provider={payoutAccount?.payout_provider ?? null}
-            link={payoutAccount?.payout_link ?? null}
-          />
-        </div>
-      )}
     </div>
   );
 }

@@ -35,7 +35,9 @@ export async function POST(
 
   const body = await request.json().catch(() => ({}));
   const reference =
-    typeof body.reference === "string" ? body.reference.trim().slice(0, 200) : "";
+    typeof body.reference === "string"
+      ? body.reference.trim().slice(0, 200)
+      : "";
   if (!reference) {
     return NextResponse.json(
       { error: "A payout reference is required." },

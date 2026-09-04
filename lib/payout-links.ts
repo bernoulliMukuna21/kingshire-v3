@@ -43,9 +43,7 @@ export function payoutProviderLabel(id: string) {
   return PAYOUT_PROVIDERS.find((p) => p.id === id)?.label ?? id;
 }
 
-type ValidateResult =
-  | { ok: true; link: string }
-  | { ok: false; error: string };
+type ValidateResult = { ok: true; link: string } | { ok: false; error: string };
 
 /**
  * Validates a payout link: must be an https URL, within a sane length, and —

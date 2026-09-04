@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import SwitchRoleButton from "@/app/(dashboard-shell)/dashboard/profile/SwitchRoleButton";
+import PayoutAccountForm from "./PayoutAccountForm";
+import { getPayoutAccount } from "@/lib/db/payout-accounts";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 
@@ -22,6 +24,7 @@ export default async function SettingsPage() {
   if (!profile.role) redirect("/onboarding");
 
   const isKinglancer = profile.role === "kinglancer";
+  const payoutAccount = isKinglancer ? await getPayoutAccount(user.id) : null;
   const deletionRequestHref = `mailto:kingshirecompany@gmail.com?subject=${encodeURIComponent(
     "KingsHire account deletion request",
   )}&body=${encodeURIComponent(
@@ -49,6 +52,13 @@ export default async function SettingsPage() {
         </p>
         <SwitchRoleButton currentRole={profile.role} />
       </Card>
+
+      {isKinglancer && (
+        <PayoutAccountForm
+          provider={payoutAccount?.payout_provider ?? null}
+          link={payoutAccount?.payout_link ?? null}
+        />
+      )}
 
       <Card className="border-red-100 p-6 ring-red-100/60">
         <h2 className="text-base font-black text-slate-950 mb-1">

@@ -606,8 +606,9 @@ export function DirectRequestActions({
                 </strong>
               </p>
               <p className="text-xs text-slate-500">
-                Once we confirm your transfer, {bankInfo.workerName} is hired and
-                the job starts. We&apos;ll email you when it&apos;s confirmed.
+                Once we confirm your transfer, {bankInfo.workerName} is hired
+                and the job starts. We&apos;ll email you when it&apos;s
+                confirmed.
               </p>
             </div>
           )
@@ -825,8 +826,9 @@ export function ApplicantsList({
                 </strong>
               </p>
               <p className="text-xs text-slate-500">
-                Once we confirm your transfer, {bankInfo.workerName} is hired and
-                the job starts. We&apos;ll email you when it&apos;s confirmed.
+                Once we confirm your transfer, {bankInfo.workerName} is hired
+                and the job starts. We&apos;ll email you when it&apos;s
+                confirmed.
               </p>
             </div>
           )

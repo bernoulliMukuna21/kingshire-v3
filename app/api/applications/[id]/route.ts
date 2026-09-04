@@ -20,7 +20,13 @@ type ApplicationRow = {
   cover_letter: string;
   proposed_rate: number | null;
   created_at: string;
-  job: { client_id: string; organisation_id: string | null; status: string; budget: number; title: string };
+  job: {
+    client_id: string;
+    organisation_id: string | null;
+    status: string;
+    budget: number;
+    title: string;
+  };
 };
 
 export async function PATCH(
@@ -49,7 +55,9 @@ export async function PATCH(
   // Fetch the application and verify ownership
   const { data: applicationRaw } = await createServiceClient()
     .from("applications")
-    .select("*, job:jobs!job_id(client_id, organisation_id, status, budget, title)")
+    .select(
+      "*, job:jobs!job_id(client_id, organisation_id, status, budget, title)",
+    )
     .eq("id", applicationId)
     .single();
 

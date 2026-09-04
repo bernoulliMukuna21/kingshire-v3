@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import {
   AlertTriangle,
   Briefcase,
@@ -9,6 +10,7 @@ import {
   Tag,
 } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
+import { getPayoutAccount } from "@/lib/db/payout-accounts";
 import {
   getJobReviewState,
   isReviewWindowClosed,
@@ -70,6 +72,7 @@ type Transaction = {
   amount: number;
   platform_fee_kinglancer: number;
   status: "pending" | "held" | "released" | "refunded" | "disputed";
+  payment_method: "card" | "bank_transfer";
   released_at: string | null;
 };
 
@@ -188,7 +191,7 @@ export default async function KinglancerJobWorkspacePage({
     // call for the review window calculation on approved jobs.
     supabase
       .from("transactions")
-      .select("amount, platform_fee_kinglancer, status, released_at")
+      .select("amount, platform_fee_kinglancer, status, payment_method, released_at")
       .eq("job_id", id)
       .eq("kinglancer_id", user.id)
       .maybeSingle(),
@@ -212,6 +215,14 @@ export default async function KinglancerJobWorkspacePage({
   const canViewWorkspace = isAssigned || isInvited || !!application;
 
   if (!canViewWorkspace) redirect(`/jobs/${id}`);
+
+  // Bank-transfer jobs are paid manually to the worker's payout link — nudge
+  // them to add one (in Settings) before payout is due.
+  const needsPayoutLink =
+    isAssigned &&
+    transaction?.payment_method === "bank_transfer" &&
+    transaction.status !== "released" &&
+    !(await getPayoutAccount(user.id));
 
   const openStatus = isInvited
     ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
@@ -248,6 +259,25 @@ export default async function KinglancerJobWorkspacePage({
         fallbackHref="/dashboard/kinglancer/jobs"
         fallbackLabel="Back to My Jobs"
       />
+
+      {needsPayoutLink && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-black text-amber-900">
+            Add your payout link
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            This job is paid by bank transfer. Add your payout link (Revolut,
+            Monzo, PayPal or Wise) so we can pay you once the client approves the
+            work.
+          </p>
+          <Link
+            href="/dashboard/settings"
+            className="mt-3 inline-flex rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700"
+          >
+            Add payout link
+          </Link>
+        </div>
+      )}
 
       <Card className="overflow-hidden">
         <div className="relative bg-[#10234b] px-5 py-7 text-white sm:px-7">
