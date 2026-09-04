@@ -6,7 +6,12 @@ import {
   CheckCircle2,
   ChevronRight,
 } from "lucide-react";
-import { type JobStatus, type RateType, JOBS_PAGE_SIZE, jobStatusPill } from "@/lib/jobs";
+import {
+  type JobStatus,
+  type RateType,
+  JOBS_PAGE_SIZE,
+  jobStatusPill,
+} from "@/lib/jobs";
 import { applicationStatusPill } from "@/lib/applications";
 import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import { getDashboardContext } from "@/lib/dashboard-context";

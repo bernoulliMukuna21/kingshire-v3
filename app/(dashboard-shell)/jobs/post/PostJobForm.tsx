@@ -105,8 +105,7 @@ export default function PostJobForm({
     if (!description.trim()) fe.description = "Description is required.";
     if (categories.length === 0)
       fe.categories = "Please select at least one category.";
-    if (!budget || totalBudget <= 0)
-      fe.budget = "Please enter a valid budget.";
+    if (!budget || totalBudget <= 0) fe.budget = "Please enter a valid budget.";
     else if (!hasValidCurrencyPrecision(budget))
       fe.budget = CURRENCY_VALIDATION_MESSAGE;
     else if (totalBudget < 20) fe.budget = "Minimum total budget is £20.";
@@ -233,8 +232,8 @@ export default function PostJobForm({
             </>
           ) : (
             <>
-              This is your <strong>personal</strong> job. Only you can manage
-              it and it appears under your personal My Jobs.
+              This is your <strong>personal</strong> job. Only you can manage it
+              and it appears under your personal My Jobs.
             </>
           )
         }

@@ -34,12 +34,17 @@ export const MIN_JOB_BUDGET_GBP = 20;
  *
  * Client pays: budget + 5% + 30p on top
  * Kinglancer receives: budget − 7.5%
+ *
+ * `includeFixed` defaults to true (card route). The bank-transfer route passes
+ * false — there is no Stripe fee to cover, so the fixed 30p is dropped.
  */
-export function calculateFees(budgetGBP: number) {
+export function calculateFees(
+  budgetGBP: number,
+  opts?: { includeFixed?: boolean },
+) {
+  const fixed = (opts?.includeFixed ?? true) ? PLATFORM_FEE_FIXED_CLIENT : 0;
   const platformFeeClient =
-    Math.round(
-      (budgetGBP * PLATFORM_FEE_RATE_CLIENT + PLATFORM_FEE_FIXED_CLIENT) * 100,
-    ) / 100;
+    Math.round((budgetGBP * PLATFORM_FEE_RATE_CLIENT + fixed) * 100) / 100;
   const platformFeeKinglancer =
     Math.round(budgetGBP * PLATFORM_FEE_RATE_KINGLANCER * 100) / 100;
   const clientChargeGBP = budgetGBP + platformFeeClient;

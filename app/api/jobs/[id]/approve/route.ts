@@ -72,6 +72,20 @@ export async function POST(
     );
   }
 
+  // Manual (bank-transfer) settlement: there is no Stripe payout here. Mark the
+  // work approved and leave the escrow 'held'; an admin records the manual
+  // payout separately (Awaiting payout queue) to release it and pay the worker.
+  if (transaction.payment_method === "bank_transfer") {
+    const serviceDb = createServiceClient();
+    await serviceDb.from("jobs").update({ status: "approved" }).eq("id", jobId);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (serviceDb as any)
+      .rpc("increment_jobs_completed", { user_id: job.kinglancer_id })
+      .then(() => null);
+    revalidateTag("kinglancer-profiles", { expire: 0 });
+    return NextResponse.json({ success: true, manual: true });
+  }
+
   const { data: kinglancerProfile } = await supabase
     .from("profiles")
     .select("email, full_name, stripe_account_id, stripe_onboarding_complete")

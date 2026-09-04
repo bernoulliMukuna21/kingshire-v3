@@ -182,7 +182,6 @@ export function ApplyForm({ jobId }: { jobId: string }) {
 
 // ── Direct request actions ────────────────────────────────
 
-
 export function DirectRequestActions({
   jobId,
   viewerRole,

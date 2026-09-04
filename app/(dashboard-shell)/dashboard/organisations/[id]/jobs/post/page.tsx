@@ -20,9 +20,12 @@ export default async function OrganisationPostJobPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
-  if (!(await requireOrganisationPermission(id, user.id, "manage_jobs"))) notFound();
+  if (!(await requireOrganisationPermission(id, user.id, "manage_jobs")))
+    notFound();
   const membership = await getOrganisationMembership(id, user.id);
   if (!membership) notFound();
   const organisationName = await getOrganisationName(id);

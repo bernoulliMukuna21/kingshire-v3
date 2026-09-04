@@ -214,8 +214,7 @@ export default async function KinglancerJobWorkspacePage({
   const openStatus = isInvited
     ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
     : { label: "Open", className: "bg-green-100 text-green-700" };
-  const status =
-    job.status === "open" ? openStatus : jobStatusPill(job.status);
+  const status = job.status === "open" ? openStatus : jobStatusPill(job.status);
   const action = nextAction({ job, application, transaction });
   const netHeld =
     transaction && transaction.status === "held"

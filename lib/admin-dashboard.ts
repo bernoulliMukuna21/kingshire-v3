@@ -85,4 +85,3 @@ export function roleTone(role: string | null) {
   if (role === "admin") return "red";
   return "blue";
 }
-

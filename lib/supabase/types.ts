@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -651,10 +651,11 @@ export type Database = {
           id: string
           job_id: string
           kinglancer_id: string
+          method: string
           platform_fee_client: number
           platform_fee_kinglancer: number
           status: string
-          stripe_payment_intent_id: string
+          stripe_payment_intent_id: string | null
           updated_at: string
         }
         Insert: {
@@ -666,10 +667,11 @@ export type Database = {
           id?: string
           job_id: string
           kinglancer_id: string
+          method?: string
           platform_fee_client: number
           platform_fee_kinglancer: number
           status?: string
-          stripe_payment_intent_id: string
+          stripe_payment_intent_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -681,10 +683,11 @@ export type Database = {
           id?: string
           job_id?: string
           kinglancer_id?: string
+          method?: string
           platform_fee_client?: number
           platform_fee_kinglancer?: number
           status?: string
-          stripe_payment_intent_id?: string
+          stripe_payment_intent_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1175,6 +1178,7 @@ export type Database = {
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean
           tagline: string | null
+          terms_accepted_at: string | null
           terms_accepted_version: number
           total_reviews: number
           updated_at: string
@@ -1202,6 +1206,7 @@ export type Database = {
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean
           tagline?: string | null
+          terms_accepted_at?: string | null
           terms_accepted_version?: number
           total_reviews?: number
           updated_at?: string
@@ -1229,6 +1234,7 @@ export type Database = {
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean
           tagline?: string | null
+          terms_accepted_at?: string | null
           terms_accepted_version?: number
           total_reviews?: number
           updated_at?: string
@@ -1298,10 +1304,14 @@ export type Database = {
           amount: number
           application_id: string | null
           client_id: string
+          confirmed_by: string | null
           created_at: string
           id: string
           job_id: string
           kinglancer_id: string
+          manual_payout_reference: string | null
+          payment_method: string
+          payout_method: string | null
           platform_fee_client: number
           platform_fee_kinglancer: number
           released_at: string | null
@@ -1313,10 +1323,14 @@ export type Database = {
           amount: number
           application_id?: string | null
           client_id: string
+          confirmed_by?: string | null
           created_at?: string
           id?: string
           job_id: string
           kinglancer_id: string
+          manual_payout_reference?: string | null
+          payment_method?: string
+          payout_method?: string | null
           platform_fee_client: number
           platform_fee_kinglancer: number
           released_at?: string | null
@@ -1328,10 +1342,14 @@ export type Database = {
           amount?: number
           application_id?: string | null
           client_id?: string
+          confirmed_by?: string | null
           created_at?: string
           id?: string
           job_id?: string
           kinglancer_id?: string
+          manual_payout_reference?: string | null
+          payment_method?: string
+          payout_method?: string | null
           platform_fee_client?: number
           platform_fee_kinglancer?: number
           released_at?: string | null
@@ -1350,6 +1368,13 @@ export type Database = {
           {
             foreignKeyName: "transactions_client_id_fkey"
             columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_confirmed_by_fkey"
+            columns: ["confirmed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1408,6 +1433,7 @@ export type Database = {
         Args: { p_actor_id: string; p_organisation_id: string }
         Returns: undefined
       }
+      finalize_manual_payment: { Args: { p_attempt_id: string }; Returns: Json }
       get_client_stats: {
         Args: { p_client_id: string }
         Returns: {
@@ -1472,12 +1498,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1501,11 +1527,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1526,11 +1552,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1551,11 +1577,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1568,11 +1594,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

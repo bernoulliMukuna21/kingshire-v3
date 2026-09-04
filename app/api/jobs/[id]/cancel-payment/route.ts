@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 import {
+  cancelPaymentAttemptById,
   finalizePaymentAttempt,
   getPendingPaymentAttemptByJob,
   isCancellablePaymentIntentStatus,
@@ -42,14 +43,20 @@ export async function POST(
     );
   }
 
+  // Bank transfer (manual): no Stripe intent to cancel — just void the attempt.
+  if (attempt.method === "bank_transfer") {
+    await cancelPaymentAttemptById(attempt.id);
+    return NextResponse.json({ success: true });
+  }
+
   // Cancel on Stripe if the intent is still cancellable
   try {
     const pi = await stripe.paymentIntents.retrieve(
-      attempt.stripe_payment_intent_id,
+      attempt.stripe_payment_intent_id!,
     );
 
     if (isCancellablePaymentIntentStatus(pi.status)) {
-      await stripe.paymentIntents.cancel(attempt.stripe_payment_intent_id);
+      await stripe.paymentIntents.cancel(attempt.stripe_payment_intent_id!);
     } else if (pi.status === "succeeded") {
       await finalizePaymentAttempt(pi.id);
       return NextResponse.json(
@@ -74,7 +81,7 @@ export async function POST(
   }
 
   await updatePaymentAttemptStatus(
-    attempt.stripe_payment_intent_id,
+    attempt.stripe_payment_intent_id!,
     "cancelled",
   );
 

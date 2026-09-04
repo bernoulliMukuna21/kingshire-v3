@@ -164,7 +164,10 @@ export async function PATCH(
       normalizedBudget > 50000
     )
       return NextResponse.json(
-        { error: "Budget must be between £20 and £50,000 with up to 2 decimals." },
+        {
+          error:
+            "Budget must be between £20 and £50,000 with up to 2 decimals.",
+        },
         { status: 400 },
       );
   }
@@ -172,7 +175,9 @@ export async function PATCH(
   if (
     !Array.isArray(categories) ||
     categories.length === 0 ||
-    categories.some((c: string) => !(JOB_CATEGORIES as readonly string[]).includes(c))
+    categories.some(
+      (c: string) => !(JOB_CATEGORIES as readonly string[]).includes(c),
+    )
   )
     return NextResponse.json(
       { error: "At least one valid category is required." },
@@ -214,7 +219,10 @@ export async function PATCH(
   // Only update budget + rate_type when no one has applied
   if (!hasApplicants) {
     updatePayload.budget = normalizedBudget;
-    updatePayload.rate_type = resolvedRateType as "fixed" | "per_hour" | "per_day";
+    updatePayload.rate_type = resolvedRateType as
+      | "fixed"
+      | "per_hour"
+      | "per_day";
   }
 
   const { error } = await createServiceClient()

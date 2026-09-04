@@ -84,3 +84,89 @@ export async function updateTransactionStatusByJobId(
     .eq("job_id", jobId);
   if (error) throw error;
 }
+
+/**
+ * Admin "record payout" — the manual equivalent of fireTransfer. Releases a
+ * held bank_transfer escrow once the worker has been paid by hand.
+ */
+export async function recordManualPayout(
+  jobId: string,
+  opts: { reference: string; adminId: string },
+) {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("transactions")
+    .update({
+      status: "released",
+      released_at: new Date().toISOString(),
+      payout_method: "manual",
+      manual_payout_reference: opts.reference,
+      confirmed_by: opts.adminId,
+    })
+    .eq("job_id", jobId)
+    .eq("payment_method", "bank_transfer")
+    .eq("status", "held")
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data
+    ? coerceNumeric(data as TransactionRow, TRANSACTION_NUMERIC)
+    : null;
+}
+
+export type ManualPayoutQueueItem = {
+  jobId: string;
+  jobTitle: string;
+  organisationId: string | null;
+  workerId: string;
+  workerName: string | null;
+  workerEmail: string | null;
+  netAmount: number;
+  createdAt: string;
+};
+
+/**
+ * Admin "Awaiting payout" queue — held bank_transfer transactions whose job the
+ * client has already approved, so we owe the worker a manual payout.
+ */
+export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("transactions")
+    .select(
+      `job_id, kinglancer_id, amount, platform_fee_kinglancer, created_at,
+       job:jobs!job_id(title, status, organisation_id),
+       worker:profiles!kinglancer_id(full_name, email)`,
+    )
+    .eq("payment_method", "bank_transfer")
+    .eq("status", "held")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  type Row = {
+    job_id: string;
+    kinglancer_id: string;
+    amount: number | string;
+    platform_fee_kinglancer: number | string;
+    created_at: string;
+    job: {
+      title: string;
+      status: string;
+      organisation_id: string | null;
+    } | null;
+    worker: { full_name: string | null; email: string | null } | null;
+  };
+
+  return ((data ?? []) as unknown as Row[])
+    .filter((r) => r.job?.status === "approved")
+    .map((r) => ({
+      jobId: r.job_id,
+      jobTitle: r.job?.title ?? "Job",
+      organisationId: r.job?.organisation_id ?? null,
+      workerId: r.kinglancer_id,
+      workerName: r.worker?.full_name ?? null,
+      workerEmail: r.worker?.email ?? null,
+      netAmount: Number(r.amount) - Number(r.platform_fee_kinglancer),
+      createdAt: r.created_at,
+    }));
+}

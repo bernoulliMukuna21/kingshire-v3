@@ -1,11 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import {
-  Briefcase,
-  Calendar,
-  CreditCard,
-  Tag,
-  UserRound,
-} from "lucide-react";
+import { Briefcase, Calendar, CreditCard, Tag, UserRound } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";

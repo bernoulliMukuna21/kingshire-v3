@@ -82,6 +82,10 @@ create table public.transactions (
   stripe_payment_intent_id  text unique,
   stripe_transfer_id        text,
   status                    text not null default 'pending' check (status in ('pending','held','released','refunded','disputed')),
+  payment_method            text not null default 'card' check (payment_method in ('card','bank_transfer')),
+  payout_method             text check (payout_method is null or payout_method in ('stripe','manual')),
+  manual_payout_reference   text,
+  confirmed_by              uuid references public.profiles(id),
   released_at               timestamptz,
   created_at                timestamptz not null default now(),
   unique(job_id)
@@ -98,8 +102,9 @@ create table public.payment_attempts (
   amount                    numeric(10,2) not null,
   platform_fee_client       numeric(10,2) not null,
   platform_fee_kinglancer   numeric(10,2) not null,
-  stripe_payment_intent_id  text not null unique,
+  stripe_payment_intent_id  text unique,
   attempt_type              text not null default 'application' check (attempt_type in ('application','direct_request')),
+  method                    text not null default 'card' check (method in ('card','bank_transfer')),
   status                    text not null default 'pending' check (status in ('pending','succeeded','cancelled','failed','expired')),
   created_at                timestamptz not null default now(),
   updated_at                timestamptz not null default now()

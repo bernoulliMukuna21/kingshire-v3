@@ -102,7 +102,7 @@ export async function POST(
 
       try {
         const existingPaymentIntent = await stripe.paymentIntents.retrieve(
-          existingAttempt.stripe_payment_intent_id,
+          existingAttempt.stripe_payment_intent_id!,
         );
 
         if (
@@ -143,7 +143,7 @@ export async function POST(
         const stripeError = err as { code?: string };
         if (stripeError.code === "resource_missing") {
           await updatePaymentAttemptStatus(
-            existingAttempt.stripe_payment_intent_id,
+            existingAttempt.stripe_payment_intent_id!,
             "failed",
           );
         } else {

@@ -12,6 +12,7 @@ const ADMIN_NAV_ITEMS = [
   { label: "Overview", icon: "📊", href: "/admin" },
   { label: "Users", icon: "👥", href: "/admin/users" },
   { label: "Jobs", icon: "💼", href: "/admin/jobs" },
+  { label: "Manual payments", icon: "🏦", href: "/admin/manual-payments" },
   { label: "Disputes", icon: "🚨", href: "/admin/disputes" },
   { label: "Placements", icon: "🎓", href: "/admin/placements" },
   { label: "Verifications", icon: "✅", href: "/admin/verifications" },
