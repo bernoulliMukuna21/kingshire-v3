@@ -25,7 +25,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  await upsertPayoutAccount(user.id, provider, result.link);
+  try {
+    await upsertPayoutAccount(user.id, provider, result.link);
+  } catch (err) {
+    console.error("[payout-account] save failed:", err);
+    return NextResponse.json(
+      {
+        error:
+          err instanceof Error
+            ? err.message
+            : "Could not save your payout link.",
+      },
+      { status: 500 },
+    );
+  }
   return NextResponse.json({ success: true });
 }
 
