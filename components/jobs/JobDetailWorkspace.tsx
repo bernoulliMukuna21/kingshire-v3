@@ -114,6 +114,14 @@ export default async function JobDetailWorkspace({
 
   // A pending payment locks selection and editing until it clears/cancels.
   const paymentPending = !!pendingAttempt;
+  // Held rail for an in-progress job — bank_transfer refunds route to support.
+  const heldPaymentMethod =
+    job.status === "in_progress"
+      ? (((await getTransactionByJob(id))?.payment_method ?? null) as
+          | "card"
+          | "bank_transfer"
+          | null)
+      : null;
 
   const kinglancer = kinglancerResult.data as InvitedKinglancer | null;
   const kinglancerName = kinglancerProfileId
@@ -285,7 +293,11 @@ export default async function JobDetailWorkspace({
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <ClientApproveActions jobId={id} showApprove={false} />
-                <CancelJobButton jobId={id} status="in_progress" />
+                <CancelJobButton
+                  jobId={id}
+                  status="in_progress"
+                  paymentMethod={heldPaymentMethod}
+                />
               </div>
             </Card>
           )}

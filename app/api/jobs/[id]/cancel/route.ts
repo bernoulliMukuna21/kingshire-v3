@@ -115,9 +115,17 @@ export async function POST(
     );
   }
 
-  if (!transaction.stripe_payment_intent_id) {
+  // Bank-transfer jobs are refunded manually by our team — no Stripe refund.
+  if (
+    transaction.payment_method === "bank_transfer" ||
+    !transaction.stripe_payment_intent_id
+  ) {
     return NextResponse.json(
-      { error: "Transaction has no payment reference. Please contact support." },
+      {
+        error:
+          "This job was paid by bank transfer. To cancel it and arrange your refund, please contact support at kingshirecompany@gmail.com.",
+        code: "MANUAL_REFUND_CONTACT_SUPPORT",
+      },
       { status: 409 },
     );
   }
