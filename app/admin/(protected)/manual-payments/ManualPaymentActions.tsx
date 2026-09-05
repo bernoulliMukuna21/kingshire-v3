@@ -37,9 +37,15 @@ export function ConfirmFundsButton({ attemptId }: { attemptId: string }) {
   );
 }
 
-export function RecordPayoutButton({ jobId }: { jobId: string }) {
+export function RecordPayoutButton({
+  jobId,
+  defaultReference,
+}: {
+  jobId: string;
+  defaultReference?: string;
+}) {
   const router = useRouter();
-  const [reference, setReference] = useState("");
+  const [reference, setReference] = useState(defaultReference ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

@@ -106,7 +106,10 @@ export default async function AdminManualPaymentsPage() {
                   <span className="text-sm font-black text-emerald-600">
                     {formatMoney(p.netAmount)}
                   </span>
-                  <RecordPayoutButton jobId={p.jobId} />
+                  <RecordPayoutButton
+                    jobId={p.jobId}
+                    defaultReference={p.reference}
+                  />
                 </div>
               </div>
             ))}

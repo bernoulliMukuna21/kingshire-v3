@@ -123,6 +123,7 @@ export type ManualPayoutQueueItem = {
   workerEmail: string | null;
   payoutProvider: string | null;
   payoutLink: string | null;
+  reference: string;
   netAmount: number;
   createdAt: string;
 };
@@ -171,25 +172,44 @@ export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
       workerEmail: r.worker?.email ?? null,
       payoutProvider: null as string | null,
       payoutLink: null as string | null,
+      reference: r.job_id.slice(0, 8),
       netAmount: Number(r.amount) - Number(r.platform_fee_kinglancer),
       createdAt: r.created_at,
     }));
 
   if (items.length > 0) {
-    const { data: accounts } = await db
-      .from("payout_accounts")
-      .select("user_id, payout_provider, payout_link")
-      .in(
-        "user_id",
-        items.map((i) => i.workerId),
-      );
+    const [accountsRes, attemptsRes] = await Promise.all([
+      db
+        .from("payout_accounts")
+        .select("user_id, payout_provider, payout_link")
+        .in(
+          "user_id",
+          items.map((i) => i.workerId),
+        ),
+      // The original inbound reference the client used — reused for the payout
+      // so one reference ties the whole flow together.
+      db
+        .from("payment_attempts")
+        .select("id, job_id")
+        .in(
+          "job_id",
+          items.map((i) => i.jobId),
+        )
+        .eq("method", "bank_transfer")
+        .eq("status", "succeeded"),
+    ]);
     const byUser = new Map(
-      (accounts ?? []).map((a) => [a.user_id, a] as const),
+      (accountsRes.data ?? []).map((a) => [a.user_id, a] as const),
+    );
+    const refByJob = new Map(
+      (attemptsRes.data ?? []).map((a) => [a.job_id, a.id] as const),
     );
     for (const item of items) {
       const acc = byUser.get(item.workerId);
       item.payoutProvider = acc?.payout_provider ?? null;
       item.payoutLink = acc?.payout_link ?? null;
+      const ref = refByJob.get(item.jobId);
+      if (ref) item.reference = ref.slice(0, 8);
     }
   }
 
