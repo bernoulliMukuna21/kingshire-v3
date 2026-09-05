@@ -11,6 +11,7 @@ import { getDashboardContext } from "@/lib/dashboard-context";
 import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
+import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { jobStatusPill } from "@/lib/jobs";
 import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
 import {
@@ -95,7 +96,7 @@ export default async function JobDetailWorkspace({
   const statusConfig = jobStatusPill(job.status);
   const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
 
-  const [applications, kinglancerResult] = await Promise.all([
+  const [applications, kinglancerResult, pendingAttempt] = await Promise.all([
     !isDirectRequest && job.status === "open"
       ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
       : Promise.resolve([] as ApplicationWithKinglancer[]),
@@ -106,7 +107,13 @@ export default async function JobDetailWorkspace({
           .eq("id", kinglancerProfileId)
           .single()
       : Promise.resolve({ data: null }),
+    job.status === "open"
+      ? getPendingPaymentAttemptByJob(id)
+      : Promise.resolve(null),
   ]);
+
+  // A pending payment locks selection and editing until it clears/cancels.
+  const paymentPending = !!pendingAttempt;
 
   const kinglancer = kinglancerResult.data as InvitedKinglancer | null;
   const kinglancerName = kinglancerProfileId
@@ -195,6 +202,8 @@ export default async function JobDetailWorkspace({
             )}
           </Card>
 
+          {job.status === "open" && <PendingPaymentCard jobId={id} />}
+
           {isDirectRequest && job.status === "open" && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
@@ -229,19 +238,21 @@ export default async function JobDetailWorkspace({
                 Review applicants and select one Kinglancer when you are ready
                 to fund escrow.
               </p>
-              <ApplicantsList applications={applications} />
+              <ApplicantsList applications={applications} locked={paymentPending} />
             </Card>
           )}
 
           {job.status === "open" && (
             <div className="flex items-center justify-end gap-3">
-              <ButtonLink
-                href={`/dashboard/client/jobs/${id}/edit`}
-                variant="secondary"
-                size="sm"
-              >
-                Edit job
-              </ButtonLink>
+              {!paymentPending && (
+                <ButtonLink
+                  href={`/dashboard/client/jobs/${id}/edit`}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Edit job
+                </ButtonLink>
+              )}
               <CancelJobButton
                 jobId={id}
                 status="open"
@@ -262,8 +273,6 @@ export default async function JobDetailWorkspace({
               <ClientApproveActions jobId={id} showApprove />
             </Card>
           )}
-
-          {job.status === "open" && <PendingPaymentCard jobId={id} />}
 
           {job.status === "in_progress" && payment_failed !== "1" && (
             <Card className={cardPadding}>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getJobById } from "@/lib/db/jobs";
+import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import type { RateType } from "@/lib/jobs";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -125,6 +126,12 @@ export async function PATCH(
   if (job.status !== "open")
     return NextResponse.json(
       { error: "Only open jobs can be edited." },
+      { status: 409 },
+    );
+  // A committed payment (card checkout or pending bank transfer) locks edits.
+  if (await getPendingPaymentAttemptByJob(id))
+    return NextResponse.json(
+      { error: "This job can't be edited while a payment is in progress." },
       { status: 409 },
     );
 

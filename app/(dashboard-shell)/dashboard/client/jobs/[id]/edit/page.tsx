@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { getJobById } from "@/lib/db/jobs";
+import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import EditJobForm from "./EditJobForm";
@@ -21,8 +22,13 @@ export default async function EditJobPage({
     if (profile.role !== "client") redirect("/onboarding");
     notFound();
   }
-  if (job.status !== "open")
+  if (job.status !== "open") redirect(`/dashboard/client/jobs/${id}`);
+
+  // A job can't be edited once a payment is in progress (card checkout or a
+  // pending bank transfer) — the amount is committed.
+  if (await getPendingPaymentAttemptByJob(id)) {
     redirect(`/dashboard/client/jobs/${id}`);
+  }
 
   // Check if anyone has applied — budget is locked if so
   const applicationDb = job.organisation_id ? createServiceClient() : supabase;

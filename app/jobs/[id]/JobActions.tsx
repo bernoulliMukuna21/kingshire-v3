@@ -680,8 +680,10 @@ function BankTransferModal({
 
 export function ApplicantsList({
   applications,
+  locked = false,
 }: {
   applications: ApplicationWithKinglancer[];
+  locked?: boolean;
 }) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -922,13 +924,19 @@ export function ApplicantsList({
                     <p className="text-sm text-gray-700">{app.cover_letter}</p>
                   </div>
 
-                  <button
-                    onClick={() => setPendingSelectId(app.id)}
-                    disabled={selectingId !== null}
-                    className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    Select this Kinglancer
-                  </button>
+                  {locked ? (
+                    <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-sm font-semibold text-slate-500">
+                      Payment in progress — selection locked
+                    </p>
+                  ) : (
+                    <button
+                      onClick={() => setPendingSelectId(app.id)}
+                      disabled={selectingId !== null}
+                      className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      Select this Kinglancer
+                    </button>
+                  )}
                 </div>
               )}
             </div>
