@@ -30,7 +30,7 @@ function useRedirectAction(endpoint: string) {
 
 export function SubscribeButton() {
   const { loading, error, go } = useRedirectAction(
-    "/api/client-subscription/checkout",
+    "/api/subscription/checkout",
   );
   return (
     <div className="space-y-3">
@@ -59,7 +59,7 @@ export function SubscribeButton() {
 
 export function ManageSubscriptionButton() {
   const { loading, error, go } = useRedirectAction(
-    "/api/client-subscription/portal",
+    "/api/subscription/portal",
   );
   return (
     <div className="space-y-3">

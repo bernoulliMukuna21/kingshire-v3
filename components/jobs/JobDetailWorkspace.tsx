@@ -13,7 +13,7 @@ import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { jobStatusPill } from "@/lib/jobs";
-import { jobCardPaymentAllowed } from "@/lib/client-subscription";
+import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
 import {
   getJobReviewState,
@@ -117,7 +117,7 @@ export default async function JobDetailWorkspace({
   const paymentPending = !!pendingAttempt;
   // Card (Stripe) funding needs an active subscription; org jobs are covered.
   const cardEnabled =
-    job.status === "open" ? await jobCardPaymentAllowed(job) : true;
+    job.status === "open" ? (await getJobPaymentPolicy(job)).cardAllowed : true;
   // Held rail for an in-progress job — bank_transfer refunds route to support.
   const heldPaymentMethod =
     job.status === "in_progress"

@@ -3,11 +3,12 @@ import { CheckCircle2, CreditCard, Banknote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { getClientSubscription } from "@/lib/client-subscription";
+import { getUserSubscription } from "@/lib/subscriptions";
+import { CARD_MIN_WITHOUT_SUB_GBP } from "@/lib/payments/policy";
 import {
-  fulfillClientSubscriptionCheckout,
-  ClientSubscriptionError,
-} from "@/infrastructure/stripe/client-subscriptions";
+  fulfillUserSubscriptionCheckout,
+  UserSubscriptionError,
+} from "@/infrastructure/stripe/user-subscriptions";
 import {
   SubscribeButton,
   ManageSubscriptionButton,
@@ -41,15 +42,15 @@ export default async function ClientSubscriptionPage({
   // (the webhook is the source of truth).
   if (session_id) {
     try {
-      await fulfillClientSubscriptionCheckout(session_id, user.id);
+      await fulfillUserSubscriptionCheckout(session_id, user.id);
     } catch (err) {
-      if (!(err instanceof ClientSubscriptionError)) {
-        console.error("[client-subscription] return fulfil failed:", err);
+      if (!(err instanceof UserSubscriptionError)) {
+        console.error("[subscription] return fulfil failed:", err);
       }
     }
   }
 
-  const subscription = await getClientSubscription(user.id);
+  const subscription = await getUserSubscription(user.id);
   const isActive = subscription?.isActive ?? false;
 
   const renewalDate = subscription?.currentPeriodEnd
@@ -111,9 +112,10 @@ export default async function ClientSubscriptionPage({
               Pay by card for £10/month
             </h2>
             <p className="mb-5 mt-1 text-sm text-slate-500">
-              A subscription unlocks the card payment rail for every job you
-              fund — instant escrow, no manual step. Without it you can still
-              hire and pay by bank transfer at no extra cost.
+              Jobs of £{CARD_MIN_WITHOUT_SUB_GBP} and over can always be paid by
+              card. A subscription unlocks card payment for smaller jobs too —
+              instant escrow, no manual step. Without it you can still hire and
+              pay smaller jobs by bank transfer at no extra cost.
             </p>
             <SubscribeButton />
           </>
@@ -129,11 +131,12 @@ export default async function ClientSubscriptionPage({
             <CreditCard size={18} className="mt-0.5 shrink-0 text-blue-600" />
             <span>
               <span className="font-bold text-slate-900">
-                Card — subscribers only
+                Card — smaller jobs need a subscription
               </span>
               <span className="block text-slate-500">
-                Instant payment held in escrow automatically. Requires the
-                £10/month subscription.
+                Instant payment held in escrow automatically. Jobs under £
+                {CARD_MIN_WITHOUT_SUB_GBP} need the £10/month subscription;
+                larger jobs can always use card.
               </span>
             </span>
           </li>

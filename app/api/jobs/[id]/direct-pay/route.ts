@@ -11,7 +11,7 @@ import {
 } from "@/lib/db/payment-attempts";
 import { canManageJob } from "@/lib/organisations";
 import { getManualBankDetails } from "@/lib/manual-payments";
-import { jobCardPaymentAllowed } from "@/lib/client-subscription";
+import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { requireTermsAccepted } from "@/lib/terms";
 
@@ -157,9 +157,9 @@ export async function POST(
       });
     }
 
-    // Card (Stripe escrow) is a subscriber-only rail. Non-subscribers pay by
-    // bank transfer, which carries no Stripe fee.
-    if (!(await jobCardPaymentAllowed(job))) {
+    // Card (Stripe escrow) is a subscriber-only rail below the threshold.
+    // Non-subscribers pay by bank transfer, which carries no Stripe fee.
+    if (!(await getJobPaymentPolicy(job)).cardAllowed) {
       return NextResponse.json(
         {
           error:

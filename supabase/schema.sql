@@ -123,13 +123,15 @@ create table public.payout_accounts (
   updated_at      timestamptz not null default now()
 );
 
--- ── CLIENT SUBSCRIPTIONS ──────────────────────────────────
--- A personal Client pays £10/month to unlock the CARD payment rail (Stripe
--- escrow). Without it they can only fund jobs by bank transfer. Org jobs are
--- covered by organisation_subscriptions instead. Owner-only read; writes are
--- service-role only.
-create table public.client_subscriptions (
+-- ── USER SUBSCRIPTIONS ────────────────────────────────────
+-- One flat monthly subscription per user (client OR kinglancer). Client sub
+-- unlocks card payment for small jobs; kinglancer sub unlocks automated Stripe
+-- payouts + applying to small jobs. Org subscriptions live in their own table.
+-- Owner-only read; writes are service-role only.
+create table public.user_subscriptions (
   user_id                     uuid primary key references public.profiles(id) on delete cascade,
+  role                        text not null check (role in ('client', 'kinglancer')),
+  plan                        text not null,
   status                      text not null check (status in (
     'incomplete', 'incomplete_expired', 'trialing', 'active',
     'past_due', 'canceled', 'unpaid', 'paused'

@@ -11,8 +11,8 @@ describe("platform fee rates", () => {
   it("client rate is 2.5%", () => {
     expect(PLATFORM_FEE_RATE_CLIENT).toBe(0.025);
   });
-  it("kinglancer rate is 7.5%", () => {
-    expect(PLATFORM_FEE_RATE_KINGLANCER).toBe(0.075);
+  it("kinglancer rate is 5%", () => {
+    expect(PLATFORM_FEE_RATE_KINGLANCER).toBe(0.05);
   });
   it("client fixed component is 0 (covered by the subscription)", () => {
     expect(PLATFORM_FEE_FIXED_CLIENT).toBe(0);
@@ -29,9 +29,9 @@ describe("calculateFees", () => {
     expect(clientChargeGBP).toBe(102.5);
   });
 
-  it("deducts 7.5% from kinglancer side", () => {
+  it("deducts 5% from kinglancer side", () => {
     const { platformFeeKinglancer } = calculateFees(100);
-    expect(platformFeeKinglancer).toBe(7.5);
+    expect(platformFeeKinglancer).toBe(5);
   });
 
   it("converts GBP to pence correctly", () => {
@@ -84,8 +84,8 @@ describe("calculateFees", () => {
 });
 
 // A worked example for a £20 minimum job under the current model: client 2.5%,
-// kinglancer 7.5%, no fixed fee. Stripe's own card costs are covered by the
-// client's £10/month subscription (card is a subscriber-only rail).
+// kinglancer 5%, no fixed fee. Stripe's own card costs are covered by the
+// subscriptions (card is a subscriber-only rail below the threshold).
 describe("£20 job simulation", () => {
   const budget = 20;
   const fees = calculateFees(budget);
@@ -98,13 +98,13 @@ describe("£20 job simulation", () => {
     expect(fees.clientChargePence).toBe(2050);
   });
 
-  it("kinglancer receives £18.50 (budget − 7.5%)", () => {
-    expect(kinglancerReceives).toBe(18.5);
+  it("kinglancer receives £19.00 (budget − 5%)", () => {
+    expect(kinglancerReceives).toBe(19);
   });
 
-  it("platform gross take is £2.00 (client £0.50 + kinglancer £1.50)", () => {
+  it("platform gross take is £1.50 (client £0.50 + kinglancer £1.00)", () => {
     expect(fees.platformFeeClient).toBe(0.5);
-    expect(fees.platformFeeKinglancer).toBe(1.5);
-    expect(platformGrossTake).toBe(2);
+    expect(fees.platformFeeKinglancer).toBe(1);
+    expect(platformGrossTake).toBe(1.5);
   });
 });

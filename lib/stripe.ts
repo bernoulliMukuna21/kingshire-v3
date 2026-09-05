@@ -19,11 +19,11 @@ export const stripe: Stripe = new Proxy({} as Stripe, {
 });
 
 // Fee config — the earner (kinglancer) carries the larger cut, the buyer
-// (client) a smaller one. Total platform take ≈ 10%. Card processing costs are
-// covered by the client's £10/month subscription (card is subscriber-only), so
-// no per-transaction fixed fee is charged on top.
+// (client) a smaller one. Total platform take = 7.5%. Card processing costs are
+// covered by subscriptions (card is subscriber-only below a threshold), so no
+// per-transaction fixed fee is charged on top.
 export const PLATFORM_FEE_RATE_CLIENT = 0.025;
-export const PLATFORM_FEE_RATE_KINGLANCER = 0.075;
+export const PLATFORM_FEE_RATE_KINGLANCER = 0.05;
 // Fixed component (£) added to the client service fee. Kept at 0 — Stripe's
 // per-transaction cost is covered by the client subscription.
 export const PLATFORM_FEE_FIXED_CLIENT = 0;
@@ -35,7 +35,7 @@ export const MIN_JOB_BUDGET_GBP = 20;
  * for a given job budget in £.
  *
  * Client pays: budget + 2.5%
- * Kinglancer receives: budget − 7.5%
+ * Kinglancer receives: budget − 5%
  *
  * `includeFixed` defaults to true (card route). The bank-transfer route passes
  * false. The fixed component is currently 0, so it has no effect either way.

@@ -11,7 +11,7 @@ import {
 } from "@/lib/db/payment-attempts";
 import { getManualBankDetails } from "@/lib/manual-payments";
 import { canManageJob } from "@/lib/organisations";
-import { jobCardPaymentAllowed } from "@/lib/client-subscription";
+import { getJobPaymentPolicy } from "@/lib/payments/policy";
 
 type ApplicationRow = {
   id: string;
@@ -157,9 +157,9 @@ export async function PATCH(
       });
     }
 
-    // Card (Stripe escrow) is a subscriber-only rail — Stripe's fees erode the
-    // margin on pay-as-you-go card payments. Non-subscribers use bank transfer.
-    if (!(await jobCardPaymentAllowed(job))) {
+    // Card (Stripe escrow) is a subscriber-only rail below the threshold —
+    // Stripe's fees erode the margin on small pay-as-you-go card jobs.
+    if (!(await getJobPaymentPolicy(job)).cardAllowed) {
       return NextResponse.json(
         {
           error:

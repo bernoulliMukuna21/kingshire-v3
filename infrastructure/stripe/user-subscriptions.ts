@@ -1,15 +1,19 @@
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
-import { CLIENT_SUBSCRIPTION_PRICE_GBP } from "@/lib/client-subscription";
 import {
-  getClientSubscriptionRow,
-  upsertClientSubscription,
-  updateClientSubscriptionBySubscriptionId,
-} from "@/lib/db/client-subscriptions";
+  planForRole,
+  type SubscriptionRole,
+  type SubscriptionPlan,
+} from "@/lib/subscriptions/plans";
+import {
+  getUserSubscriptionRow,
+  upsertUserSubscription,
+  updateUserSubscriptionBySubscriptionId,
+} from "@/lib/db/user-subscriptions";
 
-export const CLIENT_SUBSCRIPTION_PURPOSE = "client_subscription";
+export const USER_SUBSCRIPTION_PURPOSE = "user_subscription";
 
-export class ClientSubscriptionError extends Error {
+export class UserSubscriptionError extends Error {
   constructor(
     public readonly code:
       | "not_configured"
@@ -20,19 +24,25 @@ export class ClientSubscriptionError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = "ClientSubscriptionError";
+    this.name = "UserSubscriptionError";
   }
 }
 
-function getPriceId(): string {
-  const priceId = process.env.STRIPE_CLIENT_SUBSCRIPTION_PRICE_ID?.trim();
+function getPriceId(plan: SubscriptionPlan): string {
+  const priceId = process.env[plan.priceEnv]?.trim();
   if (!priceId) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "not_configured",
-      "Client subscription billing is not configured.",
+      `${plan.name} subscription billing is not configured.`,
     );
   }
   return priceId;
+}
+
+function subscriptionReturnPath(role: SubscriptionRole): string {
+  return role === "kinglancer"
+    ? "/dashboard/kinglancer/subscription"
+    : "/dashboard/client/subscription";
 }
 
 function publicAppUrl(requestUrl: string) {
@@ -49,7 +59,7 @@ function getExpandedId(
 ): string {
   const id = typeof value === "string" ? value : value?.id;
   if (!id) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "stripe_error",
       `Stripe ${label} is missing.`,
     );
@@ -58,36 +68,38 @@ function getExpandedId(
 }
 
 /**
- * Starts a £10/month Stripe Checkout subscription for a Client. Reuses the
- * existing Stripe customer when the Client has subscribed before. Throws
- * `already_active` when they already hold a live subscription.
+ * Starts a Stripe Checkout subscription for a user in the given role. Reuses
+ * their Stripe customer if they've subscribed before. Throws `already_active`
+ * when a live subscription already exists.
  */
-export async function createClientSubscriptionCheckout(input: {
+export async function createUserSubscriptionCheckout(input: {
   userId: string;
   userEmail: string;
+  role: SubscriptionRole;
   requestUrl: string;
 }): Promise<{ url: string }> {
-  const priceId = getPriceId();
+  const plan = planForRole(input.role);
+  const priceId = getPriceId(plan);
   const price = await stripe.prices.retrieve(priceId);
   if (
     !price.active ||
     price.currency.toLowerCase() !== "gbp" ||
-    price.unit_amount !== CLIENT_SUBSCRIPTION_PRICE_GBP * 100 ||
+    price.unit_amount !== plan.priceGBP * 100 ||
     price.recurring?.interval !== "month" ||
     price.recurring.interval_count !== 1
   ) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "not_configured",
-      `Client subscription is not configured as a £${CLIENT_SUBSCRIPTION_PRICE_GBP} monthly Stripe price.`,
+      `${plan.name} subscription is not configured as a £${plan.priceGBP} monthly Stripe price.`,
     );
   }
 
-  const existing = await getClientSubscriptionRow(input.userId);
+  const existing = await getUserSubscriptionRow(input.userId);
   if (
     existing &&
     (existing.status === "active" || existing.status === "trialing")
   ) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "already_active",
       "You already have an active subscription.",
     );
@@ -95,8 +107,10 @@ export async function createClientSubscriptionCheckout(input: {
 
   const appUrl = publicAppUrl(input.requestUrl);
   const metadata = {
-    purpose: CLIENT_SUBSCRIPTION_PURPOSE,
+    purpose: USER_SUBSCRIPTION_PURPOSE,
     user_id: input.userId,
+    role: input.role,
+    plan: plan.id,
   };
 
   const session = await stripe.checkout.sessions.create(
@@ -109,14 +123,14 @@ export async function createClientSubscriptionCheckout(input: {
       client_reference_id: input.userId,
       metadata,
       subscription_data: { metadata },
-      success_url: `${appUrl}/dashboard/client/subscription?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${appUrl}/dashboard/client/subscription?cancelled=1`,
+      success_url: `${appUrl}${subscriptionReturnPath(input.role)}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appUrl}${subscriptionReturnPath(input.role)}?cancelled=1`,
     },
-    { idempotencyKey: `client-subscription-${input.userId}` },
+    { idempotencyKey: `user-subscription-${input.userId}` },
   );
 
   if (!session.url) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "stripe_error",
       "Stripe did not provide a checkout URL.",
     );
@@ -124,7 +138,9 @@ export async function createClientSubscriptionCheckout(input: {
   return { url: session.url };
 }
 
-function subscriptionPeriodEnd(subscription: Stripe.Subscription): string | null {
+function subscriptionPeriodEnd(
+  subscription: Stripe.Subscription,
+): string | null {
   const end = subscription.items.data[0]?.current_period_end;
   return end ? new Date(end * 1000).toISOString() : null;
 }
@@ -133,7 +149,7 @@ function subscriptionPeriodEnd(subscription: Stripe.Subscription): string | null
  * Confirms a completed Checkout session and records the subscription. Idempotent
  * — safe to call from both the return page and the webhook.
  */
-export async function fulfillClientSubscriptionCheckout(
+export async function fulfillUserSubscriptionCheckout(
   checkoutSessionId: string,
   expectedUserId?: string,
 ): Promise<{ userId: string }> {
@@ -141,24 +157,26 @@ export async function fulfillClientSubscriptionCheckout(
     expand: ["subscription", "customer"],
   });
 
+  const role = session.metadata?.role;
   if (
-    session.metadata?.purpose !== CLIENT_SUBSCRIPTION_PURPOSE ||
-    !session.metadata.user_id
+    session.metadata?.purpose !== USER_SUBSCRIPTION_PURPOSE ||
+    !session.metadata.user_id ||
+    (role !== "client" && role !== "kinglancer")
   ) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "not_found",
-      "Client subscription checkout was not found.",
+      "Subscription checkout was not found.",
     );
   }
   const userId = session.metadata.user_id;
   if (expectedUserId && userId !== expectedUserId) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "conflict",
       "This checkout belongs to another account.",
     );
   }
   if (session.status !== "complete" || session.payment_status === "unpaid") {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "conflict",
       "The subscription payment has not completed.",
     );
@@ -169,14 +187,16 @@ export async function fulfillClientSubscriptionCheckout(
       ? await stripe.subscriptions.retrieve(session.subscription)
       : session.subscription;
   if (!subscription) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "conflict",
       "The subscription is not ready yet.",
     );
   }
 
-  await upsertClientSubscription({
+  await upsertUserSubscription({
     user_id: userId,
+    role,
+    plan: session.metadata.plan ?? planForRole(role).id,
     status: subscription.status,
     stripe_customer_id: getExpandedId(session.customer, "customer"),
     stripe_subscription_id: subscription.id,
@@ -189,10 +209,10 @@ export async function fulfillClientSubscriptionCheckout(
 }
 
 /** Keeps our copy of the subscription in step with Stripe lifecycle events. */
-export async function syncClientSubscription(
+export async function syncUserSubscription(
   subscription: Stripe.Subscription,
 ): Promise<void> {
-  await updateClientSubscriptionBySubscriptionId(subscription.id, {
+  await updateUserSubscriptionBySubscriptionId(subscription.id, {
     status: subscription.status,
     cancel_at_period_end: subscription.cancel_at_period_end,
     stripe_price_id: subscription.items.data[0]?.price.id ?? undefined,
@@ -200,14 +220,15 @@ export async function syncClientSubscription(
   });
 }
 
-/** Opens the Stripe billing portal so a Client can manage or cancel. */
-export async function createClientBillingPortalSession(input: {
+/** Opens the Stripe billing portal so a user can manage or cancel. */
+export async function createUserBillingPortalSession(input: {
   userId: string;
+  role: SubscriptionRole;
   requestUrl: string;
 }): Promise<{ url: string }> {
-  const existing = await getClientSubscriptionRow(input.userId);
+  const existing = await getUserSubscriptionRow(input.userId);
   if (!existing?.stripe_customer_id) {
-    throw new ClientSubscriptionError(
+    throw new UserSubscriptionError(
       "not_found",
       "No subscription was found for this account.",
     );
@@ -215,7 +236,7 @@ export async function createClientBillingPortalSession(input: {
   const appUrl = publicAppUrl(input.requestUrl);
   const portal = await stripe.billingPortal.sessions.create({
     customer: existing.stripe_customer_id,
-    return_url: `${appUrl}/dashboard/client/subscription`,
+    return_url: `${appUrl}${subscriptionReturnPath(input.role)}`,
   });
   return { url: portal.url };
 }

@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
 import { jobStatusPill } from "@/lib/jobs";
-import { jobCardPaymentAllowed } from "@/lib/client-subscription";
+import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
@@ -53,7 +53,9 @@ export default async function JobDetailPage({
   const isAssignedKinglancer = user?.id === job.kinglancer_id;
   const isDirectRequest = !!job.invited_kinglancer_id;
   const isInvitedKinglancer = user?.id === job.invited_kinglancer_id;
-  const cardEnabled = isOwner ? await jobCardPaymentAllowed(job) : true;
+  const cardEnabled = isOwner
+    ? (await getJobPaymentPolicy(job)).cardAllowed
+    : true;
 
   let profile: {
     id: string;
