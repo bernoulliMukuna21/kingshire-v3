@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createApplication, hasApplied } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
+import {
+  jobRequiresSubscriptionToApply,
+  SMALL_JOB_THRESHOLD_GBP,
+} from "@/lib/payments/policy";
+import { hasEntitlement } from "@/lib/subscriptions";
 import { notifyNewApplication } from "@/lib/notifications";
 import { captureServerEvent } from "@/lib/posthog-server";
 
@@ -68,6 +73,21 @@ export async function POST(request: Request) {
   if (job.invited_kinglancer_id) {
     return NextResponse.json(
       { error: "Direct requests must be handled from the job page" },
+      { status: 403 },
+    );
+  }
+
+  // Small jobs are subscriber-only to apply to (direct requests are exempt —
+  // they're handled above).
+  if (
+    jobRequiresSubscriptionToApply(job.budget) &&
+    !(await hasEntitlement(user.id, "kinglancer", "applyToSmallJobs"))
+  ) {
+    return NextResponse.json(
+      {
+        error: `Applying to jobs under £${SMALL_JOB_THRESHOLD_GBP} needs a Kinglancer subscription.`,
+        code: "SMALL_JOB_SUBSCRIPTION_REQUIRED",
+      },
       { status: 403 },
     );
   }

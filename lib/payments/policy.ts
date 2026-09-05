@@ -1,10 +1,11 @@
 import { isSubscribed } from "@/lib/subscriptions";
 
-// Minimum job budget (£) a non-subscribed personal client may pay by card.
-// Below this, Stripe's per-transaction cost isn't worth it on a low-value job,
-// so card is reserved for subscribers; everyone else uses bank transfer.
-// Org jobs are exempt (the organisation already carries a subscription).
-export const CARD_MIN_WITHOUT_SUB_GBP = 25;
+// A job is "small" below this budget (£). Small jobs are the ones Stripe's
+// per-transaction cost bites on, so they're gated behind subscriptions on both
+// sides: a non-subscribed client can't pay them by card (bank transfer only),
+// and a non-subscribed kinglancer can't apply to them. Org jobs are exempt on
+// the card side (the organisation already carries a subscription).
+export const SMALL_JOB_THRESHOLD_GBP = 25;
 
 export type JobPaymentPolicy = {
   // May the payer choose card at all?
@@ -30,7 +31,7 @@ export function resolveCardPolicy(input: {
       bankTransferAllowed: true,
     };
   }
-  const belowThreshold = input.budget < CARD_MIN_WITHOUT_SUB_GBP;
+  const belowThreshold = input.budget < SMALL_JOB_THRESHOLD_GBP;
   const cardAllowed = input.clientSubscribed || !belowThreshold;
   return {
     cardAllowed,
@@ -54,4 +55,10 @@ export async function getJobPaymentPolicy(job: {
     budget: job.budget,
     clientSubscribed,
   });
+}
+
+// Whether applying to a job requires a kinglancer subscription (small jobs are
+// subscriber-only to apply to). Budget in £.
+export function jobRequiresSubscriptionToApply(budget: number): boolean {
+  return budget < SMALL_JOB_THRESHOLD_GBP;
 }

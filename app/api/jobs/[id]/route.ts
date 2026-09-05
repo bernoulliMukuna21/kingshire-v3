@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import type { RateType } from "@/lib/jobs";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { notifyJobCancelled } from "@/lib/notifications";
@@ -167,13 +168,13 @@ export async function PATCH(
     if (
       !Number.isFinite(budgetNum) ||
       !hasValidCurrencyPrecision(budget) ||
-      normalizedBudget < 20 ||
+      normalizedBudget < MIN_JOB_BUDGET_GBP ||
       normalizedBudget > 50000
     )
       return NextResponse.json(
         {
           error:
-            "Budget must be between £20 and £50,000 with up to 2 decimals.",
+            `Budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000 with up to 2 decimals.`,
         },
         { status: 400 },
       );

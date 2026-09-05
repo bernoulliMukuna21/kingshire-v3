@@ -27,8 +27,9 @@ export const PLATFORM_FEE_RATE_KINGLANCER = 0.05;
 // Fixed component (£) added to the client service fee. Kept at 0 — Stripe's
 // per-transaction cost is covered by the client subscription.
 export const PLATFORM_FEE_FIXED_CLIENT = 0;
-// Minimum job budget (£) — small jobs are unprofitable after Stripe fees.
-export const MIN_JOB_BUDGET_GBP = 20;
+// Minimum job budget (£). Small jobs are subscriber-gated (see lib/payments/
+// policy.ts) rather than blocked, so the hard floor can be low.
+export const MIN_JOB_BUDGET_GBP = 10;
 
 /**
  * Calculates the Stripe charge amount (in pence) and fee breakdown

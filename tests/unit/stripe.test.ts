@@ -17,8 +17,8 @@ describe("platform fee rates", () => {
   it("client fixed component is 0 (covered by the subscription)", () => {
     expect(PLATFORM_FEE_FIXED_CLIENT).toBe(0);
   });
-  it("minimum job budget is £20", () => {
-    expect(MIN_JOB_BUDGET_GBP).toBe(20);
+  it("minimum job budget is £10", () => {
+    expect(MIN_JOB_BUDGET_GBP).toBe(10);
   });
 });
 

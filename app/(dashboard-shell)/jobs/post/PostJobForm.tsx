@@ -8,6 +8,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 
 export function FormSkeleton() {
   return (
@@ -108,7 +109,8 @@ export default function PostJobForm({
     if (!budget || totalBudget <= 0) fe.budget = "Please enter a valid budget.";
     else if (!hasValidCurrencyPrecision(budget))
       fe.budget = CURRENCY_VALIDATION_MESSAGE;
-    else if (totalBudget < 20) fe.budget = "Minimum total budget is £20.";
+    else if (totalBudget < MIN_JOB_BUDGET_GBP)
+      fe.budget = `Minimum total budget is £${MIN_JOB_BUDGET_GBP}.`;
     else if (totalBudget > 50000)
       fe.budget = "Maximum total budget is £50,000.";
 

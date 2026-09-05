@@ -8,7 +8,8 @@ vi.mock("@/lib/subscriptions", () => ({
 import {
   resolveCardPolicy,
   getJobPaymentPolicy,
-  CARD_MIN_WITHOUT_SUB_GBP,
+  jobRequiresSubscriptionToApply,
+  SMALL_JOB_THRESHOLD_GBP,
 } from "@/lib/payments/policy";
 
 describe("resolveCardPolicy", () => {
@@ -25,7 +26,7 @@ describe("resolveCardPolicy", () => {
   it("blocks card for a small personal job without a subscription", () => {
     const policy = resolveCardPolicy({
       organisationId: null,
-      budget: CARD_MIN_WITHOUT_SUB_GBP - 1,
+      budget: SMALL_JOB_THRESHOLD_GBP - 1,
       clientSubscribed: false,
     });
     expect(policy.cardAllowed).toBe(false);
@@ -36,7 +37,7 @@ describe("resolveCardPolicy", () => {
   it("allows card for a small personal job with a subscription", () => {
     const policy = resolveCardPolicy({
       organisationId: null,
-      budget: CARD_MIN_WITHOUT_SUB_GBP - 1,
+      budget: SMALL_JOB_THRESHOLD_GBP - 1,
       clientSubscribed: true,
     });
     expect(policy.cardAllowed).toBe(true);
@@ -46,7 +47,7 @@ describe("resolveCardPolicy", () => {
   it("allows card at/above the threshold without a subscription", () => {
     const policy = resolveCardPolicy({
       organisationId: null,
-      budget: CARD_MIN_WITHOUT_SUB_GBP,
+      budget: SMALL_JOB_THRESHOLD_GBP,
       clientSubscribed: false,
     });
     expect(policy.cardAllowed).toBe(true);
@@ -72,7 +73,7 @@ describe("getJobPaymentPolicy", () => {
     const policy = await getJobPaymentPolicy({
       organisation_id: null,
       client_id: "u1",
-      budget: CARD_MIN_WITHOUT_SUB_GBP - 5,
+      budget: SMALL_JOB_THRESHOLD_GBP - 5,
     });
     expect(policy.cardAllowed).toBe(false);
     expect(isSubscribed).toHaveBeenCalledWith("u1", "client");
@@ -83,8 +84,20 @@ describe("getJobPaymentPolicy", () => {
     const policy = await getJobPaymentPolicy({
       organisation_id: null,
       client_id: "u1",
-      budget: CARD_MIN_WITHOUT_SUB_GBP - 5,
+      budget: SMALL_JOB_THRESHOLD_GBP - 5,
     });
     expect(policy.cardAllowed).toBe(true);
+  });
+});
+
+describe("jobRequiresSubscriptionToApply", () => {
+  it("requires a subscription below the threshold", () => {
+    expect(jobRequiresSubscriptionToApply(SMALL_JOB_THRESHOLD_GBP - 1)).toBe(
+      true,
+    );
+  });
+
+  it("does not require one at/above the threshold", () => {
+    expect(jobRequiresSubscriptionToApply(SMALL_JOB_THRESHOLD_GBP)).toBe(false);
   });
 });

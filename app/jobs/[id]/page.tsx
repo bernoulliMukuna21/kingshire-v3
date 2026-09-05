@@ -12,7 +12,12 @@ import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
 import { jobStatusPill } from "@/lib/jobs";
-import { getJobPaymentPolicy } from "@/lib/payments/policy";
+import {
+  getJobPaymentPolicy,
+  jobRequiresSubscriptionToApply,
+  SMALL_JOB_THRESHOLD_GBP,
+} from "@/lib/payments/policy";
+import { hasEntitlement } from "@/lib/subscriptions";
 import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
@@ -131,6 +136,13 @@ export default async function JobDetailPage({
     job.status === "open" &&
     !alreadyApplied;
   const isAdmin = profile?.role === "admin";
+
+  // Small jobs are subscriber-only to apply to.
+  const applyNeedsSubscription =
+    !!canApply &&
+    !!profile &&
+    jobRequiresSubscriptionToApply(job.budget) &&
+    !(await hasEntitlement(profile.id, "kinglancer", "applyToSmallJobs"));
 
   const s = jobStatusPill(job.status);
   const rateType = job.rate_type ?? "fixed";
@@ -300,6 +312,17 @@ export default async function JobDetailPage({
                   <span className="text-green-600 text-sm font-medium">
                     ✓ You have already applied to this job.
                   </span>
+                </div>
+              ) : canApply && applyNeedsSubscription ? (
+                <div className="mt-3 space-y-3">
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    Applying to jobs under £{SMALL_JOB_THRESHOLD_GBP} needs a
+                    Kinglancer subscription (£5/month). It also unlocks instant
+                    Stripe payouts.
+                  </p>
+                  <ButtonLink href="/dashboard/kinglancer/subscription" size="sm">
+                    Subscribe — £5/month
+                  </ButtonLink>
                 </div>
               ) : canApply ? (
                 <div className="mt-3">

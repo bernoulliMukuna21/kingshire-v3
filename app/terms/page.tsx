@@ -64,7 +64,7 @@ export default function TermsPage() {
               <p>
                 All payments are processed securely through Stripe. KingsHire
                 charges a service fee on jobs — 2.5% from the client and 5%
-                from the kinglancer. A £20 minimum applies to each job. Funds
+                from the kinglancer. A £10 minimum applies to each job. Funds
                 are held in escrow until the client confirms satisfactory
                 completion of the work. Disputes must be raised within 7 days of
                 job completion.

@@ -6,6 +6,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 
 const VALID_RATE_TYPES = ["fixed", "per_hour", "per_day"];
 
@@ -156,11 +157,11 @@ export async function POST(
     }
     if (
       !hasValidCurrencyPrecision(proposedBudget) ||
-      Number(proposedBudget) < 20 ||
+      Number(proposedBudget) < MIN_JOB_BUDGET_GBP ||
       Number(proposedBudget) > 50000
     ) {
       return NextResponse.json(
-        { error: "Proposed budget must be between £20 and £50,000." },
+        { error: `Proposed budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000.` },
         { status: 400 },
       );
     }

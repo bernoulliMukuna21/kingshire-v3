@@ -8,6 +8,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import { emailJobAlert } from "@/lib/notifications";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
@@ -150,12 +151,12 @@ export async function POST(request: Request) {
   if (
     !Number.isFinite(budgetNum) ||
     !hasValidCurrencyPrecision(budget) ||
-    normalizedBudget < 20 ||
+    normalizedBudget < MIN_JOB_BUDGET_GBP ||
     normalizedBudget > 50000
   )
     return NextResponse.json(
       {
-        error: "Budget must be between £20 and £50,000 with up to 2 decimals.",
+        error: `Budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000 with up to 2 decimals.`,
       },
       { status: 400 },
     );

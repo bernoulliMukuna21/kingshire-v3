@@ -28,10 +28,8 @@ function useRedirectAction(endpoint: string) {
   return { loading, error, go };
 }
 
-export function SubscribeButton() {
-  const { loading, error, go } = useRedirectAction(
-    "/api/subscription/checkout",
-  );
+export function SubscribeButton({ priceGBP }: { priceGBP: number }) {
+  const { loading, error, go } = useRedirectAction("/api/subscription/checkout");
   return (
     <div className="space-y-3">
       {error && (
@@ -51,16 +49,14 @@ export function SubscribeButton() {
         ) : (
           <CreditCard size={16} />
         )}
-        Subscribe — £10/month
+        Subscribe — £{priceGBP}/month
       </button>
     </div>
   );
 }
 
 export function ManageSubscriptionButton() {
-  const { loading, error, go } = useRedirectAction(
-    "/api/subscription/portal",
-  );
+  const { loading, error, go } = useRedirectAction("/api/subscription/portal");
   return (
     <div className="space-y-3">
       {error && (
