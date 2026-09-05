@@ -273,6 +273,7 @@ export function DirectRequestActions({
 
       if (data.method === "bank_transfer") {
         setBankInfo({
+          jobId: data.jobId,
           reference: data.reference,
           amountDue: data.amountDue ?? null,
           workerName: invitedKinglancer?.full_name ?? "the Kinglancer",
@@ -585,6 +586,7 @@ export function DirectRequestActions({
 // ── Applicants list (for the client who owns the job) ────
 
 type BankTransferInfo = {
+  jobId: string;
   reference: string;
   amountDue: number | null;
   workerName: string;
@@ -603,14 +605,35 @@ function BankTransferModal({
   info: BankTransferInfo | null;
   onClose: () => void;
 }) {
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function markSent() {
+    if (!info) return;
+    setSending(true);
+    setError(null);
+    const res = await fetch(`/api/jobs/${info.jobId}/mark-transfer-sent`, {
+      method: "POST",
+    });
+    setSending(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Could not update. Please try again.");
+      return;
+    }
+    onClose();
+  }
+
   return (
     <ConfirmModal
       isOpen={info !== null}
       onClose={onClose}
-      onConfirm={onClose}
+      onConfirm={markSent}
+      loading={sending}
+      error={error ?? undefined}
       title="Pay by bank transfer"
-      confirmLabel="Close"
-      hideCancel
+      confirmLabel="I've made the transfer"
+      cancelLabel="Close"
       message={
         info && (
           <div className="space-y-3 text-sm text-slate-600">
@@ -646,7 +669,7 @@ function BankTransferModal({
               </strong>
             </p>
             <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-              {`Closing this doesn't confirm payment. We'll check your transfer has arrived, then hire ${info.workerName} and email you — they won't start until we've confirmed it.`}
+              {`Once you've sent the money, tap "I've made the transfer" so we know to check. We'll hire ${info.workerName} once it arrives — they won't start until we've confirmed it.`}
             </p>
           </div>
         )
@@ -700,6 +723,7 @@ export function ApplicantsList({
     // Bank transfer: show our details + reference instead of Stripe checkout.
     if (data.method === "bank_transfer") {
       setBankInfo({
+        jobId: data.jobId,
         reference: data.reference,
         amountDue: data.amountDue ?? null,
         workerName,
