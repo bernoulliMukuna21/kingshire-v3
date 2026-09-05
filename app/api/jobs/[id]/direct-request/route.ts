@@ -161,7 +161,9 @@ export async function POST(
       Number(proposedBudget) > 50000
     ) {
       return NextResponse.json(
-        { error: `Proposed budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000.` },
+        {
+          error: `Proposed budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000.`,
+        },
         { status: 400 },
       );
     }

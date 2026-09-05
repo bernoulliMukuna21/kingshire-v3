@@ -173,8 +173,7 @@ export async function PATCH(
     )
       return NextResponse.json(
         {
-          error:
-            `Budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000 with up to 2 decimals.`,
+          error: `Budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000 with up to 2 decimals.`,
         },
         { status: 400 },
       );

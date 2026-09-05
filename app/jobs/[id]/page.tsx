@@ -212,7 +212,10 @@ export default async function JobDetailPage({
               <h2 className="font-bold text-gray-900 mb-4">
                 Applicants ({applications.length})
               </h2>
-              <ApplicantsList applications={applications} cardEnabled={cardEnabled} />
+              <ApplicantsList
+                applications={applications}
+                cardEnabled={cardEnabled}
+              />
             </Card>
           )}
 
@@ -226,7 +229,10 @@ export default async function JobDetailPage({
                 <h2 className="font-bold text-gray-900 mb-4">
                   Applicants ({applications.length})
                 </h2>
-                <ApplicantsList applications={applications} cardEnabled={cardEnabled} />
+                <ApplicantsList
+                  applications={applications}
+                  cardEnabled={cardEnabled}
+                />
               </Card>
             )}
 
@@ -318,10 +324,14 @@ export default async function JobDetailPage({
                 <div className="mt-3 space-y-3">
                   <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                     Applying to jobs under £{SMALL_JOB_THRESHOLD_GBP} needs a
-                    Kinglancer subscription (£{planForRole("kinglancer").priceGBP}
+                    Kinglancer subscription (£
+                    {planForRole("kinglancer").priceGBP}
                     /month). It also unlocks instant Stripe payouts.
                   </p>
-                  <ButtonLink href="/dashboard/kinglancer/subscription" size="sm">
+                  <ButtonLink
+                    href="/dashboard/kinglancer/subscription"
+                    size="sm"
+                  >
                     Subscribe — £{planForRole("kinglancer").priceGBP}/month
                   </ButtonLink>
                 </div>

@@ -191,7 +191,9 @@ export default async function KinglancerJobWorkspacePage({
     // call for the review window calculation on approved jobs.
     supabase
       .from("transactions")
-      .select("amount, platform_fee_kinglancer, status, payment_method, released_at")
+      .select(
+        "amount, platform_fee_kinglancer, status, payment_method, released_at",
+      )
       .eq("job_id", id)
       .eq("kinglancer_id", user.id)
       .maybeSingle(),
@@ -267,8 +269,8 @@ export default async function KinglancerJobWorkspacePage({
           </p>
           <p className="mt-1 text-sm text-amber-800">
             This job is paid by bank transfer. Add your payout link (Revolut,
-            Monzo, PayPal or Wise) so we can pay you once the client approves the
-            work.
+            Monzo, PayPal or Wise) so we can pay you once the client approves
+            the work.
           </p>
           <Link
             href="/dashboard/settings"

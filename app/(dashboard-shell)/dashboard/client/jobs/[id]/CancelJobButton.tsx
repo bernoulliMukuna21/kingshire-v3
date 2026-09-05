@@ -30,9 +30,7 @@ export default function CancelJobButton({
   // Bank-transfer escrow is held by us, so refunds are arranged by support.
   const manualInProgress = isInProgress && paymentMethod === "bank_transfer";
 
-  const title = isInProgress
-    ? "Cancel this job?"
-    : "Cancel this job posting?";
+  const title = isInProgress ? "Cancel this job?" : "Cancel this job posting?";
 
   const message = manualInProgress
     ? "This job was paid by bank transfer, so refunds are handled by our team. To cancel it and arrange your refund, please contact support and we'll sort it out."
@@ -50,7 +48,9 @@ export default function CancelJobButton({
 
   const handleConfirm = () => {
     if (manualInProgress) {
-      const subject = encodeURIComponent(`Cancel & refund request — job ${jobId}`);
+      const subject = encodeURIComponent(
+        `Cancel & refund request — job ${jobId}`,
+      );
       const body = encodeURIComponent(
         `I'd like to cancel this job and arrange a refund.\n\nJob ID: ${jobId}`,
       );

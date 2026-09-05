@@ -48,7 +48,10 @@ function table(): UserSubscriptionsTable {
 export async function getUserSubscriptionRow(
   userId: string,
 ): Promise<UserSubscriptionRow | null> {
-  const { data } = await table().select("*").eq("user_id", userId).maybeSingle();
+  const { data } = await table()
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
   return data;
 }
 

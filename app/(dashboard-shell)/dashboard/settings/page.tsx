@@ -60,8 +60,8 @@ export default async function SettingsPage() {
             Card payments
           </h2>
           <p className="text-slate-500 text-sm mb-5">
-            Subscribe for £{planForRole("client").priceGBP}/month to pay for jobs
-            by card. Bank transfer stays free without a subscription.
+            Subscribe for £{planForRole("client").priceGBP}/month to pay for
+            jobs by card. Bank transfer stays free without a subscription.
           </p>
           <a
             href="/dashboard/client/subscription"
@@ -78,9 +78,9 @@ export default async function SettingsPage() {
             Subscription
           </h2>
           <p className="text-slate-500 text-sm mb-5">
-            Subscribe for £{planForRole("kinglancer").priceGBP}/month for instant
-            Stripe payouts and to apply to smaller jobs. Without it you&apos;re
-            still paid by manual transfer.
+            Subscribe for £{planForRole("kinglancer").priceGBP}/month for
+            instant Stripe payouts and to apply to smaller jobs. Without it
+            you&apos;re still paid by manual transfer.
           </p>
           <a
             href="/dashboard/kinglancer/subscription"

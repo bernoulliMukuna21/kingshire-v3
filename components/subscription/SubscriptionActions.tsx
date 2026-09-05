@@ -29,7 +29,9 @@ function useRedirectAction(endpoint: string) {
 }
 
 export function SubscribeButton({ priceGBP }: { priceGBP: number }) {
-  const { loading, error, go } = useRedirectAction("/api/subscription/checkout");
+  const { loading, error, go } = useRedirectAction(
+    "/api/subscription/checkout",
+  );
   return (
     <div className="space-y-3">
       {error && (

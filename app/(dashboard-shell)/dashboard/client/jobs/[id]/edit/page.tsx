@@ -61,7 +61,10 @@ export default async function EditJobPage({
             description: job.description,
             categories: job.categories ?? [],
             budget: String(job.budget),
-            rateType: (job.rate_type ?? "fixed") as "fixed" | "per_hour" | "per_day",
+            rateType: (job.rate_type ?? "fixed") as
+              | "fixed"
+              | "per_hour"
+              | "per_day",
             deadline: job.deadline ?? "",
           }}
           categories={JOB_CATEGORIES as unknown as string[]}

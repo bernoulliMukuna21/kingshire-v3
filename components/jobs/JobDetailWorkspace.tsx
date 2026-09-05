@@ -251,7 +251,11 @@ export default async function JobDetailWorkspace({
                 Review applicants and select one Kinglancer when you are ready
                 to fund escrow.
               </p>
-              <ApplicantsList applications={applications} locked={paymentPending} cardEnabled={cardEnabled} />
+              <ApplicantsList
+                applications={applications}
+                locked={paymentPending}
+                cardEnabled={cardEnabled}
+              />
             </Card>
           )}
 
