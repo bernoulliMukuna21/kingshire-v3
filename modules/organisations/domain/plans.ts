@@ -28,7 +28,7 @@ export const ORGANISATION_PLANS: readonly OrganisationPlan[] = [
   {
     id: "starter",
     name: "Starter",
-    monthlyPriceGBP: 10,
+    monthlyPriceGBP: 15,
     description:
       "For small organisations setting up their first shared workspace.",
     features: [

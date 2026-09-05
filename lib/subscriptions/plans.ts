@@ -25,7 +25,7 @@ export const SUBSCRIPTION_PLANS = {
     id: "client_standard",
     role: "client",
     name: "Client",
-    priceGBP: 10,
+    priceGBP: 5,
     priceEnv: "STRIPE_CLIENT_SUBSCRIPTION_PRICE_ID",
     entitlements: { cardBelowThreshold: true },
   },

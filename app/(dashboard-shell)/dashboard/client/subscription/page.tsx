@@ -53,6 +53,7 @@ export default async function ClientSubscriptionPage({
 
   const subscription = await getUserSubscription(user.id);
   const isActive = subscription?.isActive ?? false;
+  const priceGBP = planForRole("client").priceGBP;
 
   const renewalDate = subscription?.currentPeriodEnd
     ? new Date(subscription.currentPeriodEnd).toLocaleDateString("en-GB", {
@@ -102,15 +103,15 @@ export default async function ClientSubscriptionPage({
               {subscription?.cancelAtPeriodEnd && renewalDate
                 ? `Your subscription ends on ${renewalDate}. Card payments stay available until then.`
                 : renewalDate
-                  ? `£10/month. Renews on ${renewalDate}.`
-                  : "£10/month."}
+                  ? `£${priceGBP}/month. Renews on ${renewalDate}.`
+                  : `£${priceGBP}/month.`}
             </p>
             <ManageSubscriptionButton />
           </>
         ) : (
           <>
             <h2 className="text-base font-black text-slate-950">
-              Pay by card for £10/month
+              Pay by card for £{priceGBP}/month
             </h2>
             <p className="mb-5 mt-1 text-sm text-slate-500">
               Jobs of £{SMALL_JOB_THRESHOLD_GBP} and over can always be paid by
@@ -118,7 +119,7 @@ export default async function ClientSubscriptionPage({
               instant escrow, no manual step. Without it you can still hire and
               pay smaller jobs by bank transfer at no extra cost.
             </p>
-            <SubscribeButton priceGBP={planForRole("client").priceGBP} />
+            <SubscribeButton priceGBP={priceGBP} />
           </>
         )}
       </Card>
@@ -136,8 +137,8 @@ export default async function ClientSubscriptionPage({
               </span>
               <span className="block text-slate-500">
                 Instant payment held in escrow automatically. Jobs under £
-                {SMALL_JOB_THRESHOLD_GBP} need the £10/month subscription;
-                larger jobs can always use card.
+                {SMALL_JOB_THRESHOLD_GBP} need the £{priceGBP}/month
+                subscription; larger jobs can always use card.
               </span>
             </span>
           </li>

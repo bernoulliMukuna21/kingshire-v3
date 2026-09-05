@@ -15,7 +15,7 @@ describe("Organisation subscription setup", () => {
         monthlyPriceGBP,
       })),
     ).toEqual([
-      { id: "starter", monthlyPriceGBP: 10 },
+      { id: "starter", monthlyPriceGBP: 15 },
       { id: "growth", monthlyPriceGBP: 25 },
       { id: "scale", monthlyPriceGBP: 40 },
     ]);

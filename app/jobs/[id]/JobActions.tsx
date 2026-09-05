@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import type { DirectRequestStatus } from "@/lib/jobs";
+import { planForRole } from "@/lib/subscriptions/plans";
 import {
   Loader2,
   CheckCircle,
@@ -552,8 +553,8 @@ export function DirectRequestActions({
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
               <p className="font-bold">Card payments need a subscription</p>
               <p className="mt-0.5">
-                Subscribe for £10/month to fund escrow by card, or pay by bank
-                transfer below.{" "}
+                Subscribe for £{planForRole("client").priceGBP}/month to fund
+                escrow by card, or pay by bank transfer below.{" "}
                 <Link
                   href="/dashboard/client/subscription"
                   className="font-bold underline"
@@ -812,8 +813,8 @@ export function ApplicantsList({
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
                   <p className="font-bold">Card payments need a subscription</p>
                   <p className="mt-0.5">
-                    Subscribe for £10/month to pay by card, or continue with a
-                    bank transfer below.{" "}
+                    Subscribe for £{planForRole("client").priceGBP}/month to pay
+                    by card, or continue with a bank transfer below.{" "}
                     <Link
                       href="/dashboard/client/subscription"
                       className="font-bold underline"

@@ -22,7 +22,7 @@ const PLANS = [
   {
     lookupKey: "kingshire_client_standard",
     name: "KingsHire Client Subscription",
-    gbp: 10,
+    gbp: 5,
     env: "STRIPE_CLIENT_SUBSCRIPTION_PRICE_ID",
   },
   {

@@ -12,6 +12,7 @@ import {
 import { canManageJob } from "@/lib/organisations";
 import { getManualBankDetails } from "@/lib/manual-payments";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
+import { planForRole } from "@/lib/subscriptions/plans";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { requireTermsAccepted } from "@/lib/terms";
 
@@ -162,8 +163,7 @@ export async function POST(
     if (!(await getJobPaymentPolicy(job)).cardAllowed) {
       return NextResponse.json(
         {
-          error:
-            "Card payments need a subscription. Subscribe for £10/month, or pay by bank transfer instead.",
+          error: `Card payments need a subscription. Subscribe for £${planForRole("client").priceGBP}/month, or pay by bank transfer instead.`,
           code: "CLIENT_SUBSCRIPTION_REQUIRED",
         },
         { status: 402 },

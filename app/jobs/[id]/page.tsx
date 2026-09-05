@@ -18,6 +18,7 @@ import {
   SMALL_JOB_THRESHOLD_GBP,
 } from "@/lib/payments/policy";
 import { hasEntitlement } from "@/lib/subscriptions";
+import { planForRole } from "@/lib/subscriptions/plans";
 import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
@@ -317,11 +318,11 @@ export default async function JobDetailPage({
                 <div className="mt-3 space-y-3">
                   <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
                     Applying to jobs under £{SMALL_JOB_THRESHOLD_GBP} needs a
-                    Kinglancer subscription (£5/month). It also unlocks instant
-                    Stripe payouts.
+                    Kinglancer subscription (£{planForRole("kinglancer").priceGBP}
+                    /month). It also unlocks instant Stripe payouts.
                   </p>
                   <ButtonLink href="/dashboard/kinglancer/subscription" size="sm">
-                    Subscribe — £5/month
+                    Subscribe — £{planForRole("kinglancer").priceGBP}/month
                   </ButtonLink>
                 </div>
               ) : canApply ? (
