@@ -126,6 +126,65 @@ export async function POST(
   } | null;
 
   // ── Execute the resolution ─────────────────────────────
+  // Manual (bank transfer) dispute: no Stripe. Release leaves the escrow held
+  // and approves the job so it lands in the Awaiting-payout queue (paid via the
+  // worker's payout link); refund marks it refunded for the admin to return by
+  // bank. The money moves by hand either way.
+  if (transaction.payment_method === "bank_transfer") {
+    if (action === "release") {
+      if (!job.kinglancer_id) {
+        return NextResponse.json(
+          { error: "No kinglancer assigned to this job." },
+          { status: 409 },
+        );
+      }
+      await Promise.all([
+        db.from("jobs").update({ status: "approved" }).eq("id", job.id),
+        db
+          .from("disputes")
+          .update({ status: "resolved", resolved_at: new Date().toISOString() })
+          .eq("id", disputeId),
+      ]);
+      if (kinglancerProfile?.email) {
+        notifyDisputeResolved({
+          userId: job.kinglancer_id,
+          userEmail: kinglancerProfile.email,
+          jobTitle: job.title,
+          outcome: "release",
+        }).catch(() => {});
+      }
+      if (clientProfile?.email) {
+        notifyDisputeResolved({
+          userId: job.client_id,
+          userEmail: clientProfile.email,
+          jobTitle: job.title,
+          outcome: "release",
+        }).catch(() => {});
+      }
+    } else {
+      await Promise.all([
+        db
+          .from("transactions")
+          .update({ status: "refunded" })
+          .eq("job_id", job.id),
+        db.from("jobs").update({ status: "cancelled" }).eq("id", job.id),
+        db
+          .from("disputes")
+          .update({ status: "resolved", resolved_at: new Date().toISOString() })
+          .eq("id", disputeId),
+      ]);
+      if (clientProfile?.email) {
+        notifyDisputeResolved({
+          userId: job.client_id,
+          userEmail: clientProfile.email,
+          jobTitle: job.title,
+          outcome: "refund",
+        }).catch(() => {});
+      }
+    }
+    return NextResponse.json({ success: true });
+  }
+
   if (action === "release") {
     if (!job.kinglancer_id || !kinglancerProfile) {
       return NextResponse.json(

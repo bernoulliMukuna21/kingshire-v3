@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 import { getTransactionByJob } from "@/lib/db/transactions";
+import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { notifyJobCancelled } from "@/lib/notifications";
 import { canManageJob } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
@@ -63,6 +64,23 @@ export async function POST(
 
   // ── Open job: direct cancellation ──────────────────────────
   if (job.status === "open") {
+    // If the client has already said they've sent a bank transfer, the money
+    // may have arrived — route the cancellation through support.
+    const pendingAttempt = await getPendingPaymentAttemptByJob(jobId);
+    if (
+      pendingAttempt?.method === "bank_transfer" &&
+      pendingAttempt.client_marked_paid_at
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "You've told us you've sent a bank transfer for this job. To cancel and arrange a refund, please contact support at kingshirecompany@gmail.com.",
+          code: "MANUAL_REFUND_CONTACT_SUPPORT",
+        },
+        { status: 409 },
+      );
+    }
+
     // Bulk-reject any pending applications.
     await db
       .from("applications")

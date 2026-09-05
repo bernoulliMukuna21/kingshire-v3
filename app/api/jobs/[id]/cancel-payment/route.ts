@@ -45,6 +45,18 @@ export async function POST(
 
   // Bank transfer (manual): no Stripe intent to cancel — just void the attempt.
   if (attempt.method === "bank_transfer") {
+    // Once the client says they've sent the money, only support can void it
+    // (the funds may already have arrived) — avoids orphaned payments.
+    if (attempt.client_marked_paid_at) {
+      return NextResponse.json(
+        {
+          error:
+            "You've told us you've sent this payment, so it can't be cancelled here. Please contact support at kingshirecompany@gmail.com to arrange a refund.",
+          code: "MANUAL_REFUND_CONTACT_SUPPORT",
+        },
+        { status: 409 },
+      );
+    }
     await cancelPaymentAttemptById(attempt.id);
     return NextResponse.json({ success: true });
   }

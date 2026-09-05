@@ -63,7 +63,10 @@ async function PendingPaymentCardInner({ jobId }: { jobId: string }) {
             jobId={jobId}
             alreadyMarked={!!pendingAttempt.client_marked_paid_at}
           />
-          <CancelPaymentButton jobId={jobId} />
+          <CancelPaymentButton
+            jobId={jobId}
+            markedPaid={!!pendingAttempt.client_marked_paid_at}
+          />
         </div>
       </Card>
     );
