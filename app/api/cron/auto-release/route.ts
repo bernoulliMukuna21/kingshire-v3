@@ -11,6 +11,8 @@ import {
   fireTransfer,
   getOrCreateStripeAccount,
 } from "@/lib/stripe-connect";
+import { hasEntitlement } from "@/lib/subscriptions";
+import { shouldPayoutManually } from "@/lib/payments/policy";
 
 /** Auto-release window: 2 calendar days after the kinglancer submits work. */
 const AUTO_RELEASE_DAYS = 2;
@@ -75,7 +77,9 @@ export async function GET(request: Request) {
     // advances after Stripe accepts the payout.
     const { data: txData, error: txError } = await serviceClient
       .from("transactions")
-      .select("id, amount, platform_fee_kinglancer, stripe_payment_intent_id")
+      .select(
+        "id, amount, platform_fee_kinglancer, stripe_payment_intent_id, payment_method",
+      )
       .eq("job_id", job.id)
       .eq("status", "held")
       .single();
@@ -102,6 +106,42 @@ export async function GET(request: Request) {
         .eq("id", job.kinglancer_id)
         .single();
       profile = data;
+
+      // Payout rail by subscription: unsubscribed workers (and bank-transfer
+      // jobs) are paid by hand via the Awaiting-payout queue — no Stripe Connect,
+      // no £2/month active-account fee. Approve the job and leave escrow held.
+      const workerStripePayout = await hasEntitlement(
+        job.kinglancer_id,
+        "kinglancer",
+        "stripePayout",
+      );
+      if (
+        shouldPayoutManually({
+          paymentMethod: txData.payment_method,
+          workerStripePayout,
+        })
+      ) {
+        await serviceClient
+          .from("transactions")
+          .update({ payout_method: "manual" })
+          .eq("id", txData.id)
+          .eq("status", "held");
+        const { error: jobError } = await serviceClient
+          .from("jobs")
+          .update({ status: "approved" })
+          .eq("id", job.id);
+        if (jobError) {
+          errors.push(`job ${job.id}: ${jobError.message}`);
+          continue;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await (serviceClient as any)
+          .rpc("increment_jobs_completed", { user_id: job.kinglancer_id })
+          .then(() => null);
+        notifyReviewRequestsForJob(job.id, job.title).catch(() => {});
+        released++;
+        continue;
+      }
 
       if (profile?.stripe_onboarding_complete && profile.stripe_account_id) {
         try {

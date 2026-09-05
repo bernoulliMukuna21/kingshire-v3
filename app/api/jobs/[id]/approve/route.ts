@@ -17,6 +17,8 @@ import {
   fireTransfer,
 } from "@/lib/stripe-connect";
 import { canManageJob } from "@/lib/organisations";
+import { hasEntitlement } from "@/lib/subscriptions";
+import { shouldPayoutManually } from "@/lib/payments/policy";
 import { captureServerEvent } from "@/lib/posthog-server";
 
 // POST /api/jobs/[id]/approve — client approves completed work, releases payment
@@ -72,12 +74,29 @@ export async function POST(
     );
   }
 
-  // Manual (bank-transfer) settlement: there is no Stripe payout here. Mark the
-  // work approved and leave the escrow 'held'; an admin records the manual
-  // payout separately (Awaiting payout queue) to release it and pay the worker.
-  if (transaction.payment_method === "bank_transfer") {
+  // Payout rail: unsubscribed workers (and all bank-transfer jobs) are paid by
+  // hand via the Awaiting-payout queue — they never touch Stripe Connect, so no
+  // £2/month active-account fee. Subscribed workers on card jobs get an instant
+  // Stripe payout.
+  const workerStripePayout = await hasEntitlement(
+    job.kinglancer_id,
+    "kinglancer",
+    "stripePayout",
+  );
+
+  if (
+    shouldPayoutManually({
+      paymentMethod: transaction.payment_method,
+      workerStripePayout,
+    })
+  ) {
     const serviceDb = createServiceClient();
     await serviceDb.from("jobs").update({ status: "approved" }).eq("id", jobId);
+    await serviceDb
+      .from("transactions")
+      .update({ payout_method: "manual" })
+      .eq("job_id", jobId)
+      .eq("status", "held");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (serviceDb as any)
       .rpc("increment_jobs_completed", { user_id: job.kinglancer_id })

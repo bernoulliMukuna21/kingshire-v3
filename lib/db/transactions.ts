@@ -87,7 +87,8 @@ export async function updateTransactionStatusByJobId(
 
 /**
  * Admin "record payout" — the manual equivalent of fireTransfer. Releases a
- * held bank_transfer escrow once the worker has been paid by hand.
+ * held escrow once the worker has been paid by hand. A held escrow on an
+ * approved job is always a manual payout (Stripe payouts release the escrow).
  */
 export async function recordManualPayout(
   jobId: string,
@@ -104,7 +105,6 @@ export async function recordManualPayout(
       confirmed_by: opts.adminId,
     })
     .eq("job_id", jobId)
-    .eq("payment_method", "bank_transfer")
     .eq("status", "held")
     .select()
     .maybeSingle();
@@ -129,9 +129,12 @@ export type ManualPayoutQueueItem = {
 };
 
 /**
- * Admin "Awaiting payout" queue — held bank_transfer transactions whose job the
- * client has already approved, so we owe the worker a manual payout. Each item
- * carries the worker's payout link (where the admin sends the money).
+ * Admin "Awaiting payout" queue — held escrow whose job the client has already
+ * approved, so we owe the worker a manual payout. This is any held transaction
+ * on an approved job: Stripe payouts move the escrow to 'released', so a held
+ * row on an approved job is always awaiting a manual payout (bank-transfer
+ * jobs, or card-funded jobs for workers without a Stripe-payout subscription).
+ * Each item carries the worker's payout link (where the admin sends the money).
  */
 export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
   const db = createServiceClient();
@@ -142,7 +145,6 @@ export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
        job:jobs!job_id(title, status, organisation_id),
        worker:profiles!kinglancer_id(full_name, email)`,
     )
-    .eq("payment_method", "bank_transfer")
     .eq("status", "held")
     .order("created_at", { ascending: true });
   if (error) throw error;

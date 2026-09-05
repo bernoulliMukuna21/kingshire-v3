@@ -9,6 +9,7 @@ import {
   resolveCardPolicy,
   getJobPaymentPolicy,
   jobRequiresSubscriptionToApply,
+  shouldPayoutManually,
   SMALL_JOB_THRESHOLD_GBP,
 } from "@/lib/payments/policy";
 
@@ -99,5 +100,34 @@ describe("jobRequiresSubscriptionToApply", () => {
 
   it("does not require one at/above the threshold", () => {
     expect(jobRequiresSubscriptionToApply(SMALL_JOB_THRESHOLD_GBP)).toBe(false);
+  });
+});
+
+describe("shouldPayoutManually", () => {
+  it("is manual for bank-transfer jobs regardless of subscription", () => {
+    expect(
+      shouldPayoutManually({
+        paymentMethod: "bank_transfer",
+        workerStripePayout: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("is manual for a card job when the worker has no Stripe-payout subscription", () => {
+    expect(
+      shouldPayoutManually({
+        paymentMethod: "card",
+        workerStripePayout: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("uses Stripe for a card job when the worker is subscribed", () => {
+    expect(
+      shouldPayoutManually({
+        paymentMethod: "card",
+        workerStripePayout: true,
+      }),
+    ).toBe(false);
   });
 });
