@@ -13,6 +13,7 @@ import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { jobStatusPill } from "@/lib/jobs";
+import { jobCardPaymentAllowed } from "@/lib/client-subscription";
 import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
 import {
   getJobReviewState,
@@ -114,6 +115,9 @@ export default async function JobDetailWorkspace({
 
   // A pending payment locks selection and editing until it clears/cancels.
   const paymentPending = !!pendingAttempt;
+  // Card (Stripe) funding needs an active subscription; org jobs are covered.
+  const cardEnabled =
+    job.status === "open" ? await jobCardPaymentAllowed(job) : true;
   // Held rail for an in-progress job — bank_transfer refunds route to support.
   const heldPaymentMethod =
     job.status === "in_progress"
@@ -233,6 +237,7 @@ export default async function JobDetailWorkspace({
                 counterRateType={getCounterRateType(job.counter_rate_type)}
                 counterDeadline={job.counter_deadline}
                 invitedKinglancer={kinglancer}
+                cardEnabled={cardEnabled}
               />
             </Card>
           )}
@@ -246,7 +251,7 @@ export default async function JobDetailWorkspace({
                 Review applicants and select one Kinglancer when you are ready
                 to fund escrow.
               </p>
-              <ApplicantsList applications={applications} locked={paymentPending} />
+              <ApplicantsList applications={applications} locked={paymentPending} cardEnabled={cardEnabled} />
             </Card>
           )}
 

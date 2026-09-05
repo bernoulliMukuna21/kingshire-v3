@@ -193,6 +193,7 @@ export function DirectRequestActions({
   counterRateType,
   counterDeadline,
   invitedKinglancer,
+  cardEnabled = true,
 }: {
   jobId: string;
   viewerRole: string | null | undefined;
@@ -208,6 +209,7 @@ export function DirectRequestActions({
     full_name: string | null;
     avatar_url: string | null;
   } | null;
+  cardEnabled?: boolean;
 }) {
   const router = useRouter();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -535,16 +537,32 @@ export function DirectRequestActions({
 
       {isOwner && status === "accepted_pending_payment" && (
         <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => startPayment("card")}
-            disabled={loadingAction !== null}
-            className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loadingAction === "direct_pay"
-              ? "Starting payment..."
-              : "Fund escrow by card"}
-          </button>
+          {cardEnabled ? (
+            <button
+              type="button"
+              onClick={() => startPayment("card")}
+              disabled={loadingAction !== null}
+              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loadingAction === "direct_pay"
+                ? "Starting payment..."
+                : "Fund escrow by card"}
+            </button>
+          ) : (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <p className="font-bold">Card payments need a subscription</p>
+              <p className="mt-0.5">
+                Subscribe for £10/month to fund escrow by card, or pay by bank
+                transfer below.{" "}
+                <Link
+                  href="/dashboard/client/subscription"
+                  className="font-bold underline"
+                >
+                  Subscribe
+                </Link>
+              </p>
+            </div>
+          )}
           <button
             type="button"
             onClick={() => startPayment("bank_transfer")}
@@ -681,15 +699,19 @@ function BankTransferModal({
 export function ApplicantsList({
   applications,
   locked = false,
+  cardEnabled = true,
 }: {
   applications: ApplicationWithKinglancer[];
   locked?: boolean;
+  cardEnabled?: boolean;
 }) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [pendingSelectId, setPendingSelectId] = useState<string | null>(null);
-  const [payMethod, setPayMethod] = useState<"card" | "bank_transfer">("card");
+  const [payMethod, setPayMethod] = useState<"card" | "bank_transfer">(
+    cardEnabled ? "card" : "bank_transfer",
+  );
   const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -768,21 +790,39 @@ export function ApplicantsList({
               <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                 How would you like to pay?
               </p>
-              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
-                <input
-                  type="radio"
-                  name="pay-method"
-                  className="mt-0.5"
-                  checked={payMethod === "card"}
-                  onChange={() => setPayMethod("card")}
-                />
-                <span>
-                  <span className="font-bold text-slate-900">Pay by card</span>
-                  <span className="block text-xs text-slate-500">
-                    Instant — held in escrow automatically.
+              {cardEnabled ? (
+                <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                  <input
+                    type="radio"
+                    name="pay-method"
+                    className="mt-0.5"
+                    checked={payMethod === "card"}
+                    onChange={() => setPayMethod("card")}
+                  />
+                  <span>
+                    <span className="font-bold text-slate-900">
+                      Pay by card
+                    </span>
+                    <span className="block text-xs text-slate-500">
+                      Instant — held in escrow automatically.
+                    </span>
                   </span>
-                </span>
-              </label>
+                </label>
+              ) : (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <p className="font-bold">Card payments need a subscription</p>
+                  <p className="mt-0.5">
+                    Subscribe for £10/month to pay by card, or continue with a
+                    bank transfer below.{" "}
+                    <Link
+                      href="/dashboard/client/subscription"
+                      className="font-bold underline"
+                    >
+                      Subscribe
+                    </Link>
+                  </p>
+                </div>
+              )}
               <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
                 <input
                   type="radio"

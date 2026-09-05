@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/payment-attempts";
 import { canManageJob } from "@/lib/organisations";
 import { getManualBankDetails } from "@/lib/manual-payments";
+import { jobCardPaymentAllowed } from "@/lib/client-subscription";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { requireTermsAccepted } from "@/lib/terms";
 
@@ -154,6 +155,19 @@ export async function POST(
         bankDetails: getManualBankDetails(),
         amountDue: job.budget + platformFeeClient,
       });
+    }
+
+    // Card (Stripe escrow) is a subscriber-only rail. Non-subscribers pay by
+    // bank transfer, which carries no Stripe fee.
+    if (!(await jobCardPaymentAllowed(job))) {
+      return NextResponse.json(
+        {
+          error:
+            "Card payments need a subscription. Subscribe for £10/month, or pay by bank transfer instead.",
+          code: "CLIENT_SUBSCRIPTION_REQUIRED",
+        },
+        { status: 402 },
+      );
     }
 
     const { clientChargePence, platformFeeClient, platformFeeKinglancer } =

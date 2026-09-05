@@ -275,7 +275,7 @@ function SignUpContent() {
                   "Free to join",
                   "Payments protected by Stripe",
                   "Community verified members",
-                  "Low platform fees (5% + 30p client / 7.5% kinglancer)",
+                  "Low platform fees (2.5% client / 7.5% kinglancer)",
                 ]
       }
       images={

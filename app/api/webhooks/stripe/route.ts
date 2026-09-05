@@ -18,6 +18,10 @@ import {
   fulfillOrganisationCheckout,
   syncOrganisationSubscription,
 } from "@/infrastructure/stripe/organisation-subscriptions";
+import {
+  fulfillClientSubscriptionCheckout,
+  syncClientSubscription,
+} from "@/infrastructure/stripe/client-subscriptions";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -60,6 +64,8 @@ export async function POST(request: Request) {
         const session = event.data.object;
         if (session.metadata?.purpose === "organisation_subscription") {
           await fulfillOrganisationCheckout(session.id);
+        } else if (session.metadata?.purpose === "client_subscription") {
+          await fulfillClientSubscriptionCheckout(session.id);
         } else if (session.metadata?.purpose === "placement_payment") {
           const paymentId = session.metadata.placement_payment_id;
           const piId =
@@ -76,6 +82,8 @@ export async function POST(request: Request) {
         const subscription = event.data.object;
         if (subscription.metadata?.purpose === "organisation_subscription") {
           await syncOrganisationSubscription(subscription);
+        } else if (subscription.metadata?.purpose === "client_subscription") {
+          await syncClientSubscription(subscription);
         }
         break;
       }

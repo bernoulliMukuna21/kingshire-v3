@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
 import { jobStatusPill } from "@/lib/jobs";
+import { jobCardPaymentAllowed } from "@/lib/client-subscription";
 import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
@@ -52,6 +53,7 @@ export default async function JobDetailPage({
   const isAssignedKinglancer = user?.id === job.kinglancer_id;
   const isDirectRequest = !!job.invited_kinglancer_id;
   const isInvitedKinglancer = user?.id === job.invited_kinglancer_id;
+  const cardEnabled = isOwner ? await jobCardPaymentAllowed(job) : true;
 
   let profile: {
     id: string;
@@ -195,7 +197,7 @@ export default async function JobDetailPage({
               <h2 className="font-bold text-gray-900 mb-4">
                 Applicants ({applications.length})
               </h2>
-              <ApplicantsList applications={applications} />
+              <ApplicantsList applications={applications} cardEnabled={cardEnabled} />
             </Card>
           )}
 
@@ -209,7 +211,7 @@ export default async function JobDetailPage({
                 <h2 className="font-bold text-gray-900 mb-4">
                   Applicants ({applications.length})
                 </h2>
-                <ApplicantsList applications={applications} />
+                <ApplicantsList applications={applications} cardEnabled={cardEnabled} />
               </Card>
             )}
 
@@ -268,6 +270,7 @@ export default async function JobDetailPage({
                 counterRateType={job.counter_rate_type as RateType | null}
                 counterDeadline={job.counter_deadline}
                 invitedKinglancer={invitedKinglancer}
+                cardEnabled={cardEnabled}
               />
             </Card>
           )}

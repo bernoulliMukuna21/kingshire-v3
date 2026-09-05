@@ -122,6 +122,27 @@ create table public.payout_accounts (
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+
+-- ── CLIENT SUBSCRIPTIONS ──────────────────────────────────
+-- A personal Client pays £10/month to unlock the CARD payment rail (Stripe
+-- escrow). Without it they can only fund jobs by bank transfer. Org jobs are
+-- covered by organisation_subscriptions instead. Owner-only read; writes are
+-- service-role only.
+create table public.client_subscriptions (
+  user_id                     uuid primary key references public.profiles(id) on delete cascade,
+  status                      text not null check (status in (
+    'incomplete', 'incomplete_expired', 'trialing', 'active',
+    'past_due', 'canceled', 'unpaid', 'paused'
+  )),
+  stripe_customer_id          text not null,
+  stripe_subscription_id      text not null unique,
+  stripe_price_id             text not null,
+  cancel_at_period_end        boolean not null default false,
+  current_period_end          timestamptz,
+  created_at                  timestamptz not null default now(),
+  updated_at                  timestamptz not null default now()
+);
+
 -- ── REVIEWS ───────────────────────────────────────────────
 -- Two-sided double-blind: reviews are created hidden and become public
 -- (is_published) once both parties review or the 7-day window elapses.

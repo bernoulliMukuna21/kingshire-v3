@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/payment-attempts";
 import { getManualBankDetails } from "@/lib/manual-payments";
 import { canManageJob } from "@/lib/organisations";
+import { jobCardPaymentAllowed } from "@/lib/client-subscription";
 
 type ApplicationRow = {
   id: string;
@@ -154,6 +155,19 @@ export async function PATCH(
         bankDetails: getManualBankDetails(),
         amountDue: job.budget + platformFeeClient,
       });
+    }
+
+    // Card (Stripe escrow) is a subscriber-only rail — Stripe's fees erode the
+    // margin on pay-as-you-go card payments. Non-subscribers use bank transfer.
+    if (!(await jobCardPaymentAllowed(job))) {
+      return NextResponse.json(
+        {
+          error:
+            "Card payments need a subscription. Subscribe for £10/month, or pay by bank transfer instead.",
+          code: "CLIENT_SUBSCRIPTION_REQUIRED",
+        },
+        { status: 402 },
+      );
     }
 
     const { clientChargePence, platformFeeClient, platformFeeKinglancer } =

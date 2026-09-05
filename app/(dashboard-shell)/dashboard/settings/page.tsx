@@ -53,6 +53,24 @@ export default async function SettingsPage() {
         <SwitchRoleButton currentRole={profile.role} />
       </Card>
 
+      {!isKinglancer && (
+        <Card className="p-6">
+          <h2 className="text-base font-black text-slate-950 mb-1">
+            Card payments
+          </h2>
+          <p className="text-slate-500 text-sm mb-5">
+            Subscribe for £10/month to pay for jobs by card. Bank transfer stays
+            free without a subscription.
+          </p>
+          <a
+            href="/dashboard/client/subscription"
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition-all hover:bg-slate-50"
+          >
+            Manage subscription
+          </a>
+        </Card>
+      )}
+
       {isKinglancer && (
         <PayoutAccountForm
           provider={payoutAccount?.payout_provider ?? null}
