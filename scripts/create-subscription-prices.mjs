@@ -17,8 +17,9 @@ if (!secretKey) {
 
 const stripe = new Stripe(secretKey, { apiVersion: "2026-04-22.dahlia" });
 
-// Keep in step with the plan configs: lib/subscriptions/plans.ts (priceGBP) and
-// modules/organisations/domain/plans.ts (monthlyPriceGBP).
+// Only the client/kinglancer subscriptions — the organisation products/prices
+// already exist in Stripe and are managed in the dashboard.
+// Keep in step with lib/subscriptions/plans.ts (priceGBP + priceEnv).
 const PLANS = [
   {
     lookupKey: "kingshire_client_standard",
@@ -31,24 +32,6 @@ const PLANS = [
     name: "KingsHire Kinglancer Subscription",
     gbp: 5,
     env: "STRIPE_KINGLANCER_SUBSCRIPTION_PRICE_ID",
-  },
-  {
-    lookupKey: "kingshire_org_starter",
-    name: "KingsHire Organisation — Starter",
-    gbp: 15,
-    env: "STRIPE_ORGANISATION_STARTER_PRICE_ID",
-  },
-  {
-    lookupKey: "kingshire_org_growth",
-    name: "KingsHire Organisation — Growth",
-    gbp: 25,
-    env: "STRIPE_ORGANISATION_GROWTH_PRICE_ID",
-  },
-  {
-    lookupKey: "kingshire_org_scale",
-    name: "KingsHire Organisation — Scale",
-    gbp: 40,
-    env: "STRIPE_ORGANISATION_SCALE_PRICE_ID",
   },
 ];
 
