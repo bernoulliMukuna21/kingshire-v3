@@ -5,6 +5,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { CURRENT_TERMS_VERSION } from "@/lib/terms";
 
 type ServiceInput = {
   name?: unknown;
@@ -85,7 +86,8 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { role, phone, service_tags, services, portfolio_url, cv_url, bio } = body;
+  const { role, phone, service_tags, services, portfolio_url, cv_url, bio } =
+    body;
 
   if (role !== "client" && role !== "kinglancer") {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
@@ -119,10 +121,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (
-    role === "kinglancer" &&
-    !normalized.services.some((s) => s.rate > 0)
-  ) {
+  if (role === "kinglancer" && !normalized.services.some((s) => s.rate > 0)) {
     return NextResponse.json(
       { error: "Please set a rate for at least one service." },
       { status: 400 },
@@ -141,6 +140,10 @@ export async function POST(request: Request) {
       service_tags: role === "kinglancer" ? normalized.serviceTags : [],
       portfolio_url: portfolio_url || null,
       cv_url: cv_url || null,
+      // New users agree to the current terms at sign-up — record it so they
+      // aren't re-prompted immediately.
+      terms_accepted_version: CURRENT_TERMS_VERSION,
+      terms_accepted_at: new Date().toISOString(),
     })
     .eq("id", user.id)
     .select("id, role");

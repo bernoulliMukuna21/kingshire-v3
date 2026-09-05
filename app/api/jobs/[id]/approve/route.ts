@@ -16,6 +16,9 @@ import {
   createOnboardingLink,
   fireTransfer,
 } from "@/lib/stripe-connect";
+import { canManageJob } from "@/lib/organisations";
+import { hasEntitlement } from "@/lib/subscriptions";
+import { shouldPayoutManually } from "@/lib/payments/policy";
 import { captureServerEvent } from "@/lib/posthog-server";
 
 // POST /api/jobs/[id]/approve — client approves completed work, releases payment
@@ -35,9 +38,9 @@ export async function POST(
   }
 
   // Fetch job and verify caller is the client
-  const { data: job } = await supabase
+  const { data: job } = await createServiceClient()
     .from("jobs")
-    .select("id, status, client_id, kinglancer_id, title")
+    .select("id, status, client_id, organisation_id, kinglancer_id, title")
     .eq("id", jobId)
     .single();
 
@@ -45,7 +48,7 @@ export async function POST(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  if (job.client_id !== user.id) {
+  if (!(await canManageJob(job, user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -69,6 +72,37 @@ export async function POST(
       { error: "No kinglancer assigned to this job" },
       { status: 409 },
     );
+  }
+
+  // Payout rail: unsubscribed workers (and all bank-transfer jobs) are paid by
+  // hand via the Awaiting-payout queue — they never touch Stripe Connect, so no
+  // £2/month active-account fee. Subscribed workers on card jobs get an instant
+  // Stripe payout.
+  const workerStripePayout = await hasEntitlement(
+    job.kinglancer_id,
+    "kinglancer",
+    "stripePayout",
+  );
+
+  if (
+    shouldPayoutManually({
+      paymentMethod: transaction.payment_method,
+      workerStripePayout,
+    })
+  ) {
+    const serviceDb = createServiceClient();
+    await serviceDb.from("jobs").update({ status: "approved" }).eq("id", jobId);
+    await serviceDb
+      .from("transactions")
+      .update({ payout_method: "manual" })
+      .eq("job_id", jobId)
+      .eq("status", "held");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (serviceDb as any)
+      .rpc("increment_jobs_completed", { user_id: job.kinglancer_id })
+      .then(() => null);
+    revalidateTag("kinglancer-profiles", { expire: 0 });
+    return NextResponse.json({ success: true, manual: true });
   }
 
   const { data: kinglancerProfile } = await supabase

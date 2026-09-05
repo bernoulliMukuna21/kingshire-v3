@@ -1,6 +1,5 @@
 import { unstable_cache } from "next/cache";
 import HeroSection from "@/components/home/HeroSection";
-import ServicesMarquee from "@/components/home/ServicesMarquee";
 import HowItWorks from "@/components/home/HowItWorks";
 import TrustSection from "@/components/home/TrustSection";
 import TopKinglancers from "@/components/home/TopKinglancers";
@@ -61,7 +60,6 @@ export default async function HomePage() {
           },
         ]}
       />
-      <ServicesMarquee />
       <HowItWorks />
       <TrustSection />
       <TopKinglancers />

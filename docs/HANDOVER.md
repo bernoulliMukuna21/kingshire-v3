@@ -571,7 +571,516 @@ For Stripe webhooks locally: `stripe listen --forward-to localhost:3000/api/webh
 
 ---
 
-## 15. Recommended Next Agent Prompt Prefix
+## 15. Organisation and Placement Planning Addendum
+
+**Date added:** 25 July 2026
+
+This section supersedes the earlier deferred Organisation notes where the two
+sections conflict. No Organisation functionality has been implemented yet.
+
+### Product terminology and account model
+
+- The public product name is **Organisation**, rather than Company, Business,
+  or the temporary abbreviation OC.
+- Organisation is presented as a third way to use KingsHire: Client,
+  Kinglancer, or Organisation.
+- Internally, an Organisation should be a separate workspace/entity containing
+  personal user accounts through memberships, not only another value in
+  `profiles.role`.
+- An existing Client can create or join an Organisation without losing their
+  personal account or Client history.
+- The Organisation entity cannot switch to become a Kinglancer.
+- Listings, billing, agreements, and history belong to the Organisation rather
+  than the member who created them.
+- Expected membership roles are Owner, Admin, Recruiter, Supervisor, and
+  Billing Manager. The MVP may initially expose fewer roles.
+
+### Opportunity types
+
+Opportunity types are distinguished by purpose and workflow, not duration:
+
+1. **Job** — a Client or Organisation purchases a defined result for an agreed
+   monetary price through the existing marketplace workflow. Organisations may
+   post unlimited ordinary jobs, subject to existing payment fees.
+2. **Experience Placement** — a supervised, time-limited development
+   opportunity. The Organisation receives a useful contribution and the
+   Kinglancer receives an explicitly agreed package that adds demonstrable
+   career or personal value.
+3. **Work Shadowing** — observation and guided learning without responsibility
+   for ordinary productive work. This may become a placement subtype.
+
+A placement may include monetary payment, expenses, training, mentoring,
+certification, portfolio evidence, verified skills, a reference, or other
+agreed value. It is not intended to mean "work for nothing." The promised value
+must be declared before application and recorded in the agreement.
+
+A reference or certificate must not be presented as a substitute for legally
+required pay. Classification depends on the actual arrangement and the country
+where it occurs, not the listing name.
+
+The international-student, self-employment, right-to-work, agency-work, payroll,
+and international compliance discussion is explicitly **parked for a later
+workstream** and must not be treated as resolved.
+
+### Subscription value proposition
+
+Organisation subscriptions are intended to become a primary source of recurring
+revenue. Organisations subscribe to a managed placement and talent-development
+system, not merely permission to post another type of listing.
+
+The proposed flagship capabilities are:
+
+#### Placement Passport
+
+Before a placement, both sides agree the activities, learning objectives,
+skills, supervisor, duration, weekly hours, location, compensation/expenses,
+training, mentoring, milestones, evidence, completion criteria, and promised
+outcome.
+
+KingsHire then records check-ins, supervisor-confirmed milestones, skills
+evidence, completion, a verified experience record, and the promised
+reference/certificate where applicable.
+
+#### Organisation Talent Pipeline
+
+Organisations can shortlist opted-in candidates, develop and assess
+participants, retain successful people in a private talent pool, invite them to
+paid opportunities, and convert them into paid work.
+
+The current proposal is **no recruitment success fee or conversion fee** when
+an Organisation later hires a participant discovered through its placement.
+
+### Kinglancer experience
+
+- Placements are opt-in and separate from ordinary job alerts.
+- A future campaign will invite Kinglancers to enable **Open to placements**.
+- Preferences may cover placement type, categories, location/remote,
+  availability, weekly hours, and duration.
+- Only opted-in Kinglancers receive placement notifications.
+- Public profiles gain a separate Experience/Placement Passport section with
+  verified records, skills, milestones, and selected references/certificates.
+- Paid-job ratings and placement-experience ratings remain separate.
+
+### Subscription direction
+
+Initial direction for an Organisation Starter plan at approximately GBP
+10/month:
+
+- unlimited ordinary job postings;
+- one active placement seat;
+- a small Organisation team;
+- core Placement Passport, milestones, check-ins, completion record, and
+  reference;
+- no placement hiring fee and no conversion fee.
+
+Higher plans may add more placement seats, members, supervisors, reusable
+templates, cohorts, private talent-pool tools, reporting, multiple locations,
+and approval workflows.
+
+Subscription limits should count active participants/seats rather than only
+listing records. Cancelling or failing payment should block new placements
+after a grace period but preserve access to active-placement management,
+agreements, and historical evidence. Compensation, expenses, equipment,
+training, and other promised value remain the Organisation's responsibility.
+
+Plan names, higher-tier prices, exact limits, grace periods, and whether
+KingsHire processes placement payments remain open.
+
+### Placement quality and safety direction
+
+- Users remain 18+.
+- Default duration: 4–12 weeks. Absolute maximum: 6 months.
+- Proposed ceiling for a non-salaried placement: 16 hours per week, with a
+  lower default and extra checks for longer or more intensive arrangements.
+  This is a product safeguard, not a legal-compliance guarantee.
+- No automatic extensions or repeated placements designed to fill the same
+  continuing role.
+- Every placement specifies guaranteed value for the Kinglancer.
+- Listings separately show **What you will contribute** and **What you will
+  receive**.
+- Manual-labour opportunities require special attention. Cleaning, painting,
+  maintenance, construction, driving, machinery, work at height, lone working,
+  and safeguarding activities require risk questions, supervision, insurance
+  declarations, tools/training/PPE, and possibly manual review.
+- High-risk, unusual, or contradictory listings enter exception-based admin
+  review. Compliant low-risk listings should eventually publish automatically.
+- Reviewing each Organisation's first placement manually is acceptable while
+  rules and patterns are established.
+
+### Verification and agreements
+
+- UK Organisations should eventually be checked against the relevant official
+  register where possible. Other entities need an alternative verification
+  route.
+- Register verification proves entity existence, not that a placement is
+  lawful or safe.
+- A member signing for an Organisation declares authority to bind it. Agreement
+  version, signer, membership, timestamp, and amendments must be auditable.
+- Paid placements, other placement arrangements, and work shadowing may require
+  different agreement templates.
+- Material changes require renewed acceptance.
+
+### Expected data domains
+
+The likely model includes:
+
+- `organisations`
+- `organisation_members`
+- `organisation_subscriptions`
+- `placements`
+- `placement_applications`
+- `placement_agreements`
+- `placement_milestones`
+- `placement_check_ins`
+- `placement_outcomes` or `experience_records`
+- `organisation_talent_pool`
+
+Exact names and boundaries must be finalised in a technical specification
+before migrations are written.
+
+### Decisions required before coding
+
+1. Final placement subtypes and allowed value/compensation combinations.
+2. Whether a Starter placement seat counts a participant, listing, or cohort
+   (current recommendation: participant).
+3. Starter member limit and MVP permissions.
+4. Verification states and evidence requirements.
+5. Minimum guaranteed Placement Passport outcome.
+6. Check-in and milestone cadence.
+7. Placement application, invitation, acceptance, withdrawal, completion, and
+   dispute state machine.
+8. Whether KingsHire processes placement money or expenses in the first release.
+9. Automated risk rules and initial manual-review triggers.
+10. Organisation and placement discovery UI.
+11. Terms, privacy, retention, and agreement changes before launch.
+12. The parked international-student and international-compliance workstream.
+
+---
+
+## 16. Organisation Phase 1 implementation status (25 July 2026)
+
+Phase 1 Organisation foundation has been implemented in the working tree.
+Migration `029_organisation_foundation.sql` adds Organisations, memberships,
+invitations, ownership transfer, and Organisation ownership metadata on jobs.
+It has **not** been applied to production by this implementation session.
+
+A repository-wide scalability, security, availability, and maintainability
+review is recorded in `docs/TECHNICAL_AUDIT_2026-07-25.md`. Its Stage 0
+confirmed defects should be resolved, and its deployment-dependent security
+findings verified, before deploying Organisation Phase 1. Growth-oriented
+recommendations are explicitly sequenced separately rather than treated as
+automatic release blockers.
+
+Implemented product flow:
+
+- create an Organisation; the creator becomes its sole Owner;
+- join by email-bound, expiring invitation;
+- personal/Organisation workspace switching;
+- Organisation profile editing and soft deletion;
+- Owner/Admin/Member permission enforcement;
+- invite, change role, and remove members;
+- atomic ownership transfer;
+- post and manage ordinary paid jobs as an Organisation, including private
+  jobs, applicants, payment, completion approval, cancellation, and disputes;
+- view Organisation-owned jobs and their transactions;
+- invitation email delivery through the existing Brevo integration.
+
+### Organisation reference architecture
+
+Organisation Phase 1 is now the first domain using the target modular-monolith
+structure:
+
+```text
+app/                         Next.js UI and thin HTTP adapters
+modules/
+  organisations/
+    application/            use cases and authorization orchestration
+    domain/                 roles, permissions, errors and core types
+    repositories/           persistence contract
+    schemas/                input parsing and validation
+infrastructure/
+  supabase/
+    repositories/           Organisation command persistence
+    queries/                bounded Organisation read models
+```
+
+The existing `lib/organisations.ts` is intentionally retained as a temporary
+compatibility facade for job and dashboard code that has not migrated yet. New
+Organisation code must import from `modules/` or `infrastructure/` rather than
+adding business logic to the facade.
+
+Completed as part of this architecture:
+
+- Organisation API routes are thin authentication/HTTP adapters;
+- Organisation creation and initial Owner assignment use one transactional,
+  service-only database function;
+- invitation acceptance locks and consumes the invitation in the same
+  transaction as membership creation;
+- Organisation deletion checks Owner authority and active jobs in the same
+  transaction as the soft deletion;
+- domain validation is shared between create and update flows;
+- Organisation roles and permissions live in the domain layer;
+- mutation rules live in application services rather than route handlers;
+- Supabase command access implements an Organisation repository contract;
+- workspace totals use a database aggregate instead of the latest 50 jobs;
+- Organisation transactions use one joined, 50-row paginated query instead of
+  loading all job IDs;
+- membership and Organisation-job query indexes have been added to migration
+  029;
+- all new privileged migration functions explicitly revoke execution from
+  `public`, `anon`, and `authenticated` and grant only `service_role`.
+
+Migration 029 remains unapplied by this session. Because it has not shipped,
+the transactional commands and indexes were incorporated into migration 029
+rather than added as a later corrective migration.
+
+### Gradual repository migration process
+
+Organisations establish the pattern; existing code is not moved merely for
+visual consistency. Each domain migrates when it needs meaningful work or
+shares logic with a migrated flow.
+
+Planned order:
+
+1. Complete Organisation payment ownership and integration/security tests.
+2. Move payment finalization behind an atomic payment application command.
+3. Migrate hiring/applications and jobs around that payment boundary.
+4. Migrate payouts and reviews, removing duplicated manual/automatic release
+   behavior.
+5. Introduce durable notification/outbox processing for critical side effects.
+6. Migrate identity and administration authorization.
+7. Add observability infrastructure when the associated production signals
+   and alerts are implemented.
+
+For each migration:
+
+1. Capture current behavior with regression tests.
+2. Separate pure domain rules from persistence and HTTP.
+3. Define the repository/adapter contract.
+4. Implement the new path without changing unrelated behavior.
+5. Run unit, database integration, authorization, and relevant browser tests.
+6. Remove the compatibility path only after all callers have migrated.
+
+File movement and behavior changes should be kept reviewable and, where
+possible, committed separately. Empty future folders should not be created:
+`workers/` will be introduced when durable background jobs are actually
+implemented.
+
+Placements, verification and the international-student workstream remain
+outside Phase 1. Organisation subscription onboarding was subsequently brought
+into Phase 1 because an Organisation is now activated only after its selected
+plan is confirmed by Stripe.
+
+### Organisation onboarding and verification decisions
+
+An Organisation is a shared workspace, not a third authentication identity.
+Every Owner and member signs in through an individual KingsHire account so
+actions have a clear, auditable actor. The intended first-time flow is:
+
+1. choose to create an Organisation;
+2. create or sign in to a personal KingsHire account;
+3. complete personal Client or Kinglancer onboarding;
+4. enter the Organisation details and choose a subscription;
+5. complete Stripe Checkout;
+6. activate the Organisation workspace and become its sole Owner;
+7. invite members.
+
+The public product journey treats Organisations as a first-class offering even
+though the underlying authentication remains person-first:
+
+- `Organisations` is present in the public navigation;
+- the homepage includes a prominent Organisation callout;
+- `/organisation` is the canonical public discovery URL. The former
+  `/for-organisations` URL permanently redirects to it;
+- `/get-started` offers Kinglancer, Client and Organisation as three clear
+  intentions, in that order;
+- `/organisation/start` sends signed-out founders through Organisation-aware
+  signup, new founders through Client onboarding, and existing Client or
+  Kinglancer accounts directly to Organisation creation.
+
+The public Organisation signup URL is intentionally reduced to
+`/sign-up?intent=organisation`. Organisation intent fixes both the new-account
+foundation (`client`) and the destination (`/organisation/setup`); `role` and
+`next` are not copied from the URL into this journey. Changing arbitrary query
+parameters therefore cannot grant a role, membership or ownership. Existing
+authenticated Kinglancers retain their personal role and may separately own an
+Organisation.
+
+Organisation signup explicitly explains that the founder first creates a
+personal Client account, which then becomes the Organisation Owner. Existing
+Kinglancers are not converted to Clients and do not create duplicate accounts:
+their existing identity can own an Organisation, with Organisation membership
+providing the workspace capability.
+
+### Public UI direction
+
+The July 2026 UI pass deliberately moves KingsHire away from generic
+AI/template aesthetics:
+
+- Manrope is the single global interface typeface;
+- the homepage retains its centred, animated navy hero and floating profile
+  cards without photographic background movement;
+- a reusable `PublicityBanner` renders launch messages directly on the
+  homepage without depending on authentication or browser storage; the current
+  purple Organisation campaign is visible to every homepage visitor;
+- the Organisation landing page uses an editorial split layout, restrained
+  feature rows and two meaningful photographs rather than repeated large
+  cards;
+- Organisation signup uses a dedicated two-column setup shell rather than the
+  standard authentication layout. A restrained, slowly moving team photograph
+  and Organisation message occupy the desktop brand panel; reduced-motion
+  preferences disable movement. The form remains centred in the working area.
+  A compact bottom counter and progress line follow the seven-step Account,
+  Organisation, Profile, Plan, Review and payment, Team and Complete journey
+  without making setup appear heavier through a permanent step rail. Client
+  and Kinglancer signup retain the two-column component with
+  journey-specific copy and a restrained two-image, nine-second crossfade.
+  Generic signup and sign-in use neutral real-work photography. The selected
+  images are served locally so the first frame is immediately available; the
+  navy treatment remains the failure fallback. Reduced-motion visitors see the
+  first image without animation;
+- photography is evidence, not decoration, and should remain limited to places
+  where it explains the people or work being discussed;
+- the public Kinglancer listing reserves a fixed 220px card height, including
+  a fixed service-tag region, so incomplete and detailed profiles align.
+
+The auth photographs originated from the selected Unsplash set and are stored
+under `public/images/auth` to avoid an empty carousel while remote images load.
+
+The current setup trust boundary is server-side: authentication, input and plan
+validation, Stripe price verification, checkout-to-actor binding, completed
+payment checks and transactional idempotent activation do not trust journey
+query parameters. Application-level distributed signup/setup rate limiting and
+CAPTCHA are not yet implemented. They should use shared infrastructure rather
+than per-process memory so Railway replicas enforce one limit consistently.
+
+The creation screen now gives ownership consequences a separate amber notice
+and asks for confirmation before creation. A shared Organisation email is not
+collected until a concrete communication feature requires it. Migration 030
+makes the existing database column nullable.
+
+Organisation type remains required but is presented as a prominent guided
+choice. An official registration number is optional and may be added later.
+Supplying one is evidence for a future verification process; it does not by
+itself grant a verified badge, and Organisations without one must not be
+described as illegitimate. Automated register checks, verification status and
+badges remain outside Phase 1.
+
+Invitation landing pages are visible before authentication. New invitees can
+create an individual account, confirm their email, complete personal onboarding
+and return to the original invitation; existing users can sign in and return
+directly. The invitation remains bound to the invited email at acceptance.
+
+Validation of the earlier foundation completed locally:
+
+- 39 unit tests pass across five files;
+- TypeScript passes with `npx tsc --noEmit`;
+- ESLint reports zero errors and eight pre-existing warnings.
+
+The complete Phase 1 scenario catalogue is
+`docs/ORGANISATION_PHASE1_TEST_SCENARIOS.md`. It separates automated domain
+tests from database transaction/concurrency, authorization, invitation,
+workspace/query, paid-job, and resilience scenarios. Use
+`docs/ORGANISATION_PHASE1_ACCEPTANCE.md` as the guided execution journey and
+record results against the scenario IDs. The matrix explicitly marks
+cross-member Organisation payment as a known failing release-blocking scenario
+until payment ownership is redesigned.
+
+The human browser run for `https://staging.kingshire.uk` is documented in
+`docs/ORGANISATION_STAGING_TEST_RUN.md`. It contains 33 ordered staging
+scenarios with exact actors, actions, expected UI results, evidence guidance,
+test-data naming, payment cautions, and exit criteria. It should be used only
+after the Organisation code and migrations 029–031 are deployed to staging.
+
+The live authenticated workflow still needs to be exercised after applying
+migrations 029–031 to a test Supabase project. Use
+`docs/ORGANISATION_PHASE1_ACCEPTANCE.md` as the release gate. The Playwright
+suite includes unauthenticated Organisation access guards, but this session
+did not have the Supabase environment needed for a live end-to-end run.
+
+## 17. Organisation subscription onboarding (27 July 2026)
+
+Organisation setup is now a guided first-class journey:
+
+1. create or sign in to the personal KingsHire account;
+2. enter Organisation identity details;
+3. complete optional profile details;
+4. choose Starter (£10/month), Growth (£25/month), or Scale (£40/month);
+5. review Owner authority and recurring billing;
+6. complete a real Stripe Checkout subscription in test mode on staging;
+7. confirm and atomically activate the Organisation;
+8. optionally invite a colleague;
+9. enter the workspace.
+
+The plan catalogue and displayed prices live in
+`modules/organisations/domain/plans.ts`. Stripe Price IDs are environment
+configuration, and the server retrieves each Price before Checkout to verify
+that its currency, amount and monthly recurrence match the displayed plan.
+The tier descriptions now show the agreed measurable allowances. Ordinary paid
+jobs remain unlimited:
+
+- Starter: 3 teammates plus the Owner, 1 active volunteer scheme, 2 active paid
+  placement listings, 3 active participants and Basic reporting;
+- Growth: 10 teammates plus the Owner, 3 active volunteer schemes, 6 active
+  paid placement listings, 10 active participants and Team reporting;
+- Scale: 25 teammates plus the Owner, 10 active volunteer schemes, 20 active
+  paid placement listings, 30 active participants and Advanced reporting.
+
+Every tier also includes the Organisation workspace and Placement Passport.
+These placement allowances are visible as the agreed product entitlement but
+cannot be enforced until the placement domain launches. An active placement
+listing is accepting applications or in progress. An active participant is one
+person currently undertaking a placement. A volunteer scheme is a structured
+non-salaried opportunity whose remuneration, development and outcomes are
+declared before application.
+
+Migration `031_organisation_subscriptions.sql` introduces private setup drafts,
+Organisation subscriptions and the transactional
+`activate_organisation_setup` command. Organisation and Owner records do not
+exist before payment confirmation. The command locks the draft and returns the
+existing Organisation on a repeat, so the browser return and webhook may race
+safely without duplicate workspaces or subscriptions.
+
+Confirmation deliberately uses two paths:
+
+- `/organisation/setup/complete` retrieves the Checkout Session directly from
+  Stripe and normally activates the workspace immediately for the present
+  user;
+- `checkout.session.completed` calls the same fulfilment service as a durable
+  fallback when the browser never returns.
+
+The completion page performs four bounded retries before showing the recovery
+state. It never asks the user to pay again. Stripe webhook signature
+verification remains mandatory when the deployed app runs with
+`NODE_ENV=production`.
+
+`customer.subscription.updated` and `customer.subscription.deleted` keep local
+status and plan state synchronized. The Owner can open Stripe's Billing Portal
+from the workspace. Once an Organisation has a subscription record, only
+`active` or `trialing` status permits new Organisation jobs. Pre-existing
+Organisation records with no subscription row are grandfathered so migration
+031 does not break existing staging data. An Organisation cannot be deleted
+while its Stripe subscription remains billable.
+
+Required staging variables:
+
+- `STRIPE_ORGANISATION_STARTER_PRICE_ID`
+- `STRIPE_ORGANISATION_GROWTH_PRICE_ID`
+- `STRIPE_ORGANISATION_SCALE_PRICE_ID`
+
+Local verification for this change:
+
+- TypeScript passes with `npx tsc --noEmit --incremental false`;
+- ESLint reports zero errors and the same eight unrelated warnings;
+- 44 unit tests pass across six files;
+- the Next.js production bundle compiles and passes TypeScript. Static
+  prerendering cannot finish in the local environment without Supabase
+  variables (`supabaseUrl is required`), so a full environment-backed build
+  remains a staging deployment check.
+
+---
+
+## 18. Recommended Next Agent Prompt Prefix
 
 When starting a new chat, paste this context:
 

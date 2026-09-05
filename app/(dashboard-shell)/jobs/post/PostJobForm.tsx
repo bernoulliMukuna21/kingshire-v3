@@ -8,6 +8,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 
 export function FormSkeleton() {
   return (
@@ -28,6 +29,7 @@ export function FormSkeleton() {
 import { Loader2, AlertCircle } from "lucide-react";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
 import { Avatar } from "@/components/ui/Avatar";
+import ConfirmModal from "@/components/ConfirmModal";
 
 type PreferredKinglancer = {
   id: string;
@@ -39,21 +41,31 @@ type PreferredKinglancer = {
 export default function PostJobForm({
   preferredKinglancer,
   onSuccess,
+  organisationId,
+  organisations,
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
   onSuccess?: () => void;
+  organisationId?: string;
+  organisations?: { id: string; name: string }[];
 }) {
   const router = useRouter();
+
+  // "" = personal job; an org id = that organisation owns the job.
+  const [contextOrgId, setContextOrgId] = useState(organisationId ?? "");
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [budget, setBudget] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [rateType, setRateType] = useState<"fixed" | "per_hour" | "per_day">(
-    "fixed",
-  );
-  const [deadline, setDeadline] = useState("");
+  const [workMode, setWorkMode] = useState<
+    "online" | "in_person" | "hybrid" | ""
+  >("");
+  const [location, setLocation] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [daysOnSite, setDaysOnSite] = useState("2");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +74,11 @@ export default function PostJobForm({
     description?: string;
     categories?: string;
     budget?: string;
-    quantity?: string;
+    location?: string;
+    scheduledAt?: string;
+    endsAt?: string;
+    daysOnSite?: string;
+    workMode?: string;
   }>({});
 
   const clearFieldError = (field: keyof typeof fieldErrors) =>
@@ -77,16 +93,8 @@ export default function PostJobForm({
   const minDate = new Date();
   const minDateStr = minDate.toISOString().split("T")[0];
 
-  // For per_hour / per_day, the total escrowed = rate × quantity
-  const rate = parseFloat(budget) || 0;
-  const qty = parseFloat(quantity) || 0;
-  const totalBudget = normalizeCurrencyAmount(
-    rateType === "fixed" ? rate : rate * qty,
-  );
-  const formattedTotalBudget = totalBudget.toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  // The budget is the single total escrowed for the whole job.
+  const totalBudget = normalizeCurrencyAmount(parseFloat(budget) || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,21 +106,67 @@ export default function PostJobForm({
     if (!description.trim()) fe.description = "Description is required.";
     if (categories.length === 0)
       fe.categories = "Please select at least one category.";
-    if (!budget || rate <= 0) fe.budget = "Please enter a valid budget.";
+    if (!budget || totalBudget <= 0) fe.budget = "Please enter a valid budget.";
     else if (!hasValidCurrencyPrecision(budget))
       fe.budget = CURRENCY_VALIDATION_MESSAGE;
-    else if (rateType !== "fixed" && (!quantity || qty <= 0))
-      fe.quantity = `Please enter how many ${rateType === "per_hour" ? "hours" : "days"} you expect the work to take.`;
-    else if (totalBudget < 20) fe.budget = "Minimum total budget is £20.";
+    else if (totalBudget < MIN_JOB_BUDGET_GBP)
+      fe.budget = `Minimum total budget is £${MIN_JOB_BUDGET_GBP}.`;
     else if (totalBudget > 50000)
       fe.budget = "Maximum total budget is £50,000.";
+
+    if (!workMode) fe.workMode = "Choose where the job happens.";
+    if (workMode === "online") {
+      if (!scheduledAt) fe.scheduledAt = "Add the start date.";
+      if (!endsAt) fe.endsAt = "Add the end date.";
+      else if (
+        scheduledAt &&
+        new Date(endsAt).getTime() < new Date(scheduledAt).getTime()
+      )
+        fe.endsAt = "The end date must be after the start date.";
+    }
+    if (workMode === "in_person" || workMode === "hybrid") {
+      if (!location.trim()) fe.location = "Add the job location.";
+    }
+    if (workMode === "in_person") {
+      if (!scheduledAt || !/T\d{2}:\d{2}/.test(scheduledAt))
+        fe.scheduledAt = "Add the start date and time.";
+      if (!endsAt || !/T\d{2}:\d{2}/.test(endsAt))
+        fe.endsAt = "Add the end date and time.";
+      else if (
+        scheduledAt &&
+        new Date(endsAt).getTime() <= new Date(scheduledAt).getTime()
+      )
+        fe.endsAt = "The end time must be after the start time.";
+    }
+    if (workMode === "hybrid") {
+      const days = Number(daysOnSite);
+      if (!Number.isInteger(days) || days < 1 || days > 6)
+        fe.daysOnSite = "Set how many days on-site per week (1–6).";
+      if (!scheduledAt) fe.scheduledAt = "Add the start date.";
+      if (!endsAt) fe.endsAt = "Add the end date.";
+      else if (
+        scheduledAt &&
+        new Date(endsAt).getTime() < new Date(scheduledAt).getTime()
+      )
+        fe.endsAt = "The end date must be after the start date.";
+    }
 
     if (Object.keys(fe).length > 0) {
       setFieldErrors(fe);
       return;
     }
 
+    // Confirm the job's owner (personal vs organisation) before posting.
+    if (organisations && organisations.length > 0) {
+      setConfirmOpen(true);
+      return;
+    }
+    await doPost();
+  };
+
+  const doPost = async () => {
     setLoading(true);
+    setError(null);
 
     const res = await fetch("/api/jobs", {
       method: "POST",
@@ -122,9 +176,14 @@ export default function PostJobForm({
         description,
         categories,
         budget: totalBudget,
-        rate_type: rateType,
+        rate_type: "fixed",
         invited_kinglancer_id: preferredKinglancer?.id ?? null,
-        deadline: deadline || null,
+        work_mode: workMode,
+        location: workMode !== "online" ? location.trim() : null,
+        scheduled_at: scheduledAt || null,
+        ends_at: endsAt || null,
+        days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
+        organisation_id: contextOrgId || null,
       }),
     });
 
@@ -139,12 +198,73 @@ export default function PostJobForm({
     if (onSuccess) {
       onSuccess();
     } else {
-      router.push(`/dashboard/client/jobs/${data.id}`);
+      router.push(
+        contextOrgId
+          ? `/dashboard/organisations/${contextOrgId}`
+          : `/dashboard/client/jobs/${data.id}`,
+      );
     }
   };
 
+  const selectedOrg =
+    organisations?.find((org) => org.id === contextOrgId) ?? null;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <ConfirmModal
+        isOpen={confirmOpen}
+        onClose={() => {
+          if (!loading) setConfirmOpen(false);
+        }}
+        onConfirm={doPost}
+        loading={loading}
+        error={error ?? undefined}
+        confirmLabel="Confirm & post"
+        title={
+          selectedOrg
+            ? `Post this job for ${selectedOrg.name}?`
+            : "Post this as your personal job?"
+        }
+        message={
+          selectedOrg ? (
+            <>
+              This job will belong to <strong>{selectedOrg.name}</strong>. Any
+              member of the organisation can manage it and it appears in the
+              organisation workspace — not your personal jobs.
+            </>
+          ) : (
+            <>
+              This is your <strong>personal</strong> job. Only you can manage it
+              and it appears under your personal My Jobs.
+            </>
+          )
+        }
+      />
+      {organisations && organisations.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Who is this job for? <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={contextOrgId}
+            onChange={(e) => setContextOrgId(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+          >
+            <option value="">Personal — your own job</option>
+            {organisations.map((org) => (
+              <option key={org.id} value={org.id}>
+                {org.name} (organisation)
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            {contextOrgId
+              ? "This job belongs to the organisation — any member can manage it and it lives in the organisation workspace."
+              : "This is your personal job — only you can manage it."}
+          </p>
+        </div>
+      )}
+
       {preferredKinglancer && (
         <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
           <div className="flex items-start gap-3">
@@ -274,30 +394,25 @@ export default function PostJobForm({
         ) : null}
       </div>
 
-      {/* Budget */}
+      {/* Work mode */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Budget (£) <span className="text-red-500">*</span>
+          Where does this happen? <span className="text-red-500">*</span>
         </label>
-        {/* Rate type segmented toggle */}
-        {/* Rate type toggle */}
-        <div className="flex rounded-lg border border-gray-200 overflow-hidden mb-2 text-xs font-medium">
+        <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs font-medium">
           {(
             [
-              { value: "fixed", label: "Fixed price" },
-              { value: "per_hour", label: "Per hour" },
-              { value: "per_day", label: "Per day" },
+              { value: "online", label: "Online / remote" },
+              { value: "hybrid", label: "Hybrid" },
+              { value: "in_person", label: "In person" },
             ] as const
           ).map((opt) => (
             <button
               key={opt.value}
               type="button"
-              onClick={() => {
-                setRateType(opt.value);
-                setQuantity("");
-              }}
-              className={`flex-1 py-1.5 transition-colors ${
-                rateType === opt.value
+              onClick={() => setWorkMode(opt.value)}
+              className={`flex-1 py-2 transition-colors ${
+                workMode === opt.value
                   ? "bg-blue-600 text-white"
                   : "bg-white text-gray-500 hover:bg-gray-50"
               }`}
@@ -306,113 +421,154 @@ export default function PostJobForm({
             </button>
           ))}
         </div>
-
-        {rateType === "fixed" ? (
-          <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
-              £
-            </span>
-            <input
-              type="number"
-              min="0.01"
-              step="0.01"
-              inputMode="decimal"
-              value={budget}
-              onChange={(e) => {
-                setBudget(e.target.value);
-                clearFieldError("budget");
-              }}
-              className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
-                fieldErrors.budget
-                  ? "border-red-400 focus:ring-red-300"
-                  : "border-gray-200 focus:ring-blue-500"
-              }`}
-              placeholder="0"
-            />
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <div className="flex gap-2 items-center">
-              <div className="relative flex-1">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
-                  £
-                </span>
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  inputMode="decimal"
-                  value={budget}
-                  onChange={(e) => {
-                    setBudget(e.target.value);
-                    clearFieldError("budget");
-                  }}
-                  className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
-                    fieldErrors.budget
-                      ? "border-red-400 focus:ring-red-300"
-                      : "border-gray-200 focus:ring-blue-500"
-                  }`}
-                  placeholder={
-                    rateType === "per_hour" ? "Rate per hour" : "Rate per day"
-                  }
-                />
-              </div>
-              <span className="text-gray-400 text-sm shrink-0">×</span>
-              <div className="relative w-28">
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={quantity}
-                  onChange={(e) => {
-                    setQuantity(e.target.value);
-                    clearFieldError("quantity");
-                  }}
-                  className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
-                    fieldErrors.quantity
-                      ? "border-red-400 focus:ring-red-300"
-                      : "border-gray-200 focus:ring-blue-500"
-                  }`}
-                  placeholder={rateType === "per_hour" ? "Hours" : "Days"}
-                />
-              </div>
-            </div>
-            {rate > 0 && qty > 0 && (
-              <p className="text-sm font-semibold text-green-700">
-                Total: £{formattedTotalBudget}
-              </p>
-            )}
-          </div>
-        )}
-        {fieldErrors.budget && (
-          <p className="text-xs text-red-500 mt-1">{fieldErrors.budget}</p>
-        )}
-        {fieldErrors.quantity && (
-          <p className="text-xs text-red-500 mt-1">{fieldErrors.quantity}</p>
-        )}
-        {!fieldErrors.budget && !fieldErrors.quantity && (
-          <p className="text-xs text-gray-400 mt-1">
-            {rateType === "fixed"
-              ? "Total price for the whole job — held in escrow when a kinglancer is selected."
-              : rateType === "per_hour"
-                ? "Enter your hourly rate and how many hours you expect the work to take. The total is held in escrow."
-                : "Enter your daily rate and how many days you expect the work to take. The total is held in escrow."}
-          </p>
+        {fieldErrors.workMode && (
+          <p className="text-xs text-red-500 mt-2">{fieldErrors.workMode}</p>
         )}
       </div>
 
-      {/* Deadline */}
+      {(workMode === "in_person" || workMode === "hybrid") && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Location <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={location}
+            onChange={(e) => {
+              setLocation(e.target.value);
+              clearFieldError("location");
+            }}
+            maxLength={200}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+              fieldErrors.location
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+            placeholder="Address or area where the work happens"
+          />
+          {fieldErrors.location && (
+            <p className="mt-1 text-xs text-red-500">{fieldErrors.location}</p>
+          )}
+        </div>
+      )}
+
+      {workMode === "hybrid" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Days on-site per week (max 6){" "}
+            <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={6}
+            value={daysOnSite}
+            onChange={(e) => {
+              setDaysOnSite(e.target.value);
+              clearFieldError("daysOnSite");
+            }}
+            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+              fieldErrors.daysOnSite
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+          />
+          {fieldErrors.daysOnSite && (
+            <p className="mt-1 text-xs text-red-500">
+              {fieldErrors.daysOnSite}
+            </p>
+          )}
+        </div>
+      )}
+
+      {workMode && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {workMode === "in_person" ? "Starts" : "Start date"}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type={workMode === "in_person" ? "datetime-local" : "date"}
+              value={scheduledAt}
+              min={workMode === "in_person" ? undefined : minDateStr}
+              onChange={(e) => {
+                setScheduledAt(e.target.value);
+                clearFieldError("scheduledAt");
+              }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                fieldErrors.scheduledAt
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+            />
+            {fieldErrors.scheduledAt && (
+              <p className="mt-1 text-xs text-red-500">
+                {fieldErrors.scheduledAt}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {workMode === "in_person" ? "Ends" : "End date"}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type={workMode === "in_person" ? "datetime-local" : "date"}
+              value={endsAt}
+              min={scheduledAt || undefined}
+              onChange={(e) => {
+                setEndsAt(e.target.value);
+                clearFieldError("endsAt");
+              }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                fieldErrors.endsAt
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+            />
+            {fieldErrors.endsAt && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.endsAt}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Budget */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Deadline <span className="text-gray-400 font-normal">(optional)</span>
+          Total budget (£) <span className="text-red-500">*</span>
         </label>
-        <input
-          type="date"
-          value={deadline}
-          min={minDateStr}
-          onChange={(e) => setDeadline(e.target.value)}
-          className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
-        />
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
+            £
+          </span>
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            inputMode="decimal"
+            value={budget}
+            onChange={(e) => {
+              setBudget(e.target.value);
+              clearFieldError("budget");
+            }}
+            className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
+              fieldErrors.budget
+                ? "border-red-400 focus:ring-red-300"
+                : "border-gray-200 focus:ring-blue-500"
+            }`}
+            placeholder="0"
+          />
+        </div>
+        {fieldErrors.budget ? (
+          <p className="text-xs text-red-500 mt-1">{fieldErrors.budget}</p>
+        ) : (
+          <p className="text-xs text-gray-400 mt-1">
+            The total price for the whole job — held in escrow once you select a
+            Kinglancer.
+          </p>
+        )}
       </div>
 
       {/* Error */}

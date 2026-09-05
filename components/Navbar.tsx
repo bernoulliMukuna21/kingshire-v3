@@ -12,12 +12,24 @@ import { ButtonLink } from "@/components/ui/Button";
 const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Browse Jobs", href: "/jobs" },
+  { label: "Placements", href: "/placements" },
   { label: "Kinglancers", href: "/kinglancers" },
+  { label: "Organisations", href: "/organisation" },
 ];
 
 const clientNavLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Post a Job", href: "/jobs/post" },
+  { label: "Placements", href: "/placements" },
+  { label: "Kinglancers", href: "/kinglancers" },
+  { label: "Organisations", href: "/organisation" },
+];
+
+// Kinglancers don't run Organisations, so that link is hidden for them.
+const kinglancerNavLinks = [
+  { label: "How it works", href: "/#how-it-works" },
+  { label: "Browse Jobs", href: "/jobs" },
+  { label: "Placements", href: "/placements" },
   { label: "Kinglancers", href: "/kinglancers" },
 ];
 
@@ -47,7 +59,12 @@ export default function Navbar({
   }, []);
 
   const isSolid = variant === "solid" || scrolled;
-  const visibleNavLinks = role === "client" ? clientNavLinks : navLinks;
+  const visibleNavLinks =
+    role === "client"
+      ? clientNavLinks
+      : role === "kinglancer"
+        ? kinglancerNavLinks
+        : navLinks;
 
   return (
     <motion.header
@@ -110,7 +127,7 @@ export default function Navbar({
                 >
                   Sign in
                 </Link>
-                <ButtonLink href="/sign-up" size="sm">
+                <ButtonLink href="/get-started" size="sm">
                   Get started
                 </ButtonLink>
               </>
@@ -174,7 +191,11 @@ export default function Navbar({
                       >
                         Sign in
                       </Link>
-                      <ButtonLink href="/sign-up" size="sm" className="w-full">
+                      <ButtonLink
+                        href="/get-started"
+                        size="sm"
+                        className="w-full"
+                      >
                         Get started
                       </ButtonLink>
                     </>

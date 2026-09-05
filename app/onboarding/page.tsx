@@ -66,6 +66,11 @@ function OnboardingContent() {
   const fromParam = searchParams.get("from"); // "google" | "email" | null
   const roleParam = searchParams.get("role"); // "client" | "kinglancer" | null
   const nextParam = searchParams.get("next");
+  const isOrganisationJourney = searchParams.get("intent") === "organisation";
+  // Invitees accepting an organisation invite join as a Client with no extra
+  // setup — this page is skipped for them.
+  const isOrgInvitation =
+    nextParam?.startsWith("/organisation-invitations/") ?? false;
 
   const [role, setRole] = useState<string>("");
   const [services, setServices] = useState<ServiceEntry[]>([
@@ -97,6 +102,26 @@ function OnboardingContent() {
         .eq("id", user.id)
         .single();
 
+      // Organisation invitees auto-join as a Client and go straight to the
+      // invitation — they never see the role picker.
+      if (isOrgInvitation && nextParam && !profile?.role) {
+        const res = await fetch("/api/profile/complete-onboarding", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            role: "client",
+            phone: "",
+            services: [],
+            service_tags: [],
+          }),
+        });
+        if (res.ok) {
+          router.replace(nextParam);
+          return;
+        }
+        // If it fails, fall through to the normal form so they aren't stuck.
+      }
+
       if (roleParam === "client" || roleParam === "kinglancer") {
         setRole(roleParam);
       } else if (profile?.role) {
@@ -105,7 +130,7 @@ function OnboardingContent() {
       setInitialLoading(false);
     };
     loadProfile();
-  }, [router, roleParam]);
+  }, [router, roleParam, isOrgInvitation, nextParam]);
 
   const addService = () =>
     setServices((prev) => [
@@ -204,7 +229,10 @@ function OnboardingContent() {
       return;
     }
 
-    const safeNext = nextParam?.startsWith("/") ? nextParam : null;
+    const safeNext =
+      nextParam?.startsWith("/") && !nextParam.startsWith("//")
+        ? nextParam
+        : null;
     router.push(
       safeNext ??
         (role === "client" ? "/dashboard/client" : "/dashboard/kinglancer"),
@@ -237,14 +265,18 @@ function OnboardingContent() {
             priority
           />
           <h1 className="text-2xl font-black text-gray-900 mb-1">
-            {fromParam === "google"
+            {isOrganisationJourney
+              ? "Set up your Client account"
+              : fromParam === "google"
               ? "Almost there!"
               : fromParam === "email"
                 ? "Complete your profile"
                 : "One last step"}
           </h1>
           <p className="text-gray-500 text-sm">
-            {fromParam
+            {isOrganisationJourney
+              ? "This personal account will securely own and manage your Organisation."
+              : fromParam
               ? "Just a couple more details to complete your profile."
               : "How are you joining KingsHire?"}
           </p>
@@ -258,7 +290,7 @@ function OnboardingContent() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Only show role picker if not coming from sign-up (role already set) */}
-          {!fromParam && (
+          {!fromParam && !isOrganisationJourney && (
             <div className="grid grid-cols-1 gap-3">
               {roles.map((r) => (
                 <button
@@ -300,7 +332,7 @@ function OnboardingContent() {
           )}
 
           {/* Show the selected role as a read-only badge when coming from sign-up */}
-          {fromParam && role && (
+          {(fromParam || isOrganisationJourney) && role && (
             <div className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <span className="text-2xl">
                 {roles.find((r) => r.id === role)?.emoji}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { stripe, calculateFees } from "@/lib/stripe";
 import {
   createPaymentAttempt,
@@ -8,6 +9,10 @@ import {
   isCancellablePaymentIntentStatus,
   updatePaymentAttemptStatus,
 } from "@/lib/db/payment-attempts";
+import { getManualBankDetails } from "@/lib/manual-payments";
+import { canManageJob } from "@/lib/organisations";
+import { getJobPaymentPolicy } from "@/lib/payments/policy";
+import { planForRole } from "@/lib/subscriptions/plans";
 
 type ApplicationRow = {
   id: string;
@@ -17,7 +22,13 @@ type ApplicationRow = {
   cover_letter: string;
   proposed_rate: number | null;
   created_at: string;
-  job: { client_id: string; status: string; budget: number; title: string };
+  job: {
+    client_id: string;
+    organisation_id: string | null;
+    status: string;
+    budget: number;
+    title: string;
+  };
 };
 
 export async function PATCH(
@@ -37,15 +48,18 @@ export async function PATCH(
 
   const body = await request.json();
   const { action } = body; // 'accept' only for now
+  const method = body.method === "bank_transfer" ? "bank_transfer" : "card";
 
   if (action !== "accept") {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   }
 
   // Fetch the application and verify ownership
-  const { data: applicationRaw } = await supabase
+  const { data: applicationRaw } = await createServiceClient()
     .from("applications")
-    .select("*, job:jobs!job_id(client_id, status, budget, title)")
+    .select(
+      "*, job:jobs!job_id(client_id, organisation_id, status, budget, title)",
+    )
     .eq("id", applicationId)
     .single();
 
@@ -59,7 +73,7 @@ export async function PATCH(
   const application = applicationRaw as unknown as ApplicationRow;
   const job = application.job;
 
-  if (job.client_id !== user.id) {
+  if (!(await canManageJob(job, user.id, "manage_applicants"))) {
     return NextResponse.json(
       { error: "You do not have permission to do this" },
       { status: 403 },
@@ -81,22 +95,90 @@ export async function PATCH(
   }
 
   try {
-    const { clientChargePence, platformFeeClient, platformFeeKinglancer } =
-      calculateFees(job.budget);
-
     const existingAttempt = await getPendingPaymentAttemptByJob(
       application.job_id,
     );
 
+    if (
+      existingAttempt &&
+      (existingAttempt.application_id !== applicationId ||
+        existingAttempt.kinglancer_id !== application.kinglancer_id)
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "A payment is already pending for this job. Cancel it before selecting someone else.",
+        },
+        { status: 409 },
+      );
+    }
+
+    // Bank transfer (manual): no Stripe. Record a pending attempt and return our
+    // bank details + reference; an admin confirms funds received later.
+    if (method === "bank_transfer") {
+      if (existingAttempt && existingAttempt.method === "bank_transfer") {
+        return NextResponse.json({
+          success: true,
+          jobId: application.job_id,
+          method: "bank_transfer",
+          reference: existingAttempt.id,
+          bankDetails: getManualBankDetails(),
+        });
+      }
+      if (existingAttempt) {
+        return NextResponse.json(
+          { error: "A card payment is already pending. Cancel it first." },
+          { status: 409 },
+        );
+      }
+      const { platformFeeClient, platformFeeKinglancer } = calculateFees(
+        job.budget,
+        { includeFixed: false },
+      );
+      const attempt = await createPaymentAttempt({
+        job_id: application.job_id,
+        application_id: applicationId,
+        client_id: user.id,
+        kinglancer_id: application.kinglancer_id,
+        amount: job.budget,
+        platform_fee_client: platformFeeClient,
+        platform_fee_kinglancer: platformFeeKinglancer,
+        stripe_payment_intent_id: null,
+        method: "bank_transfer",
+        attempt_type: "application",
+        status: "pending",
+      });
+      return NextResponse.json({
+        success: true,
+        jobId: application.job_id,
+        method: "bank_transfer",
+        reference: attempt.id,
+        bankDetails: getManualBankDetails(),
+        amountDue: job.budget + platformFeeClient,
+      });
+    }
+
+    // Card (Stripe escrow) is a subscriber-only rail below the threshold —
+    // Stripe's fees erode the margin on small pay-as-you-go card jobs.
+    if (!(await getJobPaymentPolicy(job)).cardAllowed) {
+      return NextResponse.json(
+        {
+          error: `Card payments need a subscription. Subscribe for £${planForRole("client").priceGBP}/month, or pay by bank transfer instead.`,
+          code: "CLIENT_SUBSCRIPTION_REQUIRED",
+        },
+        { status: 402 },
+      );
+    }
+
+    const { clientChargePence, platformFeeClient, platformFeeKinglancer } =
+      calculateFees(job.budget);
+
     if (existingAttempt) {
-      if (
-        existingAttempt.application_id !== applicationId ||
-        existingAttempt.kinglancer_id !== application.kinglancer_id
-      ) {
+      if (existingAttempt.method === "bank_transfer") {
         return NextResponse.json(
           {
             error:
-              "A payment is already pending for this job. Cancel it before selecting someone else.",
+              "A bank transfer is already pending for this job. Cancel it first.",
           },
           { status: 409 },
         );
@@ -104,7 +186,7 @@ export async function PATCH(
 
       try {
         const existingPaymentIntent = await stripe.paymentIntents.retrieve(
-          existingAttempt.stripe_payment_intent_id,
+          existingAttempt.stripe_payment_intent_id!,
         );
 
         if (
@@ -145,7 +227,7 @@ export async function PATCH(
         const stripeError = err as { code?: string };
         if (stripeError.code === "resource_missing") {
           await updatePaymentAttemptStatus(
-            existingAttempt.stripe_payment_intent_id,
+            existingAttempt.stripe_payment_intent_id!,
             "failed",
           );
         } else {

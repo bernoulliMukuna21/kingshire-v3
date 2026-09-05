@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { parseProfileServices } from "@/lib/profiles";
 import RequestView from "./RequestView";
 
 export default async function RequestKinglancerPage({
@@ -41,9 +42,10 @@ export default async function RequestKinglancerPage({
   if (profile.role === "kinglancer") redirect("/dashboard/kinglancer");
   if (profile.role !== "client") redirect("/onboarding");
 
+  const kinglancerServices = parseProfileServices(kinglancer.services);
   const serviceTags =
-    kinglancer.services?.length > 0
-      ? kinglancer.services.map((s: { name: string }) => s.name)
+    kinglancerServices.length > 0
+      ? kinglancerServices.map((s) => s.name)
       : (kinglancer.service_tags ?? []);
 
   return (

@@ -80,30 +80,8 @@ export function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-const GBP = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-});
-
-export function formatMoney(amount: number) {
-  return GBP.format(Number(amount));
-}
-
 export function roleTone(role: string | null) {
   if (role === "kinglancer") return "green";
   if (role === "admin") return "red";
   return "blue";
-}
-
-export function jobStatusClasses(status: string) {
-  const classes: Record<string, string> = {
-    open: "bg-green-50 text-green-700",
-    in_progress: "bg-blue-50 text-blue-700",
-    completed: "bg-yellow-50 text-yellow-700",
-    disputed: "bg-red-50 text-red-700",
-    cancelled: "bg-gray-100 text-gray-500",
-    approved: "bg-purple-50 text-purple-700",
-  };
-
-  return classes[status] ?? "bg-gray-100 text-gray-500";
 }

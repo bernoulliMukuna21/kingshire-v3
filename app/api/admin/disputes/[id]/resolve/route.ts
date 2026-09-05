@@ -9,6 +9,7 @@ import {
   createOnboardingLink,
 } from "@/lib/stripe-connect";
 import { getTransactionByJob } from "@/lib/db/transactions";
+import { hasEntitlement } from "@/lib/subscriptions";
 import { notifyDisputeResolved } from "@/lib/notifications";
 
 // POST /api/admin/disputes/[id]/resolve
@@ -125,13 +126,112 @@ export async function POST(
     stripe_onboarding_complete: boolean;
   } | null;
 
+  // Release payouts follow the worker's subscription: unsubscribed workers are
+  // paid by hand (no Stripe Connect). Refunds still follow the funding method.
+  const workerStripePayout = job.kinglancer_id
+    ? await hasEntitlement(job.kinglancer_id, "kinglancer", "stripePayout")
+    : false;
+
   // ── Execute the resolution ─────────────────────────────
+  // Manual (bank transfer) dispute: no Stripe. Release leaves the escrow held
+  // and approves the job so it lands in the Awaiting-payout queue (paid via the
+  // worker's payout link); refund marks it refunded for the admin to return by
+  // bank. The money moves by hand either way.
+  if (transaction.payment_method === "bank_transfer") {
+    if (action === "release") {
+      if (!job.kinglancer_id) {
+        return NextResponse.json(
+          { error: "No kinglancer assigned to this job." },
+          { status: 409 },
+        );
+      }
+      await Promise.all([
+        db.from("jobs").update({ status: "approved" }).eq("id", job.id),
+        db
+          .from("disputes")
+          .update({ status: "resolved", resolved_at: new Date().toISOString() })
+          .eq("id", disputeId),
+      ]);
+      if (kinglancerProfile?.email) {
+        notifyDisputeResolved({
+          userId: job.kinglancer_id,
+          userEmail: kinglancerProfile.email,
+          jobTitle: job.title,
+          outcome: "release",
+        }).catch(() => {});
+      }
+      if (clientProfile?.email) {
+        notifyDisputeResolved({
+          userId: job.client_id,
+          userEmail: clientProfile.email,
+          jobTitle: job.title,
+          outcome: "release",
+        }).catch(() => {});
+      }
+    } else {
+      await Promise.all([
+        db
+          .from("transactions")
+          .update({ status: "refunded" })
+          .eq("job_id", job.id),
+        db.from("jobs").update({ status: "cancelled" }).eq("id", job.id),
+        db
+          .from("disputes")
+          .update({ status: "resolved", resolved_at: new Date().toISOString() })
+          .eq("id", disputeId),
+      ]);
+      if (clientProfile?.email) {
+        notifyDisputeResolved({
+          userId: job.client_id,
+          userEmail: clientProfile.email,
+          jobTitle: job.title,
+          outcome: "refund",
+        }).catch(() => {});
+      }
+    }
+    return NextResponse.json({ success: true });
+  }
+
   if (action === "release") {
     if (!job.kinglancer_id || !kinglancerProfile) {
       return NextResponse.json(
         { error: "No kinglancer assigned to this job." },
         { status: 409 },
       );
+    }
+
+    // Unsubscribed worker — pay manually (leave escrow held, approve the job so
+    // it lands in the Awaiting-payout queue). No Stripe Connect involved.
+    if (!workerStripePayout) {
+      await Promise.all([
+        db
+          .from("transactions")
+          .update({ payout_method: "manual" })
+          .eq("job_id", job.id)
+          .eq("status", "held"),
+        db.from("jobs").update({ status: "approved" }).eq("id", job.id),
+        db
+          .from("disputes")
+          .update({ status: "resolved", resolved_at: new Date().toISOString() })
+          .eq("id", disputeId),
+      ]);
+      if (kinglancerProfile.email) {
+        notifyDisputeResolved({
+          userId: job.kinglancer_id,
+          userEmail: kinglancerProfile.email,
+          jobTitle: job.title,
+          outcome: "release",
+        }).catch(() => {});
+      }
+      if (clientProfile?.email) {
+        notifyDisputeResolved({
+          userId: job.client_id,
+          userEmail: clientProfile.email,
+          jobTitle: job.title,
+          outcome: "release",
+        }).catch(() => {});
+      }
+      return NextResponse.json({ success: true });
     }
 
     const netAmount = transaction.amount - transaction.platform_fee_kinglancer;

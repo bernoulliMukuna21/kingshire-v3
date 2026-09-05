@@ -8,8 +8,11 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import { emailJobAlert } from "@/lib/notifications";
+import { requireOrganisationPermission } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { requireTermsAccepted } from "@/lib/terms";
 
 export async function GET() {
   try {
@@ -33,21 +36,83 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
-  // Verify the user is a client
+  if (!(await requireTermsAccepted(user.id))) {
+    return NextResponse.json(
+      {
+        error: "Please accept our updated terms to continue.",
+        needsTerms: true,
+      },
+      { status: 403 },
+    );
+  }
+
+  const body = await request.json().catch(() => null);
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return NextResponse.json(
+      { error: "Invalid request body." },
+      { status: 400 },
+    );
+  }
+  const organisationId =
+    typeof body.organisation_id === "string" ? body.organisation_id : null;
+
+  // Personal jobs require Client mode. Organisation jobs require membership.
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "client") {
+  const organisationMembership = organisationId
+    ? await requireOrganisationPermission(
+        organisationId,
+        user.id,
+        "manage_jobs",
+      )
+    : null;
+
+  if (
+    (!organisationId && (!profile || profile.role !== "client")) ||
+    (organisationId && !organisationMembership)
+  ) {
     return NextResponse.json(
-      { error: "Only clients can post jobs" },
+      { error: "You do not have permission to post this job." },
       { status: 403 },
     );
   }
 
-  const body = await request.json();
+  if (organisationId) {
+    const { data: subscription, error: subscriptionError } =
+      await createServiceClient()
+        .from("organisation_subscriptions")
+        .select("status")
+        .eq("organisation_id", organisationId)
+        .maybeSingle();
+
+    if (subscriptionError) {
+      return NextResponse.json(
+        { error: "Unable to verify the Organisation subscription." },
+        { status: 503 },
+      );
+    }
+    // Organisations created before paid onboarding are intentionally
+    // grandfathered. Once an Organisation has a subscription record, only an
+    // active/trialling subscription may create new work.
+    if (
+      subscription &&
+      subscription.status !== "active" &&
+      subscription.status !== "trialing"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Reactivate the Organisation subscription before posting new jobs.",
+        },
+        { status: 402 },
+      );
+    }
+  }
+
   const {
     title,
     description,
@@ -56,6 +121,11 @@ export async function POST(request: Request) {
     rate_type,
     deadline,
     invited_kinglancer_id,
+    work_mode,
+    location,
+    scheduled_at,
+    ends_at,
+    days_on_site,
   } = body;
 
   const titleStr = (title ?? "").trim();
@@ -81,11 +151,13 @@ export async function POST(request: Request) {
   if (
     !Number.isFinite(budgetNum) ||
     !hasValidCurrencyPrecision(budget) ||
-    normalizedBudget < 20 ||
+    normalizedBudget < MIN_JOB_BUDGET_GBP ||
     normalizedBudget > 50000
   )
     return NextResponse.json(
-      { error: "Budget must be between £20 and £50,000 with up to 2 decimals." },
+      {
+        error: `Budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000 with up to 2 decimals.`,
+      },
       { status: 400 },
     );
   if (
@@ -115,6 +187,112 @@ export async function POST(request: Request) {
       ? invited_kinglancer_id.trim()
       : null;
 
+  const validWorkModes = ["online", "in_person", "hybrid"];
+  if (!validWorkModes.includes(work_mode)) {
+    return NextResponse.json(
+      { error: "Choose where the job happens." },
+      { status: 400 },
+    );
+  }
+  const resolvedWorkMode = work_mode;
+  const locationStr = typeof location === "string" ? location.trim() : "";
+  let scheduledAtIso: string | null = null;
+  let endsAtIso: string | null = null;
+  let daysOnSite: number | null = null;
+  if (resolvedWorkMode === "online") {
+    const start = new Date(scheduled_at);
+    const end = new Date(ends_at);
+    if (!scheduled_at || isNaN(start.getTime())) {
+      return NextResponse.json(
+        { error: "Add the start date." },
+        { status: 400 },
+      );
+    }
+    if (!ends_at || isNaN(end.getTime())) {
+      return NextResponse.json({ error: "Add the end date." }, { status: 400 });
+    }
+    if (end.getTime() < start.getTime()) {
+      return NextResponse.json(
+        { error: "The end date must be after the start date." },
+        { status: 400 },
+      );
+    }
+    scheduledAtIso = start.toISOString();
+    endsAtIso = end.toISOString();
+  }
+  if (resolvedWorkMode === "in_person" || resolvedWorkMode === "hybrid") {
+    if (!locationStr) {
+      return NextResponse.json(
+        { error: "Add the location for an in-person or hybrid job." },
+        { status: 400 },
+      );
+    }
+  }
+  if (resolvedWorkMode === "in_person") {
+    const startHasTime =
+      typeof scheduled_at === "string" && /T\d{2}:\d{2}/.test(scheduled_at);
+    const endHasTime =
+      typeof ends_at === "string" && /T\d{2}:\d{2}/.test(ends_at);
+    const start = new Date(scheduled_at);
+    const end = new Date(ends_at);
+    if (!startHasTime || isNaN(start.getTime())) {
+      return NextResponse.json(
+        { error: "Add the start date and time." },
+        { status: 400 },
+      );
+    }
+    if (!endHasTime || isNaN(end.getTime())) {
+      return NextResponse.json(
+        { error: "Add the end date and time." },
+        { status: 400 },
+      );
+    }
+    if (end.getTime() <= start.getTime()) {
+      return NextResponse.json(
+        { error: "The end time must be after the start time." },
+        { status: 400 },
+      );
+    }
+    scheduledAtIso = start.toISOString();
+    endsAtIso = end.toISOString();
+  }
+  if (resolvedWorkMode === "hybrid") {
+    daysOnSite = Number(days_on_site);
+    if (!Number.isInteger(daysOnSite) || daysOnSite < 1 || daysOnSite > 6) {
+      return NextResponse.json(
+        {
+          error: "Set how many days on-site per week (1–6) for a hybrid job.",
+        },
+        { status: 400 },
+      );
+    }
+    const start = new Date(scheduled_at);
+    const end = new Date(ends_at);
+    if (!scheduled_at || isNaN(start.getTime())) {
+      return NextResponse.json(
+        { error: "Add the start date." },
+        { status: 400 },
+      );
+    }
+    if (!ends_at || isNaN(end.getTime())) {
+      return NextResponse.json({ error: "Add the end date." }, { status: 400 });
+    }
+    if (end.getTime() < start.getTime()) {
+      return NextResponse.json(
+        { error: "The end date must be after the start date." },
+        { status: 400 },
+      );
+    }
+    scheduledAtIso = start.toISOString();
+    endsAtIso = end.toISOString();
+  }
+
+  // Every job now carries a start/end window; the end date backs the legacy
+  // deadline column (job expiry, list displays) for continuity.
+  const resolvedDeadline = endsAtIso
+    ? endsAtIso.slice(0, 10)
+    : deadline || null;
+
   if (invitedKinglancerId) {
     const { data: invitedKinglancer } = await supabase
       .from("profiles")
@@ -132,17 +310,27 @@ export async function POST(request: Request) {
   }
 
   try {
-    const job = await createJob({
-      client_id: user.id,
-      title: titleStr,
-      description: descStr,
-      categories,
-      budget: normalizedBudget,
-      rate_type: resolvedRateType,
-      invited_kinglancer_id: invitedKinglancerId,
-      direct_request_status: invitedKinglancerId ? "pending" : null,
-      deadline: deadline || null,
-    });
+    const job = await createJob(
+      {
+        client_id: user.id,
+        created_by: user.id,
+        organisation_id: organisationId,
+        title: titleStr,
+        description: descStr,
+        categories,
+        budget: normalizedBudget,
+        rate_type: resolvedRateType,
+        work_mode: resolvedWorkMode,
+        location: resolvedWorkMode !== "online" ? locationStr : null,
+        scheduled_at: scheduledAtIso,
+        ends_at: endsAtIso,
+        days_on_site: daysOnSite,
+        invited_kinglancer_id: invitedKinglancerId,
+        direct_request_status: invitedKinglancerId ? "pending" : null,
+        deadline: resolvedDeadline,
+      },
+      { useServiceRole: !!organisationId },
+    );
 
     // MVP-safe fan-out: create bounded in-app notifications only.
     // Avoid sending one email per kinglancer during the job-post request.

@@ -16,12 +16,22 @@ import {
   isValidEmailAddress,
   normalizeEmail,
 } from "@/lib/validation";
+import { AUTH_WORK_PLACEHOLDER } from "@/lib/image-placeholders";
 
 function SignInContent() {
   const searchParams = useSearchParams();
   const authError = searchParams.get("error");
   const authReason = searchParams.get("reason");
   const authSuccess = searchParams.get("success");
+  const requestedNext = searchParams.get("next");
+  const requestedRole = searchParams.get("role");
+  const intent = searchParams.get("intent");
+  const safeNext =
+    intent === "organisation"
+      ? "/organisation/setup"
+      : requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+        ? requestedNext
+        : null;
 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,10 +41,22 @@ function SignInContent() {
 
   const handleGoogleSignIn = async () => {
     const supabase = createClient();
+    const callbackParams = new URLSearchParams();
+    if (intent === "organisation") {
+      callbackParams.set("intent", intent);
+    } else {
+      if (safeNext) callbackParams.set("next", safeNext);
+      if (requestedRole === "client" || requestedRole === "kinglancer") {
+        callbackParams.set("role", requestedRole);
+      }
+    }
+    const callbackUrl = `${window.location.origin}/auth/callback${
+      callbackParams.size ? `?${callbackParams.toString()}` : ""
+    }`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: callbackUrl,
         queryParams: {
           prompt: "select_account",
         },
@@ -83,7 +105,19 @@ function SignInContent() {
 
     // Full-page navigation so the freshly-set session cookie reaches the server
     // on the first request, avoiding a soft-nav redirect loop.
-    window.location.assign(getRoleHome(profile?.role));
+    window.location.assign(
+      profile?.role
+        ? (safeNext ?? getRoleHome(profile.role))
+        : intent === "organisation"
+          ? "/organisation/setup"
+          : `/onboarding?${new URLSearchParams({
+              ...(safeNext ? { next: safeNext } : {}),
+              ...(requestedRole === "client" || requestedRole === "kinglancer"
+                ? { role: requestedRole }
+                : {}),
+              ...(intent === "organisation" ? { intent } : {}),
+            }).toString()}`,
+    );
   };
 
   return (
@@ -91,6 +125,17 @@ function SignInContent() {
       headline="Welcome back."
       accent="Great to see you."
       body="Your community is waiting. Sign in and get to work."
+      imagePlaceholder={AUTH_WORK_PLACEHOLDER}
+      images={[
+        {
+          src: "/images/auth/general-workspace.jpg",
+          alt: "A person working independently",
+        },
+        {
+          src: "/images/auth/general-practical-work.jpg",
+          alt: "A practical worker carrying out their trade",
+        },
+      ]}
     >
       <div className="w-full max-w-md">
         <Link
@@ -106,7 +151,13 @@ function SignInContent() {
         <p className="text-gray-500 mb-8 text-sm">Enter your details below.</p>
 
         <GoogleButton onClick={handleGoogleSignIn} showDivider={false} />
-        <KingsChatButton />
+        <KingsChatButton
+          next={
+            intent === "organisation"
+              ? "/organisation/start"
+              : (safeNext ?? undefined)
+          }
+        />
 
         {authSuccess === "password_reset" && (
           <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
@@ -172,7 +223,7 @@ function SignInContent() {
         <p className="text-center text-sm text-gray-500 mt-6">
           Don&apos;t have an account?{" "}
           <Link
-            href="/sign-up"
+            href={`/sign-up${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`}
             className="text-blue-600 font-semibold hover:underline"
           >
             Create one free

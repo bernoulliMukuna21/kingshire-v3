@@ -87,7 +87,7 @@ export default async function PayPage({ params, searchParams }: Props) {
               <span className="font-medium shrink-0">£{amount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-gray-500">
-              <span>Service fee (5% + 30p)</span>
+              <span>Service fee (2.5%)</span>
               <span>£{platformFee.toFixed(2)}</span>
             </div>
             <div className="border-t border-gray-100 pt-2 flex justify-between font-bold text-gray-900">

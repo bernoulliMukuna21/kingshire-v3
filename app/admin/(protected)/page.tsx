@@ -20,11 +20,11 @@ import {
   type AdminDispute,
   type AdminJob,
   type AdminUser,
-  formatMoney,
-  jobStatusClasses,
   roleTone,
   timeAgo,
 } from "@/lib/admin-dashboard";
+import { formatMoneyPrecise as formatMoney } from "@/lib/utils";
+import { jobStatusPill } from "@/lib/jobs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 
@@ -102,9 +102,11 @@ export default async function AdminDashboard() {
     .reduce((sum, t) => sum + t.amount - t.platform_fee_kinglancer, 0);
   // Stripe balance in pence → convert to pounds
   const stripeAvailableGBP =
-    (stripeBalanceResult?.available?.find((b) => b.currency === "gbp")?.amount ?? 0) / 100;
+    (stripeBalanceResult?.available?.find((b) => b.currency === "gbp")
+      ?.amount ?? 0) / 100;
   const stripePendingGBP =
-    (stripeBalanceResult?.pending?.find((b) => b.currency === "gbp")?.amount ?? 0) / 100;
+    (stripeBalanceResult?.pending?.find((b) => b.currency === "gbp")?.amount ??
+      0) / 100;
   const safeToWithdraw = Math.max(0, stripeAvailableGBP - owedToKinglancers);
 
   const activeJobsCount = jobs.filter((job) =>
@@ -207,29 +209,53 @@ export default async function AdminDashboard() {
               <TrendingUp size={16} />
             </div>
             <div>
-              <p className="text-sm font-black text-slate-950">Platform Financials</p>
-              <p className="text-xs text-slate-400">Live Stripe balance — your money vs kinglancer payouts</p>
+              <p className="text-sm font-black text-slate-950">
+                Platform Financials
+              </p>
+              <p className="text-xs text-slate-400">
+                Live Stripe balance — your money vs kinglancer payouts
+              </p>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Stripe Available</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(stripeAvailableGBP)}</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                Stripe Available
+              </p>
+              <p className="mt-1 text-2xl font-black text-slate-950">
+                {formatMoney(stripeAvailableGBP)}
+              </p>
               {stripePendingGBP > 0 ? (
-                <p className="mt-0.5 text-xs text-slate-400">{formatMoney(stripePendingGBP)} still settling</p>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {formatMoney(stripePendingGBP)} still settling
+                </p>
               ) : (
-                <p className="mt-0.5 text-xs text-slate-400">Total in your Stripe account</p>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  Total in your Stripe account
+                </p>
               )}
             </div>
             <div className="rounded-xl bg-red-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-red-600">To Be Paid Out</p>
-              <p className="mt-1 text-2xl font-black text-slate-950">{formatMoney(owedToKinglancers)}</p>
-              <p className="mt-0.5 text-xs text-red-600">Kinglancer payouts held (escrow + unclaimed). Not yours.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-red-600">
+                To Be Paid Out
+              </p>
+              <p className="mt-1 text-2xl font-black text-slate-950">
+                {formatMoney(owedToKinglancers)}
+              </p>
+              <p className="mt-0.5 text-xs text-red-600">
+                Kinglancer payouts held (escrow + unclaimed). Not yours.
+              </p>
             </div>
             <div className="rounded-xl bg-emerald-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Safe to Withdraw</p>
-              <p className="mt-1 text-2xl font-black text-emerald-700">{formatMoney(safeToWithdraw)}</p>
-              <p className="mt-0.5 text-xs text-emerald-600">Your earnings — safe to take out.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
+                Safe to Withdraw
+              </p>
+              <p className="mt-1 text-2xl font-black text-emerald-700">
+                {formatMoney(safeToWithdraw)}
+              </p>
+              <p className="mt-0.5 text-xs text-emerald-600">
+                Your earnings — safe to take out.
+              </p>
             </div>
           </div>
           <p className="mt-3 text-xs text-slate-400">
@@ -365,7 +391,7 @@ export default async function AdminDashboard() {
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${jobStatusClasses(job.status)}`}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${jobStatusPill(job.status).className}`}
                       >
                         {job.status.replace("_", " ")}
                       </span>

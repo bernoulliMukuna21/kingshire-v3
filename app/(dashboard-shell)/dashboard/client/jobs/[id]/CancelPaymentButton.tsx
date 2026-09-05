@@ -4,9 +4,32 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-export default function CancelPaymentButton({ jobId }: { jobId: string }) {
+export default function CancelPaymentButton({
+  jobId,
+  markedPaid = false,
+}: {
+  jobId: string;
+  markedPaid?: boolean;
+}) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Once the client says they've sent the transfer, cancelling is a support
+  // matter (funds may have arrived) — offer a pre-filled email instead.
+  if (markedPaid) {
+    const subject = encodeURIComponent(`Cancel bank transfer — job ${jobId}`);
+    const body = encodeURIComponent(
+      `I'd like to cancel my bank transfer for this job and arrange a refund.\n\nJob ID: ${jobId}`,
+    );
+    return (
+      <a
+        href={`mailto:kingshirecompany@gmail.com?subject=${subject}&body=${body}`}
+        className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+      >
+        Contact support to cancel
+      </a>
+    );
+  }
 
   async function handleCancel() {
     setLoading(true);
