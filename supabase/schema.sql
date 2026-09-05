@@ -106,6 +106,7 @@ create table public.payment_attempts (
   attempt_type              text not null default 'application' check (attempt_type in ('application','direct_request')),
   method                    text not null default 'card' check (method in ('card','bank_transfer')),
   status                    text not null default 'pending' check (status in ('pending','succeeded','cancelled','failed','expired')),
+  client_marked_paid_at     timestamptz,
   created_at                timestamptz not null default now(),
   updated_at                timestamptz not null default now()
 );

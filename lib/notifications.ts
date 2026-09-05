@@ -429,6 +429,30 @@ export async function notifyAdminDisputeRaised({
   });
 }
 
+export async function notifyAdminManualTransferSent({
+  jobTitle,
+  clientEmail,
+  reference,
+  amount,
+}: {
+  jobTitle: string;
+  clientEmail: string;
+  reference: string;
+  amount: number;
+}) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
+  const adminEmail =
+    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  await sendEmail({
+    to: adminEmail,
+    subject: `[Bank transfer] ${jobTitle}`,
+    title: "Client says they've sent a bank transfer",
+    body: `${clientEmail} says they've sent £${amount.toFixed(2)} for job "${jobTitle}" (reference ${reference}). Please verify it has arrived, then confirm funds received.`,
+    link: `${appUrl}/admin/manual-payments`,
+    ctaLabel: "Review manual payments →",
+  });
+}
+
 export async function notifyAdminPlacementForReview({
   placementTitle,
   organisationName,

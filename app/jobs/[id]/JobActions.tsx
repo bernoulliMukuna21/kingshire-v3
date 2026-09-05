@@ -646,9 +646,7 @@ function BankTransferModal({
               </strong>
             </p>
             <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-              Closing this does <strong>not</strong> confirm payment. We&apos;ll
-              check your transfer has arrived, then hire {info.workerName} and
-              email you — they won&apos;t start until we&apos;ve confirmed it.
+              {`Closing this doesn't confirm payment. We'll check your transfer has arrived, then hire ${info.workerName} and email you — they won't start until we've confirmed it.`}
             </p>
           </div>
         )

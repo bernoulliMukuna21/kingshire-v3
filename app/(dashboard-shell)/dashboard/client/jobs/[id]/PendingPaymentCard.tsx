@@ -8,6 +8,7 @@ import { stripe } from "@/lib/stripe";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import CancelPaymentButton from "./CancelPaymentButton";
+import MarkTransferSentButton from "./MarkTransferSentButton";
 
 /**
  * Fetches the pending Stripe payment intent and renders the "resume payment"
@@ -57,7 +58,11 @@ async function PendingPaymentCardInner({ jobId }: { jobId: string }) {
             )}
           </div>
         </div>
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <MarkTransferSentButton
+            jobId={jobId}
+            alreadyMarked={!!pendingAttempt.client_marked_paid_at}
+          />
           <CancelPaymentButton jobId={jobId} />
         </div>
       </Card>

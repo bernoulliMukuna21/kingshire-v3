@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { getPendingManualAttempts } from "@/lib/db/payment-attempts";
 import { getManualPayoutQueue } from "@/lib/db/transactions";
 import { payoutProviderLabel } from "@/lib/payout-links";
+import { timeAgo } from "@/lib/admin-dashboard";
 import { Card } from "@/components/ui/Card";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -44,6 +45,11 @@ export default async function AdminManualPaymentsPage() {
                     {a.clientName ?? "Client"} → {a.workerName ?? "Worker"} ·
                     ref <span className="font-mono">{a.id.slice(0, 8)}</span>
                   </p>
+                  {a.clientMarkedPaidAt && (
+                    <span className="mt-1 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                      Client says sent · {timeAgo(a.clientMarkedPaidAt)}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-black">

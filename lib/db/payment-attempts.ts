@@ -189,6 +189,7 @@ export type ManualFundsQueueItem = {
   workerName: string | null;
   amount: number;
   platformFeeClient: number;
+  clientMarkedPaidAt: string | null;
   createdAt: string;
 };
 
@@ -200,7 +201,7 @@ export async function getPendingManualAttempts(): Promise<
   const { data, error } = await db
     .from("payment_attempts")
     .select(
-      `id, job_id, amount, platform_fee_client, created_at,
+      `id, job_id, amount, platform_fee_client, created_at, client_marked_paid_at,
        job:jobs!job_id(title, organisation_id),
        client:profiles!client_id(full_name),
        worker:profiles!kinglancer_id(full_name)`,
@@ -216,6 +217,7 @@ export async function getPendingManualAttempts(): Promise<
     amount: number | string;
     platform_fee_client: number | string;
     created_at: string;
+    client_marked_paid_at: string | null;
     job: { title: string; organisation_id: string | null } | null;
     client: { full_name: string | null } | null;
     worker: { full_name: string | null } | null;
@@ -230,6 +232,7 @@ export async function getPendingManualAttempts(): Promise<
     workerName: r.worker?.full_name ?? null,
     amount: Number(r.amount),
     platformFeeClient: Number(r.platform_fee_client),
+    clientMarkedPaidAt: r.client_marked_paid_at,
     createdAt: r.created_at,
   }));
 }
@@ -242,5 +245,16 @@ export async function cancelPaymentAttemptById(attemptId: string) {
     .update({ status: "cancelled" })
     .eq("id", attemptId)
     .eq("status", "pending");
+  if (error) throw error;
+}
+
+/** Client's "I've made the transfer" signal — stamps the attempt once. */
+export async function markAttemptClientPaid(attemptId: string) {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("payment_attempts")
+    .update({ client_marked_paid_at: new Date().toISOString() })
+    .eq("id", attemptId)
+    .is("client_marked_paid_at", null);
   if (error) throw error;
 }

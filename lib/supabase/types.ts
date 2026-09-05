@@ -647,6 +647,7 @@ export type Database = {
           application_id: string | null
           attempt_type: string
           client_id: string
+          client_marked_paid_at: string | null
           created_at: string
           id: string
           job_id: string
@@ -663,6 +664,7 @@ export type Database = {
           application_id?: string | null
           attempt_type?: string
           client_id: string
+          client_marked_paid_at?: string | null
           created_at?: string
           id?: string
           job_id: string
@@ -679,6 +681,7 @@ export type Database = {
           application_id?: string | null
           attempt_type?: string
           client_id?: string
+          client_marked_paid_at?: string | null
           created_at?: string
           id?: string
           job_id?: string
