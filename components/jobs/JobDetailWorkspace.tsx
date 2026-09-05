@@ -250,17 +250,15 @@ export default async function JobDetailWorkspace({
             </Card>
           )}
 
-          {job.status === "open" && (
+          {job.status === "open" && !paymentPending && (
             <div className="flex items-center justify-end gap-3">
-              {!paymentPending && (
-                <ButtonLink
-                  href={`/dashboard/client/jobs/${id}/edit`}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Edit job
-                </ButtonLink>
-              )}
+              <ButtonLink
+                href={`/dashboard/client/jobs/${id}/edit`}
+                variant="secondary"
+                size="sm"
+              >
+                Edit job
+              </ButtonLink>
               <CancelJobButton
                 jobId={id}
                 status="open"

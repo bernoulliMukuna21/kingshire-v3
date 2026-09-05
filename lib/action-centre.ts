@@ -93,6 +93,7 @@ export type ClientActionJob = {
   invited_kinglancer_id: string | null;
   direct_request_status: string | null;
   has_funded_transaction?: boolean;
+  has_pending_payment?: boolean;
   counter_budget: number | null;
   counter_rate_type: string | null;
   counter_deadline: string | null;
@@ -181,7 +182,11 @@ export function buildClientJobItems(
     }
 
     const applicantCount = applicantCountByJob[job.id] ?? 0;
-    if (isClientApplicantReviewAction(job, applicantCount)) {
+    // A payment in progress locks selection — nothing for the client to do.
+    if (
+      isClientApplicantReviewAction(job, applicantCount) &&
+      !job.has_pending_payment
+    ) {
       actions.push({
         id: `${job.id}:applicants`,
         kind: "action",
@@ -200,21 +205,37 @@ export function buildClientJobItems(
 
   actions.sort((a, b) => a.title.localeCompare(b.title));
 
-  const waiting: ActionCentreItem[] = jobs
-    .filter((job) => isClientDirectRequestWaiting(job))
-    .map((job) => ({
-      id: `${job.id}:waiting-kinglancer`,
-      kind: "waiting",
-      title: job.title,
-      description: `Waiting for ${
-        job.invited_kinglancer?.full_name ?? "the Kinglancer"
-      } to respond to your direct request.`,
-      href: `/dashboard/client/jobs/${job.id}`,
-      icon: "request",
-      badge: "Waiting",
-      tone: "slate",
-      meta: jobMeta(job.budget, job.rate_type),
-    }));
+  const waiting: ActionCentreItem[] = [
+    ...jobs
+      .filter((job) => isClientDirectRequestWaiting(job))
+      .map((job) => ({
+        id: `${job.id}:waiting-kinglancer`,
+        kind: "waiting" as const,
+        title: job.title,
+        description: `Waiting for ${
+          job.invited_kinglancer?.full_name ?? "the Kinglancer"
+        } to respond to your direct request.`,
+        href: `/dashboard/client/jobs/${job.id}`,
+        icon: "request" as const,
+        badge: "Waiting",
+        tone: "slate" as const,
+        meta: jobMeta(job.budget, job.rate_type),
+      })),
+    ...jobs
+      .filter((job) => job.status === "open" && job.has_pending_payment)
+      .map((job) => ({
+        id: `${job.id}:awaiting-payment-confirm`,
+        kind: "waiting" as const,
+        title: job.title,
+        description:
+          "Payment in progress — we'll confirm it and start the job shortly.",
+        href: `/dashboard/client/jobs/${job.id}`,
+        icon: "payment" as const,
+        badge: "Payment in progress",
+        tone: "slate" as const,
+        meta: jobMeta(job.budget, job.rate_type),
+      })),
+  ];
 
   return dedupeById([...actions, ...waiting]);
 }
@@ -430,16 +451,28 @@ async function fetchClientStyleJobItems(
   const jobs = (jobsRaw ?? []) as unknown as ClientActionJob[];
   const jobIds = jobs.map((job) => job.id);
 
-  const [applicationsResult, fundedJobIds] = await Promise.all([
-    jobIds.length
-      ? supabase
-          .from("applications")
-          .select("job_id")
-          .in("job_id", jobIds)
-          .eq("status", "pending")
-      : Promise.resolve({ data: [] }),
-    getFundedJobIds(supabase, jobIds),
-  ]);
+  const [applicationsResult, fundedJobIds, pendingPaymentResult] =
+    await Promise.all([
+      jobIds.length
+        ? supabase
+            .from("applications")
+            .select("job_id")
+            .in("job_id", jobIds)
+            .eq("status", "pending")
+        : Promise.resolve({ data: [] }),
+      getFundedJobIds(supabase, jobIds),
+      jobIds.length
+        ? supabase
+            .from("payment_attempts")
+            .select("job_id")
+            .in("job_id", jobIds)
+            .eq("status", "pending")
+        : Promise.resolve({ data: [] }),
+    ]);
+
+  const pendingPaymentJobIds = new Set(
+    (pendingPaymentResult.data ?? []).map((row) => row.job_id),
+  );
 
   const applicantCountByJob = (applicationsResult.data ?? []).reduce<
     Record<string, number>
@@ -451,6 +484,7 @@ async function fetchClientStyleJobItems(
   const jobsWithFunding = jobs.map((job) => ({
     ...job,
     has_funded_transaction: fundedJobIds.has(job.id),
+    has_pending_payment: pendingPaymentJobIds.has(job.id),
   }));
 
   return buildClientJobItems(jobsWithFunding, applicantCountByJob);
