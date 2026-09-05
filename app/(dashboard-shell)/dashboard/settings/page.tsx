@@ -79,7 +79,7 @@ export default async function SettingsPage() {
           </h2>
           <p className="text-slate-500 text-sm mb-5">
             Subscribe for £{planForRole("kinglancer").priceGBP}/month for
-            instant Stripe payouts and to apply to smaller jobs. Without it
+            automatic Stripe payouts and to apply to smaller jobs. Without it
             you&apos;re still paid by manual transfer.
           </p>
           <a

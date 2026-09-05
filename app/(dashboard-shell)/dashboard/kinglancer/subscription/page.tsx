@@ -67,13 +67,13 @@ export default async function KinglancerSubscriptionPage({
       <PageHeader
         eyebrow="Billing"
         title="Kinglancer subscription"
-        description="Get paid instantly and apply to more jobs."
+        description="Get paid through Stripe and apply to more jobs."
       />
 
       {session_id && isActive && (
         <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
           <CheckCircle2 size={16} className="shrink-0" />
-          You&apos;re subscribed — instant payouts and small jobs are unlocked.
+          You&apos;re subscribed — Stripe payouts and small jobs are unlocked.
         </div>
       )}
       {cancelled && !isActive && (
@@ -113,10 +113,10 @@ export default async function KinglancerSubscriptionPage({
               Subscribe for £{priceGBP}/month
             </h2>
             <p className="mb-5 mt-1 text-sm text-slate-500">
-              Unlock instant Stripe payouts and the ability to apply to smaller
-              jobs. Without it you&apos;re still paid for every job by manual
-              transfer, and can apply to jobs of £{SMALL_JOB_THRESHOLD_GBP} and
-              over.
+              Unlock automatic Stripe payouts and the ability to apply to
+              smaller jobs. Without it you&apos;re still paid for every job by
+              manual transfer, and can apply to jobs of £{SMALL_JOB_THRESHOLD_GBP}
+              and over.
             </p>
             <SubscribeButton priceGBP={priceGBP} />
           </>
@@ -132,11 +132,12 @@ export default async function KinglancerSubscriptionPage({
             <Zap size={18} className="mt-0.5 shrink-0 text-blue-600" />
             <span>
               <span className="font-bold text-slate-900">
-                Instant Stripe payouts
+                Automatic Stripe payouts
               </span>
               <span className="block text-slate-500">
-                Get paid straight to your account when a client releases escrow,
-                instead of waiting for a manual transfer.
+                Get paid through your own Stripe account when a client releases
+                escrow, and manage your payouts there — instead of waiting for a
+                manual transfer.
               </span>
             </span>
           </li>

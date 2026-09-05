@@ -326,7 +326,7 @@ export default async function JobDetailPage({
                     Applying to jobs under £{SMALL_JOB_THRESHOLD_GBP} needs a
                     Kinglancer subscription (£
                     {planForRole("kinglancer").priceGBP}
-                    /month). It also unlocks instant Stripe payouts.
+                    /month). It also unlocks automatic Stripe payouts.
                   </p>
                   <ButtonLink
                     href="/dashboard/kinglancer/subscription"
