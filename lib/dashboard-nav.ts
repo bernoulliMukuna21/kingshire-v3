@@ -34,6 +34,7 @@ const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
     href: "/dashboard/profile",
   },
   { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
+  { label: "Organisations", icon: "🏢", href: "/dashboard/organisations" },
 ];
 
 const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
@@ -51,6 +52,11 @@ const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
     href: "/dashboard/kinglancer/jobs",
   },
   { label: "Browse Jobs", mobileLabel: "Browse", icon: "🔎", href: "/jobs" },
+  {
+    label: "Placements",
+    icon: "🎓",
+    href: "/dashboard/kinglancer/placements",
+  },
   {
     label: "My Profile",
     mobileLabel: "Profile",

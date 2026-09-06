@@ -1,19 +1,24 @@
 import { notFound, redirect } from "next/navigation";
+import Link from "next/link";
 import {
   AlertTriangle,
   Briefcase,
   Calendar,
   CheckCircle2,
   Clock,
+  Phone,
   Tag,
 } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
+import { getPayoutAccount } from "@/lib/db/payout-accounts";
 import {
   getJobReviewState,
   isReviewWindowClosed,
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
+import { jobStatusPill } from "@/lib/jobs";
+import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
@@ -30,7 +35,7 @@ type JobWorkspace = {
   title: string;
   description: string;
   budget: number;
-  rate_type: "fixed" | "per_hour" | "per_day";
+  rate_type: RateType;
   status:
     | "open"
     | "in_progress"
@@ -43,21 +48,16 @@ type JobWorkspace = {
   client_id: string;
   kinglancer_id: string | null;
   invited_kinglancer_id: string | null;
-  direct_request_status:
-    | "pending"
-    | "changes_requested"
-    | "accepted_pending_payment"
-    | "declined"
-    | "cancelled"
-    | null;
+  direct_request_status: DirectRequestStatus;
   direct_request_message: string | null;
   counter_budget: number | null;
-  counter_rate_type: "fixed" | "per_hour" | "per_day" | null;
+  counter_rate_type: RateType | null;
   counter_deadline: string | null;
   created_at: string;
   client: {
     full_name: string | null;
     avatar_url: string | null;
+    phone: string | null;
   } | null;
 };
 
@@ -72,18 +72,8 @@ type Transaction = {
   amount: number;
   platform_fee_kinglancer: number;
   status: "pending" | "held" | "released" | "refunded" | "disputed";
+  payment_method: "card" | "bank_transfer";
   released_at: string | null;
-};
-
-const statusConfig: Record<string, { label: string; className: string }> = {
-  in_progress: { label: "In progress", className: "bg-blue-100 text-blue-700" },
-  completed: {
-    label: "Awaiting approval",
-    className: "bg-amber-100 text-amber-700",
-  },
-  disputed: { label: "Disputed", className: "bg-red-100 text-red-700" },
-  approved: { label: "Approved", className: "bg-green-100 text-green-700" },
-  cancelled: { label: "Cancelled", className: "bg-slate-100 text-slate-500" },
 };
 
 function nextAction({
@@ -186,7 +176,7 @@ export default async function KinglancerJobWorkspacePage({
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
-          client:profiles!client_id(full_name, avatar_url)
+          client:profiles!client_id(full_name, avatar_url, phone)
         `,
       )
       .eq("id", id)
@@ -201,7 +191,9 @@ export default async function KinglancerJobWorkspacePage({
     // call for the review window calculation on approved jobs.
     supabase
       .from("transactions")
-      .select("amount, platform_fee_kinglancer, status, released_at")
+      .select(
+        "amount, platform_fee_kinglancer, status, payment_method, released_at",
+      )
       .eq("job_id", id)
       .eq("kinglancer_id", user.id)
       .maybeSingle(),
@@ -226,10 +218,18 @@ export default async function KinglancerJobWorkspacePage({
 
   if (!canViewWorkspace) redirect(`/jobs/${id}`);
 
+  // Bank-transfer jobs are paid manually to the worker's payout link — nudge
+  // them to add one (in Settings) before payout is due.
+  const needsPayoutLink =
+    isAssigned &&
+    transaction?.payment_method === "bank_transfer" &&
+    transaction.status !== "released" &&
+    !(await getPayoutAccount(user.id));
+
   const openStatus = isInvited
     ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
     : { label: "Open", className: "bg-green-100 text-green-700" };
-  const status = statusConfig[job.status] ?? openStatus;
+  const status = job.status === "open" ? openStatus : jobStatusPill(job.status);
   const action = nextAction({ job, application, transaction });
   const netHeld =
     transaction && transaction.status === "held"
@@ -261,6 +261,25 @@ export default async function KinglancerJobWorkspacePage({
         fallbackHref="/dashboard/kinglancer/jobs"
         fallbackLabel="Back to My Jobs"
       />
+
+      {needsPayoutLink && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-black text-amber-900">
+            Add your payout link
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            This job is paid by bank transfer. Add your payout link (Revolut,
+            Monzo, PayPal or Wise) so we can pay you once the client approves
+            the work.
+          </p>
+          <Link
+            href="/dashboard/settings"
+            className="mt-3 inline-flex rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700"
+          >
+            Add payout link
+          </Link>
+        </div>
+      )}
 
       <Card className="overflow-hidden">
         <div className="relative bg-[#10234b] px-5 py-7 text-white sm:px-7">
@@ -301,6 +320,14 @@ export default async function KinglancerJobWorkspacePage({
                 {job.client?.full_name ?? "Client"}
               </span>
             </div>
+            {isAssigned && job.client?.phone && (
+              <a
+                href={`tel:${job.client.phone}`}
+                className="mt-1 flex items-center gap-1 text-sm font-semibold text-blue-700 hover:underline"
+              >
+                <Phone size={13} /> {job.client.phone}
+              </a>
+            )}
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">

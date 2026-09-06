@@ -1,17 +1,12 @@
 import Link from "next/link";
 import { ChevronRight, DollarSign } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
+import { applicationStatusPill } from "@/lib/applications";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
-
-const APP_STATUS: Record<string, { label: string; color: string }> = {
-  pending: { label: "Pending", color: "bg-yellow-50 text-yellow-700" },
-  accepted: { label: "Selected", color: "bg-green-50 text-green-700" },
-  rejected: { label: "Not Selected", color: "bg-gray-100 text-gray-500" },
-};
 
 const JOB_DISPUTED_STATUS = {
   label: "Disputed",
-  color: "bg-red-50 text-red-600",
+  className: "bg-red-50 text-red-600",
 };
 
 export async function KinglancerApplicationsSection() {
@@ -78,7 +73,7 @@ export async function KinglancerApplicationsSection() {
             const isDisputed = app.job.status === "disputed";
             const s = isDisputed
               ? JOB_DISPUTED_STATUS
-              : (APP_STATUS[app.status] ?? APP_STATUS.pending);
+              : applicationStatusPill(app.status);
             return (
               <Link
                 key={app.id}
@@ -101,7 +96,7 @@ export async function KinglancerApplicationsSection() {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span
-                    className={`hidden sm:inline px-3 py-1 rounded-full text-xs font-medium ${s.color}`}
+                    className={`hidden sm:inline px-3 py-1 rounded-full text-xs font-medium ${s.className}`}
                   >
                     {s.label}
                   </span>

@@ -1,15 +1,23 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { motion, useScroll, useTransform } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import {
   ArrowRight,
   CheckCircle,
   ChevronRight,
   LayoutDashboard,
+  PartyPopper,
 } from "lucide-react";
 import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
+import PublicityBanner from "@/components/home/PublicityBanner";
 
 const floatingAvatars = [
   {
@@ -20,7 +28,7 @@ const floatingAvatars = [
     top: "18%",
     left: "5%",
     delay: 0,
-    dur: 7,
+    duration: 7,
   },
   {
     initials: "ST",
@@ -30,7 +38,7 @@ const floatingAvatars = [
     top: "20%",
     right: "5%",
     delay: 1,
-    dur: 9,
+    duration: 9,
   },
   {
     initials: "GM",
@@ -40,7 +48,7 @@ const floatingAvatars = [
     top: "62%",
     left: "4%",
     delay: 0.5,
-    dur: 8,
+    duration: 8,
   },
   {
     initials: "ER",
@@ -50,7 +58,7 @@ const floatingAvatars = [
     top: "60%",
     right: "4%",
     delay: 1.5,
-    dur: 10,
+    duration: 10,
   },
 ];
 
@@ -61,18 +69,32 @@ const trustBadges = [
   "Low platform fees",
 ];
 
+const jobWords = [
+  "Cleaning",
+  "Gardening",
+  "Graphic Design",
+  "Photography",
+  "Tutoring",
+  "Plumbing",
+  "Catering",
+  "Web Design",
+  "Video Editing",
+  "Carpentry",
+];
+
 type HeroStat = {
   value: string;
   label: string;
 };
 
 export default function HeroSection({ stats }: { stats: HeroStat[] }) {
-  const heroRef = useRef(null);
+  const heroRef = useRef<HTMLElement>(null);
+  const prefersReducedMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"],
   });
-  const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+  const heroY = useTransform(scrollYProgress, [0, 1], ["0%", "22%"]);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
   const { isLoggedIn, role, dashboardHref } = usePublicAuth();
   const secondaryCta =
@@ -80,23 +102,39 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
       ? { href: "/jobs/post", label: "Post a Job" }
       : { href: "/jobs", label: "Browse Jobs" };
 
+  const [wordIndex, setWordIndex] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(
+      () => setWordIndex((i) => (i + 1) % jobWords.length),
+      2100,
+    );
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <section
       ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16"
+      className="relative min-h-screen overflow-hidden bg-[#10234b] pt-16"
     >
-      {/* Animated gradient background */}
-      <motion.div
-        style={{ y: heroY }}
-        className="absolute inset-0 bg-linear-to-br from-[#0f172a] via-[#1e3a7a] to-[#0f172a] animate-gradient"
+      <PublicityBanner
+        tone="celebration"
+        icon={<PartyPopper size={17} aria-hidden="true" />}
+        title="Something new to celebrate: Organisation workspaces."
+        message="Create your Organisation, invite your team and publish jobs together."
+        ctaLabel="Discover"
+        ctaHref="/organisation"
       />
 
-      {/* Floating orbs */}
-      <div className="absolute inset-0 overflow-hidden">
+      <motion.div
+        style={{ y: heroY }}
+        className="absolute inset-0 bg-linear-to-br from-[#0f172a] via-[#1e3a7a] to-[#0f172a]"
+      />
+
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <motion.div
           animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl"
+          className="absolute left-1/4 top-1/4 h-64 w-64 rounded-full bg-blue-500/18 blur-3xl"
         />
         <motion.div
           animate={{ x: [0, -25, 0], y: [0, 30, 0] }}
@@ -106,76 +144,67 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
             ease: "easeInOut",
             delay: 2,
           }}
-          className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-indigo-500/20 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{ x: [0, 20, 0], y: [0, 20, 0] }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1,
-          }}
-          className="absolute top-1/2 right-1/3 w-48 h-48 bg-cyan-500/15 rounded-full blur-3xl"
+          className="absolute bottom-1/3 right-1/4 h-80 w-80 rounded-full bg-indigo-500/18 blur-3xl"
         />
       </div>
 
-      {/* Grid overlay */}
-      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.03\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')]" />
-
-      {/* Floating service cards */}
-      {floatingAvatars.map((a, i) => (
+      {floatingAvatars.map((avatar, index) => (
         <motion.div
-          key={i}
+          key={avatar.initials}
           initial={{ opacity: 0, scale: 0.6 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 1 + i * 0.15 }}
+          transition={{ duration: 0.5, delay: 1 + index * 0.15 }}
           style={{
             position: "absolute",
-            top: a.top,
-            left: "left" in a ? (a as { left: string }).left : undefined,
-            right: "right" in a ? (a as { right: string }).right : undefined,
+            top: avatar.top,
+            left:
+              "left" in avatar
+                ? (avatar as { left: string }).left
+                : undefined,
+            right:
+              "right" in avatar
+                ? (avatar as { right: string }).right
+                : undefined,
           }}
-          className="hidden xl:flex flex-col items-center pointer-events-none"
+          className="pointer-events-none hidden flex-col items-center xl:flex"
         >
           <motion.div
-            animate={{ y: [0, -10, 0] }}
+            animate={{ y: prefersReducedMotion ? 0 : [0, -10, 0] }}
             transition={{
-              duration: a.dur,
-              repeat: Infinity,
+              duration: avatar.duration,
+              repeat: prefersReducedMotion ? 0 : Infinity,
               ease: "easeInOut",
-              delay: a.delay,
+              delay: avatar.delay,
             }}
             className="flex flex-col items-center gap-1.5"
           >
             <div
-              className={`w-12 h-12 rounded-2xl bg-linear-to-br ${a.color} flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-black/30 border border-white/20`}
+              className={`flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-linear-to-br ${avatar.color} text-sm font-bold text-white shadow-lg shadow-black/30`}
             >
-              {a.initials}
+              {avatar.initials}
             </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-3 py-1.5 text-center">
-              <p className="text-white/90 text-[10px] font-semibold whitespace-nowrap">
-                {a.label}
+            <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 text-center backdrop-blur-md">
+              <p className="whitespace-nowrap text-[10px] font-semibold text-white/90">
+                {avatar.label}
               </p>
-              <p className="text-yellow-400 text-[10px]">★ {a.rating}</p>
+              <p className="text-[10px] text-yellow-400">★ {avatar.rating}</p>
             </div>
           </motion.div>
         </motion.div>
       ))}
 
-      {/* Main content */}
       <motion.div
         style={{ opacity: heroOpacity }}
-        className="relative z-10 text-center px-6 max-w-5xl mx-auto"
+        className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col items-center justify-center px-6 py-16 text-center"
       >
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8"
+          className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-sm"
         >
-          <span className="w-2 h-2 bg-green-400 rounded-full" />
-          <span className="text-white/90 text-sm font-medium">
+          <span className="h-2 w-2 rounded-full bg-green-400" />
+          <span className="text-sm font-medium text-white/90">
             Trusted · Secure · Fair
           </span>
         </motion.div>
@@ -184,7 +213,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.3 }}
-          className="text-4xl sm:text-5xl md:text-7xl font-black text-white leading-tight tracking-tight"
+          className="text-4xl font-extrabold leading-tight tracking-[-0.04em] text-white sm:text-5xl md:text-7xl"
         >
           Hired for your{" "}
           <span className="relative">
@@ -193,7 +222,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ duration: 0.8, delay: 1, ease: "easeOut" }}
-              className="absolute -bottom-1 left-0 right-0 h-0.5 bg-linear-to-r from-blue-400 to-cyan-400 origin-left"
+              className="absolute -bottom-1 left-0 right-0 h-0.5 origin-left bg-linear-to-r from-blue-400 to-cyan-400"
             />
           </span>
           <br />
@@ -204,60 +233,79 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="mt-4 text-base sm:text-lg md:text-xl text-white/60 max-w-2xl mx-auto leading-relaxed"
+          className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/60 sm:text-lg md:text-xl"
         >
           KingsHire connects people who need work done with skilled people who
-          can do it — with trust, security, and fair pay built in from the
-          start.
+          can do it—with trust, security and fair pay built in from the start.
         </motion.p>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-7 flex flex-wrap items-center justify-center gap-x-3 text-xl font-bold text-white/50 sm:text-2xl"
+        >
+          <span>People hire for</span>
+          <span className="inline-flex h-9 w-[15ch] items-center justify-center overflow-hidden sm:h-10">
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={jobWords[wordIndex]}
+                initial={
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : { y: "110%", opacity: 0 }
+                }
+                animate={{ y: "0%", opacity: 1 }}
+                exit={
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : { y: "-110%", opacity: 0 }
+                }
+                transition={{ duration: 0.42, ease: "easeOut" }}
+                className="text-gradient whitespace-nowrap"
+              >
+                {jobWords[wordIndex]}
+              </motion.span>
+            </AnimatePresence>
+          </span>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center"
+          className="mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:gap-4"
         >
           {isLoggedIn ? (
             <>
               <Link
                 href={dashboardHref}
-                className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/30 text-sm sm:text-base"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-blue-500/30 transition-all hover:scale-105 hover:bg-blue-500 active:scale-95 sm:px-8 sm:py-4 sm:text-base"
               >
                 <LayoutDashboard size={18} />
                 Go to Dashboard
               </Link>
               <Link
                 href={secondaryCta.href}
-                className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:scale-105 hover:bg-white/20 active:scale-95 sm:px-8 sm:py-4 sm:text-base"
               >
                 {secondaryCta.label}
-                <ChevronRight
-                  size={18}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
+                <ChevronRight size={18} />
               </Link>
             </>
           ) : (
             <>
               <Link
-                href="/sign-up"
-                className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 shadow-xl shadow-blue-500/30 text-sm sm:text-base"
+                href="/sign-up?role=client"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-blue-500/30 transition-all hover:scale-105 hover:bg-blue-500 active:scale-95 sm:px-8 sm:py-4 sm:text-base"
               >
-                Post a Job
-                <ArrowRight
-                  size={18}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
+                Post a Job <ArrowRight size={18} />
               </Link>
               <Link
-                href="/sign-up"
-                className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 text-white font-semibold rounded-xl transition-all hover:scale-105 active:scale-95 text-sm sm:text-base"
+                href="/sign-up?role=kinglancer"
+                className="group inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:scale-105 hover:bg-white/20 active:scale-95 sm:px-8 sm:py-4 sm:text-base"
               >
-                Offer Your Services
-                <ChevronRight
-                  size={18}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
+                Offer Your Services <ChevronRight size={18} />
               </Link>
             </>
           )}
@@ -270,9 +318,9 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
           className="mt-8 flex flex-wrap justify-center gap-6 sm:gap-8"
         >
           {stats.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <p className="text-2xl font-black text-white">{stat.value}</p>
-              <p className="text-white/40 text-xs mt-0.5">{stat.label}</p>
+            <div key={stat.label}>
+              <p className="text-2xl font-extrabold text-white">{stat.value}</p>
+              <p className="mt-0.5 text-xs text-white/40">{stat.label}</p>
             </div>
           ))}
         </motion.div>
@@ -281,7 +329,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 1 }}
-          className="mt-8 sm:mt-14 flex flex-wrap justify-center gap-4 sm:gap-6 text-white/50 text-xs sm:text-sm"
+          className="mt-8 flex flex-wrap justify-center gap-4 text-xs text-white/50 sm:mt-12 sm:gap-6 sm:text-sm"
         >
           {trustBadges.map((item) => (
             <span key={item} className="flex items-center gap-1.5">
@@ -290,23 +338,6 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
             </span>
           ))}
         </motion.div>
-      </motion.div>
-
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-      >
-        <span className="text-white/30 text-xs tracking-widest uppercase">
-          Scroll
-        </span>
-        <motion.div
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="w-0.5 h-8 bg-linear-to-b from-white/30 to-transparent rounded-full"
-        />
       </motion.div>
     </section>
   );

@@ -2,8 +2,7 @@ import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
-import { getKinglancerActionCounts } from "@/lib/dashboard-action-rules";
-import { getPendingReviewJobs } from "@/lib/db/reviews";
+import { getAccountActionCentre } from "@/lib/action-centre";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
 import PayoutSetupButton from "../PayoutSetupButton";
 import StripeLoginButton from "../StripeLoginButton";
@@ -159,38 +158,14 @@ export function KinglancerStatsSkeleton() {
 }
 
 export async function KinglancerActionCentreSection() {
-  const { supabase, user } = await getDashboardContext();
+  const { supabase, user, organisations } = await getDashboardContext();
 
-  const directRequestsResult = await supabase
-    .from("jobs")
-    .select("id, status, direct_request_status")
-    .eq("invited_kinglancer_id", user.id)
-    .in("direct_request_status", [
-      "pending",
-      "changes_requested",
-      "accepted_pending_payment",
-    ])
-    .limit(100);
-
-  const transactionsResult = await supabase
-    .from("transactions")
-    .select("job_id")
-    .eq("kinglancer_id", user.id)
-    .in("status", ["held", "released", "disputed"]);
-
-  const pendingReviews = await getPendingReviewJobs(user.id, "kinglancer");
-
-  const fundedJobIds = new Set(
-    (transactionsResult.data ?? []).map((t) => t.job_id),
-  );
-  const jobs = (directRequestsResult.data ?? []).map((job) => ({
-    ...job,
-    has_funded_transaction: fundedJobIds.has(job.id),
-  }));
-
-  const counts = getKinglancerActionCounts(jobs);
-  const actionCount = counts.actionCount + pendingReviews.length;
-  const waitingCount = counts.waitingCount;
+  const { actionCount, waitingCount } = await getAccountActionCentre({
+    supabase,
+    userId: user.id,
+    role: "kinglancer",
+    organisations,
+  });
 
   return (
     <div>

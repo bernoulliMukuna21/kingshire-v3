@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 import { getTransactionByJob } from "@/lib/db/transactions";
+import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { notifyJobCancelled } from "@/lib/notifications";
+import { canManageJob } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
 
 const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -39,7 +41,7 @@ export async function POST(
   const { data: job } = await db
     .from("jobs")
     .select(
-      "id, title, status, client_id, kinglancer_id, invited_kinglancer_id",
+      "id, title, status, client_id, organisation_id, kinglancer_id, invited_kinglancer_id",
     )
     .eq("id", jobId)
     .single();
@@ -47,7 +49,7 @@ export async function POST(
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
-  if (job.client_id !== user.id) {
+  if (!(await canManageJob(job, user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   if (job.status !== "open" && job.status !== "in_progress") {
@@ -62,6 +64,23 @@ export async function POST(
 
   // ── Open job: direct cancellation ──────────────────────────
   if (job.status === "open") {
+    // If the client has already said they've sent a bank transfer, the money
+    // may have arrived — route the cancellation through support.
+    const pendingAttempt = await getPendingPaymentAttemptByJob(jobId);
+    if (
+      pendingAttempt?.method === "bank_transfer" &&
+      pendingAttempt.client_marked_paid_at
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "You've told us you've sent a bank transfer for this job. To cancel and arrange a refund, please contact support at kingshirecompany@gmail.com.",
+          code: "MANUAL_REFUND_CONTACT_SUPPORT",
+        },
+        { status: 409 },
+      );
+    }
+
     // Bulk-reject any pending applications.
     await db
       .from("applications")
@@ -114,9 +133,17 @@ export async function POST(
     );
   }
 
-  if (!transaction.stripe_payment_intent_id) {
+  // Bank-transfer jobs are refunded manually by our team — no Stripe refund.
+  if (
+    transaction.payment_method === "bank_transfer" ||
+    !transaction.stripe_payment_intent_id
+  ) {
     return NextResponse.json(
-      { error: "Transaction has no payment reference. Please contact support." },
+      {
+        error:
+          "This job was paid by bank transfer. To cancel it and arrange your refund, please contact support at kingshirecompany@gmail.com.",
+        code: "MANUAL_REFUND_CONTACT_SUPPORT",
+      },
       { status: 409 },
     );
   }

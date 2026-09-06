@@ -8,7 +8,20 @@ import {
 } from "@/lib/db/payment-attempts";
 import { createServiceClient } from "@/lib/supabase/service";
 import { fireTransfer, isStripeAccountPayoutReady } from "@/lib/stripe-connect";
+import {
+  fulfillPlacementPayment,
+  firePendingPlacementPayouts,
+} from "@/lib/placement-payouts";
+import { updatePlacementPaymentStatus } from "@/lib/db/placement-payments";
 import { notifyJobAwarded, notifyPaymentFailed } from "@/lib/notifications";
+import {
+  fulfillOrganisationCheckout,
+  syncOrganisationSubscription,
+} from "@/infrastructure/stripe/organisation-subscriptions";
+import {
+  fulfillUserSubscriptionCheckout,
+  syncUserSubscription,
+} from "@/infrastructure/stripe/user-subscriptions";
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -47,8 +60,42 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object;
+        if (session.metadata?.purpose === "organisation_subscription") {
+          await fulfillOrganisationCheckout(session.id);
+        } else if (session.metadata?.purpose === "user_subscription") {
+          await fulfillUserSubscriptionCheckout(session.id);
+        } else if (session.metadata?.purpose === "placement_payment") {
+          const paymentId = session.metadata.placement_payment_id;
+          const piId =
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : null;
+          if (paymentId) await fulfillPlacementPayment(paymentId, piId);
+        }
+        break;
+      }
+
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object;
+        if (subscription.metadata?.purpose === "organisation_subscription") {
+          await syncOrganisationSubscription(subscription);
+        } else if (subscription.metadata?.purpose === "user_subscription") {
+          await syncUserSubscription(subscription);
+        }
+        break;
+      }
+
       case "payment_intent.succeeded": {
         const pi = event.data.object;
+        // Managed placement months are charged off-session (not via Checkout).
+        if (pi.metadata?.purpose === "placement_payment") {
+          const paymentId = pi.metadata.placement_payment_id;
+          if (paymentId) await fulfillPlacementPayment(paymentId, pi.id);
+          break;
+        }
         await finalizePaymentAttempt(pi.id);
 
         // Now that payment is confirmed, notify the kinglancer they got the job
@@ -73,6 +120,13 @@ export async function POST(request: Request) {
 
       case "payment_intent.payment_failed": {
         const pi = event.data.object;
+        // A managed placement charge failed — flag it so the org can retry.
+        if (pi.metadata?.purpose === "placement_payment") {
+          const paymentId = pi.metadata.placement_payment_id;
+          if (paymentId)
+            await updatePlacementPaymentStatus(paymentId, { status: "failed" });
+          break;
+        }
         const jobId = pi.metadata?.job_id;
         const clientId = pi.metadata?.client_id;
 
@@ -170,6 +224,11 @@ export async function POST(request: Request) {
             console.error(`[webhook] Transfer failed for tx ${tx.id}:`, err),
           );
         }
+
+        // Also release any funded-but-untransferred placement payments.
+        await firePendingPlacementPayouts(profile.id).catch((err) =>
+          console.error(`[webhook] Placement payouts failed:`, err),
+        );
         break;
       }
 

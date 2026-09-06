@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import type { DirectRequestStatus } from "@/lib/jobs";
+import { planForRole } from "@/lib/subscriptions/plans";
 import {
   Loader2,
   CheckCircle,
@@ -181,14 +183,6 @@ export function ApplyForm({ jobId }: { jobId: string }) {
 
 // ── Direct request actions ────────────────────────────────
 
-type DirectRequestStatus =
-  | "pending"
-  | "changes_requested"
-  | "accepted_pending_payment"
-  | "declined"
-  | "cancelled"
-  | null;
-
 export function DirectRequestActions({
   jobId,
   viewerRole,
@@ -200,6 +194,7 @@ export function DirectRequestActions({
   counterRateType,
   counterDeadline,
   invitedKinglancer,
+  cardEnabled = true,
 }: {
   jobId: string;
   viewerRole: string | null | undefined;
@@ -215,6 +210,7 @@ export function DirectRequestActions({
     full_name: string | null;
     avatar_url: string | null;
   } | null;
+  cardEnabled?: boolean;
 }) {
   const router = useRouter();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -230,6 +226,7 @@ export function DirectRequestActions({
   );
   const [counterMessage, setCounterMessage] = useState(message ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
 
   const submitAction = async (
     action: string,
@@ -259,17 +256,32 @@ export function DirectRequestActions({
     }
   };
 
-  const startPayment = async () => {
+  const startPayment = async (method: "card" | "bank_transfer" = "card") => {
     setError(null);
-    setLoadingAction("direct_pay");
+    setLoadingAction(
+      method === "bank_transfer" ? "direct_pay_bank" : "direct_pay",
+    );
     try {
       const res = await fetch(`/api/jobs/${jobId}/direct-pay`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method }),
       });
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         setError(data.error ?? "Failed to start payment.");
+        return;
+      }
+
+      if (data.method === "bank_transfer") {
+        setBankInfo({
+          jobId: data.jobId,
+          reference: data.reference,
+          amountDue: data.amountDue ?? null,
+          workerName: invitedKinglancer?.full_name ?? "the Kinglancer",
+          bankDetails: data.bankDetails ?? null,
+        });
         return;
       }
 
@@ -525,17 +537,53 @@ export function DirectRequestActions({
       )}
 
       {isOwner && status === "accepted_pending_payment" && (
-        <button
-          type="button"
-          onClick={startPayment}
-          disabled={loadingAction !== null}
-          className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:opacity-50"
-        >
-          {loadingAction === "direct_pay"
-            ? "Starting payment..."
-            : "Fund escrow and start job"}
-        </button>
+        <div className="space-y-2">
+          {cardEnabled ? (
+            <button
+              type="button"
+              onClick={() => startPayment("card")}
+              disabled={loadingAction !== null}
+              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 transition-all hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loadingAction === "direct_pay"
+                ? "Starting payment..."
+                : "Fund escrow by card"}
+            </button>
+          ) : (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <p className="font-bold">Card payments need a subscription</p>
+              <p className="mt-0.5">
+                Subscribe for £{planForRole("client").priceGBP}/month to fund
+                escrow by card, or pay by bank transfer below.{" "}
+                <Link
+                  href="/dashboard/client/subscription"
+                  className="font-bold underline"
+                >
+                  Subscribe
+                </Link>
+              </p>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => startPayment("bank_transfer")}
+            disabled={loadingAction !== null}
+            className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-50 disabled:opacity-50"
+          >
+            {loadingAction === "direct_pay_bank"
+              ? "Preparing..."
+              : "Pay by bank transfer (no card fee)"}
+          </button>
+        </div>
       )}
+
+      <BankTransferModal
+        info={bankInfo}
+        onClose={() => {
+          setBankInfo(null);
+          router.refresh();
+        }}
+      />
 
       {isOwner &&
         ["pending", "changes_requested", "accepted_pending_payment"].includes(
@@ -556,15 +604,116 @@ export function DirectRequestActions({
 
 // ── Applicants list (for the client who owns the job) ────
 
+type BankTransferInfo = {
+  jobId: string;
+  reference: string;
+  amountDue: number | null;
+  workerName: string;
+  bankDetails: {
+    accountName: string;
+    sortCode: string;
+    accountNumber: string;
+    isPlaceholder?: boolean;
+  } | null;
+};
+
+function BankTransferModal({
+  info,
+  onClose,
+}: {
+  info: BankTransferInfo | null;
+  onClose: () => void;
+}) {
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function markSent() {
+    if (!info) return;
+    setSending(true);
+    setError(null);
+    const res = await fetch(`/api/jobs/${info.jobId}/mark-transfer-sent`, {
+      method: "POST",
+    });
+    setSending(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Could not update. Please try again.");
+      return;
+    }
+    onClose();
+  }
+
+  return (
+    <ConfirmModal
+      isOpen={info !== null}
+      onClose={onClose}
+      onConfirm={markSent}
+      loading={sending}
+      error={error ?? undefined}
+      title="Pay by bank transfer"
+      confirmLabel="I've made the transfer"
+      cancelLabel="Close"
+      message={
+        info && (
+          <div className="space-y-3 text-sm text-slate-600">
+            <p>
+              Transfer{" "}
+              {info.amountDue != null && (
+                <strong className="text-slate-900">
+                  £{info.amountDue.toFixed(2)}
+                </strong>
+              )}{" "}
+              to us using the reference below.
+            </p>
+            {info.bankDetails ? (
+              <div className="space-y-1 rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs">
+                <div>Account name: {info.bankDetails.accountName}</div>
+                <div>Sort code: {info.bankDetails.sortCode}</div>
+                <div>Account number: {info.bankDetails.accountNumber}</div>
+              </div>
+            ) : (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                Contact us to get our bank details and complete the transfer.
+              </p>
+            )}
+            {info.bankDetails?.isPlaceholder && (
+              <p className="text-xs font-bold text-amber-700">
+                These are TEST details — do not send real money.
+              </p>
+            )}
+            <p>
+              Payment reference:{" "}
+              <strong className="font-mono text-slate-900">
+                {info.reference.slice(0, 8)}
+              </strong>
+            </p>
+            <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+              {`Once you've sent the money, tap "I've made the transfer" so we know to check. We'll hire ${info.workerName} once it arrives — they won't start until we've confirmed it.`}
+            </p>
+          </div>
+        )
+      }
+    />
+  );
+}
+
 export function ApplicantsList({
   applications,
+  locked = false,
+  cardEnabled = true,
 }: {
   applications: ApplicationWithKinglancer[];
+  locked?: boolean;
+  cardEnabled?: boolean;
 }) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [pendingSelectId, setPendingSelectId] = useState<string | null>(null);
+  const [payMethod, setPayMethod] = useState<"card" | "bank_transfer">(
+    cardEnabled ? "card" : "bank_transfer",
+  );
+  const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (applications.length === 0) {
@@ -578,11 +727,14 @@ export function ApplicantsList({
   const handleSelect = async (applicationId: string) => {
     setError(null);
     setSelectingId(applicationId);
+    const workerName =
+      applications.find((a) => a.id === applicationId)?.kinglancer.full_name ??
+      "the Kinglancer";
 
     const res = await fetch(`/api/applications/${applicationId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "accept" }),
+      body: JSON.stringify({ action: "accept", method: payMethod }),
     });
 
     const data = await res.json();
@@ -593,7 +745,19 @@ export function ApplicantsList({
       return;
     }
 
-    // Redirect to payment page with Stripe client secret
+    // Bank transfer: show our details + reference instead of Stripe checkout.
+    if (data.method === "bank_transfer") {
+      setBankInfo({
+        jobId: data.jobId,
+        reference: data.reference,
+        amountDue: data.amountDue ?? null,
+        workerName,
+        bankDetails: data.bankDetails ?? null,
+      });
+      return;
+    }
+
+    // Card: redirect to the Stripe payment page.
     router.push(
       `/jobs/${data.jobId}/pay?cs=${encodeURIComponent(data.clientSecret)}`,
     );
@@ -614,18 +778,87 @@ export function ApplicantsList({
         }}
         title="Select this Kinglancer?"
         message={
-          <>
-            You&apos;re about to hire{" "}
-            <strong>
-              {pendingApp?.kinglancer.full_name ?? "this Kinglancer"}
-            </strong>{" "}
-            for the job. This will move the job to payment — the selection
-            cannot be undone.
-          </>
+          <div className="space-y-4">
+            <p>
+              You&apos;re about to hire{" "}
+              <strong>
+                {pendingApp?.kinglancer.full_name ?? "this Kinglancer"}
+              </strong>{" "}
+              for the job. This will move the job to payment — the selection
+              cannot be undone.
+            </p>
+            <div className="space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                How would you like to pay?
+              </p>
+              {cardEnabled ? (
+                <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                  <input
+                    type="radio"
+                    name="pay-method"
+                    className="mt-0.5"
+                    checked={payMethod === "card"}
+                    onChange={() => setPayMethod("card")}
+                  />
+                  <span>
+                    <span className="font-bold text-slate-900">
+                      Pay by card
+                    </span>
+                    <span className="block text-xs text-slate-500">
+                      Instant — held in escrow automatically.
+                    </span>
+                  </span>
+                </label>
+              ) : (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <p className="font-bold">Card payments need a subscription</p>
+                  <p className="mt-0.5">
+                    Subscribe for £{planForRole("client").priceGBP}/month to pay
+                    by card, or continue with a bank transfer below.{" "}
+                    <Link
+                      href="/dashboard/client/subscription"
+                      className="font-bold underline"
+                    >
+                      Subscribe
+                    </Link>
+                  </p>
+                </div>
+              )}
+              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                <input
+                  type="radio"
+                  name="pay-method"
+                  className="mt-0.5"
+                  checked={payMethod === "bank_transfer"}
+                  onChange={() => setPayMethod("bank_transfer")}
+                />
+                <span>
+                  <span className="font-bold text-slate-900">
+                    Pay by bank transfer
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    No card fee. We confirm once funds arrive, then the job
+                    starts.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
         }
-        confirmLabel="Yes, select them"
+        confirmLabel={
+          payMethod === "card"
+            ? "Continue to card payment"
+            : "Get bank transfer details"
+        }
         variant="success"
         loading={selectingId !== null}
+      />
+      <BankTransferModal
+        info={bankInfo}
+        onClose={() => {
+          setBankInfo(null);
+          router.refresh();
+        }}
       />
       <div className="space-y-3">
         {error && (
@@ -732,13 +965,19 @@ export function ApplicantsList({
                     <p className="text-sm text-gray-700">{app.cover_letter}</p>
                   </div>
 
-                  <button
-                    onClick={() => setPendingSelectId(app.id)}
-                    disabled={selectingId !== null}
-                    className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    Select this Kinglancer
-                  </button>
+                  {locked ? (
+                    <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-sm font-semibold text-slate-500">
+                      Payment in progress — selection locked
+                    </p>
+                  ) : (
+                    <button
+                      onClick={() => setPendingSelectId(app.id)}
+                      disabled={selectingId !== null}
+                      className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      Select this Kinglancer
+                    </button>
+                  )}
                 </div>
               )}
             </div>

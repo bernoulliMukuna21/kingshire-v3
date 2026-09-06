@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserOrganisationSummaries } from "@/infrastructure/supabase/queries/organisation-queries";
 
 export type DashboardProfile = {
   full_name: string | null;
@@ -12,6 +13,7 @@ export type DashboardProfile = {
   stripe_onboarding_complete: boolean;
   bio: string | null;
   services: Array<{ name: string; rate: number; rate_type: string }> | null;
+  terms_accepted_version: number;
 };
 
 export const getDashboardContext = cache(async () => {
@@ -25,7 +27,7 @@ export const getDashboardContext = cache(async () => {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "full_name, role, avatar_url, rating, jobs_completed, stripe_account_id, stripe_onboarding_complete, bio, services"
+      "full_name, role, avatar_url, rating, jobs_completed, stripe_account_id, stripe_onboarding_complete, bio, services, terms_accepted_version",
     )
     .eq("id", user.id)
     .single();
@@ -34,5 +36,12 @@ export const getDashboardContext = cache(async () => {
   if (profile.role === "admin") redirect("/admin");
   if (!profile.role) redirect("/onboarding");
 
-  return { supabase, user, profile: profile as DashboardProfile };
+  const organisations = await getUserOrganisationSummaries(user.id, 5);
+
+  return {
+    supabase,
+    user,
+    profile: profile as DashboardProfile,
+    organisations,
+  };
 });

@@ -1,0 +1,908 @@
+import { createServiceClient } from "@/lib/supabase/service";
+import type { Database } from "@/lib/supabase/types";
+import type { PlacementInput, PlacementStatus } from "@/lib/placements";
+import {
+  managedMonthlyAmount,
+  summarizePlacementCompensation,
+} from "@/lib/placements";
+
+export type PlacementRow = Database["public"]["Tables"]["placements"]["Row"];
+
+/** `compensation_details` is jsonb; values are strings or nested objects (money). */
+export type CompensationDetails = Record<string, unknown>;
+
+/** Domain placement: the generated Row with its jsonb column narrowed. */
+export type Placement = Omit<PlacementRow, "compensation_details"> & {
+  compensation_details: CompensationDetails | null;
+};
+
+export type PlacementApplicationRow =
+  Database["public"]["Tables"]["placement_applications"]["Row"];
+export type PlacementAgreementRow =
+  Database["public"]["Tables"]["placement_agreements"]["Row"];
+
+export type PlacementApplicant = PlacementApplicationRow & {
+  kinglancer: {
+    full_name: string;
+    avatar_url: string | null;
+    location: string | null;
+  } | null;
+};
+
+export type KinglancerApplication = PlacementApplicationRow & {
+  placement: {
+    id: string;
+    title: string;
+    organisation_id: string;
+    status: string;
+  } | null;
+};
+
+export type KinglancerAgreement = PlacementAgreementRow & {
+  placement: { title: string; status: string } | null;
+};
+
+export async function createPlacement(params: {
+  organisationId: string;
+  createdBy: string;
+  input: PlacementInput;
+  requiresManualReview: boolean;
+}): Promise<PlacementRow> {
+  const db = createServiceClient();
+  const { input } = params;
+  const { data, error } = await db
+    .from("placements")
+    .insert({
+      organisation_id: params.organisationId,
+      created_by: params.createdBy,
+      title: input.title,
+      summary: input.summary,
+      categories: input.categories,
+      contribution: input.contribution,
+      location: input.location,
+      is_remote: input.workMode === "remote",
+      work_mode: input.workMode,
+      days_on_site: input.daysOnSite,
+      compensation_types: input.compensationTypes,
+      compensation_details: input.compensationDetails,
+      weekly_hours: input.weeklyHours,
+      duration_weeks: input.durationWeeks,
+      start_date: input.startDate,
+      end_date: input.endDate,
+      status: params.requiresManualReview ? "pending_review" : "open",
+      requires_manual_review: params.requiresManualReview,
+      payment_mode: input.paymentMode,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlacementRow;
+}
+
+export async function listOrganisationPlacements(
+  organisationId: string,
+): Promise<PlacementRow[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .select("*")
+    .eq("organisation_id", organisationId)
+    .is("archived_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PlacementRow[];
+}
+
+export async function getOrganisationPlacement(
+  placementId: string,
+  organisationId: string,
+): Promise<Placement | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placements")
+    .select("*")
+    .eq("id", placementId)
+    .eq("organisation_id", organisationId)
+    .maybeSingle();
+  return (data as unknown as Placement | null) ?? null;
+}
+
+export async function countOpenPlacements(
+  organisationId: string,
+): Promise<number> {
+  const db = createServiceClient();
+  const { count } = await db
+    .from("placements")
+    .select("id", { count: "exact", head: true })
+    .eq("organisation_id", organisationId)
+    .eq("status", "open");
+  return count ?? 0;
+}
+
+export async function countOrganisationPlacements(
+  organisationId: string,
+): Promise<number> {
+  const db = createServiceClient();
+  const { count } = await db
+    .from("placements")
+    .select("id", { count: "exact", head: true })
+    .eq("organisation_id", organisationId);
+  return count ?? 0;
+}
+
+export async function updatePlacementStatus(
+  placementId: string,
+  organisationId: string,
+  status: PlacementStatus,
+): Promise<PlacementRow | null> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .update({ status })
+    .eq("id", placementId)
+    .eq("organisation_id", organisationId)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return (data as PlacementRow | null) ?? null;
+}
+
+/** Cancel any still-pending offers when a placement is cancelled. */
+export async function cancelPendingAgreementsForPlacement(
+  placementId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  await db
+    .from("placement_agreements")
+    .update({ status: "cancelled" })
+    .eq("placement_id", placementId)
+    .in("status", ["pending_acceptance", "pending_funding"]);
+}
+
+/**
+ * Reason a placement can't be permanently deleted, or null if it can.
+ * Cancelling preserves history; deleting is destructive, so we only block it
+ * when there is real activity to protect — a live participant or money that has
+ * actually moved. Cancelled/completed participants don't block deletion:
+ * their verified experience records survive (placement_id is set null).
+ */
+export async function placementDeletionBlocker(
+  placementId: string,
+): Promise<string | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_agreements")
+    .select("id, status")
+    .eq("placement_id", placementId);
+  const agreements = (data ?? []) as { id: string; status: string }[];
+
+  if (agreements.some((a) => a.status === "active")) {
+    return "an active participant";
+  }
+
+  const agreementIds = agreements.map((a) => a.id);
+  if (agreementIds.length) {
+    const { count } = await db
+      .from("placement_payments")
+      .select("id", { count: "exact", head: true })
+      .in("agreement_id", agreementIds)
+      .in("status", ["processing", "held", "released"]);
+    if ((count ?? 0) > 0) return "recorded payments";
+  }
+
+  return null;
+}
+
+/** Whether the placement's compensation promised a reference. */
+export async function placementPromisedReference(
+  placementId: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placements")
+    .select("compensation_types")
+    .eq("id", placementId)
+    .maybeSingle();
+  return ((data?.compensation_types as string[] | undefined) ?? []).includes(
+    "reference",
+  );
+}
+
+/** Active-participant count per placement for an organisation. */
+export async function activeParticipantCountsByPlacement(
+  organisationId: string,
+): Promise<Record<string, number>> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_agreements")
+    .select("placement_id")
+    .eq("organisation_id", organisationId)
+    .eq("status", "active");
+  const counts: Record<string, number> = {};
+  for (const row of (data ?? []) as { placement_id: string }[]) {
+    counts[row.placement_id] = (counts[row.placement_id] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Permanently delete a placement (guarded by the caller). */
+/** Hides (or unhides) a placement from the organisation's own lists. */
+export async function setPlacementArchived(
+  placementId: string,
+  organisationId: string,
+  archived: boolean,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placements")
+    .update({ archived_at: archived ? new Date().toISOString() : null })
+    .eq("id", placementId)
+    .eq("organisation_id", organisationId);
+  if (error) throw error;
+}
+
+/** Hides a finished agreement from the Kinglancer's own list. */
+export async function setAgreementArchivedByKinglancer(
+  agreementId: string,
+  kinglancerId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_agreements")
+    .update({ kinglancer_archived_at: new Date().toISOString() })
+    .eq("id", agreementId)
+    .eq("kinglancer_id", kinglancerId);
+  if (error) throw error;
+}
+
+export async function deletePlacement(
+  placementId: string,
+  organisationId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placements")
+    .delete()
+    .eq("id", placementId)
+    .eq("organisation_id", organisationId);
+  if (error) throw error;
+}
+
+// ── Discovery (kinglancer side) ───────────────────────────
+
+export async function listOpenPlacements(): Promise<PlacementRow[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .select("*")
+    .eq("status", "open")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []) as PlacementRow[];
+}
+
+export async function getOpenPlacement(
+  placementId: string,
+): Promise<Placement | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placements")
+    .select("*")
+    .eq("id", placementId)
+    .eq("status", "open")
+    .maybeSingle();
+  return (data as unknown as Placement | null) ?? null;
+}
+
+export type PublicPlacement = Placement & {
+  organisation: { name: string } | null;
+};
+
+export async function listPublicPlacements(): Promise<PublicPlacement[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .select("*, organisation:organisations!inner(name)")
+    .eq("status", "open")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? []) as unknown as PublicPlacement[];
+}
+
+export async function getPublicPlacement(
+  placementId: string,
+): Promise<PublicPlacement | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placements")
+    .select("*, organisation:organisations!inner(name)")
+    .eq("id", placementId)
+    .eq("status", "open")
+    .maybeSingle();
+  return (data as unknown as PublicPlacement | null) ?? null;
+}
+
+// ── Applications ──────────────────────────────────────────
+
+export async function hasAppliedToPlacement(
+  placementId: string,
+  kinglancerId: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_applications")
+    .select("id")
+    .eq("placement_id", placementId)
+    .eq("kinglancer_id", kinglancerId)
+    .maybeSingle();
+  return !!data;
+}
+
+export async function createPlacementApplication(params: {
+  placementId: string;
+  kinglancerId: string;
+  message: string | null;
+  cvUrl: string | null;
+}): Promise<PlacementApplicationRow> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_applications")
+    .insert({
+      placement_id: params.placementId,
+      kinglancer_id: params.kinglancerId,
+      message: params.message,
+      cv_url: params.cvUrl,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlacementApplicationRow;
+}
+
+export async function getPlacementApplication(
+  applicationId: string,
+): Promise<PlacementApplicationRow | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_applications")
+    .select("*")
+    .eq("id", applicationId)
+    .maybeSingle();
+  return (data as PlacementApplicationRow | null) ?? null;
+}
+
+export type OrgPendingApplication = {
+  placementId: string;
+  placementTitle: string;
+};
+
+/** Pending applications across an org's placements (one row per application). */
+export async function listPendingPlacementApplicationsForOrg(
+  organisationId: string,
+): Promise<OrgPendingApplication[]> {
+  const db = createServiceClient();
+  const { data: placements } = await db
+    .from("placements")
+    .select("id, title")
+    .eq("organisation_id", organisationId);
+  const list = placements ?? [];
+  if (list.length === 0) return [];
+  const titleById = new Map(list.map((p) => [p.id, p.title]));
+  const { data, error } = await db
+    .from("placement_applications")
+    .select("placement_id")
+    .eq("status", "pending")
+    .in(
+      "placement_id",
+      list.map((p) => p.id),
+    );
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    placementId: row.placement_id,
+    placementTitle: titleById.get(row.placement_id) ?? "Placement",
+  }));
+}
+
+export async function listPlacementApplicants(
+  placementId: string,
+): Promise<PlacementApplicant[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_applications")
+    .select(
+      "*, kinglancer:profiles!kinglancer_id(full_name, avatar_url, location)",
+    )
+    .eq("placement_id", placementId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as PlacementApplicant[];
+}
+
+export async function updatePlacementApplicationStatus(
+  applicationId: string,
+  status: PlacementApplicationRow["status"],
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_applications")
+    .update({ status })
+    .eq("id", applicationId);
+  if (error) throw error;
+}
+
+export async function listKinglancerApplications(
+  kinglancerId: string,
+): Promise<KinglancerApplication[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_applications")
+    .select("*, placement:placements(id, title, organisation_id, status)")
+    .eq("kinglancer_id", kinglancerId)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as unknown as KinglancerApplication[];
+}
+
+// ── Agreements ────────────────────────────────────────────
+
+export async function countReservedParticipants(
+  organisationId: string,
+): Promise<number> {
+  const db = createServiceClient();
+  const { count } = await db
+    .from("placement_agreements")
+    .select("id", { count: "exact", head: true })
+    .eq("organisation_id", organisationId)
+    .in("status", ["active", "pending_acceptance", "pending_funding"]);
+  return count ?? 0;
+}
+
+export async function createAgreementFromPlacement(params: {
+  placement: Placement;
+  kinglancerId: string;
+  orgSignedBy: string;
+}): Promise<PlacementAgreementRow> {
+  const db = createServiceClient();
+  const { placement } = params;
+  const { data, error } = await db
+    .from("placement_agreements")
+    .insert({
+      placement_id: placement.id,
+      organisation_id: placement.organisation_id,
+      kinglancer_id: params.kinglancerId,
+      contribution_terms: placement.contribution,
+      reward_terms:
+        summarizePlacementCompensation(placement) ||
+        placement.reward ||
+        "Supervised experience, mentoring and a verified record.",
+      weekly_hours: placement.weekly_hours,
+      duration_weeks: placement.duration_weeks,
+      status: "pending_acceptance",
+      org_signed_by: params.orgSignedBy,
+      org_signed_at: new Date().toISOString(),
+      payment_mode: placement.payment_mode,
+      monthly_amount: managedMonthlyAmount(placement),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlacementAgreementRow;
+}
+
+export async function getAgreement(
+  agreementId: string,
+): Promise<PlacementAgreementRow | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_agreements")
+    .select("*")
+    .eq("id", agreementId)
+    .maybeSingle();
+  return (data as PlacementAgreementRow | null) ?? null;
+}
+
+/** Kinglancer signs a pending agreement; returns true if it became active. */
+export async function activateAgreement(agreementId: string): Promise<boolean> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_agreements")
+    .update({
+      status: "active",
+      kinglancer_signed_at: new Date().toISOString(),
+    })
+    .eq("id", agreementId)
+    .in("status", ["pending_acceptance", "pending_funding"])
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+/**
+ * Kinglancer accepts a managed offer: they sign now, but the placement waits
+ * in 'pending_funding' until the org funds the first month. Returns true if
+ * the transition happened.
+ */
+export async function markAgreementPendingFunding(
+  agreementId: string,
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_agreements")
+    .update({
+      status: "pending_funding",
+      kinglancer_signed_at: new Date().toISOString(),
+    })
+    .eq("id", agreementId)
+    .eq("status", "pending_acceptance")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+export async function updateAgreementStatus(
+  agreementId: string,
+  status: PlacementAgreementRow["status"],
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_agreements")
+    .update({ status })
+    .eq("id", agreementId);
+  if (error) throw error;
+}
+
+/** Records one party's proposal to end an active agreement early. */
+export async function setAgreementEndRequest(
+  agreementId: string,
+  userId: string,
+  reason: string | null,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_agreements")
+    .update({
+      end_requested_by: userId,
+      end_requested_at: new Date().toISOString(),
+      end_reason: reason,
+    })
+    .eq("id", agreementId);
+  if (error) throw error;
+}
+
+/** Clears a pending early-end request (declined or withdrawn). */
+export async function clearAgreementEndRequest(
+  agreementId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_agreements")
+    .update({
+      end_requested_by: null,
+      end_requested_at: null,
+      end_reason: null,
+    })
+    .eq("id", agreementId);
+  if (error) throw error;
+}
+
+export async function listKinglancerAgreements(
+  kinglancerId: string,
+): Promise<KinglancerAgreement[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_agreements")
+    .select("*, placement:placements(title, status)")
+    .eq("kinglancer_id", kinglancerId)
+    .is("kinglancer_archived_at", null)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as unknown as KinglancerAgreement[];
+}
+
+export type PlacementParticipant = PlacementAgreementRow & {
+  kinglancer: { full_name: string; avatar_url: string | null } | null;
+};
+
+export async function listPlacementAgreements(
+  placementId: string,
+): Promise<PlacementParticipant[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_agreements")
+    .select("*, kinglancer:profiles!kinglancer_id(full_name, avatar_url)")
+    .eq("placement_id", placementId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as PlacementParticipant[];
+}
+
+// ── Milestones, check-ins, completion (Placement Passport) ─
+
+export type PlacementMilestoneRow =
+  Database["public"]["Tables"]["placement_milestones"]["Row"];
+export type PlacementCheckInRow =
+  Database["public"]["Tables"]["placement_check_ins"]["Row"];
+export type PlacementCheckIn = PlacementCheckInRow & {
+  author: { full_name: string } | null;
+};
+export type ExperienceRecordRow =
+  Database["public"]["Tables"]["experience_records"]["Row"];
+
+export async function listMilestones(
+  agreementId: string,
+): Promise<PlacementMilestoneRow[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_milestones")
+    .select("*")
+    .eq("agreement_id", agreementId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as PlacementMilestoneRow[];
+}
+
+export async function createMilestone(params: {
+  agreementId: string;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+}): Promise<PlacementMilestoneRow> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_milestones")
+    .insert({
+      agreement_id: params.agreementId,
+      title: params.title,
+      description: params.description,
+      due_date: params.dueDate,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlacementMilestoneRow;
+}
+
+export async function getMilestone(
+  milestoneId: string,
+): Promise<PlacementMilestoneRow | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placement_milestones")
+    .select("*")
+    .eq("id", milestoneId)
+    .maybeSingle();
+  return (data as PlacementMilestoneRow | null) ?? null;
+}
+
+export async function confirmMilestone(
+  milestoneId: string,
+  confirmedBy: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("placement_milestones")
+    .update({
+      status: "confirmed",
+      confirmed_by: confirmedBy,
+      confirmed_at: new Date().toISOString(),
+    })
+    .eq("id", milestoneId)
+    .eq("status", "pending");
+  if (error) throw error;
+}
+
+export async function listCheckIns(
+  agreementId: string,
+): Promise<PlacementCheckIn[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_check_ins")
+    .select("*, author:profiles!author_id(full_name)")
+    .eq("agreement_id", agreementId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as PlacementCheckIn[];
+}
+
+export async function createCheckIn(params: {
+  agreementId: string;
+  authorId: string;
+  note: string;
+}): Promise<PlacementCheckInRow> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_check_ins")
+    .insert({
+      agreement_id: params.agreementId,
+      author_id: params.authorId,
+      note: params.note,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as PlacementCheckInRow;
+}
+
+/** Marks an active agreement completed; returns true if it was active. */
+export async function completeAgreement(agreementId: string): Promise<boolean> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_agreements")
+    .update({ status: "completed", completed_at: new Date().toISOString() })
+    .eq("id", agreementId)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}
+
+export async function createExperienceRecord(params: {
+  agreement: PlacementAgreementRow;
+  title: string;
+  summary: string | null;
+  skills: string[];
+  outcome: string | null;
+  referenceText: string | null;
+  isPublic: boolean;
+}): Promise<ExperienceRecordRow> {
+  const db = createServiceClient();
+  const { agreement } = params;
+  const { data: placementRow } = await db
+    .from("placements")
+    .select("categories")
+    .eq("id", agreement.placement_id)
+    .maybeSingle();
+  const categories = (placementRow?.categories as string[] | undefined) ?? [];
+  const { data, error } = await db
+    .from("experience_records")
+    .insert({
+      agreement_id: agreement.id,
+      placement_id: agreement.placement_id,
+      organisation_id: agreement.organisation_id,
+      kinglancer_id: agreement.kinglancer_id,
+      title: params.title,
+      summary: params.summary,
+      skills: params.skills,
+      outcome: params.outcome,
+      reference_text: params.referenceText,
+      is_public: params.isPublic,
+      categories,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as ExperienceRecordRow;
+}
+
+export type PublicExperienceRecord = ExperienceRecordRow & {
+  organisation: { name: string } | null;
+};
+
+export async function listPublicExperienceRecords(
+  kinglancerId: string,
+): Promise<PublicExperienceRecord[]> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("experience_records")
+    .select("*, organisation:organisations(name)")
+    .eq("kinglancer_id", kinglancerId)
+    .eq("is_public", true)
+    .eq("verification_status", "approved")
+    .order("completed_at", { ascending: false });
+  return (data ?? []) as unknown as PublicExperienceRecord[];
+}
+
+// ── Admin verification review ─────────────────────────────
+
+export type ExperienceRecordForReview = ExperienceRecordRow & {
+  organisation: { name: string } | null;
+  kinglancer: { full_name: string } | null;
+};
+
+export async function listExperienceRecordsForReview(): Promise<
+  ExperienceRecordForReview[]
+> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("experience_records")
+    .select(
+      "*, organisation:organisations(name), kinglancer:profiles!kinglancer_id(full_name)",
+    )
+    .eq("verification_status", "pending")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as ExperienceRecordForReview[];
+}
+
+/** Distinct approved verified categories for a set of kinglancers (for cards). */
+export async function verifiedCategoriesByKinglancer(
+  kinglancerIds: string[],
+): Promise<Record<string, string[]>> {
+  if (!kinglancerIds.length) return {};
+  const db = createServiceClient();
+  const { data } = await db
+    .from("experience_records")
+    .select("kinglancer_id, categories")
+    .in("kinglancer_id", kinglancerIds)
+    .eq("verification_status", "approved")
+    .eq("is_public", true);
+  const sets: Record<string, Set<string>> = {};
+  for (const row of (data ?? []) as {
+    kinglancer_id: string;
+    categories: string[];
+  }[]) {
+    const set = (sets[row.kinglancer_id] ??= new Set<string>());
+    for (const c of row.categories ?? []) set.add(c);
+  }
+  return Object.fromEntries(Object.entries(sets).map(([k, v]) => [k, [...v]]));
+}
+
+export async function reviewExperienceRecord(
+  recordId: string,
+  status: "approved" | "rejected",
+  adminId: string,
+): Promise<ExperienceRecordRow | null> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("experience_records")
+    .update({
+      verification_status: status,
+      verified_at: new Date().toISOString(),
+      verified_by: adminId,
+    })
+    .eq("id", recordId)
+    .eq("verification_status", "pending")
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return (data as ExperienceRecordRow | null) ?? null;
+}
+
+export async function getPlacementTitle(
+  placementId: string,
+): Promise<string | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("placements")
+    .select("title")
+    .eq("id", placementId)
+    .maybeSingle();
+  return (data?.title as string | undefined) ?? null;
+}
+
+// ── Admin review ──────────────────────────────────────────
+
+export type PlacementForReview = Placement & {
+  organisation: { name: string } | null;
+};
+
+export async function listPlacementsForReview(): Promise<PlacementForReview[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .select("*, organisation:organisations(name)")
+    .eq("status", "pending_review")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown as PlacementForReview[];
+}
+
+/** Admin approves (→open) or rejects (→cancelled) a placement in review. */
+export async function adminReviewPlacement(
+  placementId: string,
+  status: "open" | "cancelled",
+): Promise<boolean> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placements")
+    .update({ status })
+    .eq("id", placementId)
+    .eq("status", "pending_review")
+    .select("id")
+    .maybeSingle();
+  if (error) throw error;
+  return !!data;
+}

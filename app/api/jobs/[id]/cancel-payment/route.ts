@@ -3,11 +3,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 import {
+  cancelPaymentAttemptById,
   finalizePaymentAttempt,
   getPendingPaymentAttemptByJob,
   isCancellablePaymentIntentStatus,
   updatePaymentAttemptStatus,
 } from "@/lib/db/payment-attempts";
+import { canManageJob } from "@/lib/organisations";
 
 export async function POST(
   _request: Request,
@@ -25,30 +27,48 @@ export async function POST(
 
   const { data: job } = await db
     .from("jobs")
-    .select("id, client_id, status")
+    .select("id, client_id, organisation_id, status")
     .eq("id", jobId)
     .single();
 
-  if (!job || job.client_id !== user.id)
+  if (!job || !(await canManageJob(job, user.id)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const attempt = await getPendingPaymentAttemptByJob(jobId);
 
-  if (!attempt || attempt.client_id !== user.id) {
+  if (!attempt) {
     return NextResponse.json(
       { error: "No pending payment to cancel" },
       { status: 404 },
     );
   }
 
+  // Bank transfer (manual): no Stripe intent to cancel — just void the attempt.
+  if (attempt.method === "bank_transfer") {
+    // Once the client says they've sent the money, only support can void it
+    // (the funds may already have arrived) — avoids orphaned payments.
+    if (attempt.client_marked_paid_at) {
+      return NextResponse.json(
+        {
+          error:
+            "You've told us you've sent this payment, so it can't be cancelled here. Please contact support at kingshirecompany@gmail.com to arrange a refund.",
+          code: "MANUAL_REFUND_CONTACT_SUPPORT",
+        },
+        { status: 409 },
+      );
+    }
+    await cancelPaymentAttemptById(attempt.id);
+    return NextResponse.json({ success: true });
+  }
+
   // Cancel on Stripe if the intent is still cancellable
   try {
     const pi = await stripe.paymentIntents.retrieve(
-      attempt.stripe_payment_intent_id,
+      attempt.stripe_payment_intent_id!,
     );
 
     if (isCancellablePaymentIntentStatus(pi.status)) {
-      await stripe.paymentIntents.cancel(attempt.stripe_payment_intent_id);
+      await stripe.paymentIntents.cancel(attempt.stripe_payment_intent_id!);
     } else if (pi.status === "succeeded") {
       await finalizePaymentAttempt(pi.id);
       return NextResponse.json(
@@ -73,7 +93,7 @@ export async function POST(
   }
 
   await updatePaymentAttemptStatus(
-    attempt.stripe_payment_intent_id,
+    attempt.stripe_payment_intent_id!,
     "cancelled",
   );
 

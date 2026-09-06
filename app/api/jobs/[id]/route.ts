@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getJobById } from "@/lib/db/jobs";
+import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
+import type { RateType } from "@/lib/jobs";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { notifyJobCancelled } from "@/lib/notifications";
@@ -9,6 +12,7 @@ import {
   hasValidCurrencyPrecision,
   normalizeCurrencyAmount,
 } from "@/lib/validation";
+import { canManageJob } from "@/lib/organisations";
 
 export async function GET(
   _request: Request,
@@ -39,10 +43,10 @@ export async function DELETE(
   if (!user)
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  const job = await getJobById(id);
+  const job = await getJobById(id, { useServiceRole: true });
   if (!job)
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  if (job.client_id !== user.id)
+  if (!(await canManageJob(job, user.id)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   if (!["open", "cancelled"].includes(job.status)) {
@@ -115,19 +119,25 @@ export async function PATCH(
   if (!user)
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  const job = await getJobById(id);
+  const job = await getJobById(id, { useServiceRole: true });
   if (!job)
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
-  if (job.client_id !== user.id)
+  if (!(await canManageJob(job, user.id)))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   if (job.status !== "open")
     return NextResponse.json(
       { error: "Only open jobs can be edited." },
       { status: 409 },
     );
+  // A committed payment (card checkout or pending bank transfer) locks edits.
+  if (await getPendingPaymentAttemptByJob(id))
+    return NextResponse.json(
+      { error: "This job can't be edited while a payment is in progress." },
+      { status: 409 },
+    );
 
   // Check for applicants — budget is locked once anyone has applied
-  const { count: applicantCount } = await supabase
+  const { count: applicantCount } = await createServiceClient()
     .from("applications")
     .select("id", { count: "exact", head: true })
     .eq("job_id", id)
@@ -158,11 +168,13 @@ export async function PATCH(
     if (
       !Number.isFinite(budgetNum) ||
       !hasValidCurrencyPrecision(budget) ||
-      normalizedBudget < 20 ||
+      normalizedBudget < MIN_JOB_BUDGET_GBP ||
       normalizedBudget > 50000
     )
       return NextResponse.json(
-        { error: "Budget must be between £20 and £50,000 with up to 2 decimals." },
+        {
+          error: `Budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000 with up to 2 decimals.`,
+        },
         { status: 400 },
       );
   }
@@ -170,7 +182,9 @@ export async function PATCH(
   if (
     !Array.isArray(categories) ||
     categories.length === 0 ||
-    categories.some((c: string) => !(JOB_CATEGORIES as readonly string[]).includes(c))
+    categories.some(
+      (c: string) => !(JOB_CATEGORIES as readonly string[]).includes(c),
+    )
   )
     return NextResponse.json(
       { error: "At least one valid category is required." },
@@ -199,7 +213,7 @@ export async function PATCH(
     categories: string[];
     deadline: string | null;
     budget?: number;
-    rate_type?: "fixed" | "per_hour" | "per_day";
+    rate_type?: RateType;
   };
 
   const updatePayload: JobUpdate = {
@@ -212,10 +226,13 @@ export async function PATCH(
   // Only update budget + rate_type when no one has applied
   if (!hasApplicants) {
     updatePayload.budget = normalizedBudget;
-    updatePayload.rate_type = resolvedRateType as "fixed" | "per_hour" | "per_day";
+    updatePayload.rate_type = resolvedRateType as
+      | "fixed"
+      | "per_hour"
+      | "per_day";
   }
 
-  const { error } = await supabase
+  const { error } = await createServiceClient()
     .from("jobs")
     .update(updatePayload)
     .eq("id", id)

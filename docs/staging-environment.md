@@ -75,6 +75,7 @@ Set:
 - `APP_URL=<STAGING_APP_URL>`
 - Supabase variables from the staging Supabase project
 - Stripe test-mode variables
+- Three Stripe test-mode Organisation monthly Price IDs
 - A staging-only `CRON_SECRET`
 - Brevo variables if you want to test real email delivery
 - Admin gate variables:
@@ -92,6 +93,21 @@ The JSON response should include:
 
 ## 5. Configure Stripe Test Webhook
 
+In Stripe test mode, create three GBP recurring monthly Prices:
+
+- Starter: £10/month
+- Growth: £25/month
+- Scale: £40/month
+
+Add their `price_...` IDs to Railway:
+
+- `STRIPE_ORGANISATION_STARTER_PRICE_ID`
+- `STRIPE_ORGANISATION_GROWTH_PRICE_ID`
+- `STRIPE_ORGANISATION_SCALE_PRICE_ID`
+
+The application rejects Checkout creation if a configured Price is inactive,
+not GBP, not monthly, or does not match the displayed plan amount.
+
 Create a Stripe test-mode webhook endpoint:
 
 - `<STAGING_APP_URL>/api/webhooks/stripe`
@@ -101,8 +117,15 @@ Subscribe to:
 - `payment_intent.succeeded`
 - `payment_intent.payment_failed`
 - `account.updated`
+- `checkout.session.completed`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
 
 Copy the webhook signing secret into Railway as `STRIPE_WEBHOOK_SECRET`.
+
+Enable and configure the Stripe test-mode Customer Portal so Organisation
+Owners can manage or cancel subscriptions from their workspace. Return URLs are
+created by the application from `NEXT_PUBLIC_APP_URL`.
 
 ## 6. Configure Brevo Email
 

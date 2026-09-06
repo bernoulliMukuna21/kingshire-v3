@@ -103,7 +103,9 @@ export async function syncStripePayoutStatus({
   if (status.payoutsEnabled) {
     const { data: pendingTx } = await db
       .from("transactions")
-      .select("id, job_id, amount, platform_fee_kinglancer, stripe_payment_intent_id")
+      .select(
+        "id, job_id, amount, platform_fee_kinglancer, stripe_payment_intent_id",
+      )
       .eq("kinglancer_id", kinglancerId)
       .eq("status", "released")
       .is("stripe_transfer_id", null);
@@ -119,9 +121,19 @@ export async function syncStripePayoutStatus({
         jobId: tx.job_id,
         paymentIntentId: tx.stripe_payment_intent_id ?? undefined,
       }).catch((err) =>
-        console.error(`[syncStripePayoutStatus] Transfer failed for tx ${tx.id}:`, err),
+        console.error(
+          `[syncStripePayoutStatus] Transfer failed for tx ${tx.id}:`,
+          err,
+        ),
       );
     }
+
+    // Release any funded-but-untransferred managed placement payments too.
+    const { firePendingPlacementPayouts } =
+      await import("@/lib/placement-payouts");
+    await firePendingPlacementPayouts(kinglancerId).catch((err) =>
+      console.error(`[syncStripePayoutStatus] Placement payouts failed:`, err),
+    );
   }
 
   return status;

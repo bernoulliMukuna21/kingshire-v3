@@ -47,6 +47,7 @@ export async function ClientMainSection() {
       .from("jobs")
       .select("id, title, budget, kinglancer:profiles!kinglancer_id(full_name)")
       .eq("client_id", user.id)
+      .is("organisation_id", null)
       .eq("status", "in_progress")
       .order("created_at", { ascending: false })
       .limit(10),

@@ -73,6 +73,10 @@ export async function GET(request: NextRequest) {
   const tokenHash = searchParams.get("token_hash");
   const tokenType = searchParams.get("type");
   const next = searchParams.get("next") ?? redirectSearchParams?.get("next"); // password-reset flow
+  const requestedRole =
+    searchParams.get("role") ?? redirectSearchParams?.get("role");
+  const intent =
+    searchParams.get("intent") ?? redirectSearchParams?.get("intent");
   const flow = code ? "code" : tokenHash ? "token_hash" : "missing";
   const queryKeys = Array.from(searchParams.keys()).sort();
   const cookieDiagnostics = getSafeCookieDiagnostics(request);
@@ -157,11 +161,15 @@ export async function GET(request: NextRequest) {
 
   // Determine where to send the user
   let destination: string;
+  const safeNext =
+    intent === "organisation"
+      ? "/organisation/setup"
+      : next?.startsWith("/") && !next.startsWith("//")
+        ? next
+        : null;
 
-  if (next) {
+  if (tokenType === "recovery") {
     // Password-reset flow → go straight to the reset page
-    destination = `${origin}${next}`;
-  } else if (tokenType === "recovery") {
     destination = `${origin}/reset-password`;
   } else {
     const {
@@ -218,7 +226,17 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    destination = `${origin}${getRoleHome(profile?.role)}`;
+    destination = profile?.role
+      ? `${origin}${safeNext ?? getRoleHome(profile.role)}`
+      : intent === "organisation"
+        ? `${origin}/organisation/setup`
+        : `${origin}/onboarding?${new URLSearchParams({
+            ...(safeNext ? { next: safeNext } : {}),
+            ...(requestedRole === "client" || requestedRole === "kinglancer"
+              ? { role: requestedRole }
+              : {}),
+            ...(intent === "organisation" ? { intent } : {}),
+          }).toString()}`;
   }
 
   logAuthCallback("info", "redirecting", {

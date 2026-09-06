@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 type Props = {
   eyebrow?: string;
   title: string;
-  description: string;
+  description?: string;
   children?: React.ReactNode;
   className?: string;
 };
@@ -32,9 +32,11 @@ export default function PublicHero({
         <h1 className="text-3xl font-black tracking-tight md:text-5xl">
           {title}
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">
-          {description}
-        </p>
+        {description && (
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">
+            {description}
+          </p>
+        )}
         {children && <div className="mt-8">{children}</div>}
       </div>
     </section>

@@ -411,8 +411,15 @@ export async function handleKingsChatCallback(
     }
 
     const destination = getRoleHome(sessionProfile?.role ?? null);
+    const safeOrigin =
+      origin && origin.startsWith("/") && !origin.startsWith("//")
+        ? origin
+        : null;
     const safeNext = !sessionProfile?.role
-      ? "/onboarding"
+      ? safeOrigin?.startsWith("/onboarding") ||
+        safeOrigin === "/organisation/start"
+        ? safeOrigin
+        : "/onboarding"
       : origin &&
           origin.startsWith("/") &&
           !origin.startsWith("//") &&

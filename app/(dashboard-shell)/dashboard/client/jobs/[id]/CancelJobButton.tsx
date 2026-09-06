@@ -12,32 +12,52 @@ type Props = {
   status: "open" | "in_progress";
   /** True if the open job already has applicants (affects modal copy). */
   hasApplications?: boolean;
+  /** Held payment rail (in_progress) — bank_transfer refunds go via support. */
+  paymentMethod?: "card" | "bank_transfer" | null;
 };
 
 export default function CancelJobButton({
   jobId,
   status,
   hasApplications = false,
+  paymentMethod = null,
 }: Props) {
   const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const { loading, error, run } = useAsyncAction();
 
   const isInProgress = status === "in_progress";
+  // Bank-transfer escrow is held by us, so refunds are arranged by support.
+  const manualInProgress = isInProgress && paymentMethod === "bank_transfer";
 
-  const title = isInProgress
-    ? "Cancel this job?"
-    : "Cancel this job posting?";
+  const title = isInProgress ? "Cancel this job?" : "Cancel this job posting?";
 
-  const message = isInProgress
-    ? "This job is currently in progress. You may cancel within the 2-hour grace period for a full refund. After that window you will need to raise a dispute instead. The Kinglancer will be notified immediately."
-    : hasApplications
-      ? "Cancelling will close this job and reject all pending applications. This action cannot be undone."
-      : "This will permanently cancel your job posting. This action cannot be undone.";
+  const message = manualInProgress
+    ? "This job was paid by bank transfer, so refunds are handled by our team. To cancel it and arrange your refund, please contact support and we'll sort it out."
+    : isInProgress
+      ? "This job is currently in progress. You may cancel within the 2-hour grace period for a full refund. After that window you will need to raise a dispute instead. The Kinglancer will be notified immediately."
+      : hasApplications
+        ? "Cancelling will close this job and reject all pending applications. This action cannot be undone."
+        : "This will permanently cancel your job posting. This action cannot be undone.";
 
-  const confirmLabel = isInProgress ? "Cancel & request refund" : "Cancel job";
+  const confirmLabel = manualInProgress
+    ? "Contact support"
+    : isInProgress
+      ? "Cancel & request refund"
+      : "Cancel job";
 
   const handleConfirm = () => {
+    if (manualInProgress) {
+      const subject = encodeURIComponent(
+        `Cancel & refund request — job ${jobId}`,
+      );
+      const body = encodeURIComponent(
+        `I'd like to cancel this job and arrange a refund.\n\nJob ID: ${jobId}`,
+      );
+      window.location.href = `mailto:kingshirecompany@gmail.com?subject=${subject}&body=${body}`;
+      setConfirmOpen(false);
+      return;
+    }
     run(async () => {
       const res = await fetch(`/api/jobs/${jobId}/cancel`, {
         method: "POST",

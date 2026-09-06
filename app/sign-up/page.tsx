@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Eye, EyeOff, CheckCircle, Loader2 } from "lucide-react";
@@ -9,14 +9,94 @@ import { createClient } from "@/lib/supabase/client";
 import AuthLayout from "@/components/auth/AuthLayout";
 import GoogleButton from "@/components/auth/GoogleButton";
 import KingsChatButton from "@/components/auth/KingsChatButton";
+import { AUTH_WORK_PLACEHOLDER } from "@/lib/image-placeholders";
 import {
   EMAIL_VALIDATION_MESSAGE,
   isValidEmailAddress,
   normalizeEmail,
 } from "@/lib/validation";
 
-export default function SignUpPage() {
+const KINGLANCER_AUTH_IMAGES = [
+  {
+    src: "/images/auth/kinglancer-laptop.jpg",
+    alt: "An independent professional working on a laptop",
+  },
+  {
+    src: "/images/auth/kinglancer-craft.jpg",
+    alt: "A craftsperson working with tools",
+  },
+] as const;
+
+const CLIENT_AUTH_IMAGES = [
+  {
+    src: "/images/auth/client-handshake.jpg",
+    alt: "Two people beginning a working relationship",
+  },
+  {
+    src: "/images/auth/client-planning.jpg",
+    alt: "A person planning work using coloured notes",
+  },
+] as const;
+
+const GENERAL_AUTH_IMAGES = [
+  {
+    src: "/images/auth/general-workspace.jpg",
+    alt: "A person working independently",
+  },
+  {
+    src: "/images/auth/general-practical-work.jpg",
+    alt: "A practical worker carrying out their trade",
+  },
+] as const;
+
+function SignUpContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const intent = searchParams.get("intent");
+  const requestedRole = searchParams.get("role");
+  const isOrganisationJourney = intent === "organisation";
+  // Organisation founders always start from a personal Client foundation.
+  // A role query parameter is deliberately ignored for this journey; existing
+  // authenticated Kinglancers keep their role and enter through /organisation/start.
+  const onboardingRole =
+    isOrganisationJourney || requestedRole === "client"
+      ? "client"
+      : requestedRole === "kinglancer"
+        ? "kinglancer"
+        : null;
+  const journey = isOrganisationJourney
+    ? "organisation"
+    : onboardingRole === "kinglancer"
+      ? "kinglancer"
+      : onboardingRole === "client"
+        ? "client"
+        : "general";
+  const requestedNext = searchParams.get("next");
+  const safeNext = isOrganisationJourney
+    ? "/organisation/setup"
+    : requestedNext?.startsWith("/") && !requestedNext.startsWith("//")
+      ? requestedNext
+      : null;
+  const callbackParams = new URLSearchParams();
+  if (isOrganisationJourney) {
+    callbackParams.set("intent", "organisation");
+  } else {
+    if (safeNext) callbackParams.set("next", safeNext);
+    if (onboardingRole) callbackParams.set("role", onboardingRole);
+  }
+  const callbackPath = `/auth/callback${
+    callbackParams.size ? `?${callbackParams.toString()}` : ""
+  }`;
+  const onboardingParams = new URLSearchParams();
+  if (!isOrganisationJourney) {
+    if (safeNext) onboardingParams.set("next", safeNext);
+    if (onboardingRole) onboardingParams.set("role", onboardingRole);
+  }
+  const onboardingPath = isOrganisationJourney
+    ? "/organisation/setup"
+    : `/onboarding${
+        onboardingParams.size ? `?${onboardingParams.toString()}` : ""
+      }`;
   const [step, setStep] = useState<"details" | "verify">("details");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,6 +122,9 @@ export default function SignUpPage() {
     await supabase.auth.resend({
       type: "signup",
       email: normalizeEmail(form.email),
+      options: {
+        emailRedirectTo: `${window.location.origin}${callbackPath}`,
+      },
     });
     setResendLoading(false);
     setResendSent(true);
@@ -52,7 +135,7 @@ export default function SignUpPage() {
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}${callbackPath}`,
         queryParams: {
           prompt: "select_account",
         },
@@ -99,7 +182,7 @@ export default function SignUpPage() {
           full_name: `${form.firstName} ${form.lastName}`,
           role: null,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}${callbackPath}`,
       },
     });
 
@@ -126,7 +209,7 @@ export default function SignUpPage() {
 
     // If email confirmation is disabled, Supabase returns a session immediately
     if (data.session) {
-      router.push("/onboarding");
+      router.push(onboardingPath);
       return;
     }
 
@@ -137,15 +220,73 @@ export default function SignUpPage() {
 
   return (
     <AuthLayout
-      headline="Join your community."
-      accent="Earn your worth."
-      body="A trusted platform where people hire local talent and earn from their services."
-      bullets={[
-        "Free to join",
-        "Payments protected by Stripe",
-        "Community verified members",
-        "Low platform fees (5% + 30p client / 7.5% kinglancer)",
-      ]}
+      organisationSetup={isOrganisationJourney}
+      imagePlaceholder={AUTH_WORK_PLACEHOLDER}
+      headline={
+        journey === "organisation"
+          ? "Bring your team to KingsHire."
+          : journey === "kinglancer"
+            ? "Put your skills to work."
+            : journey === "client"
+              ? "Get the work done."
+              : "Join your community."
+      }
+      accent={
+        journey === "organisation"
+          ? "Create opportunities together."
+          : journey === "kinglancer"
+            ? "Earn your worth."
+            : journey === "client"
+              ? "Hire with confidence."
+              : "Earn your worth."
+      }
+      body={
+        journey === "organisation"
+          ? "Create a shared workspace for your Organisation while keeping every team action secure and accountable."
+          : journey === "kinglancer"
+            ? "Show people what you do, discover local opportunities and get paid securely for your work."
+            : journey === "client"
+              ? "Find trusted people for practical, creative and professional work."
+              : "A trusted platform where people hire local talent and earn from their services."
+      }
+      bullets={
+        journey === "organisation"
+          ? [
+              "Publish as your Organisation",
+              "Invite your team",
+              "Control member permissions",
+              "Manage jobs together",
+            ]
+          : journey === "kinglancer"
+            ? [
+                "Build your service profile",
+                "Discover local paid work",
+                "Payments protected by Stripe",
+                "Keep control of your availability",
+              ]
+            : journey === "client"
+              ? [
+                  "Post jobs clearly",
+                  "Compare applicants",
+                  "Payments protected by Stripe",
+                  "Manage work in one place",
+                ]
+              : [
+                  "Free to join",
+                  "Payments protected by Stripe",
+                  "Community verified members",
+                  "Low platform fees (2.5% client / 5% kinglancer)",
+                ]
+      }
+      images={
+        journey === "organisation"
+          ? undefined
+          : journey === "kinglancer"
+            ? KINGLANCER_AUTH_IMAGES
+            : journey === "client"
+              ? CLIENT_AUTH_IMAGES
+              : GENERAL_AUTH_IMAGES
+      }
     >
       <div className="w-full max-w-md">
         <AnimatePresence mode="wait">
@@ -158,15 +299,27 @@ export default function SignUpPage() {
               transition={{ duration: 0.3 }}
             >
               <h1 className="text-2xl font-black text-gray-900 mb-1">
-                Create your account
+                {isOrganisationJourney
+                  ? "Create your Organisation"
+                  : "Create your account"}
               </h1>
               <p className="text-gray-500 mb-6 text-sm">
-                Create your login first. You&apos;ll choose Client or Kinglancer
-                in the next step.
+                {isOrganisationJourney
+                  ? "First, create your personal Client account. You’ll then create your Organisation, become its Owner and invite your team."
+                  : onboardingRole
+                    ? `First, create your secure personal ${onboardingRole === "client" ? "Client" : "Kinglancer"} account.`
+                    : "Create your login first. You’ll choose Client or Kinglancer in the next step."}
               </p>
 
               <GoogleButton onClick={handleGoogleSignUp} showDivider={false} />
-              <KingsChatButton label="Sign up with KingsChat" />
+              <KingsChatButton
+                label="Sign up with KingsChat"
+                next={
+                  isOrganisationJourney
+                    ? "/organisation/start"
+                    : (safeNext ?? undefined)
+                }
+              />
 
               {error && (
                 <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
@@ -264,7 +417,11 @@ export default function SignUpPage() {
                   className="w-full mt-2 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:scale-100 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {loading && <Loader2 size={16} className="animate-spin" />}
-                  {loading ? "Creating account…" : "Create account"}
+                  {loading
+                    ? "Creating account…"
+                    : isOrganisationJourney
+                      ? "Continue to Organisation setup"
+                      : "Create account"}
                 </button>
                 <p className="text-center text-xs text-gray-400 mt-1">
                   By creating an account you agree to our{" "}
@@ -280,10 +437,37 @@ export default function SignUpPage() {
                   </Link>
                 </p>
               </form>
+              {(journey === "client" || journey === "kinglancer") && (
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm text-slate-600">
+                  <span className="mr-2">Looking for a different setup?</span>
+                  {journey === "client" ? (
+                    <Link
+                      href="/sign-up?role=kinglancer"
+                      className="font-bold text-blue-600 hover:underline"
+                    >
+                      Become a Kinglancer
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/sign-up?role=client"
+                      className="font-bold text-blue-600 hover:underline"
+                    >
+                      Join as a Client
+                    </Link>
+                  )}
+                  <span className="mx-2 text-slate-300">·</span>
+                  <Link
+                    href="/sign-up?intent=organisation"
+                    className="font-bold text-blue-600 hover:underline"
+                  >
+                    Set up an Organisation
+                  </Link>
+                </div>
+              )}
               <p className="text-center text-sm text-gray-500 mt-6">
                 Already have an account?{" "}
                 <Link
-                  href="/sign-in"
+                  href={`/sign-in?${callbackParams.toString()}`}
                   className="text-blue-600 font-semibold hover:underline"
                 >
                   Sign in
@@ -343,5 +527,13 @@ export default function SignUpPage() {
         </AnimatePresence>
       </div>
     </AuthLayout>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense>
+      <SignUpContent />
+    </Suspense>
   );
 }

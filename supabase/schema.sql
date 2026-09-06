@@ -82,6 +82,10 @@ create table public.transactions (
   stripe_payment_intent_id  text unique,
   stripe_transfer_id        text,
   status                    text not null default 'pending' check (status in ('pending','held','released','refunded','disputed')),
+  payment_method            text not null default 'card' check (payment_method in ('card','bank_transfer')),
+  payout_method             text check (payout_method is null or payout_method in ('stripe','manual')),
+  manual_payout_reference   text,
+  confirmed_by              uuid references public.profiles(id),
   released_at               timestamptz,
   created_at                timestamptz not null default now(),
   unique(job_id)
@@ -98,11 +102,47 @@ create table public.payment_attempts (
   amount                    numeric(10,2) not null,
   platform_fee_client       numeric(10,2) not null,
   platform_fee_kinglancer   numeric(10,2) not null,
-  stripe_payment_intent_id  text not null unique,
+  stripe_payment_intent_id  text unique,
   attempt_type              text not null default 'application' check (attempt_type in ('application','direct_request')),
+  method                    text not null default 'card' check (method in ('card','bank_transfer')),
   status                    text not null default 'pending' check (status in ('pending','succeeded','cancelled','failed','expired')),
+  client_marked_paid_at     timestamptz,
   created_at                timestamptz not null default now(),
   updated_at                timestamptz not null default now()
+);
+-- ── PAYOUT ACCOUNTS ───────────────────────────────────────
+-- Private kinglancer payout method for manual payouts. A worker-controlled
+-- payout LINK (PayPal.me / Wise / Monzo.me / Revolut.me) rather than raw bank
+-- numbers — minimises sensitive data. Kept off `profiles` (publicly readable).
+create table public.payout_accounts (
+  user_id         uuid primary key references public.profiles(id) on delete cascade,
+  payout_provider text not null
+    check (payout_provider in ('paypal', 'wise', 'monzo', 'revolut', 'other')),
+  payout_link     text not null,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+
+-- ── USER SUBSCRIPTIONS ────────────────────────────────────
+-- One flat monthly subscription per user (client OR kinglancer). Client sub
+-- unlocks card payment for small jobs; kinglancer sub unlocks automated Stripe
+-- payouts + applying to small jobs. Org subscriptions live in their own table.
+-- Owner-only read; writes are service-role only.
+create table public.user_subscriptions (
+  user_id                     uuid primary key references public.profiles(id) on delete cascade,
+  role                        text not null check (role in ('client', 'kinglancer')),
+  plan                        text not null,
+  status                      text not null check (status in (
+    'incomplete', 'incomplete_expired', 'trialing', 'active',
+    'past_due', 'canceled', 'unpaid', 'paused'
+  )),
+  stripe_customer_id          text not null,
+  stripe_subscription_id      text not null unique,
+  stripe_price_id             text not null,
+  cancel_at_period_end        boolean not null default false,
+  current_period_end          timestamptz,
+  created_at                  timestamptz not null default now(),
+  updated_at                  timestamptz not null default now()
 );
 
 -- ── REVIEWS ───────────────────────────────────────────────
@@ -198,6 +238,9 @@ $$;
 create trigger on_profiles_updated before update on public.profiles
   for each row execute function public.handle_updated_at();
 
+create trigger on_payout_accounts_updated before update on public.payout_accounts
+  for each row execute function public.handle_updated_at();
+
 create trigger on_jobs_updated before update on public.jobs
   for each row execute function public.handle_updated_at();
 
@@ -243,6 +286,11 @@ alter table public.payment_attempts enable row level security;
 alter table public.transactions enable row level security;
 alter table public.reviews      enable row level security;
 alter table public.disputes     enable row level security;
+alter table public.payout_accounts enable row level security;
+
+-- Payout accounts: private bank details — owner-only read, service-only writes.
+create policy "Users read own payout account" on public.payout_accounts
+  for select using (auth.uid() = user_id);
 
 -- Profiles: anyone can read, only owner can write user-editable fields.
 -- System-managed fields (role, rating, jobs_completed, is_verified,

@@ -7,36 +7,11 @@ import PublicHero from "@/components/ui/PublicHero";
 import PublicShell from "@/components/ui/PublicShell";
 import Pagination from "@/components/ui/Pagination";
 import { getPageNumber, getPageRange } from "@/lib/pagination";
+import { verifiedCategoriesByKinglancer } from "@/lib/db/placements";
 
 export const revalidate = 3600;
 
 const PAGE_SIZE = 12;
-
-const getKinglancers = unstable_cache(
-  async (page: number, q: string) => {
-    const { from, to } = getPageRange(page, PAGE_SIZE);
-    const supabase = createServiceClient();
-    let query = supabase
-      .from("profiles")
-      .select(
-        "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services",
-        { count: "exact" },
-      )
-      .eq("role", "kinglancer")
-      .order("jobs_completed", { ascending: false })
-      .order("created_at", { ascending: true })
-      .range(from, to);
-
-    if (q) {
-      query = query.or(`full_name.ilike.%${q}%,tagline.ilike.%${q}%`);
-    }
-
-    const { data, count } = await query;
-    return { kinglancers: data ?? [], total: count ?? 0 };
-  },
-  ["kinglancers"],
-  { revalidate: 3600, tags: ["kinglancer-profiles"] },
-);
 
 export default async function KinglancersPage({
   searchParams,
@@ -47,7 +22,38 @@ export default async function KinglancersPage({
   const page = getPageNumber(rawPage);
   const q = (rawQ ?? "").trim();
 
-  const { kinglancers, total } = await getKinglancers(page, q);
+  const { from, to } = getPageRange(page, PAGE_SIZE);
+
+  const getKinglancers = unstable_cache(
+    async () => {
+      const supabase = createServiceClient();
+      let query = supabase
+        .from("profiles")
+        .select(
+          "id, full_name, avatar_url, service_tags, rating, jobs_completed, tagline, services",
+          { count: "exact" },
+        )
+        .eq("role", "kinglancer")
+        .order("jobs_completed", { ascending: false })
+        .order("created_at", { ascending: true })
+        .range(from, to);
+
+      if (q) {
+        query = query.or(`full_name.ilike.%${q}%,tagline.ilike.%${q}%`);
+      }
+
+      const { data, count } = await query;
+      return { kinglancers: data ?? [], total: count ?? 0 };
+    },
+    [`kinglancers-p${page}-q${encodeURIComponent(q)}`],
+    { revalidate: 3600, tags: ["kinglancer-profiles"] },
+  );
+
+  const { kinglancers, total } = await getKinglancers();
+
+  const verified = await verifiedCategoriesByKinglancer(
+    kinglancers.map((k) => k.id),
+  );
 
   return (
     <PublicShell>
@@ -59,7 +65,11 @@ export default async function KinglancersPage({
         />
       </FadeIn>
       <KinglancersSearch defaultValue={q} />
-      <KinglancersGrid kinglancers={kinglancers} searchQuery={q} />
+      <KinglancersGrid
+        kinglancers={kinglancers}
+        searchQuery={q}
+        verified={verified}
+      />
       <div className="mx-auto max-w-6xl pb-10 px-4 sm:px-6">
         <Pagination
           basePath="/kinglancers"

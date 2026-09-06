@@ -1,8 +1,25 @@
 import { notFound, redirect } from "next/navigation";
-import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
+import {
+  Calendar,
+  Briefcase,
+  Tag,
+  AlertCircle,
+  MapPin,
+  Clock,
+  Monitor,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
+import { jobStatusPill } from "@/lib/jobs";
+import {
+  getJobPaymentPolicy,
+  jobRequiresSubscriptionToApply,
+  SMALL_JOB_THRESHOLD_GBP,
+} from "@/lib/payments/policy";
+import { hasEntitlement } from "@/lib/subscriptions";
+import { planForRole } from "@/lib/subscriptions/plans";
+import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { formatDeadline } from "@/lib/utils";
@@ -42,6 +59,9 @@ export default async function JobDetailPage({
   const isAssignedKinglancer = user?.id === job.kinglancer_id;
   const isDirectRequest = !!job.invited_kinglancer_id;
   const isInvitedKinglancer = user?.id === job.invited_kinglancer_id;
+  const cardEnabled = isOwner
+    ? (await getJobPaymentPolicy(job)).cardAllowed
+    : true;
 
   let profile: {
     id: string;
@@ -118,18 +138,14 @@ export default async function JobDetailPage({
     !alreadyApplied;
   const isAdmin = profile?.role === "admin";
 
-  const statusConfig: Record<string, { label: string; color: string }> = {
-    open: {
-      label: "Open for Applications",
-      color: "bg-green-100 text-green-700",
-    },
-    in_progress: { label: "In Progress", color: "bg-blue-100 text-blue-700" },
-    completed: { label: "Completed", color: "bg-gray-100 text-gray-600" },
-    cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" },
-    disputed: { label: "Disputed", color: "bg-orange-100 text-orange-700" },
-  };
+  // Small jobs are subscriber-only to apply to.
+  const applyNeedsSubscription =
+    !!canApply &&
+    !!profile &&
+    jobRequiresSubscriptionToApply(job.budget) &&
+    !(await hasEntitlement(profile.id, "kinglancer", "applyToSmallJobs"));
 
-  const s = statusConfig[job.status] ?? statusConfig.open;
+  const s = jobStatusPill(job.status);
   const rateType = job.rate_type ?? "fixed";
   const budgetSuffix =
     rateType === "per_hour"
@@ -166,7 +182,7 @@ export default async function JobDetailPage({
         <div className="lg:col-span-2 space-y-5">
           <Card className={cardPadding}>
             <div className="flex items-center gap-2 mb-3">
-              <StatusBadge className={s.color}>{s.label}</StatusBadge>
+              <StatusBadge className={s.className}>{s.label}</StatusBadge>
             </div>
 
             <h1 className="text-xl font-black text-slate-950 mb-4">
@@ -196,7 +212,10 @@ export default async function JobDetailPage({
               <h2 className="font-bold text-gray-900 mb-4">
                 Applicants ({applications.length})
               </h2>
-              <ApplicantsList applications={applications} />
+              <ApplicantsList
+                applications={applications}
+                cardEnabled={cardEnabled}
+              />
             </Card>
           )}
 
@@ -210,7 +229,10 @@ export default async function JobDetailPage({
                 <h2 className="font-bold text-gray-900 mb-4">
                   Applicants ({applications.length})
                 </h2>
-                <ApplicantsList applications={applications} />
+                <ApplicantsList
+                  applications={applications}
+                  cardEnabled={cardEnabled}
+                />
               </Card>
             )}
 
@@ -263,12 +285,13 @@ export default async function JobDetailPage({
                 viewerRole={profile?.role}
                 isOwner={isOwner}
                 isInvitedKinglancer={!!isInvitedKinglancer}
-                status={job.direct_request_status}
+                status={job.direct_request_status as DirectRequestStatus}
                 message={job.direct_request_message}
                 counterBudget={job.counter_budget}
-                counterRateType={job.counter_rate_type}
+                counterRateType={job.counter_rate_type as RateType | null}
                 counterDeadline={job.counter_deadline}
                 invitedKinglancer={invitedKinglancer}
+                cardEnabled={cardEnabled}
               />
             </Card>
           )}
@@ -296,6 +319,21 @@ export default async function JobDetailPage({
                   <span className="text-green-600 text-sm font-medium">
                     ✓ You have already applied to this job.
                   </span>
+                </div>
+              ) : canApply && applyNeedsSubscription ? (
+                <div className="mt-3 space-y-3">
+                  <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    Applying to jobs under £{SMALL_JOB_THRESHOLD_GBP} needs a
+                    Kinglancer subscription (£
+                    {planForRole("kinglancer").priceGBP}
+                    /month). It also unlocks automatic Stripe payouts.
+                  </p>
+                  <ButtonLink
+                    href="/dashboard/kinglancer/subscription"
+                    size="sm"
+                  >
+                    Subscribe — £{planForRole("kinglancer").priceGBP}/month
+                  </ButtonLink>
                 </div>
               ) : canApply ? (
                 <div className="mt-3">
@@ -331,7 +369,67 @@ export default async function JobDetailPage({
           </Card>
 
           <Card className="space-y-3 p-5">
-            {job.deadline && (
+            <div className="text-sm text-gray-600">
+              <div className="flex items-center gap-3">
+                {job.work_mode === "online" ? (
+                  <Monitor size={16} className="text-gray-400 shrink-0" />
+                ) : (
+                  <MapPin size={16} className="text-gray-400 shrink-0" />
+                )}
+                <strong>
+                  {job.work_mode === "in_person"
+                    ? "In person"
+                    : job.work_mode === "hybrid"
+                      ? "Hybrid"
+                      : "Online / remote"}
+                </strong>
+              </div>
+              {job.work_mode !== "online" && job.location && (
+                <p className="mt-1 pl-7 text-gray-500">
+                  {job.location}
+                  {job.work_mode === "hybrid" && job.days_on_site
+                    ? ` · ${job.days_on_site} day${
+                        job.days_on_site > 1 ? "s" : ""
+                      } on-site/week`
+                    : ""}
+                </p>
+              )}
+            </div>
+            {job.scheduled_at && (
+              <div className="flex items-center gap-3 text-sm text-gray-600">
+                <Clock size={16} className="text-gray-400 shrink-0" />
+                <span>
+                  {job.work_mode === "in_person"
+                    ? new Date(job.scheduled_at).toLocaleString("en-GB", {
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : new Date(job.scheduled_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                  {job.ends_at
+                    ? ` → ${
+                        job.work_mode === "in_person"
+                          ? new Date(job.ends_at).toLocaleString("en-GB", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : new Date(job.ends_at).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                      }`
+                    : ""}
+                </span>
+              </div>
+            )}
+            {!job.scheduled_at && job.deadline && (
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Calendar size={16} className="text-gray-400 shrink-0" />
                 <span>

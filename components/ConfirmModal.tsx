@@ -14,6 +14,10 @@ interface ConfirmModalProps {
   loading?: boolean;
   variant?: "primary" | "success" | "danger";
   error?: string;
+  // Hide the Cancel button for informational modals with a single dismiss.
+  hideCancel?: boolean;
+  // Label for the secondary/dismiss button.
+  cancelLabel?: string;
 }
 
 export default function ConfirmModal({
@@ -26,6 +30,8 @@ export default function ConfirmModal({
   loading = false,
   variant = "primary",
   error,
+  hideCancel = false,
+  cancelLabel = "Cancel",
 }: ConfirmModalProps) {
   // Keep a ref to the latest onClose so the keydown listener never needs to
   // be torn down and re-registered just because the parent re-renders.
@@ -94,7 +100,7 @@ export default function ConfirmModal({
           </button>
         </div>
 
-        <p className="text-gray-600 text-sm leading-relaxed">{message}</p>
+        <div className="text-gray-600 text-sm leading-relaxed">{message}</div>
 
         {error && (
           <p className="rounded-xl bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-700">
@@ -103,13 +109,15 @@ export default function ConfirmModal({
         )}
 
         <div className="flex gap-3 pt-1">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="flex-1 py-2.5 border border-gray-200 text-gray-600 font-semibold rounded-xl text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Cancel
-          </button>
+          {!hideCancel && (
+            <button
+              onClick={onClose}
+              disabled={loading}
+              className="flex-1 py-2.5 border border-gray-200 text-gray-600 font-semibold rounded-xl text-sm hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             onClick={onConfirm}
             disabled={loading}

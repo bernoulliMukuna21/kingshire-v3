@@ -105,7 +105,7 @@ export default function TrustSection() {
                 className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl px-4 py-3 border border-gray-100"
               >
                 <p className="text-xs text-gray-500">Platform fee</p>
-                <p className="font-black text-gray-900">From 5%</p>
+                <p className="font-black text-gray-900">From 2.5%</p>
               </motion.div>
             </div>
           </FadeIn>

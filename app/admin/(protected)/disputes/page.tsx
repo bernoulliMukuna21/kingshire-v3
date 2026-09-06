@@ -10,11 +10,11 @@ import DisputeActions from "./DisputeActions";
 import {
   ADMIN_PAGE_SIZE,
   type AdminDispute,
-  formatMoney,
   getPageNumber,
   getPageRange,
   timeAgo,
 } from "@/lib/admin-dashboard";
+import { formatMoneyPrecise as formatMoney } from "@/lib/utils";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export default async function AdminDisputesPage({

@@ -50,7 +50,7 @@ export function useAuthState(): AuthState {
         if (!cancelled && authData.user) {
           setIsLoggedIn(true);
           if (profile?.full_name) setFirstName(profile.full_name.split(" ")[0]);
-          setRole(profile?.role ?? null);
+          setRole((profile?.role ?? null) as AuthRole);
           setDashboardHref(getRoleHome(profile?.role));
         }
       }
