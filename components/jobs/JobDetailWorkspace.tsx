@@ -14,7 +14,7 @@ import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { jobStatusPill } from "@/lib/jobs";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
-import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
+import type { RateType, WorkMode, ScheduleType, DirectRequestStatus } from "@/lib/jobs";
 import {
   getJobReviewState,
   isReviewWindowClosed,
@@ -374,6 +374,8 @@ export default async function JobDetailWorkspace({
                   work_mode: job.work_mode as WorkMode,
                   location: job.location,
                   days_on_site: job.days_on_site,
+                  schedule_type: (job.schedule_type as ScheduleType) ?? "window",
+                  estimated_minutes: job.estimated_minutes,
                   organisation_id: job.organisation_id,
                 }}
               />

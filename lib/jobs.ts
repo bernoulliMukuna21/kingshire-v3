@@ -68,6 +68,12 @@ export function formatEstimatedMinutes(mins: number): string {
   return `${rounded} hour${rounded === 1 ? "" : "s"}`;
 }
 
+// Durations offered when a client sets a "complete anytime" window (minutes).
+// Labels are derived from formatEstimatedMinutes so the wording lives in one place.
+export const ESTIMATE_MINUTE_OPTIONS = [
+  30, 60, 90, 120, 180, 240, 360, 480,
+] as const;
+
 type JobScheduleView = { heading: string; value: string; note: string | null };
 
 // Single source of truth for how a job's schedule reads. In-person jobs carry
