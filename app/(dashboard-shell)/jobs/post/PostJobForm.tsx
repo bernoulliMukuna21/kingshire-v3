@@ -344,9 +344,13 @@ export default function PostJobForm({
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Description <span className="text-red-500">*</span>
         </label>
+        <p className="mb-1.5 text-xs text-gray-400">
+          Focus on the task itself — you&apos;ll set location, timing and budget
+          below.
+        </p>
         <textarea
           value={description}
           onChange={(e) => {
@@ -360,7 +364,7 @@ export default function PostJobForm({
               ? "border-red-400 focus:ring-red-300"
               : "border-gray-200 focus:ring-blue-500"
           }`}
-          placeholder="Describe exactly what you need done, where, and any important details..."
+          placeholder="Describe the task itself — what needs doing and to what standard (e.g. clean a 3-bed flat to Airbnb turnover standard, bring supplies)."
         />
         <div className="flex justify-between items-center mt-1">
           {fieldErrors.description ? (
