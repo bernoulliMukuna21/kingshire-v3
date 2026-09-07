@@ -670,6 +670,8 @@ export type Database = {
           client_id: string
           client_marked_paid_at: string | null
           created_at: string
+          espees_amount: number | null
+          espees_payment_ref: string | null
           id: string
           job_id: string
           kinglancer_id: string
@@ -687,6 +689,8 @@ export type Database = {
           client_id: string
           client_marked_paid_at?: string | null
           created_at?: string
+          espees_amount?: number | null
+          espees_payment_ref?: string | null
           id?: string
           job_id: string
           kinglancer_id: string
@@ -704,6 +708,8 @@ export type Database = {
           client_id?: string
           client_marked_paid_at?: string | null
           created_at?: string
+          espees_amount?: number | null
+          espees_payment_ref?: string | null
           id?: string
           job_id?: string
           kinglancer_id?: string
@@ -1539,7 +1545,10 @@ export type Database = {
         Args: { p_actor_id: string; p_organisation_id: string }
         Returns: undefined
       }
-      finalize_manual_payment: { Args: { p_attempt_id: string }; Returns: Json }
+      finalize_manual_payment: {
+        Args: { p_attempt_id: string; p_method?: string }
+        Returns: Json
+      }
       finalize_payment_attempt: {
         Args: { p_payment_intent_id: string }
         Returns: Json

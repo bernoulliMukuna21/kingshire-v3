@@ -133,11 +133,14 @@ export async function POST(
     : false;
 
   // ── Execute the resolution ─────────────────────────────
-  // Manual (bank transfer) dispute: no Stripe. Release leaves the escrow held
-  // and approves the job so it lands in the Awaiting-payout queue (paid via the
-  // worker's payout link); refund marks it refunded for the admin to return by
-  // bank. The money moves by hand either way.
-  if (transaction.payment_method === "bank_transfer") {
+  // Manual (bank transfer / espees) dispute: no Stripe. Release leaves the escrow
+  // held and approves the job so it lands in the Awaiting-payout queue (paid via
+  // the worker's payout link); refund marks it refunded for the admin to return
+  // by hand. The money moves by hand either way.
+  if (
+    transaction.payment_method === "bank_transfer" ||
+    transaction.payment_method === "espees"
+  ) {
     if (action === "release") {
       if (!job.kinglancer_id) {
         return NextResponse.json(

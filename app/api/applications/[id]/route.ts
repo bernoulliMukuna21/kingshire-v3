@@ -8,8 +8,12 @@ import {
   getPendingPaymentAttemptByJob,
   isCancellablePaymentIntentStatus,
   updatePaymentAttemptStatus,
+  setEspeesPaymentRef,
+  cancelPaymentAttemptById,
 } from "@/lib/db/payment-attempts";
 import { getManualBankDetails } from "@/lib/manual-payments";
+import { createEspeesProduct, espeesPayUrl } from "@/lib/espees";
+import { gbpToEspees } from "@/lib/espees-fx";
 import { canManageJob } from "@/lib/organisations";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import { planForRole } from "@/lib/subscriptions/plans";
@@ -48,7 +52,12 @@ export async function PATCH(
 
   const body = await request.json();
   const { action } = body; // 'accept' only for now
-  const method = body.method === "bank_transfer" ? "bank_transfer" : "card";
+  const method =
+    body.method === "bank_transfer"
+      ? "bank_transfer"
+      : body.method === "espees"
+        ? "espees"
+        : "card";
 
   if (action !== "accept") {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -156,6 +165,77 @@ export async function PATCH(
         bankDetails: getManualBankDetails(),
         amountDue: job.budget + platformFeeClient,
       });
+    }
+
+    // Espees (ESP): redirect-based hosted payment. Like bank transfer, we are the
+    // escrow (funds land in our merchant wallet); the payer confirms on redirect
+    // back. Free of card fees and never subscription-gated.
+    if (method === "espees") {
+      if (existingAttempt && existingAttempt.method === "espees") {
+        return NextResponse.json({
+          success: true,
+          jobId: application.job_id,
+          method: "espees",
+          reference: existingAttempt.id,
+          payUrl: existingAttempt.espees_payment_ref
+            ? espeesPayUrl(existingAttempt.espees_payment_ref)
+            : null,
+        });
+      }
+      if (existingAttempt) {
+        return NextResponse.json(
+          { error: "A payment is already pending for this job. Cancel it first." },
+          { status: 409 },
+        );
+      }
+      const { platformFeeClient, platformFeeKinglancer } = calculateFees(
+        job.budget,
+        { includeFixed: false },
+      );
+      const amountDueGbp = job.budget + platformFeeClient;
+      const quote = await gbpToEspees(amountDueGbp);
+      const attempt = await createPaymentAttempt({
+        job_id: application.job_id,
+        application_id: applicationId,
+        client_id: user.id,
+        kinglancer_id: application.kinglancer_id,
+        amount: job.budget,
+        platform_fee_client: platformFeeClient,
+        platform_fee_kinglancer: platformFeeKinglancer,
+        stripe_payment_intent_id: null,
+        method: "espees",
+        espees_amount: quote.esp,
+        attempt_type: "application",
+        status: "pending",
+      });
+      try {
+        const appUrl =
+          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+        const product = await createEspeesProduct({
+          productSku: attempt.id,
+          narration: `KingsHire — ${job.title}`,
+          priceEsp: quote.esp,
+          successUrl: `${appUrl}/jobs/${application.job_id}/espees/return?attempt=${attempt.id}`,
+          failUrl: `${appUrl}/jobs/${application.job_id}?espees=cancelled`,
+          userData: {
+            job_id: application.job_id,
+            client_id: user.id,
+            attempt_id: attempt.id,
+          },
+        });
+        await setEspeesPaymentRef(attempt.id, product.paymentRef);
+        return NextResponse.json({
+          success: true,
+          jobId: application.job_id,
+          method: "espees",
+          reference: attempt.id,
+          payUrl: product.payUrl,
+          amountEsp: quote.esp,
+        });
+      } catch (err) {
+        await cancelPaymentAttemptById(attempt.id);
+        throw err;
+      }
     }
 
     // Card (Stripe escrow) is a subscriber-only rail below the threshold —

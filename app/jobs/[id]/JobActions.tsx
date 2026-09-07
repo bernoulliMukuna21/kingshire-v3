@@ -195,6 +195,7 @@ export function DirectRequestActions({
   counterDeadline,
   invitedKinglancer,
   cardEnabled = true,
+  espeesEnabled = false,
 }: {
   jobId: string;
   viewerRole: string | null | undefined;
@@ -211,6 +212,7 @@ export function DirectRequestActions({
     avatar_url: string | null;
   } | null;
   cardEnabled?: boolean;
+  espeesEnabled?: boolean;
 }) {
   const router = useRouter();
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -256,10 +258,16 @@ export function DirectRequestActions({
     }
   };
 
-  const startPayment = async (method: "card" | "bank_transfer" = "card") => {
+  const startPayment = async (
+    method: "card" | "bank_transfer" | "espees" = "card",
+  ) => {
     setError(null);
     setLoadingAction(
-      method === "bank_transfer" ? "direct_pay_bank" : "direct_pay",
+      method === "bank_transfer"
+        ? "direct_pay_bank"
+        : method === "espees"
+          ? "direct_pay_espees"
+          : "direct_pay",
     );
     try {
       const res = await fetch(`/api/jobs/${jobId}/direct-pay`, {
@@ -282,6 +290,15 @@ export function DirectRequestActions({
           workerName: invitedKinglancer?.full_name ?? "the Kinglancer",
           bankDetails: data.bankDetails ?? null,
         });
+        return;
+      }
+
+      if (data.method === "espees") {
+        if (data.payUrl) {
+          window.location.href = data.payUrl;
+        } else {
+          setError("Could not start the Espees payment.");
+        }
         return;
       }
 
@@ -574,6 +591,29 @@ export function DirectRequestActions({
               ? "Preparing..."
               : "Pay by bank transfer (no card fee)"}
           </button>
+          {espeesEnabled && (
+            <button
+              type="button"
+              onClick={() => startPayment("espees")}
+              disabled={loadingAction !== null}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-50 disabled:opacity-50"
+            >
+              {loadingAction === "direct_pay_espees" ? (
+                "Starting..."
+              ) : (
+                <>
+                  <Image
+                    src="/espees.png"
+                    alt=""
+                    width={18}
+                    height={18}
+                    className="rounded-full"
+                  />
+                  Pay with Espees (ESP)
+                </>
+              )}
+            </button>
+          )}
         </div>
       )}
 
@@ -701,18 +741,20 @@ export function ApplicantsList({
   applications,
   locked = false,
   cardEnabled = true,
+  espeesEnabled = false,
 }: {
   applications: ApplicationWithKinglancer[];
   locked?: boolean;
   cardEnabled?: boolean;
+  espeesEnabled?: boolean;
 }) {
   const router = useRouter();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [pendingSelectId, setPendingSelectId] = useState<string | null>(null);
-  const [payMethod, setPayMethod] = useState<"card" | "bank_transfer">(
-    cardEnabled ? "card" : "bank_transfer",
-  );
+  const [payMethod, setPayMethod] = useState<
+    "card" | "bank_transfer" | "espees"
+  >(cardEnabled ? "card" : "bank_transfer");
   const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -754,6 +796,16 @@ export function ApplicantsList({
         workerName,
         bankDetails: data.bankDetails ?? null,
       });
+      return;
+    }
+
+    // Espees: redirect to the hosted Espees pay page.
+    if (data.method === "espees") {
+      if (data.payUrl) {
+        window.location.href = data.payUrl;
+      } else {
+        setError("Could not start the Espees payment.");
+      }
       return;
     }
 
@@ -842,13 +894,41 @@ export function ApplicantsList({
                   </span>
                 </span>
               </label>
+              {espeesEnabled && (
+                <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                  <input
+                    type="radio"
+                    name="pay-method"
+                    className="mt-0.5"
+                    checked={payMethod === "espees"}
+                    onChange={() => setPayMethod("espees")}
+                  />
+                  <span>
+                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-900">
+                      <Image
+                        src="/espees.png"
+                        alt=""
+                        width={18}
+                        height={18}
+                        className="rounded-full"
+                      />
+                      Pay with Espees
+                    </span>
+                    <span className="block text-xs text-slate-500">
+                      Pay in ESP. No card fee — held in escrow once confirmed.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
           </div>
         }
         confirmLabel={
           payMethod === "card"
             ? "Continue to card payment"
-            : "Get bank transfer details"
+            : payMethod === "espees"
+              ? "Continue to Espees"
+              : "Get bank transfer details"
         }
         variant="success"
         loading={selectingId !== null}
