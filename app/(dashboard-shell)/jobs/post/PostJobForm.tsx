@@ -81,7 +81,6 @@ export default function PostJobForm({
     description?: string;
     categories?: string;
     budget?: string;
-    address?: string;
     postcode?: string;
     scheduledAt?: string;
     endsAt?: string;
@@ -133,7 +132,6 @@ export default function PostJobForm({
         fe.endsAt = "The end date must be after the start date.";
     }
     if (workMode === "in_person" || workMode === "hybrid") {
-      if (!addressLine.trim()) fe.address = "Add the street address.";
       if (!postcode.trim()) fe.postcode = "Add the postcode.";
     }
     if (workMode === "in_person") {
@@ -188,7 +186,8 @@ export default function PostJobForm({
         rate_type: "fixed",
         invited_kinglancer_id: preferredKinglancer?.id ?? null,
         work_mode: workMode,
-        address_line: workMode !== "online" ? addressLine.trim() : null,
+        address_line:
+          workMode !== "online" ? addressLine.trim() || null : null,
         postcode: workMode !== "online" ? postcode.trim() : null,
         scheduled_at: scheduledAt || null,
         ends_at: endsAt || null,
@@ -458,15 +457,11 @@ export default function PostJobForm({
         <LocationField
           addressLine={addressLine}
           postcode={postcode}
-          onAddressLineChange={(v) => {
-            setAddressLine(v);
-            clearFieldError("address");
-          }}
+          onAddressLineChange={setAddressLine}
           onPostcodeChange={(v) => {
             setPostcode(v);
             clearFieldError("postcode");
           }}
-          errorAddress={fieldErrors.address}
           errorPostcode={fieldErrors.postcode}
         />
       )}

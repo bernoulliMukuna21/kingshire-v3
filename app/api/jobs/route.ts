@@ -231,12 +231,6 @@ export async function POST(request: Request) {
     endsAtIso = end.toISOString();
   }
   if (resolvedWorkMode === "in_person" || resolvedWorkMode === "hybrid") {
-    if (!addressStr) {
-      return NextResponse.json(
-        { error: "Add the street address for an in-person or hybrid job." },
-        { status: 400 },
-      );
-    }
     const geo = await lookupPostcode(postcodeStr);
     if (!geo) {
       return NextResponse.json(
@@ -360,7 +354,7 @@ export async function POST(request: Request) {
         rate_type: resolvedRateType,
         work_mode: resolvedWorkMode,
         location: resolvedArea,
-        address_line: resolvedWorkMode !== "online" ? addressStr : null,
+        address_line: resolvedWorkMode !== "online" ? addressStr || null : null,
         postcode: resolvedPostcode,
         location_area: resolvedArea,
         latitude: resolvedLat,
