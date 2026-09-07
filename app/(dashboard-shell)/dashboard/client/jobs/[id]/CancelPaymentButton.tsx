@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export default function CancelPaymentButton({
   jobId,
@@ -23,7 +24,7 @@ export default function CancelPaymentButton({
     );
     return (
       <a
-        href={`mailto:kingshirecompany@gmail.com?subject=${subject}&body=${body}`}
+        href={`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`}
         className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
       >
         Contact support to cancel

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import posthog from "posthog-js";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export default function GlobalError({
   error,
@@ -27,10 +28,10 @@ export default function GlobalError({
           An unexpected error occurred. Please try again — if the problem
           persists, contact us at{" "}
           <a
-            href="mailto:kingshirecompany@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-blue-600 underline"
           >
-            kingshirecompany@gmail.com
+            {SUPPORT_EMAIL}
           </a>
           .
         </p>

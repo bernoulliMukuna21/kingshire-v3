@@ -6,6 +6,7 @@ import { getPayoutAccount } from "@/lib/db/payout-accounts";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { planForRole } from "@/lib/subscriptions/plans";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -26,7 +27,7 @@ export default async function SettingsPage() {
 
   const isKinglancer = profile.role === "kinglancer";
   const payoutAccount = isKinglancer ? await getPayoutAccount(user.id) : null;
-  const deletionRequestHref = `mailto:kingshirecompany@gmail.com?subject=${encodeURIComponent(
+  const deletionRequestHref = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
     "KingsHire account deletion request",
   )}&body=${encodeURIComponent(
     `Please delete my KingsHire account.\n\nUser ID: ${user.id}\nEmail: ${user.email ?? ""}\n\nI understand active jobs, payments, disputes, and legally required transaction records may need to be reviewed before deletion is completed.`,
