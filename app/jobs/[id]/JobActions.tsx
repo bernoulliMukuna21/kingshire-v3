@@ -596,11 +596,22 @@ export function DirectRequestActions({
               type="button"
               onClick={() => startPayment("espees")}
               disabled={loadingAction !== null}
-              className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-50 disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-bold text-blue-700 transition-all hover:bg-blue-50 disabled:opacity-50"
             >
-              {loadingAction === "direct_pay_espees"
-                ? "Starting..."
-                : "Pay with Espees (ESP)"}
+              {loadingAction === "direct_pay_espees" ? (
+                "Starting..."
+              ) : (
+                <>
+                  <Image
+                    src="/espees.png"
+                    alt=""
+                    width={18}
+                    height={18}
+                    className="rounded-full"
+                  />
+                  Pay with Espees (ESP)
+                </>
+              )}
             </button>
           )}
         </div>
@@ -893,7 +904,14 @@ export function ApplicantsList({
                     onChange={() => setPayMethod("espees")}
                   />
                   <span>
-                    <span className="font-bold text-slate-900">
+                    <span className="inline-flex items-center gap-1.5 font-bold text-slate-900">
+                      <Image
+                        src="/espees.png"
+                        alt=""
+                        width={18}
+                        height={18}
+                        className="rounded-full"
+                      />
                       Pay with Espees
                     </span>
                     <span className="block text-xs text-slate-500">
