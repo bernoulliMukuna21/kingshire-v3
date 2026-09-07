@@ -9,6 +9,7 @@ import {
   normalizeCurrencyAmount,
 } from "@/lib/validation";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
+import ScheduleTypeField from "@/components/jobs/ScheduleTypeField";
 
 export function FormSkeleton() {
   return (
@@ -66,6 +67,10 @@ export default function PostJobForm({
   const [scheduledAt, setScheduledAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState("2");
+  const [scheduleType, setScheduleType] = useState<"shift" | "window">(
+    "window",
+  );
+  const [estimatedMinutes, setEstimatedMinutes] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +188,13 @@ export default function PostJobForm({
         scheduled_at: scheduledAt || null,
         ends_at: endsAt || null,
         days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
+        schedule_type: workMode === "in_person" ? scheduleType : "window",
+        estimated_minutes:
+          workMode === "in_person" &&
+          scheduleType === "window" &&
+          estimatedMinutes
+            ? Number(estimatedMinutes)
+            : null,
         organisation_id: contextOrgId || null,
       }),
     });
@@ -240,6 +252,10 @@ export default function PostJobForm({
           )
         }
       />
+
+      <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
+        Job details
+      </h3>
       {organisations && organisations.length > 0 && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -328,9 +344,13 @@ export default function PostJobForm({
 
       {/* Description */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+        <label className="block text-sm font-medium text-gray-700 mb-1">
           Description <span className="text-red-500">*</span>
         </label>
+        <p className="mb-1.5 text-xs text-gray-400">
+          Focus on the task itself — you&apos;ll set location, timing and budget
+          below.
+        </p>
         <textarea
           value={description}
           onChange={(e) => {
@@ -344,7 +364,7 @@ export default function PostJobForm({
               ? "border-red-400 focus:ring-red-300"
               : "border-gray-200 focus:ring-blue-500"
           }`}
-          placeholder="Describe exactly what you need done, where, and any important details..."
+          placeholder="Describe the task itself — what needs doing and to what standard (e.g. clean a 3-bed flat to Airbnb turnover standard, bring supplies)."
         />
         <div className="flex justify-between items-center mt-1">
           {fieldErrors.description ? (
@@ -394,6 +414,9 @@ export default function PostJobForm({
         ) : null}
       </div>
 
+      <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
+        Where &amp; when
+      </h3>
       {/* Work mode */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -481,6 +504,15 @@ export default function PostJobForm({
         </div>
       )}
 
+      {workMode === "in_person" && (
+        <ScheduleTypeField
+          scheduleType={scheduleType}
+          onScheduleTypeChange={setScheduleType}
+          estimatedMinutes={estimatedMinutes}
+          onEstimatedMinutesChange={setEstimatedMinutes}
+        />
+      )}
+
       {workMode && (
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -534,6 +566,9 @@ export default function PostJobForm({
         </div>
       )}
 
+      <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
+        Budget
+      </h3>
       {/* Budget */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">

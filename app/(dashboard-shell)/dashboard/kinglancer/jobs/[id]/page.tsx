@@ -18,13 +18,14 @@ import {
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
 import { jobStatusPill } from "@/lib/jobs";
-import type { RateType, DirectRequestStatus } from "@/lib/jobs";
+import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
 import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import ReviewPanel from "@/components/jobs/ReviewPanel";
+import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import {
   DirectRequestActions,
   KinglancerCompleteButton,
@@ -45,6 +46,13 @@ type JobWorkspace = {
     | "approved";
   deadline: string | null;
   categories: string[];
+  work_mode: WorkMode;
+  location: string | null;
+  days_on_site: number | null;
+  scheduled_at: string | null;
+  ends_at: string | null;
+  schedule_type: string | null;
+  estimated_minutes: number | null;
   client_id: string;
   kinglancer_id: string | null;
   invited_kinglancer_id: string | null;
@@ -173,6 +181,7 @@ export default async function KinglancerJobWorkspacePage({
       .select(
         `
           id, title, description, budget, rate_type, status, deadline, categories,
+          work_mode, location, days_on_site, scheduled_at, ends_at, schedule_type, estimated_minutes,
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
@@ -363,6 +372,8 @@ export default async function KinglancerJobWorkspacePage({
               </div>
             )}
           </Card>
+
+          <JobKeyDetails job={job} className={cardPadding} />
 
           {job.direct_request_status && job.status === "open" && (
             <Card className={cardPadding}>

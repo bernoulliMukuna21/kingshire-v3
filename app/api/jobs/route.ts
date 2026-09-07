@@ -126,6 +126,8 @@ export async function POST(request: Request) {
     scheduled_at,
     ends_at,
     days_on_site,
+    schedule_type,
+    estimated_minutes,
   } = body;
 
   const titleStr = (title ?? "").trim();
@@ -287,6 +289,23 @@ export async function POST(request: Request) {
     endsAtIso = end.toISOString();
   }
 
+  // Schedule type only applies to in-person timed jobs: a fixed 'shift' vs a
+  // 'window' to complete the task. Online/hybrid stay 'window'. The optional
+  // duration estimate is kept only for in-person window jobs.
+  const resolvedScheduleType =
+    resolvedWorkMode === "in_person" && schedule_type === "shift"
+      ? "shift"
+      : "window";
+  let resolvedEstimatedMinutes: number | null = null;
+  if (
+    resolvedWorkMode === "in_person" &&
+    resolvedScheduleType === "window" &&
+    estimated_minutes != null
+  ) {
+    const m = Number(estimated_minutes);
+    if (Number.isInteger(m) && m >= 15 && m <= 1440) resolvedEstimatedMinutes = m;
+  }
+
   // Every job now carries a start/end window; the end date backs the legacy
   // deadline column (job expiry, list displays) for continuity.
   const resolvedDeadline = endsAtIso
@@ -325,6 +344,8 @@ export async function POST(request: Request) {
         scheduled_at: scheduledAtIso,
         ends_at: endsAtIso,
         days_on_site: daysOnSite,
+        schedule_type: resolvedScheduleType,
+        estimated_minutes: resolvedEstimatedMinutes,
         invited_kinglancer_id: invitedKinglancerId,
         direct_request_status: invitedKinglancerId ? "pending" : null,
         deadline: resolvedDeadline,

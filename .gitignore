@@ -32,6 +32,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# platform announcement generated artifacts (script is committed, output isn't)
+/announce.log
+/announcement-preview.html
+
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example

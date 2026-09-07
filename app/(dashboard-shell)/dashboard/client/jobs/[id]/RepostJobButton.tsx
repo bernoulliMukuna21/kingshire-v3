@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import ConfirmModal from "@/components/ConfirmModal";
-import type { RateType, WorkMode } from "@/lib/jobs";
+import ScheduleTypeField from "@/components/jobs/ScheduleTypeField";
+import type { RateType, WorkMode, ScheduleType } from "@/lib/jobs";
 
 type RepostJob = {
   id: string;
@@ -16,6 +17,8 @@ type RepostJob = {
   work_mode: WorkMode;
   location: string | null;
   days_on_site: number | null;
+  schedule_type: ScheduleType;
+  estimated_minutes: number | null;
   organisation_id: string | null;
 };
 
@@ -36,6 +39,12 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
   const [scheduledAt, setScheduledAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState(String(job.days_on_site ?? 2));
+  const [scheduleType, setScheduleType] = useState<ScheduleType>(
+    job.schedule_type ?? "window",
+  );
+  const [estimatedMinutes, setEstimatedMinutes] = useState(
+    job.estimated_minutes != null ? String(job.estimated_minutes) : "",
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -88,6 +97,13 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
         scheduled_at: scheduledAt || null,
         ends_at: endsAt || null,
         days_on_site: job.work_mode === "hybrid" ? Number(daysOnSite) : null,
+        schedule_type: job.work_mode === "in_person" ? scheduleType : "window",
+        estimated_minutes:
+          job.work_mode === "in_person" &&
+          scheduleType === "window" &&
+          estimatedMinutes
+            ? Number(estimatedMinutes)
+            : null,
         organisation_id: job.organisation_id ?? null,
       }),
     });
@@ -128,6 +144,15 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
               </span>
               . Set a new date, then confirm the price and location.
             </p>
+
+            {job.work_mode === "in_person" && (
+              <ScheduleTypeField
+                scheduleType={scheduleType}
+                onScheduleTypeChange={setScheduleType}
+                estimatedMinutes={estimatedMinutes}
+                onEstimatedMinutesChange={setEstimatedMinutes}
+              />
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>

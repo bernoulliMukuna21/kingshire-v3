@@ -231,6 +231,8 @@ export type Database = {
           title: string
           updated_at: string
           work_mode: string
+          schedule_type: string
+          estimated_minutes: number | null
         }
         Insert: {
           budget: number
@@ -259,6 +261,8 @@ export type Database = {
           title: string
           updated_at?: string
           work_mode?: string
+          schedule_type?: string
+          estimated_minutes?: number | null
         }
         Update: {
           budget?: number
@@ -287,6 +291,8 @@ export type Database = {
           title?: string
           updated_at?: string
           work_mode?: string
+          schedule_type?: string
+          estimated_minutes?: number | null
         }
         Relationships: [
           {
