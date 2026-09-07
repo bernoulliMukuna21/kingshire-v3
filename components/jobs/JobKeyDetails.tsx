@@ -12,13 +12,33 @@ const WORK_MODE_LABEL: Record<string, string> = {
 // the public, kinglancer and owner detail views so they can't drift.
 export default function JobKeyDetails({
   job,
+  showExactLocation = false,
   className,
 }: {
   job: JobKeyDetailsData;
+  showExactLocation?: boolean;
   className?: string;
 }) {
   const schedule = jobScheduleLabel(job);
   const isOnline = job.work_mode === "online";
+  const daysSuffix =
+    job.work_mode === "hybrid" && job.days_on_site
+      ? ` · ${job.days_on_site} day${
+          job.days_on_site > 1 ? "s" : ""
+        } on-site/week`
+      : "";
+  const publicArea = job.location_area ?? job.location;
+
+  const lat = job.latitude != null ? Number(job.latitude) : NaN;
+  const lng = job.longitude != null ? Number(job.longitude) : NaN;
+  const hasGeo = !Number.isNaN(lat) && !Number.isNaN(lng);
+  const d = 0.008;
+  const mapSrc =
+    showExactLocation && hasGeo
+      ? `https://www.openstreetmap.org/export/embed.html?bbox=${
+          lng - d
+        }%2C${lat - d}%2C${lng + d}%2C${lat + d}&layer=mapnik&marker=${lat}%2C${lng}`
+      : null;
 
   return (
     <Card className={className ?? "p-5 sm:p-6"}>
@@ -34,16 +54,24 @@ export default function JobKeyDetails({
             <p className="font-semibold text-slate-800">
               {WORK_MODE_LABEL[job.work_mode] ?? job.work_mode}
             </p>
-            {!isOnline && job.location && (
-              <p className="text-slate-500">
-                {job.location}
-                {job.work_mode === "hybrid" && job.days_on_site
-                  ? ` · ${job.days_on_site} day${
-                      job.days_on_site > 1 ? "s" : ""
-                    } on-site/week`
-                  : ""}
-              </p>
-            )}
+            {!isOnline &&
+              (showExactLocation ? (
+                <>
+                  <p className="text-slate-500">
+                    {publicArea}
+                    {job.postcode ? ` · ${job.postcode}` : ""}
+                    {daysSuffix}
+                  </p>
+                  {job.address_line ? (
+                    <p className="text-slate-500">{job.address_line}</p>
+                  ) : null}
+                </>
+              ) : publicArea ? (
+                <p className="text-slate-500">
+                  {publicArea}
+                  {daysSuffix}
+                </p>
+              ) : null)}
           </div>
         </div>
 
@@ -58,6 +86,20 @@ export default function JobKeyDetails({
               {schedule.note ? (
                 <span className="text-slate-500"> · {schedule.note}</span>
               ) : null}
+            </p>
+          </div>
+        )}
+
+        {mapSrc && (
+          <div>
+            <iframe
+              title="Job location map"
+              src={mapSrc}
+              loading="lazy"
+              className="h-56 w-full rounded-xl border border-slate-200"
+            />
+            <p className="mt-1.5 text-xs text-slate-400">
+              Approximate area around the postcode — not the exact building.
             </p>
           </div>
         )}

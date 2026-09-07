@@ -10,6 +10,7 @@ import {
 } from "@/lib/validation";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import ScheduleTypeField from "@/components/jobs/ScheduleTypeField";
+import LocationField from "@/components/jobs/LocationField";
 
 export function FormSkeleton() {
   return (
@@ -63,7 +64,8 @@ export default function PostJobForm({
   const [workMode, setWorkMode] = useState<
     "online" | "in_person" | "hybrid" | ""
   >("");
-  const [location, setLocation] = useState("");
+  const [addressLine, setAddressLine] = useState("");
+  const [postcode, setPostcode] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState("2");
@@ -79,7 +81,7 @@ export default function PostJobForm({
     description?: string;
     categories?: string;
     budget?: string;
-    location?: string;
+    postcode?: string;
     scheduledAt?: string;
     endsAt?: string;
     daysOnSite?: string;
@@ -130,7 +132,7 @@ export default function PostJobForm({
         fe.endsAt = "The end date must be after the start date.";
     }
     if (workMode === "in_person" || workMode === "hybrid") {
-      if (!location.trim()) fe.location = "Add the job location.";
+      if (!postcode.trim()) fe.postcode = "Add the postcode.";
     }
     if (workMode === "in_person") {
       if (!scheduledAt || !/T\d{2}:\d{2}/.test(scheduledAt))
@@ -184,7 +186,9 @@ export default function PostJobForm({
         rate_type: "fixed",
         invited_kinglancer_id: preferredKinglancer?.id ?? null,
         work_mode: workMode,
-        location: workMode !== "online" ? location.trim() : null,
+        address_line:
+          workMode !== "online" ? addressLine.trim() || null : null,
+        postcode: workMode !== "online" ? postcode.trim() : null,
         scheduled_at: scheduledAt || null,
         ends_at: endsAt || null,
         days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
@@ -450,29 +454,16 @@ export default function PostJobForm({
       </div>
 
       {(workMode === "in_person" || workMode === "hybrid") && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Location <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => {
-              setLocation(e.target.value);
-              clearFieldError("location");
-            }}
-            maxLength={200}
-            className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-              fieldErrors.location
-                ? "border-red-400 focus:ring-red-300"
-                : "border-gray-200 focus:ring-blue-500"
-            }`}
-            placeholder="Address or area where the work happens"
-          />
-          {fieldErrors.location && (
-            <p className="mt-1 text-xs text-red-500">{fieldErrors.location}</p>
-          )}
-        </div>
+        <LocationField
+          addressLine={addressLine}
+          postcode={postcode}
+          onAddressLineChange={setAddressLine}
+          onPostcodeChange={(v) => {
+            setPostcode(v);
+            clearFieldError("postcode");
+          }}
+          errorPostcode={fieldErrors.postcode}
+        />
       )}
 
       {workMode === "hybrid" && (

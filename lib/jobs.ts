@@ -79,6 +79,11 @@ export const ESTIMATE_MINUTE_OPTIONS = [
 export type JobKeyDetailsData = {
   work_mode: string;
   location: string | null;
+  address_line: string | null;
+  postcode: string | null;
+  location_area: string | null;
+  latitude: number | string | null;
+  longitude: number | string | null;
   days_on_site: number | null;
   scheduled_at: string | null;
   ends_at: string | null;
@@ -137,4 +142,26 @@ export function jobScheduleLabel(job: {
   const startStr = start.toLocaleDateString("en-GB", dateOpts);
   value = end ? `${startStr} → ${end.toLocaleDateString("en-GB", dateOpts)}` : startStr;
   return { heading: "Dates", value, note: null };
+}
+
+// Exact address is sensitive. Only the owner, or the assigned Kinglancer once
+// escrow is funded (the job has left 'open'), may see the full address + map;
+// everyone else sees the public area label only. Single source of truth.
+const LOCATION_FUNDED_STATUSES = [
+  "in_progress",
+  "completed",
+  "approved",
+  "disputed",
+];
+
+export function canSeeExactLocation(args: {
+  status: string;
+  isOwner: boolean;
+  isAssignedKinglancer: boolean;
+}): boolean {
+  if (args.isOwner) return true;
+  return (
+    args.isAssignedKinglancer &&
+    LOCATION_FUNDED_STATUSES.includes(args.status)
+  );
 }

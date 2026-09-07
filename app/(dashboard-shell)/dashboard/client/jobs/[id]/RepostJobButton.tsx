@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import ConfirmModal from "@/components/ConfirmModal";
 import ScheduleTypeField from "@/components/jobs/ScheduleTypeField";
+import LocationField from "@/components/jobs/LocationField";
 import type { RateType, WorkMode, ScheduleType } from "@/lib/jobs";
 
 type RepostJob = {
@@ -15,7 +16,8 @@ type RepostJob = {
   budget: number;
   rate_type: RateType;
   work_mode: WorkMode;
-  location: string | null;
+  address_line: string | null;
+  postcode: string | null;
   days_on_site: number | null;
   schedule_type: ScheduleType;
   estimated_minutes: number | null;
@@ -35,7 +37,8 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [price, setPrice] = useState(String(job.budget));
-  const [location, setLocation] = useState(job.location ?? "");
+  const [addressLine, setAddressLine] = useState(job.address_line ?? "");
+  const [postcode, setPostcode] = useState(job.postcode ?? "");
   const [scheduledAt, setScheduledAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState(String(job.days_on_site ?? 2));
@@ -53,8 +56,9 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
 
   function validate(): string | null {
     if (!(Number(price) > 0)) return "Enter the price for the new job.";
-    if (needsLocation && !location.trim())
-      return "Confirm the location for the new job.";
+    if (needsLocation) {
+      if (!postcode.trim()) return "Add the postcode.";
+    }
     if (job.work_mode === "in_person") {
       if (!/T\d{2}:\d{2}/.test(scheduledAt))
         return "Set the start date and time.";
@@ -93,7 +97,8 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
         budget: Number(price),
         rate_type: job.rate_type,
         work_mode: job.work_mode,
-        location: needsLocation ? location.trim() : null,
+        address_line: needsLocation ? addressLine.trim() || null : null,
+        postcode: needsLocation ? postcode.trim() : null,
         scheduled_at: scheduledAt || null,
         ends_at: endsAt || null,
         days_on_site: job.work_mode === "hybrid" ? Number(daysOnSite) : null,
@@ -217,17 +222,12 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
             </div>
 
             {needsLocation && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Location
-                </label>
-                <input
-                  className={fieldClass}
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="Address or area where the work happens"
-                />
-              </div>
+              <LocationField
+                addressLine={addressLine}
+                postcode={postcode}
+                onAddressLineChange={setAddressLine}
+                onPostcodeChange={setPostcode}
+              />
             )}
           </div>
         }
