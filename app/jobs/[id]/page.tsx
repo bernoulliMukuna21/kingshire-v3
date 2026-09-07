@@ -11,7 +11,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
-import { jobStatusPill } from "@/lib/jobs";
+import { jobStatusPill, jobScheduleLabel } from "@/lib/jobs";
 import {
   getJobPaymentPolicy,
   jobRequiresSubscriptionToApply,
@@ -395,40 +395,22 @@ export default async function JobDetailPage({
                 </p>
               )}
             </div>
-            {job.scheduled_at && (
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <Clock size={16} className="text-gray-400 shrink-0" />
-                <span>
-                  {job.work_mode === "in_person"
-                    ? new Date(job.scheduled_at).toLocaleString("en-GB", {
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })
-                    : new Date(job.scheduled_at).toLocaleDateString("en-GB", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                  {job.ends_at
-                    ? ` → ${
-                        job.work_mode === "in_person"
-                          ? new Date(job.ends_at).toLocaleString("en-GB", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : new Date(job.ends_at).toLocaleDateString("en-GB", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
-                      }`
-                    : ""}
-                </span>
-              </div>
-            )}
+            {(() => {
+              const schedule = jobScheduleLabel(job);
+              if (!schedule) return null;
+              return (
+                <div className="flex items-center gap-3 text-sm text-gray-600">
+                  <Clock size={16} className="text-gray-400 shrink-0" />
+                  <span>
+                    <strong className="font-semibold text-gray-700">
+                      {schedule.heading}:
+                    </strong>{" "}
+                    {schedule.value}
+                    {schedule.note ? ` · ${schedule.note}` : ""}
+                  </span>
+                </div>
+              );
+            })()}
             {!job.scheduled_at && job.deadline && (
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Calendar size={16} className="text-gray-400 shrink-0" />
