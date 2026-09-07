@@ -9,6 +9,7 @@ import {
   normalizeCurrencyAmount,
 } from "@/lib/validation";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
+import { lookupPostcode } from "@/lib/postcodes";
 import { emailJobAlert } from "@/lib/notifications";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
@@ -122,7 +123,8 @@ export async function POST(request: Request) {
     deadline,
     invited_kinglancer_id,
     work_mode,
-    location,
+    address_line,
+    postcode,
     scheduled_at,
     ends_at,
     days_on_site,
@@ -197,7 +199,13 @@ export async function POST(request: Request) {
     );
   }
   const resolvedWorkMode = work_mode;
-  const locationStr = typeof location === "string" ? location.trim() : "";
+  const addressStr =
+    typeof address_line === "string" ? address_line.trim() : "";
+  const postcodeStr = typeof postcode === "string" ? postcode.trim() : "";
+  let resolvedArea: string | null = null;
+  let resolvedPostcode: string | null = null;
+  let resolvedLat: number | null = null;
+  let resolvedLng: number | null = null;
   let scheduledAtIso: string | null = null;
   let endsAtIso: string | null = null;
   let daysOnSite: number | null = null;
@@ -223,12 +231,23 @@ export async function POST(request: Request) {
     endsAtIso = end.toISOString();
   }
   if (resolvedWorkMode === "in_person" || resolvedWorkMode === "hybrid") {
-    if (!locationStr) {
+    if (!addressStr) {
       return NextResponse.json(
-        { error: "Add the location for an in-person or hybrid job." },
+        { error: "Add the street address for an in-person or hybrid job." },
         { status: 400 },
       );
     }
+    const geo = await lookupPostcode(postcodeStr);
+    if (!geo) {
+      return NextResponse.json(
+        { error: "Enter a valid UK postcode." },
+        { status: 400 },
+      );
+    }
+    resolvedArea = geo.area;
+    resolvedPostcode = geo.postcode;
+    resolvedLat = geo.latitude;
+    resolvedLng = geo.longitude;
   }
   if (resolvedWorkMode === "in_person") {
     const startHasTime =
@@ -340,7 +359,12 @@ export async function POST(request: Request) {
         budget: normalizedBudget,
         rate_type: resolvedRateType,
         work_mode: resolvedWorkMode,
-        location: resolvedWorkMode !== "online" ? locationStr : null,
+        location: resolvedArea,
+        address_line: resolvedWorkMode !== "online" ? addressStr : null,
+        postcode: resolvedPostcode,
+        location_area: resolvedArea,
+        latitude: resolvedLat,
+        longitude: resolvedLng,
         scheduled_at: scheduledAtIso,
         ends_at: endsAtIso,
         days_on_site: daysOnSite,

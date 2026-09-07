@@ -3,6 +3,7 @@ import {
   jobStatusPill,
   jobScheduleLabel,
   formatEstimatedMinutes,
+  canSeeExactLocation,
 } from "@/lib/jobs";
 
 describe("jobStatusPill", () => {
@@ -79,5 +80,50 @@ describe("jobScheduleLabel", () => {
       schedule_type: "shift",
     });
     expect(s?.heading).toBe("Dates");
+  });
+});
+
+describe("canSeeExactLocation", () => {
+  it("always shows the exact location to the owner", () => {
+    expect(
+      canSeeExactLocation({ status: "open", isOwner: true, isAssignedKinglancer: false }),
+    ).toBe(true);
+  });
+
+  it("shows the exact location to the assigned kinglancer once escrow is funded", () => {
+    expect(
+      canSeeExactLocation({
+        status: "in_progress",
+        isOwner: false,
+        isAssignedKinglancer: true,
+      }),
+    ).toBe(true);
+    expect(
+      canSeeExactLocation({
+        status: "completed",
+        isOwner: false,
+        isAssignedKinglancer: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("hides the exact location from the assigned kinglancer before escrow is funded", () => {
+    expect(
+      canSeeExactLocation({
+        status: "open",
+        isOwner: false,
+        isAssignedKinglancer: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("hides the exact location from a non-assigned viewer", () => {
+    expect(
+      canSeeExactLocation({
+        status: "in_progress",
+        isOwner: false,
+        isAssignedKinglancer: false,
+      }),
+    ).toBe(false);
   });
 });
