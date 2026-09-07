@@ -252,7 +252,7 @@ export default function PostJobForm({
         }
       />
 
-      <h3 className="border-b border-gray-200 pb-1.5 text-sm font-bold text-gray-900">
+      <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
         Job details
       </h3>
       {organisations && organisations.length > 0 && (
@@ -409,7 +409,7 @@ export default function PostJobForm({
         ) : null}
       </div>
 
-      <h3 className="border-b border-gray-200 pb-1.5 text-sm font-bold text-gray-900">
+      <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
         Where &amp; when
       </h3>
       {/* Work mode */}
@@ -616,7 +616,7 @@ export default function PostJobForm({
         </div>
       )}
 
-      <h3 className="border-b border-gray-200 pb-1.5 text-sm font-bold text-gray-900">
+      <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
         Budget
       </h3>
       {/* Budget */}
