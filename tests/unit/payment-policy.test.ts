@@ -113,6 +113,15 @@ describe("shouldPayoutManually", () => {
     ).toBe(true);
   });
 
+  it("is manual for espees jobs regardless of subscription (no Stripe balance)", () => {
+    expect(
+      shouldPayoutManually({
+        paymentMethod: "espees",
+        workerStripePayout: true,
+      }),
+    ).toBe(true);
+  });
+
   it("is manual for a card job when the worker has no Stripe-payout subscription", () => {
     expect(
       shouldPayoutManually({

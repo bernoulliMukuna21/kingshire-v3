@@ -14,6 +14,7 @@ import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { jobStatusPill } from "@/lib/jobs";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
+import { espeesConfigured } from "@/lib/espees";
 import type { RateType, WorkMode, ScheduleType, DirectRequestStatus } from "@/lib/jobs";
 import {
   getJobReviewState,
@@ -119,12 +120,14 @@ export default async function JobDetailWorkspace({
   // Card (Stripe) funding needs an active subscription; org jobs are covered.
   const cardEnabled =
     job.status === "open" ? (await getJobPaymentPolicy(job)).cardAllowed : true;
-  // Held rail for an in-progress job — bank_transfer refunds route to support.
+  const espeesEnabled = espeesConfigured();
+  // Held rail for an in-progress job — bank_transfer/espees refunds route to support.
   const heldPaymentMethod =
     job.status === "in_progress"
       ? (((await getTransactionByJob(id))?.payment_method ?? null) as
           | "card"
           | "bank_transfer"
+          | "espees"
           | null)
       : null;
 
@@ -241,6 +244,7 @@ export default async function JobDetailWorkspace({
                 counterDeadline={job.counter_deadline}
                 invitedKinglancer={kinglancer}
                 cardEnabled={cardEnabled}
+                espeesEnabled={espeesEnabled}
               />
             </Card>
           )}
@@ -258,6 +262,7 @@ export default async function JobDetailWorkspace({
                 applications={applications}
                 locked={paymentPending}
                 cardEnabled={cardEnabled}
+                espeesEnabled={espeesEnabled}
               />
             </Card>
           )}

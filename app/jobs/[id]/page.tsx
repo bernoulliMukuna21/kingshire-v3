@@ -12,6 +12,7 @@ import {
 } from "@/lib/payments/policy";
 import { hasEntitlement } from "@/lib/subscriptions";
 import { planForRole } from "@/lib/subscriptions/plans";
+import { espeesConfigured } from "@/lib/espees";
 import type { RateType, DirectRequestStatus } from "@/lib/jobs";
 import { getApplicationsByJob, hasApplied } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
@@ -55,6 +56,7 @@ export default async function JobDetailPage({
   const cardEnabled = isOwner
     ? (await getJobPaymentPolicy(job)).cardAllowed
     : true;
+  const espeesEnabled = espeesConfigured();
 
   let profile: {
     id: string;
@@ -218,6 +220,7 @@ export default async function JobDetailPage({
               <ApplicantsList
                 applications={applications}
                 cardEnabled={cardEnabled}
+                espeesEnabled={espeesEnabled}
               />
             </Card>
           )}
@@ -235,6 +238,7 @@ export default async function JobDetailPage({
                 <ApplicantsList
                   applications={applications}
                   cardEnabled={cardEnabled}
+                  espeesEnabled={espeesEnabled}
                 />
               </Card>
             )}
@@ -295,6 +299,7 @@ export default async function JobDetailPage({
                 counterDeadline={job.counter_deadline}
                 invitedKinglancer={invitedKinglancer}
                 cardEnabled={cardEnabled}
+                espeesEnabled={espeesEnabled}
               />
             </Card>
           )}

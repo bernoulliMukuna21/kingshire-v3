@@ -133,14 +133,16 @@ export async function POST(
     );
   }
 
-  // Bank-transfer jobs are refunded manually by our team — no Stripe refund.
+  // Bank-transfer and espees jobs are refunded manually by our team — no Stripe
+  // refund (there is no PaymentIntent to reverse).
   if (
     transaction.payment_method === "bank_transfer" ||
+    transaction.payment_method === "espees" ||
     !transaction.stripe_payment_intent_id
   ) {
     return NextResponse.json(
       {
-        error: `This job was paid by bank transfer. To cancel it and arrange your refund, please contact support at ${SUPPORT_EMAIL}.`,
+        error: `This job wasn't paid by card, so we settle refunds by hand. To cancel it and arrange your refund, please contact support at ${SUPPORT_EMAIL}.`,
         code: "MANUAL_REFUND_CONTACT_SUPPORT",
       },
       { status: 409 },

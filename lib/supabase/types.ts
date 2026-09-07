@@ -674,6 +674,8 @@ export type Database = {
           job_id: string
           kinglancer_id: string
           method: string
+          espees_payment_ref: string | null
+          espees_amount: number | null
           platform_fee_client: number
           platform_fee_kinglancer: number
           status: string
@@ -691,6 +693,8 @@ export type Database = {
           job_id: string
           kinglancer_id: string
           method?: string
+          espees_payment_ref?: string | null
+          espees_amount?: number | null
           platform_fee_client: number
           platform_fee_kinglancer: number
           status?: string
@@ -708,6 +712,8 @@ export type Database = {
           job_id?: string
           kinglancer_id?: string
           method?: string
+          espees_payment_ref?: string | null
+          espees_amount?: number | null
           platform_fee_client?: number
           platform_fee_kinglancer?: number
           status?: string

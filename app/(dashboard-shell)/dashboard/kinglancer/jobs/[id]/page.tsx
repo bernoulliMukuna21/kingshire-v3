@@ -85,7 +85,7 @@ type Transaction = {
   amount: number;
   platform_fee_kinglancer: number;
   status: "pending" | "held" | "released" | "refunded" | "disputed";
-  payment_method: "card" | "bank_transfer";
+  payment_method: "card" | "bank_transfer" | "espees";
   released_at: string | null;
 };
 
@@ -232,11 +232,12 @@ export default async function KinglancerJobWorkspacePage({
 
   if (!canViewWorkspace) redirect(`/jobs/${id}`);
 
-  // Bank-transfer jobs are paid manually to the worker's payout link — nudge
-  // them to add one (in Settings) before payout is due.
+  // Bank-transfer and espees jobs are paid manually to the worker's payout link
+  // — nudge them to add one (in Settings) before payout is due.
   const needsPayoutLink =
     isAssigned &&
-    transaction?.payment_method === "bank_transfer" &&
+    (transaction?.payment_method === "bank_transfer" ||
+      transaction?.payment_method === "espees") &&
     transaction.status !== "released" &&
     !(await getPayoutAccount(user.id));
 

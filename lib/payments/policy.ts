@@ -66,11 +66,15 @@ export function jobRequiresSubscriptionToApply(budget: number): boolean {
 // Payout rail: pay the worker manually (payout link) UNLESS the job was
 // card-funded AND the worker holds a Stripe-payout subscription. This keeps
 // unsubscribed workers off Stripe Connect entirely — no active-account fee
-// (£2/month) is ever incurred for them. Bank-transfer jobs are always manual
-// (there is no Stripe balance to transfer from).
+// (£2/month) is ever incurred for them. Bank-transfer and espees jobs are always
+// manual (there is no Stripe balance to transfer from).
 export function shouldPayoutManually(input: {
   paymentMethod: string | null;
   workerStripePayout: boolean;
 }): boolean {
-  return input.paymentMethod === "bank_transfer" || !input.workerStripePayout;
+  return (
+    input.paymentMethod === "bank_transfer" ||
+    input.paymentMethod === "espees" ||
+    !input.workerStripePayout
+  );
 }

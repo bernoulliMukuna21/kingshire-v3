@@ -55,6 +55,41 @@ export async function getPendingPaymentAttemptByJob(jobId: string) {
   return data as PaymentAttemptRow | null;
 }
 
+export async function getPaymentAttemptById(attemptId: string) {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("payment_attempts")
+    .select("*")
+    .eq("id", attemptId)
+    .maybeSingle();
+
+  if (error) return null;
+  return data as PaymentAttemptRow | null;
+}
+
+/**
+ * Pending espees attempts old enough that the payer's redirect-back confirm has
+ * had a chance to run — the reconciliation job re-confirms these so a closed tab
+ * (or a slow-settling PENDING) still funds escrow. Only attempts with a payment
+ * reference are returned.
+ */
+export async function getPendingEspeesAttempts(
+  olderThanMs: number,
+): Promise<PaymentAttemptRow[]> {
+  const db = createServiceClient();
+  const cutoff = new Date(Date.now() - olderThanMs).toISOString();
+  const { data, error } = await db
+    .from("payment_attempts")
+    .select("*")
+    .eq("method", "espees")
+    .eq("status", "pending")
+    .not("espees_payment_ref", "is", null)
+    .lte("created_at", cutoff);
+
+  if (error) return [];
+  return (data ?? []) as PaymentAttemptRow[];
+}
+
 export async function getPaymentAttemptByPaymentIntent(
   stripePaymentIntentId: string,
 ) {
@@ -130,37 +165,24 @@ export async function finalizePaymentAttempt(
   }
 }
 
-/**
- * Admin "funds received" trigger for a bank-transfer attempt — the manual
- * equivalent of finalizePaymentAttempt. Runs the atomic finalize_manual_payment
- * RPC (migration 053): reserves the job, selects/rejects applicants and inserts
- * the held bank_transfer transaction. Keyed on the attempt id (no PaymentIntent).
- */
-export async function finalizeManualPayment(
-  attemptId: string,
-): Promise<FinalizeResult> {
-  const db = createServiceClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (db as any).rpc("finalize_manual_payment", {
-    p_attempt_id: attemptId,
-  });
-  if (error) throw error;
-
-  const payload = data as {
-    result: string;
-    attempt: PaymentAttemptRow | null;
-  };
+// Shared result mapping for the keyed-on-attempt finalize RPC (used by both the
+// bank-transfer and espees rails — same transitions, different trigger).
+function mapAttemptFinalize(payload: {
+  result: string;
+  attempt: PaymentAttemptRow | null;
+}): FinalizeResult {
   const attempt = payload.attempt;
-
   switch (payload.result) {
     case "finalized":
       return { attempt, finalizedNow: true };
     case "already_finalized":
       return { attempt, finalizedNow: false };
     case "attempt_not_found":
-      throw new Error("Manual payment attempt not found");
+      throw new Error("Payment attempt not found");
     case "not_manual":
-      throw new Error("This attempt is not a bank transfer");
+      throw new Error("This attempt is not on the expected payment rail");
+    case "unsupported_method":
+      throw new Error("Unsupported payment method");
     case "unauthorised":
       throw new Error("Payment attempt payer is not authorised for this job");
     case "applicant_conflict":
@@ -178,6 +200,47 @@ export async function finalizeManualPayment(
     default:
       throw new Error(`Unexpected finalize result: ${String(payload.result)}`);
   }
+}
+
+/**
+ * Admin "funds received" trigger for a bank-transfer attempt — the manual
+ * equivalent of finalizePaymentAttempt. Runs the atomic finalize_manual_payment
+ * RPC (migration 053): reserves the job, selects/rejects applicants and inserts
+ * the held bank_transfer transaction. Keyed on the attempt id (no PaymentIntent).
+ */
+export async function finalizeManualPayment(
+  attemptId: string,
+): Promise<FinalizeResult> {
+  const db = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (db as any).rpc("finalize_manual_payment", {
+    p_attempt_id: attemptId,
+  });
+  if (error) throw error;
+  return mapAttemptFinalize(
+    data as { result: string; attempt: PaymentAttemptRow | null },
+  );
+}
+
+/**
+ * Confirm trigger for an espees attempt — the equivalent of finalizeManualPayment
+ * on the Espees rail. Runs the same atomic RPC (migration 059) with p_method
+ * 'espees', so the held transaction is written on the espees rail. Called after
+ * the Espees confirm endpoint reports APPROVED. Idempotent.
+ */
+export async function finalizeEspeesPayment(
+  attemptId: string,
+): Promise<FinalizeResult> {
+  const db = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (db as any).rpc("finalize_manual_payment", {
+    p_attempt_id: attemptId,
+    p_method: "espees",
+  });
+  if (error) throw error;
+  return mapAttemptFinalize(
+    data as { result: string; attempt: PaymentAttemptRow | null },
+  );
 }
 
 export type ManualFundsQueueItem = {
@@ -245,6 +308,16 @@ export async function cancelPaymentAttemptById(attemptId: string) {
     .update({ status: "cancelled" })
     .eq("id", attemptId)
     .eq("status", "pending");
+  if (error) throw error;
+}
+
+/** Attach the Espees payment reference once the product has been created. */
+export async function setEspeesPaymentRef(attemptId: string, ref: string) {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("payment_attempts")
+    .update({ espees_payment_ref: ref })
+    .eq("id", attemptId);
   if (error) throw error;
 }
 
