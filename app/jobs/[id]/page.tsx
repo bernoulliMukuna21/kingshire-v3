@@ -3,7 +3,7 @@ import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
-import { jobStatusPill } from "@/lib/jobs";
+import { jobStatusPill, canSeeExactLocation } from "@/lib/jobs";
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import {
   getJobPaymentPolicy,
@@ -200,7 +200,15 @@ export default async function JobDetailPage({
             )}
           </Card>
 
-          <JobKeyDetails job={job} className="p-5" />
+          <JobKeyDetails
+            job={job}
+            showExactLocation={canSeeExactLocation({
+              status: job.status,
+              isOwner,
+              isAssignedKinglancer,
+            })}
+            className="p-5"
+          />
 
           {isOwner && !isDirectRequest && job.status === "open" && (
             <Card className={cardPadding}>

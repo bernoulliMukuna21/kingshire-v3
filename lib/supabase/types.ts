@@ -205,6 +205,7 @@ export type Database = {
       }
       jobs: {
         Row: {
+          address_line: string | null
           budget: number
           categories: string[]
           client_id: string
@@ -219,22 +220,27 @@ export type Database = {
           direct_request_message: string | null
           direct_request_status: string | null
           ends_at: string | null
+          estimated_minutes: number | null
           id: string
           invited_kinglancer_id: string | null
           kinglancer_id: string | null
+          latitude: number | null
           location: string | null
+          location_area: string | null
+          longitude: number | null
           organisation_id: string | null
+          postcode: string | null
           rate_type: string
+          schedule_type: string
           scheduled_at: string | null
           service_tags_required: string[]
           status: string
           title: string
           updated_at: string
           work_mode: string
-          schedule_type: string
-          estimated_minutes: number | null
         }
         Insert: {
+          address_line?: string | null
           budget: number
           categories?: string[]
           client_id: string
@@ -249,22 +255,27 @@ export type Database = {
           direct_request_message?: string | null
           direct_request_status?: string | null
           ends_at?: string | null
+          estimated_minutes?: number | null
           id?: string
           invited_kinglancer_id?: string | null
           kinglancer_id?: string | null
+          latitude?: number | null
           location?: string | null
+          location_area?: string | null
+          longitude?: number | null
           organisation_id?: string | null
+          postcode?: string | null
           rate_type?: string
+          schedule_type?: string
           scheduled_at?: string | null
           service_tags_required?: string[]
           status?: string
           title: string
           updated_at?: string
           work_mode?: string
-          schedule_type?: string
-          estimated_minutes?: number | null
         }
         Update: {
+          address_line?: string | null
           budget?: number
           categories?: string[]
           client_id?: string
@@ -279,20 +290,24 @@ export type Database = {
           direct_request_message?: string | null
           direct_request_status?: string | null
           ends_at?: string | null
+          estimated_minutes?: number | null
           id?: string
           invited_kinglancer_id?: string | null
           kinglancer_id?: string | null
+          latitude?: number | null
           location?: string | null
+          location_area?: string | null
+          longitude?: number | null
           organisation_id?: string | null
+          postcode?: string | null
           rate_type?: string
+          schedule_type?: string
           scheduled_at?: string | null
           service_tags_required?: string[]
           status?: string
           title?: string
           updated_at?: string
           work_mode?: string
-          schedule_type?: string
-          estimated_minutes?: number | null
         }
         Relationships: [
           {
@@ -1525,6 +1540,10 @@ export type Database = {
         Returns: undefined
       }
       finalize_manual_payment: { Args: { p_attempt_id: string }; Returns: Json }
+      finalize_payment_attempt: {
+        Args: { p_payment_intent_id: string }
+        Returns: Json
+      }
       get_client_stats: {
         Args: { p_client_id: string }
         Returns: {

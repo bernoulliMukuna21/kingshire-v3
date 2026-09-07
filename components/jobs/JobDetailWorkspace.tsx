@@ -215,7 +215,7 @@ export default async function JobDetailWorkspace({
             )}
           </Card>
 
-          <JobKeyDetails job={job} className={cardPadding} />
+          <JobKeyDetails job={job} showExactLocation className={cardPadding} />
 
           {job.status === "open" && <PendingPaymentCard jobId={id} />}
 
@@ -375,7 +375,8 @@ export default async function JobDetailWorkspace({
                   budget: Number(job.budget),
                   rate_type: job.rate_type as RateType,
                   work_mode: job.work_mode as WorkMode,
-                  location: job.location,
+                  address_line: job.address_line,
+                  postcode: job.postcode,
                   days_on_site: job.days_on_site,
                   schedule_type: (job.schedule_type as ScheduleType) ?? "window",
                   estimated_minutes: job.estimated_minutes,

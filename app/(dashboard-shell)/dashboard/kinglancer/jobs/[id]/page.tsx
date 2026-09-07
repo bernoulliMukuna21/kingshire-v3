@@ -17,7 +17,7 @@ import {
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
-import { jobStatusPill } from "@/lib/jobs";
+import { jobStatusPill, canSeeExactLocation } from "@/lib/jobs";
 import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
 import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
@@ -48,6 +48,11 @@ type JobWorkspace = {
   categories: string[];
   work_mode: WorkMode;
   location: string | null;
+  address_line: string | null;
+  postcode: string | null;
+  location_area: string | null;
+  latitude: number | string | null;
+  longitude: number | string | null;
   days_on_site: number | null;
   scheduled_at: string | null;
   ends_at: string | null;
@@ -181,7 +186,7 @@ export default async function KinglancerJobWorkspacePage({
       .select(
         `
           id, title, description, budget, rate_type, status, deadline, categories,
-          work_mode, location, days_on_site, scheduled_at, ends_at, schedule_type, estimated_minutes,
+          work_mode, location, address_line, postcode, location_area, latitude, longitude, days_on_site, scheduled_at, ends_at, schedule_type, estimated_minutes,
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
@@ -373,7 +378,15 @@ export default async function KinglancerJobWorkspacePage({
             )}
           </Card>
 
-          <JobKeyDetails job={job} className={cardPadding} />
+          <JobKeyDetails
+            job={job}
+            showExactLocation={canSeeExactLocation({
+              status: job.status,
+              isOwner: false,
+              isAssignedKinglancer: isAssigned,
+            })}
+            className={cardPadding}
+          />
 
           {job.direct_request_status && job.status === "open" && (
             <Card className={cardPadding}>
