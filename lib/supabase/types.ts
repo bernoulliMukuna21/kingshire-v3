@@ -233,6 +233,11 @@ export type Database = {
           work_mode: string
           schedule_type: string
           estimated_minutes: number | null
+          address_line: string | null
+          postcode: string | null
+          location_area: string | null
+          latitude: number | null
+          longitude: number | null
         }
         Insert: {
           budget: number
@@ -263,6 +268,11 @@ export type Database = {
           work_mode?: string
           schedule_type?: string
           estimated_minutes?: number | null
+          address_line?: string | null
+          postcode?: string | null
+          location_area?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Update: {
           budget?: number
@@ -293,6 +303,11 @@ export type Database = {
           work_mode?: string
           schedule_type?: string
           estimated_minutes?: number | null
+          address_line?: string | null
+          postcode?: string | null
+          location_area?: string | null
+          latitude?: number | null
+          longitude?: number | null
         }
         Relationships: [
           {
