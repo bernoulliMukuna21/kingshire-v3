@@ -66,6 +66,10 @@ export default function PostJobForm({
   const [scheduledAt, setScheduledAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [daysOnSite, setDaysOnSite] = useState("2");
+  const [scheduleType, setScheduleType] = useState<"shift" | "window">(
+    "window",
+  );
+  const [estimatedMinutes, setEstimatedMinutes] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +187,13 @@ export default function PostJobForm({
         scheduled_at: scheduledAt || null,
         ends_at: endsAt || null,
         days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
+        schedule_type: workMode === "in_person" ? scheduleType : "window",
+        estimated_minutes:
+          workMode === "in_person" &&
+          scheduleType === "window" &&
+          estimatedMinutes
+            ? Number(estimatedMinutes)
+            : null,
         organisation_id: contextOrgId || null,
       }),
     });
@@ -531,6 +542,70 @@ export default function PostJobForm({
               <p className="mt-1 text-xs text-red-500">{fieldErrors.endsAt}</p>
             )}
           </div>
+        </div>
+      )}
+
+      {workMode === "in_person" && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            How should the Kinglancer treat these times?
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setScheduleType("window")}
+              className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
+                scheduleType === "window"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Flexible window
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleType("shift")}
+              className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
+                scheduleType === "shift"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-200 text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Fixed shift
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-400">
+            {scheduleType === "shift"
+              ? "The Kinglancer works these exact hours."
+              : "The Kinglancer can complete the task any time within this window."}
+          </p>
+          {scheduleType === "window" && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Estimated time{" "}
+                <span className="text-gray-400">(optional)</span>
+              </label>
+              <select
+                value={estimatedMinutes}
+                onChange={(e) => setEstimatedMinutes(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Not sure</option>
+                <option value="30">30 min</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+                <option value="120">2 hours</option>
+                <option value="180">3 hours</option>
+                <option value="240">4 hours</option>
+                <option value="360">6 hours</option>
+                <option value="480">8 hours</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                Helps Kinglancers know the job may take less than the full
+                window.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

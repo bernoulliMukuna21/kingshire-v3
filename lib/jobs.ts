@@ -10,6 +10,7 @@ export const JOBS_PAGE_SIZE = 5;
 // text, generated as `string`), so the narrow types live here.
 export type RateType = "fixed" | "per_hour" | "per_day";
 export type WorkMode = "online" | "in_person" | "hybrid";
+export type ScheduleType = "shift" | "window";
 export type DirectRequestStatus =
   | "pending"
   | "changes_requested"
@@ -57,4 +58,65 @@ const JOB_STATUS_PILLS: Record<string, JobStatusPill> = {
 
 export function jobStatusPill(status: string): JobStatusPill {
   return JOB_STATUS_PILLS[status] ?? JOB_STATUS_PILLS.open;
+}
+
+/** "30 min" / "1 hour" / "1.5 hours" / "8 hours". */
+export function formatEstimatedMinutes(mins: number): string {
+  if (mins < 60) return `${mins} min`;
+  const hours = mins / 60;
+  const rounded = Number.isInteger(hours) ? hours : Math.round(hours * 10) / 10;
+  return `${rounded} hour${rounded === 1 ? "" : "s"}`;
+}
+
+type JobScheduleView = { heading: string; value: string; note: string | null };
+
+// Single source of truth for how a job's schedule reads. In-person jobs carry
+// clock times whose meaning depends on schedule_type: a fixed "Shift" (work
+// these exact hours) vs a "Complete anytime" window (fixed price for the task,
+// finish it any time in the window — with an optional duration estimate).
+// Online/hybrid jobs show plain dates. Returns null when there's no schedule.
+export function jobScheduleLabel(job: {
+  work_mode: string;
+  scheduled_at: string | null;
+  ends_at: string | null;
+  schedule_type?: string | null;
+  estimated_minutes?: number | null;
+}): JobScheduleView | null {
+  if (!job.scheduled_at) return null;
+  const start = new Date(job.scheduled_at);
+  const end = job.ends_at ? new Date(job.ends_at) : null;
+  const inPerson = job.work_mode === "in_person";
+
+  let value: string;
+  if (inPerson) {
+    const startStr = start.toLocaleString("en-GB", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    value = end
+      ? `${startStr} → ${end.toLocaleString("en-GB", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}`
+      : startStr;
+    const type: ScheduleType = job.schedule_type === "shift" ? "shift" : "window";
+    if (type === "shift") return { heading: "Shift", value, note: null };
+    const note =
+      job.estimated_minutes != null
+        ? `Estimated ${formatEstimatedMinutes(job.estimated_minutes)}`
+        : null;
+    return { heading: "Complete anytime", value, note };
+  }
+
+  const dateOpts: Intl.DateTimeFormatOptions = {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  };
+  const startStr = start.toLocaleDateString("en-GB", dateOpts);
+  value = end ? `${startStr} → ${end.toLocaleDateString("en-GB", dateOpts)}` : startStr;
+  return { heading: "Dates", value, note: null };
 }
