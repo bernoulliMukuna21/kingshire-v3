@@ -251,6 +251,10 @@ export default function PostJobForm({
           )
         }
       />
+
+      <h3 className="border-b border-gray-200 pb-1.5 text-sm font-bold text-gray-900">
+        Job details
+      </h3>
       {organisations && organisations.length > 0 && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -405,6 +409,9 @@ export default function PostJobForm({
         ) : null}
       </div>
 
+      <h3 className="border-b border-gray-200 pb-1.5 text-sm font-bold text-gray-900">
+        Where &amp; when
+      </h3>
       {/* Work mode */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -492,63 +499,10 @@ export default function PostJobForm({
         </div>
       )}
 
-      {workMode && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {workMode === "in_person" ? "Starts" : "Start date"}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <input
-              type={workMode === "in_person" ? "datetime-local" : "date"}
-              value={scheduledAt}
-              min={workMode === "in_person" ? undefined : minDateStr}
-              onChange={(e) => {
-                setScheduledAt(e.target.value);
-                clearFieldError("scheduledAt");
-              }}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-                fieldErrors.scheduledAt
-                  ? "border-red-400 focus:ring-red-300"
-                  : "border-gray-200 focus:ring-blue-500"
-              }`}
-            />
-            {fieldErrors.scheduledAt && (
-              <p className="mt-1 text-xs text-red-500">
-                {fieldErrors.scheduledAt}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              {workMode === "in_person" ? "Ends" : "End date"}{" "}
-              <span className="text-red-500">*</span>
-            </label>
-            <input
-              type={workMode === "in_person" ? "datetime-local" : "date"}
-              value={endsAt}
-              min={scheduledAt || undefined}
-              onChange={(e) => {
-                setEndsAt(e.target.value);
-                clearFieldError("endsAt");
-              }}
-              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
-                fieldErrors.endsAt
-                  ? "border-red-400 focus:ring-red-300"
-                  : "border-gray-200 focus:ring-blue-500"
-              }`}
-            />
-            {fieldErrors.endsAt && (
-              <p className="mt-1 text-xs text-red-500">{fieldErrors.endsAt}</p>
-            )}
-          </div>
-        </div>
-      )}
-
       {workMode === "in_person" && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            How should the Kinglancer treat these times?
+            How should the Kinglancer treat the times below?
           </label>
           <div className="grid grid-cols-2 gap-2">
             <button
@@ -609,6 +563,62 @@ export default function PostJobForm({
         </div>
       )}
 
+      {workMode && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {workMode === "in_person" ? "Starts" : "Start date"}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type={workMode === "in_person" ? "datetime-local" : "date"}
+              value={scheduledAt}
+              min={workMode === "in_person" ? undefined : minDateStr}
+              onChange={(e) => {
+                setScheduledAt(e.target.value);
+                clearFieldError("scheduledAt");
+              }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                fieldErrors.scheduledAt
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+            />
+            {fieldErrors.scheduledAt && (
+              <p className="mt-1 text-xs text-red-500">
+                {fieldErrors.scheduledAt}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              {workMode === "in_person" ? "Ends" : "End date"}{" "}
+              <span className="text-red-500">*</span>
+            </label>
+            <input
+              type={workMode === "in_person" ? "datetime-local" : "date"}
+              value={endsAt}
+              min={scheduledAt || undefined}
+              onChange={(e) => {
+                setEndsAt(e.target.value);
+                clearFieldError("endsAt");
+              }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                fieldErrors.endsAt
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+            />
+            {fieldErrors.endsAt && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.endsAt}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <h3 className="border-b border-gray-200 pb-1.5 text-sm font-bold text-gray-900">
+        Budget
+      </h3>
       {/* Budget */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
