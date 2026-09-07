@@ -7,6 +7,7 @@ import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { notifyJobCancelled } from "@/lib/notifications";
 import { canManageJob } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -73,8 +74,7 @@ export async function POST(
     ) {
       return NextResponse.json(
         {
-          error:
-            "You've told us you've sent a bank transfer for this job. To cancel and arrange a refund, please contact support at kingshirecompany@gmail.com.",
+          error: `You've told us you've sent a bank transfer for this job. To cancel and arrange a refund, please contact support at ${SUPPORT_EMAIL}.`,
           code: "MANUAL_REFUND_CONTACT_SUPPORT",
         },
         { status: 409 },
@@ -140,8 +140,7 @@ export async function POST(
   ) {
     return NextResponse.json(
       {
-        error:
-          "This job was paid by bank transfer. To cancel it and arrange your refund, please contact support at kingshirecompany@gmail.com.",
+        error: `This job was paid by bank transfer. To cancel it and arrange your refund, please contact support at ${SUPPORT_EMAIL}.`,
         code: "MANUAL_REFUND_CONTACT_SUPPORT",
       },
       { status: 409 },

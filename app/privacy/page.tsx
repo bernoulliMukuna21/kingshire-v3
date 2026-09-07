@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import PublicShell from "@/components/ui/PublicShell";
 import PublicHero from "@/components/ui/PublicHero";
 import { Card } from "@/components/ui/Card";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export const metadata: Metadata = { title: "Privacy Policy" };
 
@@ -118,10 +119,10 @@ export default function PrivacyPage() {
               <p className="mt-2">
                 To exercise these rights, contact us at{" "}
                 <a
-                  href="mailto:hello@kingshire.app"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="text-blue-600 hover:underline"
                 >
-                  hello@kingshire.app
+                  {SUPPORT_EMAIL}
                 </a>
                 .
               </p>
@@ -155,10 +156,10 @@ export default function PrivacyPage() {
               <p>
                 Questions about your privacy? Email us at{" "}
                 <a
-                  href="mailto:hello@kingshire.app"
+                  href={`mailto:${SUPPORT_EMAIL}`}
                   className="text-blue-600 hover:underline"
                 >
-                  hello@kingshire.app
+                  {SUPPORT_EMAIL}
                 </a>
                 .
               </p>

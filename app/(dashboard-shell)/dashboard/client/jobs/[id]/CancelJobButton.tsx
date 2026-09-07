@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 type Props = {
   jobId: string;
@@ -54,7 +55,7 @@ export default function CancelJobButton({
       const body = encodeURIComponent(
         `I'd like to cancel this job and arrange a refund.\n\nJob ID: ${jobId}`,
       );
-      window.location.href = `mailto:kingshirecompany@gmail.com?subject=${subject}&body=${body}`;
+      window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
       setConfirmOpen(false);
       return;
     }

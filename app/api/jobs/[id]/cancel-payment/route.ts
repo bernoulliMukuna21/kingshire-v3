@@ -10,6 +10,7 @@ import {
   updatePaymentAttemptStatus,
 } from "@/lib/db/payment-attempts";
 import { canManageJob } from "@/lib/organisations";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export async function POST(
   _request: Request,
@@ -50,8 +51,7 @@ export async function POST(
     if (attempt.client_marked_paid_at) {
       return NextResponse.json(
         {
-          error:
-            "You've told us you've sent this payment, so it can't be cancelled here. Please contact support at kingshirecompany@gmail.com to arrange a refund.",
+          error: `You've told us you've sent this payment, so it can't be cancelled here. Please contact support at ${SUPPORT_EMAIL} to arrange a refund.`,
           code: "MANUAL_REFUND_CONTACT_SUPPORT",
         },
         { status: 409 },

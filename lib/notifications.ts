@@ -1,4 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 export type NotificationType =
   | "new_application"
@@ -394,7 +395,7 @@ export async function notifyDisputeRaised({
     userId: recipientId,
     type: "dispute_raised",
     title: "A dispute has been raised",
-    body: `The ${raisedBy} has raised a dispute on "${jobTitle}". Our team will review it shortly.\n\nIf you have any questions or evidence to share, please email us directly at kingshirecompany@gmail.com — include the job title in your message.`,
+    body: `The ${raisedBy} has raised a dispute on "${jobTitle}". Our team will review it shortly.\n\nIf you have any questions or evidence to share, please email us directly at ${SUPPORT_EMAIL} — include the job title in your message.`,
     link: `/dashboard/${raisedBy === "client" ? "kinglancer" : "client"}`,
     email: {
       to: recipientEmail,
@@ -417,8 +418,7 @@ export async function notifyAdminDisputeRaised({
   reason: string;
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
-  const adminEmail =
-    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL ?? SUPPORT_EMAIL;
   await sendEmail({
     to: adminEmail,
     subject: `[Dispute] ${jobTitle}`,
@@ -441,8 +441,7 @@ export async function notifyAdminManualTransferSent({
   amount: number;
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
-  const adminEmail =
-    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL ?? SUPPORT_EMAIL;
   await sendEmail({
     to: adminEmail,
     subject: `[Bank transfer] ${jobTitle}`,
@@ -461,8 +460,7 @@ export async function notifyAdminPlacementForReview({
   organisationName: string;
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
-  const adminEmail =
-    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL ?? SUPPORT_EMAIL;
   await sendEmail({
     to: adminEmail,
     subject: `[Placement review] ${placementTitle}`,
@@ -487,8 +485,7 @@ export async function notifyAdminPlacementIssue({
   reason: string;
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
-  const adminEmail =
-    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL ?? SUPPORT_EMAIL;
   await sendEmail({
     to: adminEmail,
     subject: `[Placement issue] ${placementTitle}`,
@@ -535,8 +532,7 @@ export async function notifyAdminPlacementDispute({
   reason: string;
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
-  const adminEmail =
-    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL ?? SUPPORT_EMAIL;
   await sendEmail({
     to: adminEmail,
     subject: `[Placement dispute] ${placementTitle} — month ${periodIndex}`,
@@ -588,8 +584,7 @@ export async function notifyAdminPlacementEndDispute({
   reason: string;
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
-  const adminEmail =
-    process.env.ADMIN_NOTIFICATION_EMAIL ?? "kingshirecompany@gmail.com";
+  const adminEmail = process.env.ADMIN_NOTIFICATION_EMAIL ?? SUPPORT_EMAIL;
   await sendEmail({
     to: adminEmail,
     subject: `[Placement early-end dispute] ${placementTitle}`,
@@ -1117,7 +1112,7 @@ function emailTemplate({
         <tr>
           <td style="padding:16px 32px;border-top:1px solid #f1f5f9;text-align:center">
             <p style="margin:0 0 4px;color:#94a3b8;font-size:12px">© 2026 KingsHire · <a href="${appUrl}" style="color:#94a3b8">kingshire.uk</a></p>
-            <p style="margin:0;color:#94a3b8;font-size:12px">Need help? Email us at <a href="mailto:kingshirecompany@gmail.com" style="color:#94a3b8">kingshirecompany@gmail.com</a></p>
+            <p style="margin:0;color:#94a3b8;font-size:12px">Need help? Email us at <a href="mailto:${SUPPORT_EMAIL}" style="color:#94a3b8">${SUPPORT_EMAIL}</a></p>
           </td>
         </tr>
       </table>
