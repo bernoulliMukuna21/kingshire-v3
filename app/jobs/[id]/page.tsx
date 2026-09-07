@@ -1,17 +1,10 @@
 import { notFound, redirect } from "next/navigation";
-import {
-  Calendar,
-  Briefcase,
-  Tag,
-  AlertCircle,
-  MapPin,
-  Clock,
-  Monitor,
-} from "lucide-react";
+import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
-import { jobStatusPill, jobScheduleLabel } from "@/lib/jobs";
+import { jobStatusPill } from "@/lib/jobs";
+import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import {
   getJobPaymentPolicy,
   jobRequiresSubscriptionToApply,
@@ -207,6 +200,8 @@ export default async function JobDetailPage({
             )}
           </Card>
 
+          <JobKeyDetails job={job} className="p-5" />
+
           {isOwner && !isDirectRequest && job.status === "open" && (
             <Card className={cardPadding}>
               <h2 className="font-bold text-gray-900 mb-4">
@@ -369,48 +364,6 @@ export default async function JobDetailPage({
           </Card>
 
           <Card className="space-y-3 p-5">
-            <div className="text-sm text-gray-600">
-              <div className="flex items-center gap-3">
-                {job.work_mode === "online" ? (
-                  <Monitor size={16} className="text-gray-400 shrink-0" />
-                ) : (
-                  <MapPin size={16} className="text-gray-400 shrink-0" />
-                )}
-                <strong>
-                  {job.work_mode === "in_person"
-                    ? "In person"
-                    : job.work_mode === "hybrid"
-                      ? "Hybrid"
-                      : "Online / remote"}
-                </strong>
-              </div>
-              {job.work_mode !== "online" && job.location && (
-                <p className="mt-1 pl-7 text-gray-500">
-                  {job.location}
-                  {job.work_mode === "hybrid" && job.days_on_site
-                    ? ` · ${job.days_on_site} day${
-                        job.days_on_site > 1 ? "s" : ""
-                      } on-site/week`
-                    : ""}
-                </p>
-              )}
-            </div>
-            {(() => {
-              const schedule = jobScheduleLabel(job);
-              if (!schedule) return null;
-              return (
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <Clock size={16} className="text-gray-400 shrink-0" />
-                  <span>
-                    <strong className="font-semibold text-gray-700">
-                      {schedule.heading}:
-                    </strong>{" "}
-                    {schedule.value}
-                    {schedule.note ? ` · ${schedule.note}` : ""}
-                  </span>
-                </div>
-              );
-            })()}
             {!job.scheduled_at && job.deadline && (
               <div className="flex items-center gap-3 text-sm text-gray-600">
                 <Calendar size={16} className="text-gray-400 shrink-0" />

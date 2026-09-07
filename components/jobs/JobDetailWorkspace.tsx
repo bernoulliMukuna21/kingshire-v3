@@ -37,6 +37,7 @@ import ReviewPanel from "@/components/jobs/ReviewPanel";
 import CancelJobButton from "@/app/(dashboard-shell)/dashboard/client/jobs/[id]/CancelJobButton";
 import PendingPaymentCard from "@/app/(dashboard-shell)/dashboard/client/jobs/[id]/PendingPaymentCard";
 import RepostJobButton from "@/app/(dashboard-shell)/dashboard/client/jobs/[id]/RepostJobButton";
+import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import { canManageJob } from "@/lib/organisations";
 
 type InvitedKinglancer = {
@@ -213,6 +214,8 @@ export default async function JobDetailWorkspace({
               </div>
             )}
           </Card>
+
+          <JobKeyDetails job={job} className={cardPadding} />
 
           {job.status === "open" && <PendingPaymentCard jobId={id} />}
 

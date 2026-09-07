@@ -74,6 +74,18 @@ export const ESTIMATE_MINUTE_OPTIONS = [
   30, 60, 90, 120, 180, 240, 360, 480,
 ] as const;
 
+// The narrow set of fields the JobKeyDetails display reads — decoupled from any
+// one page's job shape so every view passes only what it already has.
+export type JobKeyDetailsData = {
+  work_mode: string;
+  location: string | null;
+  days_on_site: number | null;
+  scheduled_at: string | null;
+  ends_at: string | null;
+  schedule_type?: string | null;
+  estimated_minutes?: number | null;
+};
+
 type JobScheduleView = { heading: string; value: string; note: string | null };
 
 // Single source of truth for how a job's schedule reads. In-person jobs carry

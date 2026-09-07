@@ -6,7 +6,6 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
-  MapPin,
   Phone,
   Tag,
 } from "lucide-react";
@@ -18,7 +17,7 @@ import {
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
-import { jobStatusPill, jobScheduleLabel } from "@/lib/jobs";
+import { jobStatusPill } from "@/lib/jobs";
 import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
 import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
@@ -26,6 +25,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import ReviewPanel from "@/components/jobs/ReviewPanel";
+import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import {
   DirectRequestActions,
   KinglancerCompleteButton,
@@ -48,6 +48,7 @@ type JobWorkspace = {
   categories: string[];
   work_mode: WorkMode;
   location: string | null;
+  days_on_site: number | null;
   scheduled_at: string | null;
   ends_at: string | null;
   schedule_type: string | null;
@@ -180,7 +181,7 @@ export default async function KinglancerJobWorkspacePage({
       .select(
         `
           id, title, description, budget, rate_type, status, deadline, categories,
-          work_mode, location, scheduled_at, ends_at, schedule_type, estimated_minutes,
+          work_mode, location, days_on_site, scheduled_at, ends_at, schedule_type, estimated_minutes,
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
@@ -370,29 +371,9 @@ export default async function KinglancerJobWorkspacePage({
                 ))}
               </div>
             )}
-            {job.work_mode !== "online" && job.location && (
-              <div className="mt-5 flex items-center gap-2 text-sm text-slate-600">
-                <MapPin size={15} className="shrink-0 text-slate-400" />
-                <span>{job.location}</span>
-              </div>
-            )}
-            {(() => {
-              const schedule = jobScheduleLabel(job);
-              if (!schedule) return null;
-              return (
-                <div className="mt-3 flex items-center gap-2 text-sm text-slate-600">
-                  <Clock size={15} className="shrink-0 text-slate-400" />
-                  <span>
-                    <strong className="font-semibold text-slate-700">
-                      {schedule.heading}:
-                    </strong>{" "}
-                    {schedule.value}
-                    {schedule.note ? ` · ${schedule.note}` : ""}
-                  </span>
-                </div>
-              );
-            })()}
           </Card>
+
+          <JobKeyDetails job={job} className={cardPadding} />
 
           {job.direct_request_status && job.status === "open" && (
             <Card className={cardPadding}>
