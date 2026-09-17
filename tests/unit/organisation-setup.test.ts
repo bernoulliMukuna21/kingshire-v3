@@ -15,9 +15,9 @@ describe("Organisation subscription setup", () => {
         monthlyPriceGBP,
       })),
     ).toEqual([
-      { id: "starter", monthlyPriceGBP: 15 },
+      { id: "starter", monthlyPriceGBP: 10 },
       { id: "growth", monthlyPriceGBP: 25 },
-      { id: "scale", monthlyPriceGBP: 40 },
+      { id: "scale", monthlyPriceGBP: 50 },
     ]);
   });
 
@@ -101,7 +101,7 @@ describe("Organisation subscription setup", () => {
   it("returns the selected plan without duplicating plan definitions", () => {
     expect(getOrganisationPlan("scale")).toMatchObject({
       name: "Scale",
-      monthlyPriceGBP: 40,
+      monthlyPriceGBP: 50,
     });
   });
 });
