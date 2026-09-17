@@ -28,7 +28,7 @@ export const ORGANISATION_PLANS: readonly OrganisationPlan[] = [
   {
     id: "starter",
     name: "Starter",
-    monthlyPriceGBP: 15,
+    monthlyPriceGBP: 10,
     description:
       "For small organisations setting up their first shared workspace.",
     features: [
@@ -66,7 +66,7 @@ export const ORGANISATION_PLANS: readonly OrganisationPlan[] = [
   {
     id: "scale",
     name: "Scale",
-    monthlyPriceGBP: 40,
+    monthlyPriceGBP: 50,
     description: "For established organisations preparing to operate at scale.",
     features: [
       "Organisation profile and workspace",
