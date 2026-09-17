@@ -90,7 +90,7 @@ export default function TermsPage() {
               <p>
                 Some features are offered through optional paid subscriptions:
                 individual client and Kinglancer plans (£5 per month) and
-                organisation plans (Starter £15, Growth £25 and Scale £40 per
+                organisation plans (Starter £10, Growth £25 and Scale £50 per
                 month). Subscriptions are billed monthly in advance through
                 Stripe and renew automatically until cancelled. You can cancel
                 at any time, effective at the end of the current billing period,
