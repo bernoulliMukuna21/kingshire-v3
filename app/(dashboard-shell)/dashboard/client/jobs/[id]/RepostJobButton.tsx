@@ -57,7 +57,6 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
   function validate(): string | null {
     if (!(Number(price) > 0)) return "Enter the price for the new job.";
     if (needsLocation) {
-      if (!addressLine.trim()) return "Add the street address.";
       if (!postcode.trim()) return "Add the postcode.";
     }
     if (job.work_mode === "in_person") {
@@ -98,7 +97,7 @@ export default function RepostJobButton({ job }: { job: RepostJob }) {
         budget: Number(price),
         rate_type: job.rate_type,
         work_mode: job.work_mode,
-        address_line: needsLocation ? addressLine.trim() : null,
+        address_line: needsLocation ? addressLine.trim() || null : null,
         postcode: needsLocation ? postcode.trim() : null,
         scheduled_at: scheduledAt || null,
         ends_at: endsAt || null,

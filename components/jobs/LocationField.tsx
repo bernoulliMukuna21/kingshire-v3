@@ -2,21 +2,21 @@
 
 import { useState } from "react";
 
-// Address + postcode capture with a live public-area preview (postcodes.io).
+// Postcode-first location capture with a live public-area preview (postcodes.io).
+// We geocode the postcode only (its centroid), so we never claim a precise pin.
+// `addressLine` is an optional flat/building/access note, not a required street.
 // The parent owns the values; the server re-derives area + geocode authoritatively.
 export default function LocationField({
   addressLine,
   postcode,
   onAddressLineChange,
   onPostcodeChange,
-  errorAddress,
   errorPostcode,
 }: {
   addressLine: string;
   postcode: string;
   onAddressLineChange: (value: string) => void;
   onPostcodeChange: (value: string) => void;
-  errorAddress?: string;
   errorPostcode?: string;
 }) {
   const [preview, setPreview] = useState<string | null>(null);
@@ -58,22 +58,6 @@ export default function LocationField({
     <div className="space-y-3">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Address <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="text"
-          value={addressLine}
-          maxLength={200}
-          onChange={(e) => onAddressLineChange(e.target.value)}
-          className={inputClass(errorAddress)}
-          placeholder="Street address, building or site"
-        />
-        {errorAddress && (
-          <p className="mt-1 text-xs text-red-500">{errorAddress}</p>
-        )}
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
           Postcode <span className="text-red-500">*</span>
         </label>
         <input
@@ -93,14 +77,31 @@ export default function LocationField({
           </p>
         ) : preview ? (
           <p className="mt-1 text-xs text-emerald-600">
-            ✓ {preview} shown publicly. The full address is only shared with the
-            Kinglancer you hire.
+            ✓ Only {preview} is shown publicly. Your full postcode is shared with
+            the Kinglancer you hire.
           </p>
         ) : (
           <p className="mt-1 text-xs text-gray-400">
-            Only the area is public — the exact address is shared once you hire.
+            Only the area is public — the full postcode is shared once you hire.
           </p>
         )}
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          Flat, building or access note{" "}
+          <span className="font-normal text-gray-400">(optional)</span>
+        </label>
+        <input
+          type="text"
+          value={addressLine}
+          maxLength={200}
+          onChange={(e) => onAddressLineChange(e.target.value)}
+          className={inputClass()}
+          placeholder="e.g. Flat 2, side entrance, ring the buzzer"
+        />
+        <p className="mt-1 text-xs text-gray-400">
+          Shared only with the Kinglancer you hire, once the job is funded.
+        </p>
       </div>
     </div>
   );

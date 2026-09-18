@@ -56,11 +56,16 @@ export default function JobKeyDetails({
             </p>
             {!isOnline &&
               (showExactLocation ? (
-                <p className="text-slate-500">
-                  {job.address_line ?? publicArea}
-                  {job.postcode ? `, ${job.postcode}` : ""}
-                  {daysSuffix}
-                </p>
+                <>
+                  <p className="text-slate-500">
+                    {publicArea}
+                    {job.postcode ? ` · ${job.postcode}` : ""}
+                    {daysSuffix}
+                  </p>
+                  {job.address_line ? (
+                    <p className="text-slate-500">{job.address_line}</p>
+                  ) : null}
+                </>
               ) : publicArea ? (
                 <p className="text-slate-500">
                   {publicArea}
@@ -86,12 +91,17 @@ export default function JobKeyDetails({
         )}
 
         {mapSrc && (
-          <iframe
-            title="Job location map"
-            src={mapSrc}
-            loading="lazy"
-            className="h-56 w-full rounded-xl border border-slate-200"
-          />
+          <div>
+            <iframe
+              title="Job location map"
+              src={mapSrc}
+              loading="lazy"
+              className="h-56 w-full rounded-xl border border-slate-200"
+            />
+            <p className="mt-1.5 text-xs text-slate-400">
+              Approximate area around the postcode — not the exact building.
+            </p>
+          </div>
         )}
       </div>
     </Card>
