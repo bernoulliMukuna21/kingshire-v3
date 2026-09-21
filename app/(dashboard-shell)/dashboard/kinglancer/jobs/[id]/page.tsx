@@ -14,6 +14,7 @@ import { getPayoutAccount } from "@/lib/db/payout-accounts";
 import {
   getJobReviewState,
   isReviewWindowClosed,
+  isJobReviewSettled,
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
@@ -250,12 +251,16 @@ export default async function KinglancerJobWorkspacePage({
       ? transaction.amount - transaction.platform_fee_kinglancer
       : null;
 
-  // Review state for approved jobs — released_at already in `transaction`;
-  // no second DB query needed.
+  // The review flow opens only once payout is settled (released_at set), not at
+  // approval — manual payouts leave a job approved but unreleased.
+  const reviewSettled = isJobReviewSettled({
+    status: job.status,
+    releasedAt: transaction?.released_at ?? null,
+  });
   let reviewState: Awaited<ReturnType<typeof getJobReviewState>> | null = null;
   let reviewWindowClosed = false;
   let reviewRemaining: ReturnType<typeof reviewWindowRemaining> = null;
-  if (job.status === "approved") {
+  if (reviewSettled) {
     reviewState = await getJobReviewState(id, user.id);
     reviewWindowClosed = isReviewWindowClosed(transaction?.released_at ?? null);
     const closesAt = transaction?.released_at
@@ -440,7 +445,7 @@ export default async function KinglancerJobWorkspacePage({
             </Card>
           )}
 
-          {job.status === "approved" && (
+          {reviewSettled && (
             <Card id="leave-review" className={`${cardPadding} scroll-mt-24`}>
               <h2 className="text-lg font-black text-slate-950">
                 Rate {clientFirstName}
