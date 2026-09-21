@@ -13,8 +13,8 @@ type Props = {
   status: "open" | "in_progress";
   /** True if the open job already has applicants (affects modal copy). */
   hasApplications?: boolean;
-  /** Held payment rail (in_progress) — non-card refunds go via support. */
-  paymentMethod?: "card" | "bank_transfer" | "espees" | null;
+  /** Held payment rail (in_progress) — bank_transfer refunds go via support. */
+  paymentMethod?: "card" | "bank_transfer" | null;
 };
 
 export default function CancelJobButton({
@@ -28,10 +28,8 @@ export default function CancelJobButton({
   const { loading, error, run } = useAsyncAction();
 
   const isInProgress = status === "in_progress";
-  // Bank-transfer/espees escrow is held by us, so refunds are arranged by support.
-  const manualInProgress =
-    isInProgress &&
-    (paymentMethod === "bank_transfer" || paymentMethod === "espees");
+  // Bank-transfer escrow is held by us, so refunds are arranged by support.
+  const manualInProgress = isInProgress && paymentMethod === "bank_transfer";
 
   const title = isInProgress ? "Cancel this job?" : "Cancel this job posting?";
 
