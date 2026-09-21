@@ -18,6 +18,7 @@ import type { RateType, WorkMode, ScheduleType, DirectRequestStatus } from "@/li
 import {
   getJobReviewState,
   isReviewWindowClosed,
+  isJobReviewSettled,
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
@@ -137,15 +138,21 @@ export default async function JobDetailWorkspace({
   const categories = job.categories ?? [];
   const deadline = formatDeadline(job.deadline);
 
-  // Review state for approved jobs (double-blind, 7-day window).
+  // Review state for approved jobs (double-blind, 7-day window). The flow opens
+  // only once payout is settled (released_at), not at approval.
   let reviewState: Awaited<ReturnType<typeof getJobReviewState>> | null = null;
   let reviewWindowClosed = false;
   let reviewRemaining: ReturnType<typeof reviewWindowRemaining> = null;
+  let reviewSettled = false;
   if (job.status === "approved") {
     const [state, tx] = await Promise.all([
       getJobReviewState(id, user.id),
       getTransactionByJob(id),
     ]);
+    reviewSettled = isJobReviewSettled({
+      status: job.status,
+      releasedAt: tx?.released_at ?? null,
+    });
     reviewState = state;
     reviewWindowClosed = isReviewWindowClosed(tx?.released_at ?? null);
     const closesAt = tx?.released_at
@@ -323,7 +330,7 @@ export default async function JobDetailWorkspace({
             </Card>
           )}
 
-          {job.status === "approved" && (
+          {reviewSettled && (
             <Card id="leave-review" className={`${cardPadding} scroll-mt-24`}>
               <h2 className="text-lg font-black text-slate-950">
                 Rate {kinglancerFirstName}

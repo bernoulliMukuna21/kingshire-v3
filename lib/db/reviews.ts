@@ -14,6 +14,19 @@ export function isReviewWindowClosed(releasedAt: string | null): boolean {
 }
 
 /**
+ * The review flow only opens once the payout is actually released — not merely
+ * when the client approves. Manual payouts (bank transfer, Espees, or an
+ * unsubscribed worker) leave a job `approved` with `released_at` still null, so
+ * every review surface must check both or they drift from the review API.
+ */
+export function isJobReviewSettled(input: {
+  status: string;
+  releasedAt: string | null;
+}): boolean {
+  return input.status === "approved" && input.releasedAt != null;
+}
+
+/**
  * Human label + urgency for how long is left to leave a review. Returns null
  * when there is no deadline (e.g. payment not yet released). Kept out of
  * component render bodies because it reads `Date.now()`.
@@ -157,7 +170,13 @@ export async function getPendingReviewJobs(
   return jobs
     .filter((job) => {
       if (reviewedJobIds.has(job.id)) return false;
-      return !isReviewWindowClosed(releasedAtByJob.get(job.id) ?? null);
+      const releasedAt = releasedAtByJob.get(job.id) ?? null;
+      // Only once the payout is settled and the window is still open (the jobs
+      // query already restricts to status 'approved').
+      return (
+        isJobReviewSettled({ status: "approved", releasedAt }) &&
+        !isReviewWindowClosed(releasedAt)
+      );
     })
     .map((job) => {
       const counterpart = Array.isArray(job.counterpart)
