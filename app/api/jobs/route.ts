@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOpenJobs, createJob } from "@/lib/db/jobs";
+import { jobAlertHeadline } from "@/lib/jobs";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
 import {
   hasValidCurrencyPrecision,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/validation";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import { lookupPostcode } from "@/lib/postcodes";
+import { formatMoney } from "@/lib/utils";
 import { emailJobAlert } from "@/lib/notifications";
 import { sendPushToUser } from "@/lib/push";
 import { requireOrganisationPermission } from "@/lib/organisations";
@@ -393,12 +395,14 @@ export async function POST(request: Request) {
           .order("jobs_completed", { ascending: false })
           .limit(50);
 
+    const priceLabel = formatMoney(normalizedBudget);
+    const headline = jobAlertHeadline(job.title, priceLabel);
     const alertTitle = invitedKinglancerId
-      ? "New direct job request"
-      : "New job posted";
+      ? `Direct request: ${headline}`
+      : headline;
     const alertBody = invitedKinglancerId
-      ? `You have a direct job request: "${job.title}".`
-      : `A new job has just been posted: "${job.title}". Be one of the first to apply!`;
+      ? `You've been personally invited to this job — take a look and respond.`
+      : `Just posted near you. Be one of the first to apply!`;
     const alertLink = `/jobs/${job.id}`;
 
     if (kinglancers?.length) {
@@ -426,6 +430,7 @@ export async function POST(request: Request) {
             emailJobAlert({
               to: k.email as string,
               jobTitle: job.title,
+              priceLabel,
               jobId: job.id,
               isDirect: !!invitedKinglancerId,
             }),

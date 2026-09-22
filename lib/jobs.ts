@@ -6,6 +6,12 @@ export type JobStatus = Database["public"]["Tables"]["jobs"]["Row"]["status"];
 /** Page size used across all job list views (client, kinglancer, admin). */
 export const JOBS_PAGE_SIZE = 5;
 
+/** Single source for the "<title> — <price>" headline used in job-alert
+ * notifications, push and emails, so the format can't drift between channels. */
+export function jobAlertHeadline(jobTitle: string, priceLabel: string): string {
+  return `${jobTitle} — ${priceLabel}`;
+}
+
 // Canonical unions for job text columns (DB stores them as CHECK-constrained
 // text, generated as `string`), so the narrow types live here.
 export type RateType = "fixed" | "per_hour" | "per_day";
