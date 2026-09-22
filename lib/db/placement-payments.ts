@@ -18,6 +18,7 @@ import {
   type EngagementPaymentRow,
 } from "@/lib/db/engagement-payments";
 import { periodFees } from "@/lib/settlement/fees";
+import { settleEngagementPaymentsOnEarlyEnd } from "@/lib/settlement/termination";
 import { placementMonthlyAmounts } from "@/lib/placements";
 import type { PlacementAgreementRow } from "@/lib/db/placements";
 import type { EngagementPaymentStatus } from "@/lib/settlement/types";
@@ -341,16 +342,5 @@ export async function settlePlacementPaymentsOnEarlyEnd(
 ): Promise<void> {
   const engagement = await findPlacementEngagement(agreementId);
   if (!engagement) return;
-  const payments = await getEngagementPayments(engagement.id);
-  await Promise.all(
-    payments.map((payment) =>
-      payment.status === "due"
-        ? updateEngagementPaymentStatus(payment.id, "cancelled")
-        : payment.status === "held"
-          ? updateEngagementPaymentStatus(payment.id, "disputed", {
-              dispute_reason: reason,
-            })
-          : Promise.resolve(null),
-    ),
-  );
+  await settleEngagementPaymentsOnEarlyEnd(engagement.id, reason);
 }

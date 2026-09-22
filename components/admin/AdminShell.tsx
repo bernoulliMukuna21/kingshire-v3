@@ -17,6 +17,7 @@ const ADMIN_NAV_ITEMS = [
   { label: "Placements", icon: "🎓", href: "/admin/placements" },
   { label: "Verifications", icon: "✅", href: "/admin/verifications" },
   { label: "Pay disputes", icon: "⚖️", href: "/admin/placement-disputes" },
+  { label: "Role disputes", icon: "🧾", href: "/admin/role-disputes" },
 ];
 
 type Props = {

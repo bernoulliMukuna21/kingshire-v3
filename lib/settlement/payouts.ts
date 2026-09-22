@@ -28,7 +28,12 @@ export async function releaseEngagementPayment(
     .eq("id", paymentId)
     .maybeSingle();
   if (error) throw error;
-  if (!payment || payment.status !== "held") return "not_eligible";
+  // Admin may release a 'disputed' period directly (bypassing the normal
+  // held→released cron path), so this accepts both — matching the pre-engine
+  // Placement payout behaviour, which had no status guard beyond the transfer id.
+  if (!payment || (payment.status !== "held" && payment.status !== "disputed")) {
+    return "not_eligible";
+  }
   if (payment.stripe_transfer_id) return "already_transferred";
 
   const engagement = await getEngagement(payment.engagement_id);

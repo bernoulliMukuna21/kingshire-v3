@@ -28,6 +28,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import ReviewPanel from "@/components/jobs/ReviewPanel";
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import RoleEngagementActions from "./RoleEngagementActions";
+import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
 import { getEngagementPayments } from "@/lib/db/engagement-payments";
 import {
   DirectRequestActions,
@@ -104,6 +105,7 @@ type RoleEngagement = {
   cadence: string;
   amount_per_period: number;
   settlement_mode: string;
+  end_requested_by: string | null;
 } | null;
 
 function nextAction({
@@ -231,7 +233,7 @@ export default async function KinglancerJobWorkspacePage({
       .maybeSingle(),
     supabase
       .from("engagements")
-      .select("status, cadence, amount_per_period, settlement_mode")
+      .select("id, status, cadence, amount_per_period, settlement_mode, end_requested_by")
       .eq("source_kind", "org_role")
       .eq("source_id", id)
       .eq("kinglancer_id", user.id)
@@ -308,33 +310,6 @@ export default async function KinglancerJobWorkspacePage({
         fallbackHref="/dashboard/kinglancer/jobs"
         fallbackLabel="Back to My Jobs"
       />
-
-      {job.posting_type === "role" && roleEngagement && (
-        <Card className={cardPadding}>
-          <h2 className="text-lg font-black text-slate-950">Role agreement</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            £{Number(roleEngagement.amount_per_period).toFixed(2)} {roleEngagement.cadence} · {roleEngagement.status.replaceAll("_", " ")}
-          </p>
-          <RoleEngagementActions
-            jobId={id}
-            status={roleEngagement.status}
-            cadence={roleEngagement.cadence}
-            amount={Number(roleEngagement.amount_per_period)}
-            settlementMode={roleEngagement.settlement_mode}
-          />
-          {rolePayments.length > 0 && (
-            <div className="mt-4 border-t border-slate-200 pt-3 text-sm text-slate-600">
-              <p className="font-bold text-slate-800">Payment periods</p>
-              {rolePayments.map((payment) => (
-                <p key={payment.id} className="mt-1 flex justify-between gap-3">
-                  <span>Period {payment.period_index} · {payment.due_date}</span>
-                  <span className="font-semibold capitalize">{payment.status}</span>
-                </p>
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
 
       {needsPayoutLink && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
@@ -431,6 +406,24 @@ export default async function KinglancerJobWorkspacePage({
                 cadence={roleEngagement.cadence}
                 amount={Number(roleEngagement.amount_per_period)}
                 settlementMode={roleEngagement.settlement_mode}
+              />
+              {rolePayments.length > 0 && (
+                <div className="mt-4 border-t border-slate-200 pt-3 text-sm text-slate-600">
+                  <p className="font-bold text-slate-800">Payment periods</p>
+                  {rolePayments.map((payment) => (
+                    <p key={payment.id} className="mt-1 flex justify-between gap-3">
+                      <span>Period {payment.period_index} · {payment.due_date}</span>
+                      <span className="font-semibold capitalize">{payment.status}</span>
+                    </p>
+                  ))}
+                </div>
+              )}
+              <RoleTerminationPanel
+                jobId={id}
+                status={roleEngagement.status}
+                endRequestedBy={roleEngagement.end_requested_by}
+                viewerId={user.id}
+                kinglancerId={job.kinglancer_id ?? user.id}
               />
             </Card>
           )}

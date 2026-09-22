@@ -46,6 +46,7 @@ import RepostJobButton from "@/app/(dashboard-shell)/dashboard/client/jobs/[id]/
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import { canManageJob } from "@/lib/organisations";
 import { getEngagementBySource } from "@/lib/db/engagements";
+import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
 import { getEngagementPayments } from "@/lib/db/engagement-payments";
 
 type InvitedKinglancer = {
@@ -214,6 +215,13 @@ export default async function JobDetailWorkspace({
               </div>
             </div>
           )}
+          <RoleTerminationPanel
+            jobId={id}
+            status={roleEngagement.status}
+            endRequestedBy={roleEngagement.end_requested_by}
+            viewerId={user.id}
+            kinglancerId={roleEngagement.kinglancer_id}
+          />
         </Card>
       )}
 
