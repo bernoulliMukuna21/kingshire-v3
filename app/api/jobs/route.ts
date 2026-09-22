@@ -11,6 +11,7 @@ import {
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import { lookupPostcode } from "@/lib/postcodes";
 import { emailJobAlert } from "@/lib/notifications";
+import { sendPushToUser } from "@/lib/push";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { requireTermsAccepted } from "@/lib/terms";
@@ -392,6 +393,14 @@ export async function POST(request: Request) {
           .order("jobs_completed", { ascending: false })
           .limit(50);
 
+    const alertTitle = invitedKinglancerId
+      ? "New direct job request"
+      : "New job posted";
+    const alertBody = invitedKinglancerId
+      ? `You have a direct job request: "${job.title}".`
+      : `A new job has just been posted: "${job.title}". Be one of the first to apply!`;
+    const alertLink = `/jobs/${job.id}`;
+
     if (kinglancers?.length) {
       await createServiceClient()
         .from("notifications")
@@ -399,13 +408,9 @@ export async function POST(request: Request) {
           kinglancers.map((k) => ({
             user_id: k.id,
             type: invitedKinglancerId ? "direct_request" : "new_job",
-            title: invitedKinglancerId
-              ? "New direct job request"
-              : "New job posted",
-            body: invitedKinglancerId
-              ? `You have a direct job request: "${job.title}".`
-              : `A new job has just been posted: "${job.title}". Be one of the first to apply!`,
-            link: `/jobs/${job.id}`,
+            title: alertTitle,
+            body: alertBody,
+            link: alertLink,
           })),
         )
         .then(() => null);
@@ -425,6 +430,17 @@ export async function POST(request: Request) {
               isDirect: !!invitedKinglancerId,
             }),
           ),
+      ).catch(() => {});
+
+      // Fire-and-forget push fan-out — same bounded list as the in-app rows.
+      Promise.allSettled(
+        kinglancers.map((k) =>
+          sendPushToUser(k.id, {
+            title: alertTitle,
+            body: alertBody,
+            link: alertLink,
+          }),
+        ),
       ).catch(() => {});
     }
 

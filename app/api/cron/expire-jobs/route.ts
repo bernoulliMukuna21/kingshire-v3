@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
+import { sendPushToUser } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -118,6 +119,16 @@ export async function GET(request: Request) {
     if (notifError) {
       console.error("[expire-jobs] notifications error:", notifError.message);
     }
+
+    Promise.allSettled(
+      clientNotifications.map((n) =>
+        sendPushToUser(n.user_id, {
+          title: n.title,
+          body: n.body,
+          link: n.link,
+        }),
+      ),
+    ).catch(() => {});
   }
 
   console.log(
