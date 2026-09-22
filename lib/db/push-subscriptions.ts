@@ -1,16 +1,8 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import type { Database } from "@/lib/supabase/types";
 
-// NOTE: push_subscriptions isn't in the generated Database type yet — apply
-// migration 059 then `npm run gen:types` and swap this for the generated Row.
-export interface PushSubscriptionRow {
-  id: string;
-  user_id: string;
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-  user_agent: string | null;
-  created_at: string;
-}
+export type PushSubscriptionRow =
+  Database["public"]["Tables"]["push_subscriptions"]["Row"];
 
 export interface PushSubscriptionInput {
   endpoint: string;
