@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOpenJobs, createJob } from "@/lib/db/jobs";
+import { jobAlertHeadline } from "@/lib/jobs";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
 import {
   hasValidCurrencyPrecision,
@@ -10,7 +11,9 @@ import {
 } from "@/lib/validation";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import { lookupPostcode } from "@/lib/postcodes";
+import { formatMoney } from "@/lib/utils";
 import { emailJobAlert } from "@/lib/notifications";
+import { sendPushToUser } from "@/lib/push";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { requireTermsAccepted } from "@/lib/terms";
@@ -392,6 +395,16 @@ export async function POST(request: Request) {
           .order("jobs_completed", { ascending: false })
           .limit(50);
 
+    const priceLabel = formatMoney(normalizedBudget);
+    const headline = jobAlertHeadline(job.title, priceLabel);
+    const alertTitle = invitedKinglancerId
+      ? `Direct request: ${headline}`
+      : headline;
+    const alertBody = invitedKinglancerId
+      ? `You've been personally invited to this job — take a look and respond.`
+      : `Just posted near you. Be one of the first to apply!`;
+    const alertLink = `/jobs/${job.id}`;
+
     if (kinglancers?.length) {
       await createServiceClient()
         .from("notifications")
@@ -399,13 +412,9 @@ export async function POST(request: Request) {
           kinglancers.map((k) => ({
             user_id: k.id,
             type: invitedKinglancerId ? "direct_request" : "new_job",
-            title: invitedKinglancerId
-              ? "New direct job request"
-              : "New job posted",
-            body: invitedKinglancerId
-              ? `You have a direct job request: "${job.title}".`
-              : `A new job has just been posted: "${job.title}". Be one of the first to apply!`,
-            link: `/jobs/${job.id}`,
+            title: alertTitle,
+            body: alertBody,
+            link: alertLink,
           })),
         )
         .then(() => null);
@@ -421,10 +430,22 @@ export async function POST(request: Request) {
             emailJobAlert({
               to: k.email as string,
               jobTitle: job.title,
+              priceLabel,
               jobId: job.id,
               isDirect: !!invitedKinglancerId,
             }),
           ),
+      ).catch(() => {});
+
+      // Fire-and-forget push fan-out — same bounded list as the in-app rows.
+      Promise.allSettled(
+        kinglancers.map((k) =>
+          sendPushToUser(k.id, {
+            title: alertTitle,
+            body: alertBody,
+            link: alertLink,
+          }),
+        ),
       ).catch(() => {});
     }
 

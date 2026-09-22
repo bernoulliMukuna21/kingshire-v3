@@ -1,5 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { SUPPORT_EMAIL } from "@/lib/contact";
+import { sendPushToUser } from "@/lib/push";
+import { jobAlertHeadline } from "@/lib/jobs";
 
 export type NotificationType =
   | "new_application"
@@ -53,6 +55,15 @@ export async function notify({
       dbError.message,
     );
   }
+
+  // Push — fire-and-forget, never throws; no-op if VAPID isn't configured or
+  // the user has no subscribed devices.
+  sendPushToUser(userId, { title, body, link }).catch((err: unknown) => {
+    console.error(
+      `[notify] Push FAILED for user=${userId}:`,
+      err instanceof Error ? err.message : err,
+    );
+  });
 
   const brevoApiKey = process.env.BREVO_API_KEY;
   const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL;
@@ -910,23 +921,24 @@ export async function notifyReviewRequestsForJob(
 export async function emailJobAlert({
   to,
   jobTitle,
+  priceLabel,
   jobId,
   isDirect = false,
 }: {
   to: string;
   jobTitle: string;
+  priceLabel: string;
   jobId: string;
   isDirect?: boolean;
 }) {
+  const headline = jobAlertHeadline(jobTitle, priceLabel);
   await sendEmail({
     to,
-    subject: isDirect
-      ? `Direct job request: "${jobTitle}"`
-      : `New job posted: "${jobTitle}"`,
-    title: isDirect ? "New direct job request" : "New job posted",
+    subject: isDirect ? `Direct request: ${headline}` : headline,
+    title: isDirect ? `Direct request: ${headline}` : headline,
     body: isDirect
-      ? `You have received a direct job request: "${jobTitle}". Log in to review and respond.`
-      : `A new job has just been posted: "${jobTitle}". Be one of the first to apply!`,
+      ? `You've been personally invited to this job. Log in to review and respond.`
+      : `Just posted near you — be one of the first to apply!`,
     link: `/jobs/${jobId}`,
     ctaLabel: isDirect ? "View request →" : "View job →",
   });

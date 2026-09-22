@@ -107,6 +107,189 @@ export type Database = {
           },
         ]
       }
+      engagement_payments: {
+        Row: {
+          charged_at: string | null
+          created_at: string
+          dispute_reason: string | null
+          due_date: string
+          engagement_id: string
+          id: string
+          kinglancer_id: string
+          notice_sent_at: string | null
+          organisation_id: string
+          period_index: number
+          platform_fee_client: number
+          platform_fee_kinglancer: number
+          released_at: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_transfer_id: string | null
+          updated_at: string
+          worker_amount: number
+        }
+        Insert: {
+          charged_at?: string | null
+          created_at?: string
+          dispute_reason?: string | null
+          due_date: string
+          engagement_id: string
+          id?: string
+          kinglancer_id: string
+          notice_sent_at?: string | null
+          organisation_id: string
+          period_index: number
+          platform_fee_client?: number
+          platform_fee_kinglancer?: number
+          released_at?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_id?: string | null
+          updated_at?: string
+          worker_amount?: number
+        }
+        Update: {
+          charged_at?: string | null
+          created_at?: string
+          dispute_reason?: string | null
+          due_date?: string
+          engagement_id?: string
+          id?: string
+          kinglancer_id?: string
+          notice_sent_at?: string | null
+          organisation_id?: string
+          period_index?: number
+          platform_fee_client?: number
+          platform_fee_kinglancer?: number
+          released_at?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_transfer_id?: string | null
+          updated_at?: string
+          worker_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_payments_engagement_id_fkey"
+            columns: ["engagement_id"]
+            isOneToOne: false
+            referencedRelation: "engagements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_payments_kinglancer_id_fkey"
+            columns: ["kinglancer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_payments_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      engagements: {
+        Row: {
+          amount_per_period: number | null
+          cadence: string
+          created_at: string
+          duration_periods: number | null
+          end_reason: string | null
+          end_requested_at: string | null
+          end_requested_by: string | null
+          ended_at: string | null
+          id: string
+          kinglancer_id: string
+          kinglancer_signed_at: string | null
+          org_signed_at: string | null
+          org_signed_by: string | null
+          organisation_id: string
+          settlement_mode: string
+          source_id: string
+          source_kind: string
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_per_period?: number | null
+          cadence: string
+          created_at?: string
+          duration_periods?: number | null
+          end_reason?: string | null
+          end_requested_at?: string | null
+          end_requested_by?: string | null
+          ended_at?: string | null
+          id?: string
+          kinglancer_id: string
+          kinglancer_signed_at?: string | null
+          org_signed_at?: string | null
+          org_signed_by?: string | null
+          organisation_id: string
+          settlement_mode: string
+          source_id: string
+          source_kind: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_per_period?: number | null
+          cadence?: string
+          created_at?: string
+          duration_periods?: number | null
+          end_reason?: string | null
+          end_requested_at?: string | null
+          end_requested_by?: string | null
+          ended_at?: string | null
+          id?: string
+          kinglancer_id?: string
+          kinglancer_signed_at?: string | null
+          org_signed_at?: string | null
+          org_signed_by?: string | null
+          organisation_id?: string
+          settlement_mode?: string
+          source_id?: string
+          source_kind?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagements_end_requested_by_fkey"
+            columns: ["end_requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagements_kinglancer_id_fkey"
+            columns: ["kinglancer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagements_org_signed_by_fkey"
+            columns: ["org_signed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagements_organisation_id_fkey"
+            columns: ["organisation_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       experience_records: {
         Row: {
           agreement_id: string | null
@@ -219,6 +402,7 @@ export type Database = {
           description: string
           direct_request_message: string | null
           direct_request_status: string | null
+          employment_type: string | null
           ends_at: string | null
           estimated_minutes: number | null
           id: string
@@ -229,11 +413,16 @@ export type Database = {
           location_area: string | null
           longitude: number | null
           organisation_id: string | null
+          pay_amount: number | null
+          pay_cadence: string | null
+          pay_negotiable: boolean
           postcode: string | null
+          posting_type: string
           rate_type: string
           schedule_type: string
           scheduled_at: string | null
           service_tags_required: string[]
+          settlement_mode: string | null
           status: string
           title: string
           updated_at: string
@@ -254,6 +443,7 @@ export type Database = {
           description: string
           direct_request_message?: string | null
           direct_request_status?: string | null
+          employment_type?: string | null
           ends_at?: string | null
           estimated_minutes?: number | null
           id?: string
@@ -264,11 +454,16 @@ export type Database = {
           location_area?: string | null
           longitude?: number | null
           organisation_id?: string | null
+          pay_amount?: number | null
+          pay_cadence?: string | null
+          pay_negotiable?: boolean
           postcode?: string | null
+          posting_type?: string
           rate_type?: string
           schedule_type?: string
           scheduled_at?: string | null
           service_tags_required?: string[]
+          settlement_mode?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -289,6 +484,7 @@ export type Database = {
           description?: string
           direct_request_message?: string | null
           direct_request_status?: string | null
+          employment_type?: string | null
           ends_at?: string | null
           estimated_minutes?: number | null
           id?: string
@@ -299,11 +495,16 @@ export type Database = {
           location_area?: string | null
           longitude?: number | null
           organisation_id?: string | null
+          pay_amount?: number | null
+          pay_cadence?: string | null
+          pay_negotiable?: boolean
           postcode?: string | null
+          posting_type?: string
           rate_type?: string
           schedule_type?: string
           scheduled_at?: string | null
           service_tags_required?: string[]
+          settlement_mode?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -670,6 +871,8 @@ export type Database = {
           client_id: string
           client_marked_paid_at: string | null
           created_at: string
+          espees_amount: number | null
+          espees_payment_ref: string | null
           id: string
           job_id: string
           kinglancer_id: string
@@ -687,6 +890,8 @@ export type Database = {
           client_id: string
           client_marked_paid_at?: string | null
           created_at?: string
+          espees_amount?: number | null
+          espees_payment_ref?: string | null
           id?: string
           job_id: string
           kinglancer_id: string
@@ -704,6 +909,8 @@ export type Database = {
           client_id?: string
           client_marked_paid_at?: string | null
           created_at?: string
+          espees_amount?: number | null
+          espees_payment_ref?: string | null
           id?: string
           job_id?: string
           kinglancer_id?: string
@@ -1297,6 +1504,44 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           comment: string | null
@@ -1539,7 +1784,10 @@ export type Database = {
         Args: { p_actor_id: string; p_organisation_id: string }
         Returns: undefined
       }
-      finalize_manual_payment: { Args: { p_attempt_id: string }; Returns: Json }
+      finalize_manual_payment: {
+        Args: { p_attempt_id: string; p_method?: string }
+        Returns: Json
+      }
       finalize_payment_attempt: {
         Args: { p_payment_intent_id: string }
         Returns: Json
