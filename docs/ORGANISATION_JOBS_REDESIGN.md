@@ -159,14 +159,55 @@ passes, and the settlement unit suite passes.
 The migration has been applied to the linked staging database and the generated
 Supabase types include `engagements` and `engagement_payments`.
 
+## Current Work Status
+
+### Completed
+
+- [x] Settlement schema: `engagements` and `engagement_payments`
+- [x] Generated Supabase types for the settlement tables
+- [x] Weekly/monthly cadence arithmetic
+- [x] Bounded and rolling schedule planning
+- [x] Managed and direct fee calculations
+- [x] £10 per-period charge minimum
+- [x] Typed settlement persistence layer
+- [x] Managed off-session charging
+- [x] Direct facilitation-fee charging
+- [x] Managed Stripe Connect release handling
+- [x] Weekly/monthly release notices
+- [x] Protected charge and release cron routes
+- [x] Settlement unit tests
+- [x] Placement payment persistence delegates to the engagement ledger
+- [x] Placement billing and payouts delegate to shared settlement functions
+- [x] Placement contract tests updated for shared-ledger delegation
+- [x] Organisation role schema for permanent/temporary, weekly/monthly pay and
+   managed/direct settlement
+- [x] Dedicated Organisation role posting surface
+- [x] Role hiring creates a shared engagement
+- [x] Kinglancer role-term acceptance surface
+- [x] Organisation job list distinguishes recurring roles from one-off gigs
+- [x] Owner and Kinglancer role workspaces show engagement/payment periods
+
+Checkpoint: commit `3cfc352` on branch `feat/settlement-engine`.
+
+### Remaining
+
+- [ ] Add Organisation role termination and change-terms flows
+- [ ] Add managed funding and direct pay-agreement admin flows
+- [ ] Add admin reconciliation and exception handling for role settlements
+- [ ] Run the full quality gate and validate on staging
+
+The parked Espees work is intentionally outside this design and is not part of
+the remaining Organisation Jobs scope.
+
 ## Placement Migration Strategy
 
 There is no live Placement data to preserve. Therefore the settlement engine can
 be generalized directly rather than protected by a long compatibility layer.
 
-The next implementation phase will move Placement recurring payments onto the
-shared engine and remove duplicated Placement payment logic. Existing Placement
-product behaviour must remain intact:
+The Placement payment path now delegates to the shared engine and the old
+Placement repository remains only as a domain compatibility projection. The
+remaining Placement follow-up is to remove obsolete schema/code after staging
+validation. Existing Placement product behaviour must remain intact:
 
 - bounded duration
 - managed/direct settlement modes

@@ -130,14 +130,21 @@ export async function POST(request: Request) {
     days_on_site,
     schedule_type,
     estimated_minutes,
+    posting_type,
+    employment_type,
+    pay_cadence,
+    pay_amount,
+    pay_negotiable,
+    settlement_mode,
   } = body;
 
   const titleStr = (title ?? "").trim();
   const descStr = (description ?? "").trim();
+  const isRole = posting_type === "role";
   const budgetNum = Number(budget);
   const normalizedBudget = normalizeCurrencyAmount(budgetNum);
 
-  if (!titleStr || !descStr || !categories?.length || !budget)
+  if (!titleStr || !descStr || !categories?.length || (!isRole && !budget))
     return NextResponse.json(
       { error: "Missing required fields" },
       { status: 400 },
@@ -153,10 +160,11 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   if (
+    !isRole &&
     !Number.isFinite(budgetNum) ||
-    !hasValidCurrencyPrecision(budget) ||
-    normalizedBudget < MIN_JOB_BUDGET_GBP ||
-    normalizedBudget > 50000
+    (!isRole && !hasValidCurrencyPrecision(budget)) ||
+    (!isRole && normalizedBudget < MIN_JOB_BUDGET_GBP) ||
+    (!isRole && normalizedBudget > 50000)
   )
     return NextResponse.json(
       {
@@ -171,6 +179,41 @@ export async function POST(request: Request) {
     )
   )
     return NextResponse.json({ error: "Invalid category." }, { status: 400 });
+
+  if (isRole) {
+    if (!organisationId) {
+      return NextResponse.json(
+        { error: "Organisation roles must belong to an organisation." },
+        { status: 400 },
+      );
+    }
+    if (!["permanent", "temporary"].includes(employment_type)) {
+      return NextResponse.json(
+        { error: "Choose whether the role is permanent or temporary." },
+        { status: 400 },
+      );
+    }
+    if (!["weekly", "monthly"].includes(pay_cadence) && !pay_negotiable) {
+      return NextResponse.json(
+        { error: "Choose weekly or monthly pay, or discuss pay at interview." },
+        { status: 400 },
+      );
+    }
+    if (!pay_negotiable &&
+      (!Number.isFinite(Number(pay_amount)) || Number(pay_amount) < MIN_JOB_BUDGET_GBP)
+    ) {
+      return NextResponse.json(
+        { error: `The recurring pay must be at least £${MIN_JOB_BUDGET_GBP} per period.` },
+        { status: 400 },
+      );
+    }
+    if (!["managed", "direct"].includes(settlement_mode)) {
+      return NextResponse.json(
+        { error: "Choose how the recurring payment will be settled." },
+        { status: 400 },
+      );
+    }
+  }
   if (deadline) {
     const d = new Date(deadline);
     const today = new Date();
@@ -209,7 +252,7 @@ export async function POST(request: Request) {
   let scheduledAtIso: string | null = null;
   let endsAtIso: string | null = null;
   let daysOnSite: number | null = null;
-  if (resolvedWorkMode === "online") {
+  if (!isRole && resolvedWorkMode === "online") {
     const start = new Date(scheduled_at);
     const end = new Date(ends_at);
     if (!scheduled_at || isNaN(start.getTime())) {
@@ -249,7 +292,7 @@ export async function POST(request: Request) {
     resolvedLat = geo.latitude;
     resolvedLng = geo.longitude;
   }
-  if (resolvedWorkMode === "in_person") {
+  if (!isRole && resolvedWorkMode === "in_person") {
     const startHasTime =
       typeof scheduled_at === "string" && /T\d{2}:\d{2}/.test(scheduled_at);
     const endHasTime =
@@ -287,25 +330,31 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    if (isRole) {
+      scheduledAtIso = null;
+      endsAtIso = null;
+    }
     const start = new Date(scheduled_at);
     const end = new Date(ends_at);
-    if (!scheduled_at || isNaN(start.getTime())) {
+    if (!isRole && (!scheduled_at || isNaN(start.getTime()))) {
       return NextResponse.json(
         { error: "Add the start date." },
         { status: 400 },
       );
     }
-    if (!ends_at || isNaN(end.getTime())) {
+    if (!isRole && (!ends_at || isNaN(end.getTime()))) {
       return NextResponse.json({ error: "Add the end date." }, { status: 400 });
     }
-    if (end.getTime() < start.getTime()) {
+    if (!isRole && end.getTime() < start.getTime()) {
       return NextResponse.json(
         { error: "The end date must be after the start date." },
         { status: 400 },
       );
     }
-    scheduledAtIso = start.toISOString();
-    endsAtIso = end.toISOString();
+    if (!isRole) {
+      scheduledAtIso = start.toISOString();
+      endsAtIso = end.toISOString();
+    }
   }
 
   // Schedule type only applies to in-person timed jobs: a fixed 'shift' vs a
@@ -322,7 +371,8 @@ export async function POST(request: Request) {
     estimated_minutes != null
   ) {
     const m = Number(estimated_minutes);
-    if (Number.isInteger(m) && m >= 15 && m <= 1440) resolvedEstimatedMinutes = m;
+    if (Number.isInteger(m) && m >= 15 && m <= 1440)
+      resolvedEstimatedMinutes = m;
   }
 
   // Every job now carries a start/end window; the end date backs the legacy
@@ -356,7 +406,7 @@ export async function POST(request: Request) {
         title: titleStr,
         description: descStr,
         categories,
-        budget: normalizedBudget,
+        budget: isRole ? 0 : normalizedBudget,
         rate_type: resolvedRateType,
         work_mode: resolvedWorkMode,
         location: resolvedArea,
@@ -373,6 +423,12 @@ export async function POST(request: Request) {
         invited_kinglancer_id: invitedKinglancerId,
         direct_request_status: invitedKinglancerId ? "pending" : null,
         deadline: resolvedDeadline,
+        posting_type: isRole ? "role" : "gig",
+        employment_type: isRole ? employment_type : null,
+        pay_cadence: isRole ? pay_cadence : null,
+        pay_amount: isRole && !pay_negotiable ? Number(pay_amount) : null,
+        pay_negotiable: isRole ? !!pay_negotiable : false,
+        settlement_mode: isRole ? settlement_mode : null,
       },
       { useServiceRole: !!organisationId },
     );

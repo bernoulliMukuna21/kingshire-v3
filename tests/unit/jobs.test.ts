@@ -34,7 +34,11 @@ describe("jobScheduleLabel", () => {
 
   it("returns null when there's no schedule", () => {
     expect(
-      jobScheduleLabel({ work_mode: "online", scheduled_at: null, ends_at: null }),
+      jobScheduleLabel({
+        work_mode: "online",
+        scheduled_at: null,
+        ends_at: null,
+      }),
     ).toBeNull();
   });
 
@@ -86,7 +90,11 @@ describe("jobScheduleLabel", () => {
 describe("canSeeExactLocation", () => {
   it("always shows the exact location to the owner", () => {
     expect(
-      canSeeExactLocation({ status: "open", isOwner: true, isAssignedKinglancer: false }),
+      canSeeExactLocation({
+        status: "open",
+        isOwner: true,
+        isAssignedKinglancer: false,
+      }),
     ).toBe(true);
   });
 
