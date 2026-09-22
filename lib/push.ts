@@ -87,12 +87,24 @@ async function sendPushToUserWithResult(
 
 /**
  * Push to every device a user has subscribed. Fire-and-forget: never throws.
+ * Always logs a one-line summary so staging logs show what happened even
+ * when there's nothing to catch (no config / no subscriptions aren't errors).
  */
 export async function sendPushToUser(
   userId: string,
   payload: PushPayload,
 ): Promise<void> {
-  await sendPushToUserWithResult(userId, payload);
+  const result = await sendPushToUserWithResult(userId, payload);
+  if (!result.configured) {
+    console.log(`[push] skipped for user=${userId}: VAPID not configured`);
+  } else if (result.subscriptionCount === 0) {
+    console.log(`[push] skipped for user=${userId}: no subscriptions`);
+  } else {
+    console.log(
+      `[push] user=${userId}: sent ${result.sent}/${result.subscriptionCount}` +
+        (result.failed.length ? `, ${result.failed.length} failed` : ""),
+    );
+  }
 }
 
 /** Same as sendPushToUser but returns a diagnostic summary instead of void. */
