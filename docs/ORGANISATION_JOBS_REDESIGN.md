@@ -186,15 +186,17 @@ Supabase types include `engagements` and `engagement_payments`.
 - [x] Kinglancer role-term acceptance surface
 - [x] Organisation job list distinguishes recurring roles from one-off gigs
 - [x] Owner and Kinglancer role workspaces show engagement/payment periods
+- [x] Organisation-role mutual early-end (propose/confirm/decline/escalate)
+- [x] Admin reconciliation for disputed role settlements (release/refund)
 
-Checkpoint: commit `3cfc352` on branch `feat/settlement-engine`.
+Checkpoint: commit `76a580d` on branch `feat/settlement-engine`.
 
 ### Remaining
 
-- [ ] Add Organisation role termination and change-terms flows
-- [ ] Add managed funding and direct pay-agreement admin flows
-- [ ] Add admin reconciliation and exception handling for role settlements
-- [ ] Run the full quality gate and validate on staging
+- [ ] Managed funding UI for roles (org funds the first period, mirroring the
+  Placement "fund first month" flow) — currently only Placements have this
+- [ ] Run the full quality gate and validate on staging (in progress)
+- [ ] Apply migration 061 to production at promotion time
 
 The parked Espees work is intentionally outside this design and is not part of
 the remaining Organisation Jobs scope.
