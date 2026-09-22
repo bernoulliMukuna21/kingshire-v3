@@ -7,7 +7,7 @@ import { usePushNotifications } from "@/lib/hooks/usePushNotifications";
 const DISMISS_KEY = "push-prompt-dismissed";
 
 export default function PushNotificationsPrompt() {
-  const { supported, permission, subscribed, busy, subscribe } =
+  const { supported, permission, subscribed, busy, error, subscribe } =
     usePushNotifications();
   const [dismissed, setDismissed] = useState(true);
 
@@ -45,6 +45,9 @@ export default function PushNotificationsPrompt() {
           <p className="mt-0.5 text-xs text-slate-500">
             Get notified instantly about new jobs, applications and payments.
           </p>
+          {error && (
+            <p className="mt-1.5 text-xs font-medium text-red-600">{error}</p>
+          )}
           <div className="mt-3 flex gap-2">
             <button
               onClick={async () => {

@@ -22,6 +22,7 @@ export function usePushNotifications() {
   const [permission, setPermission] = useState<PushPermission>("default");
   const [subscribed, setSubscribed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const supported =
     typeof window !== "undefined" &&
@@ -47,15 +48,26 @@ export function usePushNotifications() {
   }, [supported]);
 
   const subscribe = useCallback(async () => {
+    setError(null);
     const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!supported || !vapidPublicKey) return false;
+    if (!supported) {
+      setError("Push notifications aren't supported in this browser.");
+      return false;
+    }
+    if (!vapidPublicKey) {
+      setError("Push isn't configured yet (missing public key).");
+      return false;
+    }
 
     setBusy(true);
     try {
       const registration = await navigator.serviceWorker.register("/sw.js");
       const permissionResult = await Notification.requestPermission();
       setPermission(permissionResult as PushPermission);
-      if (permissionResult !== "granted") return false;
+      if (permissionResult !== "granted") {
+        setError("Notification permission was not granted.");
+        return false;
+      }
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -67,12 +79,17 @@ export function usePushNotifications() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(subscription.toJSON()),
       });
-      if (!res.ok) return false;
+      if (!res.ok) {
+        setError(`Could not save subscription (status ${res.status}).`);
+        return false;
+      }
 
       setSubscribed(true);
       return true;
     } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
       console.error("[push] subscribe failed:", err);
+      setError(message);
       return false;
     } finally {
       setBusy(false);
@@ -99,5 +116,13 @@ export function usePushNotifications() {
     }
   }, [supported]);
 
-  return { supported, permission, subscribed, busy, subscribe, unsubscribe };
+  return {
+    supported,
+    permission,
+    subscribed,
+    busy,
+    error,
+    subscribe,
+    unsubscribe,
+  };
 }
