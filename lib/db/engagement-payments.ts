@@ -63,6 +63,31 @@ export async function getHeldEngagementPayments(): Promise<EngagementPaymentRow[
   return data ?? [];
 }
 
+export async function getHeldEngagementPaymentsForOrganisation(
+  organisationId: string,
+): Promise<EngagementPaymentRow[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("engagement_payments")
+    .select("*")
+    .eq("organisation_id", organisationId)
+    .eq("status", "held")
+    .order("due_date", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getDisputedEngagementPayments(): Promise<EngagementPaymentRow[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("engagement_payments")
+    .select("*")
+    .eq("status", "disputed")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function createEngagementPayment(
   input: EngagementPaymentInsert,
 ): Promise<EngagementPaymentRow> {

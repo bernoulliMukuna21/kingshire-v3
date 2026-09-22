@@ -1,40 +1,36 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-// Controls what the mocked service-client query returns.
-const state = vi.hoisted(() => ({
-  rows: [] as { id: string; agreement: { status: string } | null }[],
+const due = vi.hoisted(() => vi.fn());
+const engagement = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/db/engagement-payments", () => ({
+  getDueEngagementPayments: due,
+  getEngagementPayments: vi.fn().mockResolvedValue([]),
+  getEngagementPayment: vi.fn(),
+  createEngagementPayments: vi.fn(),
+  updateEngagementPaymentStatus: vi.fn(),
+  getDisputedEngagementPayments: vi.fn().mockResolvedValue([]),
+  getHeldEngagementPaymentsForOrganisation: vi.fn().mockResolvedValue([]),
 }));
-
-vi.mock("@/lib/supabase/service", () => ({
-  createServiceClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          lte: async () => ({ data: state.rows, error: null }),
-        }),
-      }),
-    }),
-  }),
+vi.mock("@/lib/db/engagements", () => ({
+  getEngagement: engagement,
+  getEngagementBySource: vi.fn(),
+  createEngagement: vi.fn(),
 }));
 
 import { listDuePlacementPayments } from "@/lib/db/placement-payments";
 
 describe("listDuePlacementPayments", () => {
-  beforeEach(() => {
-    state.rows = [];
-  });
+  it("selects only due payments whose source is a Placement", async () => {
+    due.mockResolvedValueOnce([
+      { id: "p-placement", engagement_id: "e-placement" },
+      { id: "p-role", engagement_id: "e-role" },
+    ]);
+    engagement
+      .mockResolvedValueOnce({ source_kind: "placement" })
+      .mockResolvedValueOnce({ source_kind: "org_role" });
 
-  it("returns nothing when there are no due payments", async () => {
-    await expect(listDuePlacementPayments()).resolves.toEqual([]);
-  });
-
-  it("only returns payments whose agreement is still active", async () => {
-    state.rows = [
-      { id: "p-active", agreement: { status: "active" } },
-      { id: "p-cancelled", agreement: { status: "cancelled" } },
-      { id: "p-completed", agreement: { status: "completed" } },
-    ];
     const result = await listDuePlacementPayments();
-    expect(result.map((r) => r.id)).toEqual(["p-active"]);
+    expect(result.map((payment) => payment.id)).toEqual(["p-placement"]);
   });
 });
