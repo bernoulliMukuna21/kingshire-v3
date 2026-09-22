@@ -51,6 +51,20 @@ export async function getEngagementBySource(
   return asEngagement(data);
 }
 
+/** Batch lookup used to enrich payment listings without one query per row. */
+export async function getEngagementsByIds(
+  ids: string[],
+): Promise<Map<string, Engagement>> {
+  if (ids.length === 0) return new Map();
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("engagements")
+    .select("*")
+    .in("id", [...new Set(ids)]);
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.id, asEngagement(row)]));
+}
+
 export async function createEngagement(
   input: EngagementInsert,
 ): Promise<Engagement> {
