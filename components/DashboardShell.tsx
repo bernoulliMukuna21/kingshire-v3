@@ -5,6 +5,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import NotificationBell from "@/components/NotificationBell";
 import SignOutButton from "@/components/SignOutButton";
+import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
 import { getInitials } from "@/lib/utils";
 import { getNavItems } from "@/lib/dashboard-nav";
 import MobileNav from "@/components/MobileNav";
@@ -144,6 +145,7 @@ export default function DashboardShell({ profile, organisations, children }: Pro
 
       {/* Main content */}
       <div className="lg:pl-72">{children}</div>
+      <PushNotificationsPrompt />
     </div>
   );
 }

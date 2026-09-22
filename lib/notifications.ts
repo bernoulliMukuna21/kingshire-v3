@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { SUPPORT_EMAIL } from "@/lib/contact";
+import { sendPushToUser } from "@/lib/push";
 
 export type NotificationType =
   | "new_application"
@@ -53,6 +54,15 @@ export async function notify({
       dbError.message,
     );
   }
+
+  // Push — fire-and-forget, never throws; no-op if VAPID isn't configured or
+  // the user has no subscribed devices.
+  sendPushToUser(userId, { title, body, link }).catch((err: unknown) => {
+    console.error(
+      `[notify] Push FAILED for user=${userId}:`,
+      err instanceof Error ? err.message : err,
+    );
+  });
 
   const brevoApiKey = process.env.BREVO_API_KEY;
   const brevoSenderEmail = process.env.BREVO_SENDER_EMAIL;
