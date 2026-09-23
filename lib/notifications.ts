@@ -107,8 +107,8 @@ export async function notifyPlacementApplicationReceived({
   await notify({
     userId: recipientId,
     type: "new_application",
-    title: "New placement application",
-    body: `A Kinglancer has applied to your placement "${placementTitle}".`,
+    title: "🎉 New placement application!",
+    body: `Nice one — a Kinglancer just applied to your placement "${placementTitle}". Take a look and see if they're a great fit!`,
     link: `/dashboard/organisations/${organisationId}/placements/${placementId}`,
     email: recipientEmail
       ? {
@@ -134,8 +134,8 @@ export async function notifyPlacementOffer({
   await notify({
     userId: kinglancerId,
     type: "job_awarded",
-    title: "Placement offer",
-    body: `You've been offered the placement "${placementTitle}". Review and accept the agreement to begin.`,
+    title: "🎉 You've been offered a placement!",
+    body: `Great news — you've been offered "${placementTitle}"! Review the agreement and accept to get started.`,
     link: `/dashboard/placements/agreements/${agreementId}`,
     email: kinglancerEmail
       ? {
@@ -167,12 +167,14 @@ export async function notifyPlacementReviewed({
   await notify({
     userId: recipientId,
     type: "new_job",
-    title: approved ? "Placement approved" : "Placement not approved",
+    title: approved
+      ? "🎉 Your placement is live!"
+      : "Your placement needs a small update",
     body: approved
-      ? `Your placement "${placementTitle}" passed review and is now live.`
-      : `Your placement "${placementTitle}" wasn't approved.${
+      ? `Great news — "${placementTitle}" passed review and is now live for Kinglancers to discover!`
+      : `Your placement "${placementTitle}" wasn't approved yet.${
           reason ? ` Reason: ${reason}` : ""
-        } Please review it and try again.`,
+        } Make the update and resubmit — you're almost there.`,
     link: `/dashboard/organisations/${organisationId}/placements/${placementId}`,
     email: recipientEmail
       ? {
@@ -202,8 +204,8 @@ export async function notifyPlacementCheckIn({
   await notify({
     userId: recipientId,
     type: "work_submitted",
-    title: "New placement check-in",
-    body: `${authorName} posted a check-in on "${placementTitle}".`,
+    title: "📝 New check-in posted",
+    body: `${authorName} just posted a check-in on "${placementTitle}" — take a look at the latest update.`,
     link: `/dashboard/placements/agreements/${agreementId}`,
     email: recipientEmail
       ? {
@@ -232,12 +234,10 @@ export async function notifyExperienceVerified({
   await notify({
     userId: kinglancerId,
     type: "review_received",
-    title: approved
-      ? "Verified placement approved"
-      : "Verification not approved",
+    title: approved ? "🎉 Your placement is verified!" : "Verification update",
     body: approved
-      ? `Your ${label} placement with ${organisationName} is now verified on your profile.`
-      : `Your ${label} placement verification wasn't approved.`,
+      ? `Congratulations — your ${label} placement with ${organisationName} is now verified on your profile! It's a great addition to your Placement Passport.`
+      : `Your ${label} placement verification wasn't approved this time.`,
     link: "/dashboard/profile",
     email: kinglancerEmail
       ? {
@@ -265,8 +265,8 @@ export async function notifyNewApplication({
   await notify({
     userId: clientId,
     type: "new_application",
-    title: "New application received",
-    body: `Someone applied to your job "${jobTitle}". Review their application and decide whether to hire them.`,
+    title: "🎉 You've got a new applicant!",
+    body: `Someone just applied to your job "${jobTitle}" — take a look and see if they're the right fit!`,
     link: `/dashboard/client/jobs/${jobId}`,
     email: {
       to: clientEmail,
@@ -288,8 +288,8 @@ export async function notifyJobAwarded({
   await notify({
     userId: kinglancerId,
     type: "job_awarded",
-    title: "You've been hired!",
-    body: `Congratulations — you were selected for "${jobTitle}". Head to your dashboard to get started.`,
+    title: "🎉 Congratulations, you've been hired!",
+    body: `You were selected for "${jobTitle}" — nice work! Head to your dashboard to get started.`,
     link: `/dashboard/kinglancer`,
     email: {
       to: kinglancerEmail,
@@ -310,8 +310,8 @@ export async function notifyWorkSubmitted({
   await notify({
     userId: clientId,
     type: "work_submitted",
-    title: "Work submitted for review",
-    body: `Your Kinglancer has marked the work complete on "${jobTitle}". Review and approve to release payment.`,
+    title: "✅ Work submitted — ready for your review",
+    body: `Your Kinglancer has marked "${jobTitle}" as complete. Take a look and approve to release their payment.`,
     link: `/dashboard/client`,
     email: {
       to: clientEmail,
@@ -334,8 +334,8 @@ export async function notifyPaymentReleased({
   await notify({
     userId: kinglancerId,
     type: "payment_released",
-    title: "Payment released",
-    body: `Your payment of £${amount.toFixed(2)} for "${jobTitle}" has been approved and is on its way.`,
+    title: "💰 You've been paid!",
+    body: `Nice one — your payment of £${amount.toFixed(2)} for "${jobTitle}" has been approved and is on its way!`,
     link: `/dashboard/kinglancer`,
     email: {
       to: kinglancerEmail,
@@ -358,8 +358,8 @@ export async function notifyNewJob({
   await notify({
     userId: kinglancerId,
     type: "new_job",
-    title: "New job posted",
-    body: `A new job has just been posted: "${jobTitle}". Be one of the first to apply!`,
+    title: "🎉 New job posted!",
+    body: `A new job just went live: "${jobTitle}". Be one of the first to apply!`,
     link: `/jobs/${jobId}`,
     email: {
       to: kinglancerEmail,
@@ -382,10 +382,10 @@ export async function notifyPaymentFailed({
     subject: `Payment failed for "${jobTitle}"`,
     title: isClient
       ? "Your payment didn't go through"
-      : "Payment did not complete",
+      : "Payment hasn't completed yet",
     body: isClient
-      ? `Your card payment for "${jobTitle}" failed. No one has been hired yet. Please retry or cancel the pending payment from your dashboard.`
-      : `The client's payment for "${jobTitle}" did not complete. We'll notify you if the client completes escrow.`,
+      ? `No worries — your card payment for "${jobTitle}" didn't go through, and no one has been hired yet. You can retry or cancel the pending payment from your dashboard.`
+      : `The client's payment for "${jobTitle}" hasn't completed yet. We'll let you know as soon as escrow is funded.`,
     link: isClient ? `/dashboard/client` : `/dashboard/kinglancer`,
     ctaLabel: isClient ? "View dashboard →" : "View dashboard →",
   });
@@ -695,8 +695,8 @@ export async function notifyPlacementReadyToFund({
   await notify({
     userId: ownerId,
     type: "dispute_raised", // reuse existing type — no schema change needed
-    title: "Fund a placement to start it",
-    body: `The Kinglancer has accepted "${title}". Fund the first month to start the placement — you'll be charged the monthly amount and it's held in escrow until month-end.`,
+    title: "🎉 Your Kinglancer accepted!",
+    body: `Great news — they've accepted "${title}"! Fund the first month to kick things off — it's held safely in escrow until month-end.`,
     link: `/dashboard/placements/agreements/${agreementId}`,
     email: email
       ? {
@@ -724,8 +724,8 @@ export async function notifyPlacementPayoutSetupNeeded({
   await notify({
     userId: kinglancerId,
     type: "payout_ready",
-    title: "Set up payouts to receive your placement pay",
-    body: `The organisation released your first month for "${placementTitle}", but it's held safely until you set up payouts. Connect your bank account to receive it — it takes less than 2 minutes.`,
+    title: "💰 Your placement pay is waiting!",
+    body: `The organisation released your first month for "${placementTitle}" — nice one! Just connect your bank account to receive it, it takes less than 2 minutes.`,
     link: "/dashboard/kinglancer/payouts",
     email: profile?.email
       ? {
@@ -753,8 +753,8 @@ export async function notifyPayoutClaimReady({
   await notify({
     userId: kinglancerId,
     type: "payout_ready",
-    title: "Your payment is ready to claim",
-    body: `Your payment of £${amount.toFixed(2)} for "${jobTitle}" has been approved. Connect your bank account to receive it — takes less than 2 minutes.`,
+    title: "💰 Your payment is ready to claim!",
+    body: `Your £${amount.toFixed(2)} payment for "${jobTitle}" has been approved! Connect your bank account to receive it, takes less than 2 minutes.`,
     link: onboardingUrl, // absolute Stripe URL — used as CTA in email and in-app
     email: {
       to: kinglancerEmail,
@@ -779,13 +779,13 @@ export async function notifyDisputeResolved({
 }) {
   const isRelease = outcome === "release";
   const title = isRelease
-    ? "Dispute resolved — payment released"
+    ? "🎉 Dispute resolved — payment released!"
     : "Dispute resolved — refund issued";
   const body = isRelease
     ? claimUrl
-      ? `The dispute on "${jobTitle}" has been resolved by our team. Your payment is ready to claim — set up your payouts to receive it.`
-      : `The dispute on "${jobTitle}" has been resolved by our team. Payment has been released to the Kinglancer.`
-    : `The dispute on "${jobTitle}" has been resolved by our team. A full refund has been issued to the client's original payment method.`;
+      ? `Good news — the dispute on "${jobTitle}" has been resolved and your payment is ready to claim! Set up your payouts to receive it.`
+      : `Good news — the dispute on "${jobTitle}" has been resolved and payment has been released to the Kinglancer.`
+    : `The dispute on "${jobTitle}" has been resolved. A full refund has been issued to the client's original payment method.`;
   const link =
     claimUrl ?? (isRelease ? "/dashboard/kinglancer" : "/dashboard/client");
 
@@ -825,8 +825,8 @@ export async function notifyReviewRequest({
   await notify({
     userId,
     type: "review_request",
-    title: "Leave a review",
-    body: `"${jobTitle}" is complete. Share your honest feedback on working with ${counterpartName} — reviews stay hidden until you both submit or the 7-day window closes.`,
+    title: "⭐ How did it go?",
+    body: `"${jobTitle}" is all wrapped up! Share your honest feedback on working with ${counterpartName} — reviews stay hidden until you both submit or the 7-day window closes.`,
     link: dashboardJobLink(role, jobId),
     email: {
       to: userEmail,
@@ -852,8 +852,8 @@ export async function notifyReviewReceived({
   await notify({
     userId,
     type: "review_received",
-    title: "You received a review",
-    body: `Your review for "${jobTitle}" is now public. See what was said and how it affects your KingsHire reputation.`,
+    title: "⭐ You've received a review!",
+    body: `Your review for "${jobTitle}" is now public — take a look at what was said and see how it boosts your KingsHire reputation.`,
     link: dashboardJobLink(role, jobId),
     email: {
       to: userEmail,
@@ -937,8 +937,8 @@ export async function emailJobAlert({
     subject: isDirect ? `Direct request: ${headline}` : headline,
     title: isDirect ? `Direct request: ${headline}` : headline,
     body: isDirect
-      ? `You've been personally invited to this job. Log in to review and respond.`
-      : `Just posted near you — be one of the first to apply!`,
+      ? `🎉 You've been personally invited to this job! Log in now to review and respond.`
+      : `🎉 Congratulations, a new job just went live! Log in now to be one of the first to apply.`,
     link: `/jobs/${jobId}`,
     ctaLabel: isDirect ? "View request →" : "View job →",
   });
