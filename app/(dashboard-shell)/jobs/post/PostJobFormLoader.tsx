@@ -19,19 +19,16 @@ export default function PostJobFormLoader({
   preferredKinglancer,
   onSuccess,
   organisations,
-  attachmentOrganisationIds,
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
   onSuccess?: () => void;
   organisations?: { id: string; name: string }[];
-  attachmentOrganisationIds?: string[];
 }) {
   return (
     <PostJobForm
       preferredKinglancer={preferredKinglancer}
       onSuccess={onSuccess}
       organisations={organisations}
-      attachmentOrganisationIds={attachmentOrganisationIds}
     />
   );
 }

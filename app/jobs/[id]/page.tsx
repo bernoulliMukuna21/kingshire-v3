@@ -1,4 +1,3 @@
-import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -186,7 +185,6 @@ export default async function JobDetailPage({
             <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
               {job.description}
             </p>
-            <JobAttachmentLink jobId={job.id} attachment={job.attachment} />
 
             {(job.categories ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-5">

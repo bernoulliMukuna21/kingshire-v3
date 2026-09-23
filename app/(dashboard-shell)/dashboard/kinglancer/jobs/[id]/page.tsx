@@ -1,4 +1,3 @@
-import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -34,7 +33,6 @@ import {
 } from "@/app/jobs/[id]/JobActions";
 
 type JobWorkspace = {
-  attachment: unknown;
   id: string;
   title: string;
   description: string;
@@ -188,7 +186,7 @@ export default async function KinglancerJobWorkspacePage({
       .from("jobs")
       .select(
         `
-          id, title, description, attachment, budget, rate_type, status, deadline, categories,
+          id, title, description, budget, rate_type, status, deadline, categories,
           work_mode, location, address_line, postcode, location_area, latitude, longitude, days_on_site, scheduled_at, ends_at, schedule_type, estimated_minutes,
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
@@ -371,7 +369,6 @@ export default async function KinglancerJobWorkspacePage({
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
               {job.description}
             </p>
-            <JobAttachmentLink jobId={job.id} attachment={job.attachment} />
             {(job.categories ?? []).length > 0 && (
               <div className="mt-5 flex flex-wrap gap-2">
                 {job.categories.map((category) => (
