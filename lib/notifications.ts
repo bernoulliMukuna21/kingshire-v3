@@ -937,8 +937,8 @@ export async function emailJobAlert({
     subject: isDirect ? `Direct request: ${headline}` : headline,
     title: isDirect ? `Direct request: ${headline}` : headline,
     body: isDirect
-      ? `🎉 You've been personally invited to this job! Log in now to review and respond.`
-      : `🎉 Congratulations, a new job just went live! Log in now to be one of the first to apply.`,
+      ? `Congratulations 🎉! You have a new direct request! Log in now to review and respond.`
+      : `Good News 😀! A new job just went live! Log in now to be one of the first to apply.`,
     link: `/jobs/${jobId}`,
     ctaLabel: isDirect ? "View request →" : "View job →",
   });
