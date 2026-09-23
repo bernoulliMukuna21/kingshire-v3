@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { canAttachJobFile, JOB_ATTACHMENT_BUCKET, JOB_ATTACHMENT_MAX_BYTES, jobAttachmentError, jobAttachmentContentType, type JobAttachment } from "@/lib/job-attachments";
+import {
+  canAttachJobFile,
+  JOB_ATTACHMENT_BUCKET,
+  JOB_ATTACHMENT_MAX_BYTES,
+  jobAttachmentError,
+  jobAttachmentContentType,
+  type JobAttachment,
+} from "@/lib/job-attachments";
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -55,18 +62,33 @@ export async function POST(request: Request) {
   let attachmentFile: File | null = null;
   let body;
   if (request.headers.get("content-type")?.includes("multipart/form-data")) {
-    if (Number(request.headers.get("content-length")) > JOB_ATTACHMENT_MAX_BYTES + 64 * 1024)
-      return NextResponse.json({ error: "The attachment must be 3 MB or smaller." }, { status: 413 });
+    if (
+      Number(request.headers.get("content-length")) >
+      JOB_ATTACHMENT_MAX_BYTES + 64 * 1024
+    )
+      return NextResponse.json(
+        { error: "The attachment must be 3 MB or smaller." },
+        { status: 413 },
+      );
     try {
       const form = await request.formData();
       const payload = form.get("job");
       body = typeof payload === "string" ? JSON.parse(payload) : null;
       const files = form.getAll("attachment");
-      if (files.length > 1 || (files.length === 1 && !(files[0] instanceof File)))
-        return NextResponse.json({ error: "Choose one supporting document." }, { status: 400 });
+      if (
+        files.length > 1 ||
+        (files.length === 1 && !(files[0] instanceof File))
+      )
+        return NextResponse.json(
+          { error: "Choose one supporting document." },
+          { status: 400 },
+        );
       attachmentFile = files[0] instanceof File ? files[0] : null;
     } catch {
-      return NextResponse.json({ error: "Invalid job or attachment." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid job or attachment." },
+        { status: 400 },
+      );
     }
   } else {
     body = await request.json().catch(() => null);
@@ -81,12 +103,19 @@ export async function POST(request: Request) {
     typeof body.organisation_id === "string" ? body.organisation_id : null;
 
   if (body.attachment != null)
-    return NextResponse.json({ error: "Attach a file using the job posting form." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Attach a file using the job posting form." },
+      { status: 400 },
+    );
   if (attachmentFile && !organisationId)
-    return NextResponse.json({ error: "Attachments are available only for subscribed Organisations." }, { status: 403 });
+    return NextResponse.json(
+      { error: "Attachments are available only for subscribed Organisations." },
+      { status: 403 },
+    );
   if (attachmentFile) {
     const fileError = jobAttachmentError(attachmentFile);
-    if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
+    if (fileError)
+      return NextResponse.json({ error: fileError }, { status: 400 });
   }
 
   // Personal jobs require Client mode. Organisation jobs require membership.
@@ -129,15 +158,18 @@ export async function POST(request: Request) {
       );
     }
     if (attachmentFile && !canAttachJobFile(subscription?.status)) {
-      return NextResponse.json({ error: "An active Organisation subscription is required to attach a document." }, { status: 403 });
+      return NextResponse.json(
+        {
+          error:
+            "An active Organisation subscription is required to attach a document.",
+        },
+        { status: 403 },
+      );
     }
     // Organisations created before paid onboarding are intentionally
     // grandfathered. Once an Organisation has a subscription record, only an
     // active/trialling subscription may create new work.
-    if (
-      subscription &&
-      !canAttachJobFile(subscription.status)
-    ) {
+    if (subscription && !canAttachJobFile(subscription.status)) {
       return NextResponse.json(
         {
           error:
@@ -356,7 +388,8 @@ export async function POST(request: Request) {
     estimated_minutes != null
   ) {
     const m = Number(estimated_minutes);
-    if (Number.isInteger(m) && m >= 15 && m <= 1440) resolvedEstimatedMinutes = m;
+    if (Number.isInteger(m) && m >= 15 && m <= 1440)
+      resolvedEstimatedMinutes = m;
   }
 
   // Every job now carries a start/end window; the end date backs the legacy
@@ -388,10 +421,26 @@ export async function POST(request: Request) {
     if (attachmentFile && organisationId) {
       const path = `${organisationId}/${jobId}/${randomUUID()}`;
       const contentType = jobAttachmentContentType(attachmentFile.name);
-      const { error: uploadError } = await createServiceClient().storage
-        .from(JOB_ATTACHMENT_BUCKET).upload(path, await attachmentFile.arrayBuffer(), { contentType, upsert: false });
-      if (uploadError) return NextResponse.json({ error: "The document could not be uploaded. Your job has not been posted. Please try again." }, { status: 503 });
-      attachment = { path, name: attachmentFile.name, size: attachmentFile.size, contentType };
+      const { error: uploadError } = await createServiceClient()
+        .storage.from(JOB_ATTACHMENT_BUCKET)
+        .upload(path, await attachmentFile.arrayBuffer(), {
+          contentType,
+          upsert: false,
+        });
+      if (uploadError)
+        return NextResponse.json(
+          {
+            error:
+              "The document could not be uploaded. Your job has not been posted. Please try again.",
+          },
+          { status: 503 },
+        );
+      attachment = {
+        path,
+        name: attachmentFile.name,
+        size: attachmentFile.size,
+        contentType,
+      };
     }
     const job = await createJob(
       {
@@ -447,8 +496,8 @@ export async function POST(request: Request) {
       ? `Direct request: ${headline}`
       : headline;
     const alertBody = invitedKinglancerId
-      ? `🎉 You've been personally invited to this job! Log in now to review and respond.`
-      : `🎉 Congratulations, a new job just went live! Log in now to be one of the first to apply.`;
+      ? `Congratulations 🎉! You have a new direct request! Log in now to review and respond.`
+      : `Good News 😀! A new job just went live! Log in now to be one of the first to apply.`;
     const alertLink = `/jobs/${job.id}`;
 
     if (kinglancers?.length) {
@@ -514,8 +563,11 @@ export async function POST(request: Request) {
     return NextResponse.json(job, { status: 201 });
   } catch {
     if (attachment && !jobCreated) {
-      const { error: cleanupError } = await createServiceClient().storage.from(JOB_ATTACHMENT_BUCKET).remove([attachment.path]);
-      if (cleanupError) console.error("[job attachment] cleanup failed", cleanupError.message);
+      const { error: cleanupError } = await createServiceClient()
+        .storage.from(JOB_ATTACHMENT_BUCKET)
+        .remove([attachment.path]);
+      if (cleanupError)
+        console.error("[job attachment] cleanup failed", cleanupError.message);
     }
     return NextResponse.json(
       { error: "Failed to create job" },
