@@ -409,11 +409,11 @@ export default function PostJobForm({
       {canAttach && (
         <div>
           <label htmlFor="job-attachment" className="mb-1.5 block text-sm font-medium text-gray-700">
-            Supporting document <span className="font-normal text-gray-400">(optional)</span>
+            Job description document <span className="font-normal text-gray-400">(optional)</span>
           </label>
           <p id="job-attachment-help" className="mb-2 text-xs text-gray-500">
-            Need more room? Attach a detailed brief or specification. PDF, Word or text, up to 3 MB.
-            Anyone who can view this job can download the document.
+            Upload the full job description, including responsibilities and requirements. PDF, Word or text, up to 3 MB. PDF is best for viewing in a browser.
+            Kinglancers and your Organisation can open it from the job details page. Anyone who can view the job can view this document.
           </p>
           <input
             key={`${contextOrgId}-${attachmentFile ? "selected" : "empty"}`}
