@@ -1,3 +1,4 @@
+import { getJobAttachmentOrganisationIds } from "@/lib/db/job-attachments";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getUserOrganisationSummaries } from "@/infrastructure/supabase/queries/organisation-queries";
@@ -26,6 +27,8 @@ export default async function PostJobPage() {
     (o) => ({ id: o.id, name: o.name }),
   );
 
+  const attachmentOrganisationIds = await getJobAttachmentOrganisationIds();
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <PageHeader
@@ -35,7 +38,7 @@ export default async function PostJobPage() {
       />
 
       <Card className="p-6">
-        <PostJobFormLoader organisations={organisations} />
+        <PostJobFormLoader organisations={organisations} attachmentOrganisationIds={attachmentOrganisationIds} />
       </Card>
     </div>
   );
