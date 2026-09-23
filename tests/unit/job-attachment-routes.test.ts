@@ -140,12 +140,14 @@ describe("job attachment downloads", () => {
       attachment: { path: "org/job/file", name: "brief.pdf", size: 100, contentType: "application/pdf" },
     };
   });
-  it("allows public job documents and forces a non-cached download", async () => {
+  it("opens public job description PDFs inline without caching", async () => {
     state.userId = null;
     const response = await get();
     expect(response.status).toBe(200);
-    expect(response.headers.get("content-disposition")).toContain("attachment;");
+    expect(response.headers.get("content-disposition")).toContain("inline;");
     expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
   it("denies anonymous and unrelated users for direct requests", async () => {
     state.job!.invited_kinglancer_id = "worker";
