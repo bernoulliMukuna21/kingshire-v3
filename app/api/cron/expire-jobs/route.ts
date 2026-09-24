@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createServiceClient } from "@/lib/supabase/service";
+import { sendPushToUser } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -102,8 +103,8 @@ export async function GET(request: Request) {
   const clientNotifications = abandonedJobs.map((job) => ({
     user_id: job.client_id,
     type: "job_expired",
-    title: "Job posting expired",
-    body: `Your job "${job.title}" was automatically cancelled because its deadline passed and no one applied. You can post a new job anytime.`,
+    title: "Your job posting has expired",
+    body: `"${job.title}" didn't get any applicants before its deadline, so we've closed it. No worries — you can post it again anytime and reach even more Kinglancers.`,
     link: `/dashboard/client/jobs?tab=cancelled`,
     read: false,
   }));
@@ -118,6 +119,16 @@ export async function GET(request: Request) {
     if (notifError) {
       console.error("[expire-jobs] notifications error:", notifError.message);
     }
+
+    Promise.allSettled(
+      clientNotifications.map((n) =>
+        sendPushToUser(n.user_id, {
+          title: n.title,
+          body: n.body,
+          link: n.link,
+        }),
+      ),
+    ).catch(() => {});
   }
 
   console.log(
