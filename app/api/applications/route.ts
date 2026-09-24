@@ -59,6 +59,16 @@ export async function POST(request: Request) {
     );
   }
 
+  const rawCv = body.cv_url;
+  let cvUrl: string | null = null;
+  if (typeof rawCv === "string" && rawCv.trim()) {
+    const expectedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/job-application-cvs/`;
+    if (!expectedPrefix || !rawCv.startsWith(expectedPrefix)) {
+      return NextResponse.json({ error: "Invalid CV upload." }, { status: 400 });
+    }
+    cvUrl = rawCv;
+  }
+
   // Verify the job exists and is open
   const job = await getJobById(job_id);
   if (!job) {
@@ -115,6 +125,7 @@ export async function POST(request: Request) {
       job_id,
       kinglancer_id: user.id,
       cover_letter: cover_letter.trim(),
+      cv_url: cvUrl,
     });
 
     // Notify the client — fire-and-forget, never blocks the response

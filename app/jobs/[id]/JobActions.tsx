@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import type { DirectRequestStatus } from "@/lib/jobs";
 import { planForRole } from "@/lib/subscriptions/plans";
 import {
@@ -72,9 +73,59 @@ function OpenToAllButton({ jobId }: { jobId: string }) {
 
 export function ApplyForm({ jobId }: { jobId: string }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [coverLetter, setCoverLetter] = useState("");
+  const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [cvName, setCvName] = useState<string | null>(null);
+  const [uploadingCv, setUploadingCv] = useState(false);
+  const [cvError, setCvError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const { loading, error, setError, run } = useAsyncAction();
+
+  async function uploadCv(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setCvError("CV must be under 5MB.");
+      return;
+    }
+    const allowed = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (!allowed.includes(file.type)) {
+      setCvError("CV must be a PDF or Word document.");
+      return;
+    }
+    setUploadingCv(true);
+    setCvError(null);
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      setCvError("Please sign in again to upload your CV.");
+      setUploadingCv(false);
+      return;
+    }
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/${jobId}-${Date.now()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("job-application-cvs")
+      .upload(path, file, { upsert: true });
+    if (uploadError) {
+      setCvError("Failed to upload CV. Please try again.");
+      setUploadingCv(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage
+      .from("job-application-cvs")
+      .getPublicUrl(path);
+    setCvUrl(urlData.publicUrl);
+    setCvName(file.name);
+    setUploadingCv(false);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +140,11 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       const res = await fetch("/api/applications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ job_id: jobId, cover_letter: coverLetter }),
+        body: JSON.stringify({
+          job_id: jobId,
+          cover_letter: coverLetter,
+          cv_url: cvUrl,
+        }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -142,6 +197,35 @@ export function ApplyForm({ jobId }: { jobId: string }) {
         </p>
       </div>
 
+      <div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx"
+          onChange={uploadCv}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingCv}
+          className="rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          {uploadingCv
+            ? "Uploading…"
+            : cvName
+              ? "Replace CV"
+              : "Attach CV (optional)"}
+        </button>
+        {cvName && (
+          <p className="mt-1.5 text-xs text-gray-500">
+            Attached: <span className="font-semibold">{cvName}</span>
+          </p>
+        )}
+        <p className="mt-1 text-xs text-gray-400">PDF or Word, up to 5MB.</p>
+        {cvError && <p className="mt-1 text-xs text-red-600">{cvError}</p>}
+      </div>
+
       {error === "PROFILE_INCOMPLETE" ? (
         <div className="flex items-start gap-2 text-red-600 text-sm bg-red-50 border border-red-100 rounded-xl px-4 py-3">
           <AlertCircle size={16} className="shrink-0 mt-0.5" />
@@ -165,7 +249,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={loading || uploadingCv}
         className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all hover:scale-[1.01] shadow-lg shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
       >
         {loading ? (
@@ -963,6 +1047,16 @@ export function ApplicantsList({
                       Their message
                     </p>
                     <p className="text-sm text-gray-700">{app.cover_letter}</p>
+                    {app.cv_url && (
+                      <a
+                        href={app.cv_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-block text-sm font-semibold text-blue-600 hover:underline"
+                      >
+                        View CV →
+                      </a>
+                    )}
                   </div>
 
                   {locked ? (
