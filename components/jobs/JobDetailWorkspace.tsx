@@ -1,3 +1,4 @@
+import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import {
   Briefcase,
@@ -14,7 +15,12 @@ import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { jobStatusPill } from "@/lib/jobs";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
-import type { RateType, WorkMode, ScheduleType, DirectRequestStatus } from "@/lib/jobs";
+import type {
+  RateType,
+  WorkMode,
+  ScheduleType,
+  DirectRequestStatus,
+} from "@/lib/jobs";
 import {
   getJobReviewState,
   isReviewWindowClosed,
@@ -40,6 +46,9 @@ import PendingPaymentCard from "@/app/(dashboard-shell)/dashboard/client/jobs/[i
 import RepostJobButton from "@/app/(dashboard-shell)/dashboard/client/jobs/[id]/RepostJobButton";
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import { canManageJob } from "@/lib/organisations";
+import { getEngagementBySource } from "@/lib/db/engagements";
+import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
+import { getEngagementPayments } from "@/lib/db/engagement-payments";
 
 type InvitedKinglancer = {
   id: string;
@@ -99,7 +108,7 @@ export default async function JobDetailWorkspace({
   const statusConfig = jobStatusPill(job.status);
   const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
 
-  const [applications, kinglancerResult, pendingAttempt] = await Promise.all([
+  const [applications, kinglancerResult, pendingAttempt, roleEngagement] = await Promise.all([
     !isDirectRequest && job.status === "open"
       ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
       : Promise.resolve([] as ApplicationWithKinglancer[]),
@@ -113,7 +122,13 @@ export default async function JobDetailWorkspace({
     job.status === "open"
       ? getPendingPaymentAttemptByJob(id)
       : Promise.resolve(null),
+    job.posting_type === "role"
+      ? getEngagementBySource("org_role", id)
+      : Promise.resolve(null),
   ]);
+  const rolePayments = roleEngagement
+    ? await getEngagementPayments(roleEngagement.id)
+    : [];
 
   // A pending payment locks selection and editing until it clears/cancels.
   const paymentPending = !!pendingAttempt;
@@ -175,6 +190,42 @@ export default async function JobDetailWorkspace({
         fallbackLabel={jobsListLabel}
       />
 
+      {job.posting_type === "role" && roleEngagement && (
+        <Card className="border-emerald-200 bg-emerald-50/60 p-5">
+          <h2 className="text-lg font-black text-emerald-950">Recurring role</h2>
+          <p className="mt-1 text-sm text-emerald-800">
+            {job.employment_type === "temporary" ? "Temporary" : "Permanent"} role · £
+            {Number(roleEngagement.amount_per_period).toFixed(2)} {roleEngagement.cadence} ·{" "}
+            {roleEngagement.settlement_mode === "managed"
+              ? "KingsHire-managed settlement"
+              : "Direct settlement with the organisation"}
+          </p>
+          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            Engagement: {roleEngagement.status.replaceAll("_", " ")}
+          </p>
+          {rolePayments.length > 0 && (
+            <div className="mt-4 border-t border-emerald-200 pt-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Payment periods</p>
+              <div className="mt-2 space-y-1 text-sm text-emerald-900">
+                {rolePayments.map((payment) => (
+                  <div key={payment.id} className="flex justify-between gap-3">
+                    <span>Period {payment.period_index} · {payment.due_date}</span>
+                    <span className="font-semibold capitalize">{payment.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <RoleTerminationPanel
+            jobId={id}
+            status={roleEngagement.status}
+            endRequestedBy={roleEngagement.end_requested_by}
+            viewerId={user.id}
+            kinglancerId={roleEngagement.kinglancer_id}
+          />
+        </Card>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
           {payment_failed === "1" && (
@@ -207,6 +258,7 @@ export default async function JobDetailWorkspace({
             <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
               {job.description}
             </p>
+            <JobAttachmentLink jobId={job.id} attachment={job.attachment} />
 
             {categories.length > 0 && (
               <div className="mt-5 flex flex-wrap gap-2">
@@ -385,7 +437,8 @@ export default async function JobDetailWorkspace({
                   address_line: job.address_line,
                   postcode: job.postcode,
                   days_on_site: job.days_on_site,
-                  schedule_type: (job.schedule_type as ScheduleType) ?? "window",
+                  schedule_type:
+                    (job.schedule_type as ScheduleType) ?? "window",
                   estimated_minutes: job.estimated_minutes,
                   organisation_id: job.organisation_id,
                 }}

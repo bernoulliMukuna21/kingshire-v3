@@ -89,6 +89,10 @@ export default function ApplyButton({
   }
 
   async function apply() {
+    if (!cvUrl) {
+      setError("Please attach your CV to apply.");
+      return;
+    }
     setSaving(true);
     setError(null);
     const res = await fetch(`/api/placements/${placementId}/apply`, {
@@ -188,6 +192,9 @@ export default function ApplyButton({
         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <div>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">
+          CV <span className="text-red-500">*</span>
+        </label>
         <input
           ref={fileInputRef}
           type="file"
@@ -201,11 +208,7 @@ export default function ApplyButton({
           disabled={uploading}
           className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
-          {uploading
-            ? "Uploading…"
-            : cvName
-              ? "Replace CV"
-              : "Attach CV (optional)"}
+          {uploading ? "Uploading…" : cvName ? "Replace CV" : "Attach CV"}
         </button>
         {cvName && (
           <p className="mt-1.5 text-xs text-slate-500">

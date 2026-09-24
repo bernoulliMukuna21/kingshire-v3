@@ -1,3 +1,4 @@
+import { getJobAttachmentOrganisationIds } from "@/lib/db/job-attachments";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -5,10 +6,7 @@ import {
   getOrganisationMembership,
   requireOrganisationPermission,
 } from "@/lib/organisations";
-import {
-  getOrganisationName,
-  getUserOrganisationSummaries,
-} from "@/infrastructure/supabase/queries/organisation-queries";
+import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { Card } from "@/components/ui/Card";
 import OrganisationWorkspaceHeader from "../../OrganisationWorkspaceHeader";
 import PostJobForm from "@/app/(dashboard-shell)/jobs/post/PostJobForm";
@@ -30,9 +28,8 @@ export default async function OrganisationPostJobPage({
   if (!membership) notFound();
   const organisationName = await getOrganisationName(id);
   if (!organisationName) notFound();
-  const organisations = (await getUserOrganisationSummaries(user.id)).map(
-    (o) => ({ id: o.id, name: o.name }),
-  );
+  const attachmentOrganisationIds = await getJobAttachmentOrganisationIds();
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       <OrganisationWorkspaceHeader
@@ -53,14 +50,15 @@ export default async function OrganisationPostJobPage({
             ← Back to workspace
           </Link>
           <h1 className="mt-2 text-2xl font-black text-slate-950">
-            Post an Organisation job
+            Post a job
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            An ordinary paid job owned by the Organisation.
+            A one-off paid gig or an ongoing recurring role, owned by the
+            Organisation.
           </p>
         </div>
         <Card className="p-6">
-          <PostJobForm organisationId={id} organisations={organisations} />
+          <PostJobForm organisationId={id} organisationName={organisationName} attachmentOrganisationIds={attachmentOrganisationIds} />
         </Card>
       </div>
     </div>
