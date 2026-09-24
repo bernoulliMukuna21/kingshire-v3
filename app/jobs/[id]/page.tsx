@@ -132,10 +132,12 @@ export default async function JobDetailPage({
     !alreadyApplied;
   const isAdmin = profile?.role === "admin";
 
-  // Small jobs are subscriber-only to apply to.
+  // Small jobs are subscriber-only to apply to. Roles have no "budget" (pay is
+  // recurring, negotiable or not) so the small-job gate never applies to them.
   const applyNeedsSubscription =
     !!canApply &&
     !!profile &&
+    job.posting_type !== "role" &&
     jobRequiresSubscriptionToApply(job.budget) &&
     !(await hasEntitlement(profile.id, "kinglancer", "applyToSmallJobs"));
 
@@ -355,21 +357,53 @@ export default async function JobDetailPage({
 
         <div className="space-y-4">
           <Card className="p-5">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Budget
-            </p>
-            <p className="text-3xl font-black text-green-600">
-              £{Number(job.budget).toLocaleString()}
-              <span className="text-base font-medium text-gray-500 ml-1">
-                {budgetSuffix}
-              </span>
-            </p>
-            <p className="text-xs text-gray-400 mt-1">{budgetNote}</p>
-            {canApply && (
-              <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
-                By applying you agree to complete this work for the budget
-                stated above.
-              </p>
+            {job.posting_type === "role" ? (
+              <>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Pay
+                </p>
+                {job.pay_negotiable ? (
+                  <p className="text-2xl font-black text-green-600">
+                    Discussed at interview
+                  </p>
+                ) : (
+                  <p className="text-3xl font-black text-green-600">
+                    £{Number(job.pay_amount).toLocaleString()}
+                    <span className="text-base font-medium text-gray-500 ml-1">
+                      /{job.pay_cadence}
+                    </span>
+                  </p>
+                )}
+                <p className="text-xs text-gray-400 mt-1">
+                  {job.settlement_mode === "direct"
+                    ? "Payment arranged directly with the organisation"
+                    : "Recurring payment managed through KingsHire"}
+                </p>
+                {canApply && (
+                  <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
+                    By applying you agree to the pay terms shown above.
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Budget
+                </p>
+                <p className="text-3xl font-black text-green-600">
+                  £{Number(job.budget).toLocaleString()}
+                  <span className="text-base font-medium text-gray-500 ml-1">
+                    {budgetSuffix}
+                  </span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{budgetNote}</p>
+                {canApply && (
+                  <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
+                    By applying you agree to complete this work for the budget
+                    stated above.
+                  </p>
+                )}
+              </>
             )}
           </Card>
 

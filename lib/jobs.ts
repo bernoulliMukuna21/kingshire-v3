@@ -12,6 +12,23 @@ export function jobAlertHeadline(jobTitle: string, priceLabel: string): string {
   return `${jobTitle} — ${priceLabel}`;
 }
 
+/** Single source for a job's price label — a one-off gig's budget has one job
+ * (£X); an org role's `budget` is always 0 and never the right thing to show,
+ * it's paid recurring pay (negotiable or £X/period) instead. */
+export function jobPriceLabel(job: {
+  posting_type: string | null;
+  budget: number;
+  pay_negotiable: boolean | null;
+  pay_amount: number | null;
+  pay_cadence: string | null;
+}): string {
+  if (job.posting_type === "role") {
+    if (job.pay_negotiable) return "Discussed at interview";
+    return `£${Number(job.pay_amount).toLocaleString()}/${job.pay_cadence}`;
+  }
+  return `£${Number(job.budget).toLocaleString()}`;
+}
+
 // Canonical unions for job text columns (DB stores them as CHECK-constrained
 // text, generated as `string`), so the narrow types live here.
 export type RateType = "fixed" | "per_hour" | "per_day";

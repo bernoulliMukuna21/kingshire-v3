@@ -89,7 +89,9 @@ export async function getOrganisationOverview(organisationId: string) {
       db.from("organisations").select("*").eq("id", organisationId).single(),
       db
         .from("jobs")
-        .select("id, title, budget, status, created_at")
+        .select(
+          "id, title, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, status, created_at",
+        )
         .eq("organisation_id", organisationId)
         .order("created_at", { ascending: false })
         .limit(DASHBOARD_JOB_LIMIT),

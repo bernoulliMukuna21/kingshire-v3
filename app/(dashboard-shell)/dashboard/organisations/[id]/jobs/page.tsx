@@ -5,7 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOrganisationMembership } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
-import { type JobStatus, JOBS_PAGE_SIZE, jobStatusPill } from "@/lib/jobs";
+import {
+  type JobStatus,
+  JOBS_PAGE_SIZE,
+  jobStatusPill,
+  jobPriceLabel,
+} from "@/lib/jobs";
 import { getPageNumber, getPageRange } from "@/lib/pagination";
 import EmptyState from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -65,6 +70,9 @@ type JobRow = {
   posting_type: string;
   status: JobStatus;
   budget: number;
+  pay_negotiable: boolean | null;
+  pay_amount: number | null;
+  pay_cadence: string | null;
   categories: string[];
   created_at: string;
   deadline: string | null;
@@ -105,7 +113,7 @@ export default async function OrganisationJobsPage({
 
   const db = createServiceClient();
   const JOB_SELECT = `
-    id, title, posting_type, status, budget, categories, created_at, deadline,
+    id, title, posting_type, status, budget, pay_negotiable, pay_amount, pay_cadence, categories, created_at, deadline,
     invited_kinglancer_id, direct_request_status,
     kinglancer:profiles!kinglancer_id(full_name),
     invited_kinglancer:profiles!invited_kinglancer_id(full_name)
@@ -283,13 +291,9 @@ function JobCard({
               </h3>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-              {job.posting_type === "role" ? (
-                <span className="font-bold text-slate-900">Recurring pay</span>
-              ) : (
-                <span className="font-bold text-slate-900">
-                  £{Number(job.budget).toLocaleString()}
-                </span>
-              )}
+              <span className="font-bold text-slate-900">
+                {jobPriceLabel(job)}
+              </span>
               {isDirectRequest ? (
                 <>
                   {job.invited_kinglancer && (
