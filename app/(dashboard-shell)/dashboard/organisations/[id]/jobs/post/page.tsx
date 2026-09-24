@@ -1,3 +1,4 @@
+import { getJobAttachmentOrganisationIds } from "@/lib/db/job-attachments";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -5,10 +6,7 @@ import {
   getOrganisationMembership,
   requireOrganisationPermission,
 } from "@/lib/organisations";
-import {
-  getOrganisationName,
-  getUserOrganisationSummaries,
-} from "@/infrastructure/supabase/queries/organisation-queries";
+import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { Card } from "@/components/ui/Card";
 import OrganisationWorkspaceHeader from "../../OrganisationWorkspaceHeader";
 import PostJobForm from "@/app/(dashboard-shell)/jobs/post/PostJobForm";
@@ -30,9 +28,8 @@ export default async function OrganisationPostJobPage({
   if (!membership) notFound();
   const organisationName = await getOrganisationName(id);
   if (!organisationName) notFound();
-  const organisations = (await getUserOrganisationSummaries(user.id)).map(
-    (o) => ({ id: o.id, name: o.name }),
-  );
+  const attachmentOrganisationIds = await getJobAttachmentOrganisationIds();
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
       <OrganisationWorkspaceHeader
@@ -60,7 +57,7 @@ export default async function OrganisationPostJobPage({
           </p>
         </div>
         <Card className="p-6">
-          <PostJobForm organisationId={id} organisations={organisations} />
+          <PostJobForm organisationId={id} organisationName={organisationName} attachmentOrganisationIds={attachmentOrganisationIds} />
         </Card>
       </div>
     </div>

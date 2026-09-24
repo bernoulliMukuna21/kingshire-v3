@@ -1,5 +1,7 @@
 "use client";
 
+import { JOB_ATTACHMENT_ACCEPT, jobAttachmentError } from "@/lib/job-attachments";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
@@ -31,7 +33,6 @@ export function FormSkeleton() {
 import { Loader2, AlertCircle } from "lucide-react";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
 import { Avatar } from "@/components/ui/Avatar";
-import ConfirmModal from "@/components/ConfirmModal";
 
 type PreferredKinglancer = {
   id: string;
@@ -44,18 +45,20 @@ export default function PostJobForm({
   preferredKinglancer,
   onSuccess,
   organisationId,
-  organisations,
+  organisationName,
+  attachmentOrganisationIds = [],
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
   onSuccess?: () => void;
   organisationId?: string;
-  organisations?: { id: string; name: string }[];
+  organisationName?: string;
+  attachmentOrganisationIds?: string[];
 }) {
   const router = useRouter();
 
-  // "" = personal job; an org id = that organisation owns the job.
-  const [contextOrgId, setContextOrgId] = useState(organisationId ?? "");
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const canAttach = attachmentOrganisationIds.includes(organisationId ?? "");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -165,11 +168,8 @@ export default function PostJobForm({
       return;
     }
 
-    // Confirm the job's owner (personal vs organisation) before posting.
-    if (organisations && organisations.length > 0) {
-      setConfirmOpen(true);
-      return;
-    }
+    if (attachmentError) return;
+
     await doPost();
   };
 
@@ -177,10 +177,8 @@ export default function PostJobForm({
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      const payload = JSON.stringify({
         title,
         description,
         categories,
@@ -200,91 +198,58 @@ export default function PostJobForm({
           estimatedMinutes
             ? Number(estimatedMinutes)
             : null,
-        organisation_id: contextOrgId || null,
-      }),
-    });
+        organisation_id: organisationId || null,
+      });
+      const form = new FormData();
+      form.set("job", payload);
+      if (canAttach && attachmentFile) form.set("attachment", attachmentFile);
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        ...(canAttach && attachmentFile
+          ? { body: form }
+          : { headers: { "Content-Type": "application/json" }, body: payload }),
+      });
+      const data = await res.json();
 
-    const data = await res.json();
-    setLoading(false);
+      if (!res.ok) {
+        setError(data.error ?? "Failed to post job. Please try again.");
+        return;
+      }
 
-    if (!res.ok) {
-      setError(data.error ?? "Failed to post job. Please try again.");
-      return;
-    }
-
-    if (onSuccess) {
-      onSuccess();
-    } else {
-      router.push(
-        contextOrgId
-          ? `/dashboard/organisations/${contextOrgId}`
-          : `/dashboard/client/jobs/${data.id}`,
-      );
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        router.push(
+          organisationId
+            ? `/dashboard/organisations/${organisationId}`
+            : `/dashboard/client/jobs/${data.id}`,
+        );
+      }
+    } catch {
+      setError("Unable to post your job. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const selectedOrg =
-    organisations?.find((org) => org.id === contextOrgId) ?? null;
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <ConfirmModal
-        isOpen={confirmOpen}
-        onClose={() => {
-          if (!loading) setConfirmOpen(false);
-        }}
-        onConfirm={doPost}
-        loading={loading}
-        error={error ?? undefined}
-        confirmLabel="Confirm & post"
-        title={
-          selectedOrg
-            ? `Post this job for ${selectedOrg.name}?`
-            : "Post this as your personal job?"
-        }
-        message={
-          selectedOrg ? (
-            <>
-              This job will belong to <strong>{selectedOrg.name}</strong>. Any
-              member of the organisation can manage it and it appears in the
-              organisation workspace — not your personal jobs.
-            </>
-          ) : (
-            <>
-              This is your <strong>personal</strong> job. Only you can manage it
-              and it appears under your personal My Jobs.
-            </>
-          )
-        }
-      />
-
       <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
         Job details
       </h3>
-      {organisations && organisations.length > 0 && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Who is this job for? <span className="text-red-500">*</span>
-          </label>
-          <select
-            value={contextOrgId}
-            onChange={(e) => setContextOrgId(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          >
-            <option value="">Personal — your own job</option>
-            {organisations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name} (organisation)
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-slate-500">
-            {contextOrgId
-              ? "This job belongs to the organisation — any member can manage it and it lives in the organisation workspace."
-              : "This is your personal job — only you can manage it."}
-          </p>
-        </div>
-      )}
+      <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-blue-900">
+        {organisationId ? (
+          <>
+            Posting for <strong>{organisationName ?? "your organisation"}</strong> —
+            any member can manage it and it lives in the organisation workspace.
+          </>
+        ) : (
+          <>
+            Posting as your <strong>personal</strong> job — only you can manage
+            it.
+          </>
+        )}
+      </div>
 
       {preferredKinglancer && (
         <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4">
@@ -382,6 +347,42 @@ export default function PostJobForm({
           </p>
         </div>
       </div>
+
+      {canAttach && (
+        <div>
+          <label htmlFor="job-attachment" className="mb-1.5 block text-sm font-medium text-gray-700">
+            Job description document <span className="font-normal text-gray-400">(optional)</span>
+          </label>
+          <p id="job-attachment-help" className="mb-2 text-xs text-gray-500">
+            Upload the full job description, including responsibilities and requirements. PDF, Word or text, up to 3 MB. PDF is best for viewing in a browser.
+            Kinglancers and your Organisation can open it from the job details page. Anyone who can view the job can view this document.
+          </p>
+          <input
+            key={`${organisationId ?? "personal"}-${attachmentFile ? "selected" : "empty"}`}
+            id="job-attachment"
+            type="file"
+            accept={JOB_ATTACHMENT_ACCEPT}
+            disabled={loading}
+            aria-describedby="job-attachment-help"
+            aria-invalid={!!attachmentError}
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              const message = file ? jobAttachmentError(file) : null;
+              setAttachmentError(message);
+              setAttachmentFile(message ? null : file);
+              if (message) e.target.value = "";
+            }}
+            className="block w-full rounded-xl border border-gray-200 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700"
+          />
+          {attachmentFile && (
+            <p className="mt-2 break-words text-sm text-gray-600">
+              {attachmentFile.name}{" "}
+              <button type="button" disabled={loading} className="font-semibold text-blue-700" onClick={() => { setAttachmentFile(null); setAttachmentError(null); }}>Remove</button>
+            </p>
+          )}
+          {attachmentError && <p role="alert" className="mt-1 text-xs text-red-500">{attachmentError}</p>}
+        </div>
+      )}
 
       {/* Category */}
       <div>

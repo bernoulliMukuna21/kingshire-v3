@@ -1,5 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { SUPPORT_EMAIL } from "@/lib/contact";
+import { jobAlertHeadline } from "@/lib/jobs";
 
 export type NotificationType =
   | "new_application"
@@ -1022,23 +1023,24 @@ export async function notifyReviewRequestsForJob(
 export async function emailJobAlert({
   to,
   jobTitle,
+  priceLabel,
   jobId,
   isDirect = false,
 }: {
   to: string;
   jobTitle: string;
+  priceLabel: string;
   jobId: string;
   isDirect?: boolean;
 }) {
+  const headline = jobAlertHeadline(jobTitle, priceLabel);
   await sendEmail({
     to,
-    subject: isDirect
-      ? `Direct job request: "${jobTitle}"`
-      : `New job posted: "${jobTitle}"`,
-    title: isDirect ? "New direct job request" : "New job posted",
+    subject: isDirect ? `Direct request: ${headline}` : headline,
+    title: isDirect ? `Direct request: ${headline}` : headline,
     body: isDirect
-      ? `You have received a direct job request: "${jobTitle}". Log in to review and respond.`
-      : `A new job has just been posted: "${jobTitle}". Be one of the first to apply!`,
+      ? `🎉 You've been personally invited to this job! Log in now to review and respond.`
+      : `🎉 Congratulations, a new job just went live! Log in now to be one of the first to apply.`,
     link: `/jobs/${jobId}`,
     ctaLabel: isDirect ? "View request →" : "View job →",
   });

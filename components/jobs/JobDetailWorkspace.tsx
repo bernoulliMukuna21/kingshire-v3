@@ -1,3 +1,4 @@
+import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import {
   Briefcase,
@@ -257,6 +258,7 @@ export default async function JobDetailWorkspace({
             <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
               {job.description}
             </p>
+            <JobAttachmentLink jobId={job.id} attachment={job.attachment} />
 
             {categories.length > 0 && (
               <div className="mt-5 flex flex-wrap gap-2">
