@@ -3,15 +3,11 @@ import Link from "next/link";
 import { ChevronRight, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  getOrganisationMembership,
-  requireOrganisationPermission,
-} from "@/lib/organisations";
+import { getOrganisationMembership } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { type JobStatus, JOBS_PAGE_SIZE, jobStatusPill } from "@/lib/jobs";
 import { getPageNumber, getPageRange } from "@/lib/pagination";
 import EmptyState from "@/components/ui/EmptyState";
-import { ButtonLink } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import JobsTabBar from "@/components/dashboard/JobsTabBar";
 import JobsPagination from "@/components/dashboard/JobsPagination";
@@ -102,11 +98,6 @@ export default async function OrganisationJobsPage({
   if (!organisationName) notFound();
   const canManageMembers =
     membership.role === "owner" || membership.role === "admin";
-  const canPostJob = await requireOrganisationPermission(
-    id,
-    user.id,
-    "manage_jobs",
-  );
 
   const tab = parseTab(tabParam);
   const page = getPageNumber(pageParam);
@@ -198,14 +189,6 @@ export default async function OrganisationJobsPage({
         basePath={basePath}
       />
 
-      {canPostJob && (
-        <div className="flex flex-wrap justify-end gap-3">
-          <ButtonLink href={`${basePath}/post`} size="sm">
-            Post a job
-          </ButtonLink>
-        </div>
-      )}
-
       {jobs.length === 0 ? (
         <EmptyState
           icon={<span className="text-2xl">💼</span>}
@@ -218,13 +201,6 @@ export default async function OrganisationJobsPage({
             tab === "history"
               ? "Post the Organisation's first paid job."
               : `No jobs in the ${TAB_LABELS[tab].toLowerCase()} category right now.`
-          }
-          action={
-            tab === "history" && canPostJob ? (
-              <ButtonLink href={`${basePath}/post`} size="sm">
-                Post a job
-              </ButtonLink>
-            ) : undefined
           }
         />
       ) : (

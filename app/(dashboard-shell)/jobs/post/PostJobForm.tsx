@@ -412,11 +412,12 @@ export default function PostJobForm({
       {/* Description */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description <span className="text-red-500">*</span>
+          Job summary <span className="text-red-500">*</span>
         </label>
         <p className="mb-1.5 text-xs text-gray-400">
-          Focus on the task itself — you&apos;ll set location, timing and budget
-          below.
+          {canAttach
+            ? "A short overview is enough — attach the full job description as a document below."
+            : "Focus on the task itself — you'll set location, timing and budget below."}
         </p>
         <textarea
           value={description}
@@ -424,8 +425,8 @@ export default function PostJobForm({
             setDescription(e.target.value);
             clearFieldError("description");
           }}
-          rows={5}
-          maxLength={2000}
+          rows={4}
+          maxLength={500}
           className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all resize-none ${
             fieldErrors.description
               ? "border-red-400 focus:ring-red-300"
@@ -440,7 +441,7 @@ export default function PostJobForm({
             <span />
           )}
           <p className="text-xs text-gray-400 text-right">
-            {description.length}/2000
+            {description.length}/500
           </p>
         </div>
       </div>
@@ -448,7 +449,7 @@ export default function PostJobForm({
       {canAttach && (
         <div>
           <label htmlFor="job-attachment" className="mb-1.5 block text-sm font-medium text-gray-700">
-            Job description document <span className="font-normal text-gray-400">(optional)</span>
+            Full job description document <span className="font-normal text-gray-400">(optional, recommended)</span>
           </label>
           <p id="job-attachment-help" className="mb-2 text-xs text-gray-500">
             Upload the full job description, including responsibilities and requirements. PDF, Word or text, up to 3 MB. PDF is best for viewing in a browser.

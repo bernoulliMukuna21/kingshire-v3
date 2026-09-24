@@ -220,9 +220,9 @@ export async function POST(request: Request) {
       { error: "Title must be between 3 and 120 characters." },
       { status: 400 },
     );
-  if (descStr.length < 10 || descStr.length > 2000)
+  if (descStr.length < 10 || descStr.length > 500)
     return NextResponse.json(
-      { error: "Description must be between 10 and 2000 characters." },
+      { error: "Description must be between 10 and 500 characters." },
       { status: 400 },
     );
   if (
