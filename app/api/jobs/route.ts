@@ -317,6 +317,32 @@ export async function POST(request: Request) {
   let scheduledAtIso: string | null = null;
   let endsAtIso: string | null = null;
   let daysOnSite: number | null = null;
+
+  // Permanent roles have no end date; temporary roles must have a term.
+  if (isRole && employment_type === "temporary") {
+    const start = new Date(scheduled_at);
+    const end = new Date(ends_at);
+    if (!scheduled_at || isNaN(start.getTime())) {
+      return NextResponse.json(
+        { error: "Add the role's start date." },
+        { status: 400 },
+      );
+    }
+    if (!ends_at || isNaN(end.getTime())) {
+      return NextResponse.json(
+        { error: "Add the role's end date." },
+        { status: 400 },
+      );
+    }
+    if (end.getTime() < start.getTime()) {
+      return NextResponse.json(
+        { error: "The end date must be after the start date." },
+        { status: 400 },
+      );
+    }
+    scheduledAtIso = start.toISOString();
+    endsAtIso = end.toISOString();
+  }
   if (!isRole && resolvedWorkMode === "online") {
     const start = new Date(scheduled_at);
     const end = new Date(ends_at);

@@ -15,6 +15,8 @@ export default function OrganisationRoleForm({
   const [description, setDescription] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [employmentType, setEmploymentType] = useState<"permanent" | "temporary">("permanent");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const [payCadence, setPayCadence] = useState<"weekly" | "monthly">("monthly");
   const [payAmount, setPayAmount] = useState("");
   const [payNegotiable, setPayNegotiable] = useState(false);
@@ -48,6 +50,8 @@ export default function OrganisationRoleForm({
         description,
         categories,
         employment_type: employmentType,
+        scheduled_at: employmentType === "temporary" ? startsAt : null,
+        ends_at: employmentType === "temporary" ? endsAt : null,
         pay_cadence: payNegotiable ? null : payCadence,
         pay_amount: payNegotiable ? null : Number(payAmount),
         pay_negotiable: payNegotiable,
@@ -103,6 +107,16 @@ export default function OrganisationRoleForm({
           </select>
         </label>
       </div>
+      {employmentType === "temporary" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm font-semibold text-slate-700">Start date *
+            <input required type="date" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-normal" />
+          </label>
+          <label className="text-sm font-semibold text-slate-700">End date *
+            <input required type="date" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-3 text-sm font-normal" />
+          </label>
+        </div>
+      )}
       {!payNegotiable && (
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm font-semibold text-slate-700">Pay per period (£) *
