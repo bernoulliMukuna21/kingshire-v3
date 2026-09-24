@@ -135,6 +135,10 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       setError("Please write at least a couple of sentences.");
       return;
     }
+    if (!cvUrl) {
+      setError("Please attach your CV to apply.");
+      return;
+    }
 
     run(async () => {
       const res = await fetch("/api/applications", {
@@ -198,6 +202,9 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       </div>
 
       <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          CV <span className="text-red-500">*</span>
+        </label>
         <input
           ref={fileInputRef}
           type="file"
@@ -211,11 +218,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
           disabled={uploadingCv}
           className="rounded-xl border border-gray-200 px-3 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
         >
-          {uploadingCv
-            ? "Uploading…"
-            : cvName
-              ? "Replace CV"
-              : "Attach CV (optional)"}
+          {uploadingCv ? "Uploading…" : cvName ? "Replace CV" : "Attach CV"}
         </button>
         {cvName && (
           <p className="mt-1.5 text-xs text-gray-500">
