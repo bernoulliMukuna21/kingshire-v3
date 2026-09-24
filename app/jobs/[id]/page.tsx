@@ -221,6 +221,7 @@ export default async function JobDetailPage({
               </h2>
               <ApplicantsList
                 applications={applications}
+                job={job}
                 cardEnabled={cardEnabled}
               />
             </Card>
@@ -238,6 +239,7 @@ export default async function JobDetailPage({
                 </h2>
                 <ApplicantsList
                   applications={applications}
+                  job={job}
                   cardEnabled={cardEnabled}
                 />
               </Card>

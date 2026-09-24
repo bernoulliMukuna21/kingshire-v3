@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { DirectRequestStatus } from "@/lib/jobs";
 import { planForRole } from "@/lib/subscriptions/plans";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import {
   Loader2,
   CheckCircle,
@@ -786,20 +787,38 @@ function BankTransferModal({
 
 export function ApplicantsList({
   applications,
+  job,
   locked = false,
   cardEnabled = true,
 }: {
   applications: ApplicationWithKinglancer[];
+  job?: {
+    posting_type: string;
+    pay_negotiable: boolean;
+    pay_amount: number | null;
+    pay_cadence: string | null;
+    settlement_mode: string | null;
+  };
   locked?: boolean;
   cardEnabled?: boolean;
 }) {
   const router = useRouter();
+  const isRole = job?.posting_type === "role";
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectingId, setSelectingId] = useState<string | null>(null);
   const [pendingSelectId, setPendingSelectId] = useState<string | null>(null);
   const [payMethod, setPayMethod] = useState<"card" | "bank_transfer">(
     cardEnabled ? "card" : "bank_transfer",
   );
+  const [agreedAmount, setAgreedAmount] = useState(
+    job?.pay_amount != null ? String(job.pay_amount) : "",
+  );
+  const [agreedCadence, setAgreedCadence] = useState<"weekly" | "monthly">(
+    (job?.pay_cadence as "weekly" | "monthly") ?? "monthly",
+  );
+  const [agreedSettlementMode, setAgreedSettlementMode] = useState<
+    "managed" | "direct"
+  >((job?.settlement_mode as "managed" | "direct") ?? "managed");
   const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -821,7 +840,16 @@ export function ApplicantsList({
     const res = await fetch(`/api/applications/${applicationId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "accept", method: payMethod }),
+      body: JSON.stringify(
+        isRole
+          ? {
+              action: "accept",
+              agreed_amount: Number(agreedAmount),
+              agreed_cadence: agreedCadence,
+              agreed_settlement_mode: agreedSettlementMode,
+            }
+          : { action: "accept", method: payMethod },
+      ),
     });
 
     const data = await res.json();
@@ -829,6 +857,13 @@ export function ApplicantsList({
 
     if (!res.ok) {
       setError(data.error ?? "Failed to select applicant.");
+      return;
+    }
+
+    // Roles settle recurring pay, not a one-off card/bank-transfer escrow —
+    // there's nothing to redirect to, just refresh to show the hire.
+    if (data.method === "role") {
+      router.refresh();
       return;
     }
 
@@ -853,6 +888,7 @@ export function ApplicantsList({
   const pendingApp = pendingSelectId
     ? applications.find((a) => a.id === pendingSelectId)
     : null;
+  const agreedAmountValid = Number.isFinite(Number(agreedAmount)) && Number(agreedAmount) > 0;
 
   return (
     <>
@@ -863,6 +899,7 @@ export function ApplicantsList({
           if (pendingSelectId) handleSelect(pendingSelectId);
           setPendingSelectId(null);
         }}
+        confirmDisabled={isRole && !agreedAmountValid}
         title="Select this Kinglancer?"
         message={
           <div className="space-y-4">
@@ -871,71 +908,135 @@ export function ApplicantsList({
               <strong>
                 {pendingApp?.kinglancer.full_name ?? "this Kinglancer"}
               </strong>{" "}
-              for the job. This will move the job to payment — the selection
-              cannot be undone.
+              for the {isRole ? "role" : "job"}.{" "}
+              {isRole
+                ? "This starts their recurring pay schedule and cannot be undone."
+                : "This will move the job to payment — the selection cannot be undone."}
             </p>
-            <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                How would you like to pay?
-              </p>
-              {cardEnabled ? (
+            {isRole ? (
+              <div className="space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  {job?.pay_negotiable
+                    ? "Confirm the pay you agreed at interview"
+                    : "Recurring pay"}
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm font-semibold text-slate-700">
+                    Pay per period (£)
+                    <input
+                      type="number"
+                      min={MIN_JOB_BUDGET_GBP}
+                      step="0.01"
+                      value={agreedAmount}
+                      onChange={(e) => setAgreedAmount(e.target.value)}
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal"
+                    />
+                  </label>
+                  <label className="text-sm font-semibold text-slate-700">
+                    Pay cadence
+                    <select
+                      value={agreedCadence}
+                      onChange={(e) =>
+                        setAgreedCadence(e.target.value as "weekly" | "monthly")
+                      }
+                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal"
+                    >
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Payment handling
+                  <select
+                    value={agreedSettlementMode}
+                    onChange={(e) =>
+                      setAgreedSettlementMode(
+                        e.target.value as "managed" | "direct",
+                      )
+                    }
+                    className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal"
+                  >
+                    <option value="managed">
+                      KingsHire-managed escrow and payout
+                    </option>
+                    <option value="direct">
+                      Organisation pays the Kinglancer directly
+                    </option>
+                  </select>
+                </label>
+                {!agreedAmountValid && (
+                  <p className="text-xs text-red-500">
+                    Enter the pay you agreed before confirming.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  How would you like to pay?
+                </p>
+                {cardEnabled ? (
+                  <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
+                    <input
+                      type="radio"
+                      name="pay-method"
+                      className="mt-0.5"
+                      checked={payMethod === "card"}
+                      onChange={() => setPayMethod("card")}
+                    />
+                    <span>
+                      <span className="font-bold text-slate-900">
+                        Pay by card
+                      </span>
+                      <span className="block text-xs text-slate-500">
+                        Instant — held in escrow automatically.
+                      </span>
+                    </span>
+                  </label>
+                ) : (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    <p className="font-bold">Card payments need a subscription</p>
+                    <p className="mt-0.5">
+                      Subscribe for £{planForRole("client").priceGBP}/month to pay
+                      by card, or continue with a bank transfer below.{" "}
+                      <Link
+                        href="/dashboard/client/subscription"
+                        className="font-bold underline"
+                      >
+                        Subscribe
+                      </Link>
+                    </p>
+                  </div>
+                )}
                 <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
                   <input
                     type="radio"
                     name="pay-method"
                     className="mt-0.5"
-                    checked={payMethod === "card"}
-                    onChange={() => setPayMethod("card")}
+                    checked={payMethod === "bank_transfer"}
+                    onChange={() => setPayMethod("bank_transfer")}
                   />
                   <span>
                     <span className="font-bold text-slate-900">
-                      Pay by card
+                      Pay by bank transfer
                     </span>
                     <span className="block text-xs text-slate-500">
-                      Instant — held in escrow automatically.
+                      No card fee. We confirm once funds arrive, then the job
+                      starts.
                     </span>
                   </span>
                 </label>
-              ) : (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                  <p className="font-bold">Card payments need a subscription</p>
-                  <p className="mt-0.5">
-                    Subscribe for £{planForRole("client").priceGBP}/month to pay
-                    by card, or continue with a bank transfer below.{" "}
-                    <Link
-                      href="/dashboard/client/subscription"
-                      className="font-bold underline"
-                    >
-                      Subscribe
-                    </Link>
-                  </p>
-                </div>
-              )}
-              <label className="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-sm">
-                <input
-                  type="radio"
-                  name="pay-method"
-                  className="mt-0.5"
-                  checked={payMethod === "bank_transfer"}
-                  onChange={() => setPayMethod("bank_transfer")}
-                />
-                <span>
-                  <span className="font-bold text-slate-900">
-                    Pay by bank transfer
-                  </span>
-                  <span className="block text-xs text-slate-500">
-                    No card fee. We confirm once funds arrive, then the job
-                    starts.
-                  </span>
-                </span>
-              </label>
-            </div>
+              </div>
+            )}
           </div>
         }
         confirmLabel={
-          payMethod === "card"
-            ? "Continue to card payment"
-            : "Get bank transfer details"
+          isRole
+            ? "Confirm & hire"
+            : payMethod === "card"
+              ? "Continue to card payment"
+              : "Get bank transfer details"
         }
         variant="success"
         loading={selectingId !== null}

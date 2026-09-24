@@ -315,6 +315,7 @@ export default async function JobDetailWorkspace({
               </p>
               <ApplicantsList
                 applications={applications}
+                job={job}
                 locked={paymentPending}
                 cardEnabled={cardEnabled}
               />
