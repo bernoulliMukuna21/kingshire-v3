@@ -59,6 +59,19 @@ export async function POST(request: Request) {
     );
   }
 
+  const rawCv = body.cv_url;
+  if (typeof rawCv !== "string" || !rawCv.trim()) {
+    return NextResponse.json(
+      { error: "Please attach your CV to apply." },
+      { status: 400 },
+    );
+  }
+  const expectedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/job-application-cvs/`;
+  if (!expectedPrefix || !rawCv.startsWith(expectedPrefix)) {
+    return NextResponse.json({ error: "Invalid CV upload." }, { status: 400 });
+  }
+  const cvUrl = rawCv;
+
   // Verify the job exists and is open
   const job = await getJobById(job_id);
   if (!job) {
@@ -78,8 +91,10 @@ export async function POST(request: Request) {
   }
 
   // Small jobs are subscriber-only to apply to (direct requests are exempt —
-  // they're handled above).
+  // they're handled above). Roles have no "budget" (recurring pay instead),
+  // so the small-job gate never applies to them.
   if (
+    job.posting_type !== "role" &&
     jobRequiresSubscriptionToApply(job.budget) &&
     !(await hasEntitlement(user.id, "kinglancer", "applyToSmallJobs"))
   ) {
@@ -113,6 +128,7 @@ export async function POST(request: Request) {
       job_id,
       kinglancer_id: user.id,
       cover_letter: cover_letter.trim(),
+      cv_url: cvUrl,
     });
 
     // Notify the client — fire-and-forget, never blocks the response

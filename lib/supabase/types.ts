@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           cover_letter: string
           created_at: string
+          cv_url: string | null
           id: string
           job_id: string
           kinglancer_id: string
@@ -27,6 +28,7 @@ export type Database = {
         Insert: {
           cover_letter: string
           created_at?: string
+          cv_url?: string | null
           id?: string
           job_id: string
           kinglancer_id: string
@@ -36,6 +38,7 @@ export type Database = {
         Update: {
           cover_letter?: string
           created_at?: string
+          cv_url?: string | null
           id?: string
           job_id?: string
           kinglancer_id?: string

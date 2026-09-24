@@ -12,6 +12,23 @@ export function jobAlertHeadline(jobTitle: string, priceLabel: string): string {
   return `${jobTitle} — ${priceLabel}`;
 }
 
+/** Single source for a job's price label — a one-off gig's budget has one job
+ * (£X); an org role's `budget` is always 0 and never the right thing to show,
+ * it's paid recurring pay (negotiable or £X/period) instead. */
+export function jobPriceLabel(job: {
+  posting_type: string | null;
+  budget: number;
+  pay_negotiable: boolean | null;
+  pay_amount: number | null;
+  pay_cadence: string | null;
+}): string {
+  if (job.posting_type === "role") {
+    if (job.pay_negotiable) return "Discussed at interview";
+    return `£${Number(job.pay_amount).toLocaleString()}/${job.pay_cadence}`;
+  }
+  return `£${Number(job.budget).toLocaleString()}`;
+}
+
 // Canonical unions for job text columns (DB stores them as CHECK-constrained
 // text, generated as `string`), so the narrow types live here.
 export type RateType = "fixed" | "per_hour" | "per_day";
@@ -83,6 +100,12 @@ export const ESTIMATE_MINUTE_OPTIONS = [
 // The narrow set of fields the JobKeyDetails display reads — decoupled from any
 // one page's job shape so every view passes only what it already has.
 export type JobKeyDetailsData = {
+  posting_type?: string | null;
+  employment_type?: string | null;
+  pay_cadence?: string | null;
+  pay_amount?: number | string | null;
+  pay_negotiable?: boolean;
+  settlement_mode?: string | null;
   work_mode: string;
   location: string | null;
   address_line: string | null;
@@ -131,7 +154,8 @@ export function jobScheduleLabel(job: {
           minute: "2-digit",
         })}`
       : startStr;
-    const type: ScheduleType = job.schedule_type === "shift" ? "shift" : "window";
+    const type: ScheduleType =
+      job.schedule_type === "shift" ? "shift" : "window";
     if (type === "shift") return { heading: "Shift", value, note: null };
     const note =
       job.estimated_minutes != null
@@ -146,7 +170,9 @@ export function jobScheduleLabel(job: {
     year: "numeric",
   };
   const startStr = start.toLocaleDateString("en-GB", dateOpts);
-  value = end ? `${startStr} → ${end.toLocaleDateString("en-GB", dateOpts)}` : startStr;
+  value = end
+    ? `${startStr} → ${end.toLocaleDateString("en-GB", dateOpts)}`
+    : startStr;
   return { heading: "Dates", value, note: null };
 }
 
@@ -167,7 +193,6 @@ export function canSeeExactLocation(args: {
 }): boolean {
   if (args.isOwner) return true;
   return (
-    args.isAssignedKinglancer &&
-    LOCATION_FUNDED_STATUSES.includes(args.status)
+    args.isAssignedKinglancer && LOCATION_FUNDED_STATUSES.includes(args.status)
   );
 }

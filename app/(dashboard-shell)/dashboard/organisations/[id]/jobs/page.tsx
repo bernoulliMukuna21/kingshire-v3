@@ -3,15 +3,16 @@ import Link from "next/link";
 import { ChevronRight, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  getOrganisationMembership,
-  requireOrganisationPermission,
-} from "@/lib/organisations";
+import { getOrganisationMembership } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
-import { type JobStatus, JOBS_PAGE_SIZE, jobStatusPill } from "@/lib/jobs";
+import {
+  type JobStatus,
+  JOBS_PAGE_SIZE,
+  jobStatusPill,
+  jobPriceLabel,
+} from "@/lib/jobs";
 import { getPageNumber, getPageRange } from "@/lib/pagination";
 import EmptyState from "@/components/ui/EmptyState";
-import { ButtonLink } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import JobsTabBar from "@/components/dashboard/JobsTabBar";
 import JobsPagination from "@/components/dashboard/JobsPagination";
@@ -66,8 +67,12 @@ function compactCategories(categories: string[]) {
 type JobRow = {
   id: string;
   title: string;
+  posting_type: string;
   status: JobStatus;
   budget: number;
+  pay_negotiable: boolean | null;
+  pay_amount: number | null;
+  pay_cadence: string | null;
   categories: string[];
   created_at: string;
   deadline: string | null;
@@ -101,11 +106,6 @@ export default async function OrganisationJobsPage({
   if (!organisationName) notFound();
   const canManageMembers =
     membership.role === "owner" || membership.role === "admin";
-  const canPostJob = await requireOrganisationPermission(
-    id,
-    user.id,
-    "manage_jobs",
-  );
 
   const tab = parseTab(tabParam);
   const page = getPageNumber(pageParam);
@@ -113,7 +113,7 @@ export default async function OrganisationJobsPage({
 
   const db = createServiceClient();
   const JOB_SELECT = `
-    id, title, status, budget, categories, created_at, deadline,
+    id, title, posting_type, status, budget, pay_negotiable, pay_amount, pay_cadence, categories, created_at, deadline,
     invited_kinglancer_id, direct_request_status,
     kinglancer:profiles!kinglancer_id(full_name),
     invited_kinglancer:profiles!invited_kinglancer_id(full_name)
@@ -210,13 +210,6 @@ export default async function OrganisationJobsPage({
               ? "Post the Organisation's first paid job."
               : `No jobs in the ${TAB_LABELS[tab].toLowerCase()} category right now.`
           }
-          action={
-            tab === "history" && canPostJob ? (
-              <ButtonLink href={`${basePath}/post`} size="sm">
-                Post a job
-              </ButtonLink>
-            ) : undefined
-          }
         />
       ) : (
         <div className="space-y-3">
@@ -282,6 +275,11 @@ function JobCard({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="mb-1 flex items-center gap-2">
+              {job.posting_type === "role" && (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                  Recurring role
+                </span>
+              )}
               {isDirectRequest && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-bold text-violet-700 ring-1 ring-violet-100">
                   <Send size={10} />
@@ -294,7 +292,7 @@ function JobCard({
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               <span className="font-bold text-slate-900">
-                £{Number(job.budget).toLocaleString()}
+                {jobPriceLabel(job)}
               </span>
               {isDirectRequest ? (
                 <>

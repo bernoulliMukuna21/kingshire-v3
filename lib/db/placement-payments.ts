@@ -1,126 +1,177 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 import { coerceNumeric, coerceNumericList } from "@/lib/db/coerce";
-import { calculateFees } from "@/lib/stripe";
+import {
+  createEngagement,
+  getEngagementsByIds,
+  getEngagementBySource,
+} from "@/lib/db/engagements";
+import type { Engagement } from "@/lib/db/engagements";
+import {
+  createEngagementPayments,
+  getEngagementPayment,
+  getEngagementPayments,
+  getDueEngagementPayments,
+  updateEngagementPaymentStatus,
+  getDisputedEngagementPayments,
+  getHeldEngagementPaymentsForOrganisation,
+  type EngagementPaymentRow,
+} from "@/lib/db/engagement-payments";
+import { periodFees } from "@/lib/settlement/fees";
+import { settleEngagementPaymentsOnEarlyEnd } from "@/lib/settlement/termination";
 import { placementMonthlyAmounts } from "@/lib/placements";
 import type { PlacementAgreementRow } from "@/lib/db/placements";
+import type { EngagementPaymentStatus } from "@/lib/settlement/types";
 
 export type PlacementPaymentRow =
   Database["public"]["Tables"]["placement_payments"]["Row"];
+const NUMERIC = ["amount", "platform_fee_client", "platform_fee_kinglancer"] as const;
 
-// `numeric` columns arrive as strings — coerce so callers can do money math.
-const PLACEMENT_PAYMENT_NUMERIC = [
-  "amount",
-  "platform_fee_client",
-  "platform_fee_kinglancer",
-] as const;
+// `agreement_id` on the compat row is the real placement_agreements.id (the
+// engagement's `source_id`), NOT the engagement's own id — callers (routes,
+// action-centre links) key off the placement agreement, not the engagement.
+function toPlacementPayment(
+  payment: EngagementPaymentRow,
+  agreementId: string,
+): PlacementPaymentRow {
+  return {
+    id: payment.id,
+    agreement_id: agreementId,
+    organisation_id: payment.organisation_id,
+    kinglancer_id: payment.kinglancer_id,
+    period_index: payment.period_index,
+    due_date: payment.due_date,
+    amount: payment.worker_amount,
+    platform_fee_client: payment.platform_fee_client,
+    platform_fee_kinglancer: payment.platform_fee_kinglancer,
+    status: payment.status,
+    stripe_payment_intent_id: payment.stripe_payment_intent_id,
+    stripe_transfer_id: payment.stripe_transfer_id,
+    paid_at: payment.charged_at,
+    released_at: payment.released_at,
+    created_at: payment.created_at,
+    updated_at: payment.updated_at,
+    notice_sent_at: payment.notice_sent_at,
+    dispute_reason: payment.dispute_reason,
+  } as PlacementPaymentRow;
+}
 
-/** Adds whole calendar months to a date. */
-function addMonths(date: Date, months: number): Date {
-  const d = new Date(date);
-  d.setMonth(d.getMonth() + months);
-  return d;
+async function findPlacementEngagement(agreementId: string) {
+  return getEngagementBySource("placement", agreementId);
+}
+
+/** Keeps only payments whose engagement is a Placement (not an org_role),
+ * returning each alongside its engagement so callers get the real agreement id. */
+async function onlyPlacementPayments(
+  payments: EngagementPaymentRow[],
+): Promise<{ payment: EngagementPaymentRow; engagement: Engagement }[]> {
+  const engagementsById = await getEngagementsByIds(
+    payments.map((payment) => payment.engagement_id),
+  );
+  const out: { payment: EngagementPaymentRow; engagement: Engagement }[] = [];
+  for (const payment of payments) {
+    const engagement = engagementsById.get(payment.engagement_id);
+    if (engagement?.source_kind === "placement") {
+      out.push({ payment, engagement });
+    }
+  }
+  return out;
 }
 
 export async function listPlacementPayments(
   agreementId: string,
 ): Promise<PlacementPaymentRow[]> {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("placement_payments")
-    .select("*")
-    .eq("agreement_id", agreementId)
-    .order("period_index", { ascending: true });
-  if (error) throw error;
+  const engagement = await findPlacementEngagement(agreementId);
+  if (!engagement) return [];
+  const payments = await getEngagementPayments(engagement.id);
   return coerceNumericList(
-    (data ?? []) as PlacementPaymentRow[],
-    PLACEMENT_PAYMENT_NUMERIC,
+    payments.map((payment) => toPlacementPayment(payment, agreementId)),
+    NUMERIC,
   );
 }
 
 export async function getPlacementPayment(
   paymentId: string,
 ): Promise<PlacementPaymentRow | null> {
-  const db = createServiceClient();
-  const { data } = await db
-    .from("placement_payments")
-    .select("*")
-    .eq("id", paymentId)
-    .maybeSingle();
-  return data
-    ? coerceNumeric(data as PlacementPaymentRow, PLACEMENT_PAYMENT_NUMERIC)
-    : null;
+  const payment = await getEngagementPayment(paymentId);
+  if (!payment) return null;
+  const engagementsById = await getEngagementsByIds([payment.engagement_id]);
+  const engagement = engagementsById.get(payment.engagement_id);
+  if (!engagement) return null;
+  return coerceNumeric(
+    toPlacementPayment(payment, engagement.source_id),
+    NUMERIC,
+  );
 }
 
-/**
- * Creates the monthly payment rows for a managed agreement if they don't
- * exist yet. Idempotent — safe to call on every render. Returns the ledger.
- */
 export async function ensurePaymentSchedule(
   agreement: PlacementAgreementRow,
 ): Promise<PlacementPaymentRow[]> {
-  const existing = await listPlacementPayments(agreement.id);
-  if (existing.length > 0) return existing;
   if (agreement.payment_mode !== "managed" || !agreement.monthly_amount) {
-    return existing;
-  }
-
-  const amounts = placementMonthlyAmounts(
-    agreement.duration_weeks,
-    Number(agreement.monthly_amount),
-  );
-  const anchor = new Date();
-  const rows = amounts.map((amt, i) => {
-    const { platformFeeClient, platformFeeKinglancer } = calculateFees(amt);
-    return {
-      agreement_id: agreement.id,
-      organisation_id: agreement.organisation_id,
-      kinglancer_id: agreement.kinglancer_id,
-      period_index: i + 1,
-      due_date: addMonths(anchor, i).toISOString().slice(0, 10),
-      amount: amt,
-      platform_fee_client: platformFeeClient,
-      platform_fee_kinglancer: platformFeeKinglancer,
-      status: "due" as const,
-    };
-  });
-
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("placement_payments")
-    .insert(rows)
-    .select();
-  if (error) {
-    // A concurrent render may have inserted first (unique agreement+period).
     return listPlacementPayments(agreement.id);
   }
-  return coerceNumericList(
-    (data ?? []) as PlacementPaymentRow[],
-    PLACEMENT_PAYMENT_NUMERIC,
-  );
+
+  let engagement = await findPlacementEngagement(agreement.id);
+  if (!engagement) {
+    engagement = await createEngagement({
+      source_kind: "placement",
+      source_id: agreement.id,
+      organisation_id: agreement.organisation_id,
+      kinglancer_id: agreement.kinglancer_id,
+      settlement_mode: "managed",
+      cadence: "monthly",
+      amount_per_period: Number(agreement.monthly_amount),
+      duration_periods: null,
+      status: "pending_funding",
+      org_signed_by: agreement.org_signed_by,
+      org_signed_at: agreement.org_signed_at,
+      kinglancer_signed_at: agreement.kinglancer_signed_at,
+    });
+  }
+
+  const existing = await getEngagementPayments(engagement.id);
+  if (existing.length === 0) {
+    const amounts = placementMonthlyAmounts(
+      agreement.duration_weeks,
+      Number(agreement.monthly_amount),
+    );
+    const fees = periodFees({
+      amountPerPeriod: Number(agreement.monthly_amount),
+      mode: "managed",
+    });
+    await createEngagementPayments(
+      amounts.map((amount, index) => ({
+        engagement_id: engagement!.id,
+        organisation_id: agreement.organisation_id,
+        kinglancer_id: agreement.kinglancer_id,
+        period_index: index + 1,
+        due_date: new Date(
+          new Date().setUTCMonth(new Date().getUTCMonth() + index),
+        )
+          .toISOString()
+          .slice(0, 10),
+        worker_amount: amount,
+        platform_fee_client: fees.platformFeeClient,
+        platform_fee_kinglancer: fees.platformFeeKinglancer,
+        status: "due",
+      })),
+    );
+  }
+  return listPlacementPayments(agreement.id);
 }
 
-/** Due, unpaid managed payments whose due date has arrived, for active
- * agreements only. Used by the monthly auto-charge cron. */
 export async function listDuePlacementPayments(): Promise<
   PlacementPaymentRow[]
 > {
-  const db = createServiceClient();
-  const today = new Date().toISOString().slice(0, 10);
-  const { data, error } = await db
-    .from("placement_payments")
-    .select("*, agreement:placement_agreements!agreement_id(status)")
-    .eq("status", "due")
-    .lte("due_date", today);
-  if (error) throw error;
-  const rows = (data ?? []) as (PlacementPaymentRow & {
-    agreement: { status: string } | null;
-  })[];
+  const payments = await getDueEngagementPayments(
+    new Date().toISOString().slice(0, 10),
+  );
+  const placementPayments = await onlyPlacementPayments(payments);
   return coerceNumericList(
-    rows.filter(
-      (row) => row.agreement?.status === "active",
-    ) as unknown as PlacementPaymentRow[],
-    PLACEMENT_PAYMENT_NUMERIC,
+    placementPayments.map(({ payment, engagement }) =>
+      toPlacementPayment(payment, engagement.source_id),
+    ),
+    NUMERIC,
   );
 }
 
@@ -130,23 +181,87 @@ export type DisputedPlacementPayment = PlacementPaymentRow & {
   agreement: { placement: { title: string } | null } | null;
 };
 
-/** Held payments the org has disputed, awaiting admin resolution. */
+type AgreementContext = {
+  id: string;
+  organisationName: string | null;
+  placementTitle: string | null;
+};
+
+/** Batch-fetches placement title + organisation name for a set of agreement ids. */
+async function getAgreementContexts(
+  agreementIds: string[],
+): Promise<Map<string, AgreementContext>> {
+  if (agreementIds.length === 0) return new Map();
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("placement_agreements")
+    .select(
+      "id, organisation:organisations!organisation_id(name), placement:placements!placement_id(title)",
+    )
+    .in("id", [...new Set(agreementIds)]);
+  if (error) throw error;
+  // PostgREST returns the joined relation as an object or an array depending
+  // on inferred cardinality — normalise both shapes defensively.
+  const first = <T>(value: T | T[] | null): T | null =>
+    Array.isArray(value) ? (value[0] ?? null) : value;
+  return new Map(
+    (data ?? []).map((row) => [
+      row.id,
+      {
+        id: row.id,
+        organisationName:
+          first(row.organisation as { name: string } | { name: string }[] | null)
+            ?.name ?? null,
+        placementTitle:
+          first(row.placement as { title: string } | { title: string }[] | null)
+            ?.title ?? null,
+      },
+    ]),
+  );
+}
+
+async function getKinglancerNames(
+  kinglancerIds: string[],
+): Promise<Map<string, string | null>> {
+  if (kinglancerIds.length === 0) return new Map();
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("profiles")
+    .select("id, full_name")
+    .in("id", [...new Set(kinglancerIds)]);
+  if (error) throw error;
+  return new Map((data ?? []).map((row) => [row.id, row.full_name]));
+}
+
 export async function listDisputedPlacementPayments(): Promise<
   DisputedPlacementPayment[]
 > {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("placement_payments")
-    .select(
-      "*, organisation:organisations!organisation_id(name), kinglancer:profiles!kinglancer_id(full_name), agreement:placement_agreements!agreement_id(placement:placements(title))",
-    )
-    .eq("status", "disputed")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return coerceNumericList(
-    (data ?? []) as unknown as DisputedPlacementPayment[],
-    PLACEMENT_PAYMENT_NUMERIC,
-  );
+  const payments = await getDisputedEngagementPayments();
+  const placementPayments = await onlyPlacementPayments(payments);
+  const [agreementContexts, kinglancerNames] = await Promise.all([
+    getAgreementContexts(
+      placementPayments.map(({ engagement }) => engagement.source_id),
+    ),
+    getKinglancerNames(
+      placementPayments.map(({ payment }) => payment.kinglancer_id),
+    ),
+  ]);
+
+  return placementPayments.map(({ payment, engagement }) => {
+    const context = agreementContexts.get(engagement.source_id);
+    return {
+      ...toPlacementPayment(payment, engagement.source_id),
+      organisation: context?.organisationName
+        ? { name: context.organisationName }
+        : null,
+      kinglancer: {
+        full_name: kinglancerNames.get(payment.kinglancer_id) ?? null,
+      },
+      agreement: context?.placementTitle
+        ? { placement: { title: context.placementTitle } }
+        : null,
+    };
+  });
 }
 
 export type OrgHeldPlacementPayment = PlacementPaymentRow & {
@@ -154,24 +269,32 @@ export type OrgHeldPlacementPayment = PlacementPaymentRow & {
   agreement: { placement: { title: string } | null } | null;
 };
 
-/** Held (escrowed) months for an org, awaiting the org's approve/dispute. */
 export async function listHeldPlacementPaymentsForOrg(
   organisationId: string,
 ): Promise<OrgHeldPlacementPayment[]> {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("placement_payments")
-    .select(
-      "*, kinglancer:profiles!kinglancer_id(full_name), agreement:placement_agreements!agreement_id(placement:placements(title))",
-    )
-    .eq("organisation_id", organisationId)
-    .eq("status", "held")
-    .order("due_date", { ascending: true });
-  if (error) throw error;
-  return coerceNumericList(
-    (data ?? []) as unknown as OrgHeldPlacementPayment[],
-    PLACEMENT_PAYMENT_NUMERIC,
-  );
+  const payments = await getHeldEngagementPaymentsForOrganisation(organisationId);
+  const placementPayments = await onlyPlacementPayments(payments);
+  const [agreementContexts, kinglancerNames] = await Promise.all([
+    getAgreementContexts(
+      placementPayments.map(({ engagement }) => engagement.source_id),
+    ),
+    getKinglancerNames(
+      placementPayments.map(({ payment }) => payment.kinglancer_id),
+    ),
+  ]);
+
+  return placementPayments.map(({ payment, engagement }) => {
+    const context = agreementContexts.get(engagement.source_id);
+    return {
+      ...toPlacementPayment(payment, engagement.source_id),
+      kinglancer: {
+        full_name: kinglancerNames.get(payment.kinglancer_id) ?? null,
+      },
+      agreement: context?.placementTitle
+        ? { placement: { title: context.placementTitle } }
+        : null,
+    };
+  });
 }
 
 export async function updatePlacementPaymentStatus(
@@ -189,32 +312,35 @@ export async function updatePlacementPaymentStatus(
     >
   >,
 ): Promise<void> {
-  const db = createServiceClient();
-  const { error } = await db
-    .from("placement_payments")
-    .update(patch)
-    .eq("id", paymentId);
-  if (error) throw error;
+  await updateEngagementPaymentStatus(
+    paymentId,
+    (patch.status ?? "due") as EngagementPaymentStatus,
+    {
+      ...(patch.stripe_payment_intent_id !== undefined
+        ? { stripe_payment_intent_id: patch.stripe_payment_intent_id }
+        : {}),
+      ...(patch.stripe_transfer_id !== undefined
+        ? { stripe_transfer_id: patch.stripe_transfer_id }
+        : {}),
+      ...(patch.paid_at !== undefined ? { charged_at: patch.paid_at } : {}),
+      ...(patch.released_at !== undefined
+        ? { released_at: patch.released_at }
+        : {}),
+      ...(patch.notice_sent_at !== undefined
+        ? { notice_sent_at: patch.notice_sent_at }
+        : {}),
+      ...(patch.dispute_reason !== undefined
+        ? { dispute_reason: patch.dispute_reason }
+        : {}),
+    },
+  );
 }
 
-/**
- * Settles a managed agreement's payments when it's ended early: future
- * (uncharged) months are cancelled; months already held in escrow are sent to
- * admin (disputed) to release or refund.
- */
 export async function settlePlacementPaymentsOnEarlyEnd(
   agreementId: string,
   reason: string,
 ): Promise<void> {
-  const db = createServiceClient();
-  await db
-    .from("placement_payments")
-    .update({ status: "cancelled" })
-    .eq("agreement_id", agreementId)
-    .eq("status", "due");
-  await db
-    .from("placement_payments")
-    .update({ status: "disputed", dispute_reason: reason })
-    .eq("agreement_id", agreementId)
-    .eq("status", "held");
+  const engagement = await findPlacementEngagement(agreementId);
+  if (!engagement) return;
+  await settleEngagementPaymentsOnEarlyEnd(engagement.id, reason);
 }

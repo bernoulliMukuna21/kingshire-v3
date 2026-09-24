@@ -13,6 +13,7 @@ import { getManualBankDetails } from "@/lib/manual-payments";
 import { canManageJob } from "@/lib/organisations";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import { planForRole } from "@/lib/subscriptions/plans";
+import { createRoleEngagement } from "@/lib/settlement/role-engagements";
 
 type ApplicationRow = {
   id: string;
@@ -23,11 +24,18 @@ type ApplicationRow = {
   proposed_rate: number | null;
   created_at: string;
   job: {
+    id: string;
     client_id: string;
     organisation_id: string | null;
     status: string;
     budget: number;
     title: string;
+    posting_type: string;
+    employment_type: string | null;
+    pay_cadence: string | null;
+    pay_amount: number | null;
+    pay_negotiable: boolean;
+    settlement_mode: string | null;
   };
 };
 
@@ -58,7 +66,7 @@ export async function PATCH(
   const { data: applicationRaw } = await createServiceClient()
     .from("applications")
     .select(
-      "*, job:jobs!job_id(client_id, organisation_id, status, budget, title)",
+      "*, job:jobs!job_id(id, client_id, organisation_id, status, budget, title, posting_type, employment_type, pay_cadence, pay_amount, pay_negotiable, settlement_mode)",
     )
     .eq("id", applicationId)
     .single();
@@ -92,6 +100,51 @@ export async function PATCH(
       { error: "This application is no longer pending" },
       { status: 409 },
     );
+  }
+
+  if (job.posting_type === "role") {
+    const agreedAmount = Number(body.agreed_amount ?? job.pay_amount);
+    const agreedCadence = body.agreed_cadence ?? job.pay_cadence;
+    const agreedSettlementMode = body.agreed_settlement_mode ?? job.settlement_mode;
+    if (!Number.isFinite(agreedAmount) || agreedAmount <= 0) {
+      return NextResponse.json(
+        { error: "Agree the recurring pay before selecting this applicant." },
+        { status: 400 },
+      );
+    }
+    if (!["weekly", "monthly"].includes(agreedCadence)) {
+      return NextResponse.json(
+        { error: "Choose weekly or monthly pay for this role." },
+        { status: 400 },
+      );
+    }
+    if (!["managed", "direct"].includes(agreedSettlementMode)) {
+      return NextResponse.json(
+        { error: "Choose how this role will be settled." },
+        { status: 400 },
+      );
+    }
+
+    const engagement = await createRoleEngagement({
+      job: { ...job, organisation_id: job.organisation_id! },
+      kinglancerId: application.kinglancer_id,
+      organisationSignerId: user.id,
+      agreedAmount,
+      agreedCadence,
+      agreedSettlementMode,
+    });
+    const db = createServiceClient();
+    await Promise.all([
+      db.from("applications").update({ status: "accepted" }).eq("id", applicationId),
+      db.from("jobs").update({ status: "in_progress", kinglancer_id: application.kinglancer_id }).eq("id", application.job_id).eq("status", "open"),
+    ]);
+    return NextResponse.json({
+      success: true,
+      method: "role",
+      jobId: application.job_id,
+      engagementId: engagement.id,
+      status: engagement.status,
+    });
   }
 
   try {
