@@ -163,11 +163,21 @@ export async function fireTransfer({
   // Idempotency: skip if a transfer was already recorded for this transaction.
   // Secondary safety net — Stripe's idempotency key below is the real concurrent-safe guard.
   const db = createServiceClient();
-  const { data: existingTx } = await db
+  const { data: existingTx, error: transactionError } = await db
     .from("transactions")
-    .select("stripe_transfer_id")
+    .select("stripe_transfer_id, payout_method, manual_payout_reference, status")
     .eq("id", transactionId)
     .single();
+
+  if (transactionError || !existingTx) {
+    throw new Error("Cannot verify the transaction before transferring funds.");
+  }
+  if (
+    existingTx.manual_payout_reference ||
+    (existingTx.payout_method === "manual" && existingTx.status === "released")
+  ) {
+    throw new Error("This transaction was settled manually; Stripe transfer blocked.");
+  }
 
   if (existingTx?.stripe_transfer_id) {
     console.log(
