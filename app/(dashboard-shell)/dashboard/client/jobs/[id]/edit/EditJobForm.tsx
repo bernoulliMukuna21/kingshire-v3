@@ -157,9 +157,7 @@ export default function EditJobForm({
           })}
         </div>
         {selectedCategories.length === 0 && (
-          <p className="text-xs text-red-600">
-            Select at least one category.
-          </p>
+          <p className="text-xs text-red-600">Select at least one category.</p>
         )}
       </div>
 

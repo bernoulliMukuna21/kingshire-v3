@@ -12,8 +12,7 @@ import {
   getPageRange,
   timeAgo,
 } from "@/lib/admin-dashboard";
-import { formatMoneyPrecise as formatMoney } from "@/lib/utils";
-import { jobStatusPill } from "@/lib/jobs";
+import { jobPriceLabel, jobStatusPill } from "@/lib/jobs";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export default async function AdminJobsPage({
@@ -29,7 +28,7 @@ export default async function AdminJobsPage({
   const { data, count } = await serviceDb
     .from("jobs")
     .select(
-      "id, title, status, budget, categories, created_at, client:profiles!client_id(full_name)",
+      "id, title, status, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, categories, created_at, client:profiles!client_id(full_name)",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -91,7 +90,7 @@ export default async function AdminJobsPage({
                       {job.status.replace("_", " ")}
                     </span>
                     <span className="text-sm font-black text-gray-900">
-                      {formatMoney(job.budget)}
+                      {jobPriceLabel(job)}
                     </span>
                   </div>
                 </Link>

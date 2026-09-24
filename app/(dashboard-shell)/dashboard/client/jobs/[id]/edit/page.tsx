@@ -24,6 +24,9 @@ export default async function EditJobPage({
   }
   if (job.status !== "open") redirect(`/dashboard/client/jobs/${id}`);
 
+  // Recurring role postings aren't supported by this gig-only edit form yet.
+  if (job.posting_type === "role") redirect(`/dashboard/client/jobs/${id}`);
+
   // A job can't be edited once a payment is in progress (card checkout or a
   // pending bank transfer) — the amount is committed.
   if (await getPendingPaymentAttemptByJob(id)) {

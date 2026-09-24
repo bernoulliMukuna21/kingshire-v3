@@ -19,9 +19,9 @@ import {
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
-import { jobStatusPill, canSeeExactLocation } from "@/lib/jobs";
+import { jobStatusPill, canSeeExactLocation, jobPriceLabel } from "@/lib/jobs";
 import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
-import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
+import { formatMoney, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
@@ -201,11 +201,12 @@ export default async function KinglancerJobWorkspacePage({
   // by the layout with zero extra DB round trips.
   const { supabase, user } = await getDashboardContext();
 
-  const [jobResult, applicationResult, transactionResult, engagementResult] = await Promise.all([
-    supabase
-      .from("jobs")
-      .select(
-        `
+  const [jobResult, applicationResult, transactionResult, engagementResult] =
+    await Promise.all([
+      supabase
+        .from("jobs")
+        .select(
+          `
           id, title, description, attachment, budget, rate_type, status, deadline, categories, posting_type,
           employment_type, pay_cadence, pay_amount, pay_negotiable, settlement_mode,
           work_mode, location, address_line, postcode, location_area, latitude, longitude, days_on_site, scheduled_at, ends_at, schedule_type, estimated_minutes,
@@ -214,33 +215,35 @@ export default async function KinglancerJobWorkspacePage({
           counter_budget, counter_rate_type, counter_deadline, created_at,
           client:profiles!client_id(full_name, avatar_url, phone)
         `,
-      )
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("applications")
-      .select("id, status, cover_letter, created_at")
-      .eq("job_id", id)
-      .eq("kinglancer_id", user.id)
-      .maybeSingle(),
-    // released_at included here so we do not need a second getTransactionByJob
-    // call for the review window calculation on approved jobs.
-    supabase
-      .from("transactions")
-      .select(
-        "amount, platform_fee_kinglancer, status, payment_method, released_at",
-      )
-      .eq("job_id", id)
-      .eq("kinglancer_id", user.id)
-      .maybeSingle(),
-    supabase
-      .from("engagements")
-      .select("id, status, cadence, amount_per_period, settlement_mode, end_requested_by")
-      .eq("source_kind", "org_role")
-      .eq("source_id", id)
-      .eq("kinglancer_id", user.id)
-      .maybeSingle(),
-  ]);
+        )
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("applications")
+        .select("id, status, cover_letter, created_at")
+        .eq("job_id", id)
+        .eq("kinglancer_id", user.id)
+        .maybeSingle(),
+      // released_at included here so we do not need a second getTransactionByJob
+      // call for the review window calculation on approved jobs.
+      supabase
+        .from("transactions")
+        .select(
+          "amount, platform_fee_kinglancer, status, payment_method, released_at",
+        )
+        .eq("job_id", id)
+        .eq("kinglancer_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("engagements")
+        .select(
+          "id, status, cadence, amount_per_period, settlement_mode, end_requested_by",
+        )
+        .eq("source_kind", "org_role")
+        .eq("source_id", id)
+        .eq("kinglancer_id", user.id)
+        .maybeSingle(),
+    ]);
 
   const job = (jobResult as unknown as { data: JobWorkspace | null }).data;
   if (!job) notFound();
@@ -255,7 +258,9 @@ export default async function KinglancerJobWorkspacePage({
       data: Transaction | null;
     }
   ).data;
-  const roleEngagement = (engagementResult as unknown as { data: RoleEngagement }).data;
+  const roleEngagement = (
+    engagementResult as unknown as { data: RoleEngagement }
+  ).data;
   const rolePayments = roleEngagement
     ? await getEngagementPayments(roleEngagement.id)
     : [];
@@ -385,10 +390,7 @@ export default async function KinglancerJobWorkspacePage({
               Budget
             </p>
             <p className="mt-2 text-lg font-black text-slate-950">
-              {formatMoney(Number(job.budget))}
-              <span className="ml-1 text-sm font-bold text-slate-400">
-                {formatRateType(job.rate_type)}
-              </span>
+              {jobPriceLabel(job)}
             </p>
           </div>
         </div>
@@ -398,7 +400,9 @@ export default async function KinglancerJobWorkspacePage({
         <div className="space-y-6">
           {job.posting_type === "role" && roleEngagement && (
             <Card className={cardPadding}>
-              <h2 className="text-lg font-black text-slate-950">Role agreement</h2>
+              <h2 className="text-lg font-black text-slate-950">
+                Role agreement
+              </h2>
               <p className="mb-3 mt-1 text-sm text-slate-500">
                 Review the recurring role terms before you accept.
               </p>
@@ -413,9 +417,16 @@ export default async function KinglancerJobWorkspacePage({
                 <div className="mt-4 border-t border-slate-200 pt-3 text-sm text-slate-600">
                   <p className="font-bold text-slate-800">Payment periods</p>
                   {rolePayments.map((payment) => (
-                    <p key={payment.id} className="mt-1 flex justify-between gap-3">
-                      <span>Period {payment.period_index} · {payment.due_date}</span>
-                      <span className="font-semibold capitalize">{payment.status}</span>
+                    <p
+                      key={payment.id}
+                      className="mt-1 flex justify-between gap-3"
+                    >
+                      <span>
+                        Period {payment.period_index} · {payment.due_date}
+                      </span>
+                      <span className="font-semibold capitalize">
+                        {payment.status}
+                      </span>
                     </p>
                   ))}
                 </div>
@@ -555,10 +566,7 @@ export default async function KinglancerJobWorkspacePage({
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <div className="flex items-start gap-3">
                 <Briefcase size={16} className="mt-0.5 text-slate-400" />
-                <span>
-                  {formatMoney(Number(job.budget))}{" "}
-                  {formatRateType(job.rate_type)}
-                </span>
+                <span>{jobPriceLabel(job)}</span>
               </div>
               {netHeld !== null && (
                 <div className="flex items-start gap-3">

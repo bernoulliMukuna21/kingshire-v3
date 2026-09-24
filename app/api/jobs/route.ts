@@ -226,8 +226,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   if (
-    !isRole &&
-    !Number.isFinite(budgetNum) ||
+    (!isRole && !Number.isFinite(budgetNum)) ||
     (!isRole && !hasValidCurrencyPrecision(budget)) ||
     (!isRole && normalizedBudget < MIN_JOB_BUDGET_GBP) ||
     (!isRole && normalizedBudget > 50000)
@@ -265,11 +264,15 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    if (!pay_negotiable &&
-      (!Number.isFinite(Number(pay_amount)) || Number(pay_amount) < MIN_JOB_BUDGET_GBP)
+    if (
+      !pay_negotiable &&
+      (!Number.isFinite(Number(pay_amount)) ||
+        Number(pay_amount) < MIN_JOB_BUDGET_GBP)
     ) {
       return NextResponse.json(
-        { error: `The recurring pay must be at least £${MIN_JOB_BUDGET_GBP} per period.` },
+        {
+          error: `The recurring pay must be at least £${MIN_JOB_BUDGET_GBP} per period.`,
+        },
         { status: 400 },
       );
     }

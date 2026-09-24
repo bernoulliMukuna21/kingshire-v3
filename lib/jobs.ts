@@ -17,9 +17,9 @@ export function jobAlertHeadline(jobTitle: string, priceLabel: string): string {
  * it's paid recurring pay (negotiable or £X/period) instead. */
 export function jobPriceLabel(job: {
   posting_type: string | null;
-  budget: number;
+  budget: number | string;
   pay_negotiable: boolean | null;
-  pay_amount: number | null;
+  pay_amount: number | string | null;
   pay_cadence: string | null;
 }): string {
   if (job.posting_type === "role") {

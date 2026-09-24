@@ -15,7 +15,8 @@ import {
   listHeldPlacementPaymentsForOrg,
   type OrgHeldPlacementPayment,
 } from "@/lib/db/placement-payments";
-import { formatMoney, formatRateType } from "@/lib/utils";
+import { formatMoney } from "@/lib/utils";
+import { jobPriceLabel } from "@/lib/jobs";
 import {
   isClientApplicantReviewAction,
   isClientDirectRequestAction,
@@ -90,6 +91,10 @@ export type ClientActionJob = {
   status: string;
   budget: number;
   rate_type: string;
+  posting_type: string;
+  pay_negotiable: boolean | null;
+  pay_amount: number | null;
+  pay_cadence: string | null;
   invited_kinglancer_id: string | null;
   direct_request_status: string | null;
   has_funded_transaction?: boolean;
@@ -107,13 +112,24 @@ export type KinglancerActionJob = {
   status: string;
   budget: number;
   rate_type: string;
+  posting_type: string;
+  pay_negotiable: boolean | null;
+  pay_amount: number | null;
+  pay_cadence: string | null;
   direct_request_status: string | null;
   has_funded_transaction?: boolean;
   client: { full_name: string | null } | null;
 };
 
-function jobMeta(budget: number, rateType: string) {
-  return `${formatMoney(Number(budget))} ${formatRateType(rateType)}`;
+function jobMeta(job: {
+  budget: number;
+  rate_type: string;
+  posting_type: string;
+  pay_negotiable: boolean | null;
+  pay_amount: number | null;
+  pay_cadence: string | null;
+}) {
+  return jobPriceLabel(job);
 }
 
 // ── Pure mappers (row → item). Unit-tested; hold no data access. ─
@@ -125,7 +141,7 @@ export function buildClientJobItems(
   const actions: ActionCentreItem[] = [];
 
   for (const job of jobs) {
-    const meta = jobMeta(job.budget, job.rate_type);
+    const meta = jobMeta(job);
 
     if (
       isClientDirectRequestAction(job) &&
@@ -219,7 +235,7 @@ export function buildClientJobItems(
         icon: "request" as const,
         badge: "Waiting",
         tone: "slate" as const,
-        meta: jobMeta(job.budget, job.rate_type),
+        meta: jobMeta(job),
       })),
     ...jobs
       .filter((job) => job.status === "open" && job.has_pending_payment)
@@ -233,7 +249,7 @@ export function buildClientJobItems(
         icon: "payment" as const,
         badge: "Payment in progress",
         tone: "slate" as const,
-        meta: jobMeta(job.budget, job.rate_type),
+        meta: jobMeta(job),
       })),
   ];
 
@@ -256,7 +272,7 @@ export function buildKinglancerJobItems(
       icon: "request",
       badge: "Reply needed",
       tone: "purple",
-      meta: jobMeta(job.budget, job.rate_type),
+      meta: jobMeta(job),
     }));
 
   const waiting: ActionCentreItem[] = jobs
@@ -275,7 +291,7 @@ export function buildKinglancerJobItems(
         icon: changesRequested ? "alert" : "payment",
         badge: changesRequested ? "Waiting on client" : "Awaiting payment",
         tone: "slate",
-        meta: jobMeta(job.budget, job.rate_type),
+        meta: jobMeta(job),
       };
     });
 
@@ -429,7 +445,7 @@ async function fetchClientStyleJobItems(
     .from("jobs")
     .select(
       `
-      id, title, status, budget, rate_type,
+      id, title, status, budget, rate_type, posting_type, pay_negotiable, pay_amount, pay_cadence,
       invited_kinglancer_id, direct_request_status,
       counter_budget, counter_rate_type, counter_deadline,
       kinglancer:profiles!kinglancer_id(full_name),
@@ -494,7 +510,7 @@ const kinglancerJobsProvider: ActionProvider = async ({ supabase, userId }) => {
   const { data: jobsRaw } = await supabase
     .from("jobs")
     .select(
-      "id, title, status, budget, rate_type, direct_request_status, client:profiles!client_id(full_name)",
+      "id, title, status, budget, rate_type, posting_type, pay_negotiable, pay_amount, pay_cadence, direct_request_status, client:profiles!client_id(full_name)",
     )
     .eq("invited_kinglancer_id", userId)
     .in("direct_request_status", [

@@ -61,11 +61,7 @@ export async function getOrganisationInvitationView(token: string) {
     )
     .eq("token", token)
     .maybeSingle();
-  if (
-    !data ||
-    data.accepted_at ||
-    new Date(data.expires_at) <= new Date()
-  ) {
+  if (!data || data.accepted_at || new Date(data.expires_at) <= new Date()) {
     return null;
   }
   return {
@@ -84,34 +80,33 @@ export async function getOrganisationOverview(organisationId: string) {
     membersResult,
     statsResult,
     subscriptionResult,
-  ] =
-    await Promise.all([
-      db.from("organisations").select("*").eq("id", organisationId).single(),
-      db
-        .from("jobs")
-        .select(
-          "id, title, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, status, created_at",
-        )
-        .eq("organisation_id", organisationId)
-        .order("created_at", { ascending: false })
-        .limit(DASHBOARD_JOB_LIMIT),
-      db
-        .from("organisation_members")
-        .select(
-          "user_id, role, joined_at, profile:profiles!user_id(full_name, email)",
-        )
-        .eq("organisation_id", organisationId)
-        .order("joined_at", { ascending: true })
-        .limit(DASHBOARD_MEMBER_LIMIT),
-      db.rpc("get_organisation_stats", {
-        p_organisation_id: organisationId,
-      }),
-      db
-        .from("organisation_subscriptions")
-        .select("plan, status, cancel_at_period_end, current_period_end")
-        .eq("organisation_id", organisationId)
-        .maybeSingle(),
-    ]);
+  ] = await Promise.all([
+    db.from("organisations").select("*").eq("id", organisationId).single(),
+    db
+      .from("jobs")
+      .select(
+        "id, title, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, status, created_at",
+      )
+      .eq("organisation_id", organisationId)
+      .order("created_at", { ascending: false })
+      .limit(DASHBOARD_JOB_LIMIT),
+    db
+      .from("organisation_members")
+      .select(
+        "user_id, role, joined_at, profile:profiles!user_id(full_name, email)",
+      )
+      .eq("organisation_id", organisationId)
+      .order("joined_at", { ascending: true })
+      .limit(DASHBOARD_MEMBER_LIMIT),
+    db.rpc("get_organisation_stats", {
+      p_organisation_id: organisationId,
+    }),
+    db
+      .from("organisation_subscriptions")
+      .select("plan, status, cancel_at_period_end, current_period_end")
+      .eq("organisation_id", organisationId)
+      .maybeSingle(),
+  ]);
 
   if (organisationResult.error || !organisationResult.data) return null;
   if (

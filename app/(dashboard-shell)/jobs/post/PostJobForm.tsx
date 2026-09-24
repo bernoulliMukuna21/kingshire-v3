@@ -1,6 +1,9 @@
 "use client";
 
-import { JOB_ATTACHMENT_ACCEPT, jobAttachmentError } from "@/lib/job-attachments";
+import {
+  JOB_ATTACHMENT_ACCEPT,
+  jobAttachmentError,
+} from "@/lib/job-attachments";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -87,9 +90,7 @@ export default function PostJobForm({
   >("permanent");
   const [roleStartsAt, setRoleStartsAt] = useState("");
   const [roleEndsAt, setRoleEndsAt] = useState("");
-  const [payCadence, setPayCadence] = useState<"weekly" | "monthly">(
-    "monthly",
-  );
+  const [payCadence, setPayCadence] = useState<"weekly" | "monthly">("monthly");
   const [payAmount, setPayAmount] = useState("");
   const [payNegotiable, setPayNegotiable] = useState(false);
   const [settlementMode, setSettlementMode] = useState<"managed" | "direct">(
@@ -303,8 +304,9 @@ export default function PostJobForm({
       <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-blue-900">
         {organisationId ? (
           <>
-            Posting for <strong>{organisationName ?? "your organisation"}</strong> —
-            any member can manage it and it lives in the organisation workspace.
+            Posting for{" "}
+            <strong>{organisationName ?? "your organisation"}</strong> — any
+            member can manage it and it lives in the organisation workspace.
           </>
         ) : (
           <>
@@ -448,12 +450,21 @@ export default function PostJobForm({
 
       {canAttach && (
         <div>
-          <label htmlFor="job-attachment" className="mb-1.5 block text-sm font-medium text-gray-700">
-            Full job description document <span className="font-normal text-gray-400">(optional, recommended)</span>
+          <label
+            htmlFor="job-attachment"
+            className="mb-1.5 block text-sm font-medium text-gray-700"
+          >
+            Full job description document{" "}
+            <span className="font-normal text-gray-400">
+              (optional, recommended)
+            </span>
           </label>
           <p id="job-attachment-help" className="mb-2 text-xs text-gray-500">
-            Upload the full job description, including responsibilities and requirements. PDF, Word or text, up to 3 MB. PDF is best for viewing in a browser.
-            Kinglancers and your Organisation can open it from the job details page. Anyone who can view the job can view this document.
+            Upload the full job description, including responsibilities and
+            requirements. PDF, Word or text, up to 3 MB. PDF is best for viewing
+            in a browser. Kinglancers and your Organisation can open it from the
+            job details page. Anyone who can view the job can view this
+            document.
           </p>
           <input
             key={`${organisationId ?? "personal"}-${attachmentFile ? "selected" : "empty"}`}
@@ -475,10 +486,24 @@ export default function PostJobForm({
           {attachmentFile && (
             <p className="mt-2 break-words text-sm text-gray-600">
               {attachmentFile.name}{" "}
-              <button type="button" disabled={loading} className="font-semibold text-blue-700" onClick={() => { setAttachmentFile(null); setAttachmentError(null); }}>Remove</button>
+              <button
+                type="button"
+                disabled={loading}
+                className="font-semibold text-blue-700"
+                onClick={() => {
+                  setAttachmentFile(null);
+                  setAttachmentError(null);
+                }}
+              >
+                Remove
+              </button>
             </p>
           )}
-          {attachmentError && <p role="alert" className="mt-1 text-xs text-red-500">{attachmentError}</p>}
+          {attachmentError && (
+            <p role="alert" className="mt-1 text-xs text-red-500">
+              {attachmentError}
+            </p>
+          )}
         </div>
       )}
 
@@ -838,29 +863,29 @@ export default function PostJobForm({
               <input
                 type="number"
                 min="0.01"
-            step="0.01"
-            inputMode="decimal"
-            value={budget}
-            onChange={(e) => {
-              setBudget(e.target.value);
-              clearFieldError("budget");
-            }}
-            className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
-              fieldErrors.budget
-                ? "border-red-400 focus:ring-red-300"
-                : "border-gray-200 focus:ring-blue-500"
-            }`}
-            placeholder="0"
-          />
-        </div>
-        {fieldErrors.budget ? (
-          <p className="text-xs text-red-500 mt-1">{fieldErrors.budget}</p>
-        ) : (
-          <p className="text-xs text-gray-400 mt-1">
-            The total price for the whole job — held in escrow once you select a
-            Kinglancer.
-          </p>
-        )}
+                step="0.01"
+                inputMode="decimal"
+                value={budget}
+                onChange={(e) => {
+                  setBudget(e.target.value);
+                  clearFieldError("budget");
+                }}
+                className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
+                  fieldErrors.budget
+                    ? "border-red-400 focus:ring-red-300"
+                    : "border-gray-200 focus:ring-blue-500"
+                }`}
+                placeholder="0"
+              />
+            </div>
+            {fieldErrors.budget ? (
+              <p className="text-xs text-red-500 mt-1">{fieldErrors.budget}</p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1">
+                The total price for the whole job — held in escrow once you
+                select a Kinglancer.
+              </p>
+            )}
           </div>
         </>
       )}
@@ -879,8 +904,8 @@ export default function PostJobForm({
           <>
             <strong>How payment works:</strong> Once you hire someone, their
             recurring pay is either KingsHire-managed (charged and held in
-            escrow each period) or paid by your Organisation directly,
-            depending on what you choose above.
+            escrow each period) or paid by your Organisation directly, depending
+            on what you choose above.
           </>
         ) : preferredKinglancer ? (
           <>

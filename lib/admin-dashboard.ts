@@ -23,6 +23,10 @@ export type AdminJob = {
   title: string;
   status: string;
   budget: number;
+  posting_type: string | null;
+  pay_negotiable: boolean | null;
+  pay_amount: number | string | null;
+  pay_cadence: string | null;
   categories?: string[] | null;
   created_at: string;
   client: { full_name: string | null } | null;
@@ -38,6 +42,10 @@ export type AdminDispute = {
     id: string;
     title: string;
     budget: number;
+    posting_type: string | null;
+    pay_negotiable: boolean | null;
+    pay_amount: number | string | null;
+    pay_cadence: string | null;
     client_id: string;
     kinglancer_id: string | null;
   } | null;

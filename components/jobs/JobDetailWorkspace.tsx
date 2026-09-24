@@ -13,7 +13,7 @@ import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
-import { jobStatusPill } from "@/lib/jobs";
+import { jobStatusPill, jobPriceLabel } from "@/lib/jobs";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import type {
   RateType,
@@ -29,7 +29,7 @@ import {
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
 import { getTransactionByJob } from "@/lib/db/transactions";
-import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
+import { formatRateType, formatDeadline } from "@/lib/utils";
 import {
   ApplicantsList,
   ClientApproveActions,
@@ -322,7 +322,9 @@ export default async function JobDetailWorkspace({
             </Card>
           )}
 
-          {job.status === "open" && !paymentPending && (
+          {job.status === "open" &&
+            job.posting_type !== "role" &&
+            !paymentPending && (
             <div className="flex items-center justify-end gap-3">
               <ButtonLink
                 href={`/dashboard/client/jobs/${id}/edit`}
@@ -415,9 +417,10 @@ export default async function JobDetailWorkspace({
             </Card>
           )}
 
-          {["approved", "completed", "cancelled", "disputed"].includes(
-            job.status,
-          ) && (
+          {job.posting_type !== "role" &&
+            ["approved", "completed", "cancelled", "disputed"].includes(
+              job.status,
+            ) && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
                 Need this job again?
@@ -451,14 +454,16 @@ export default async function JobDetailWorkspace({
         <aside className="space-y-4">
           <Card className="p-5">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Budget
+              {job.posting_type === "role" ? "Pay" : "Budget"}
             </p>
             <p className="mt-2 text-3xl font-black text-emerald-600">
-              {formatMoney(Number(job.budget))}
+              {jobPriceLabel(job)}
             </p>
-            <p className="mt-1 text-sm text-slate-500">
-              {formatRateType(job.rate_type)}
-            </p>
+            {job.posting_type !== "role" && (
+              <p className="mt-1 text-sm text-slate-500">
+                {formatRateType(job.rate_type)}
+              </p>
+            )}
           </Card>
 
           <Card className="space-y-3 p-5">

@@ -24,6 +24,7 @@ import {
   timeAgo,
 } from "@/lib/admin-dashboard";
 import { formatMoneyPrecise as formatMoney } from "@/lib/utils";
+import { jobPriceLabel } from "@/lib/jobs";
 import { jobStatusPill } from "@/lib/jobs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
@@ -50,7 +51,7 @@ export default async function AdminDashboard() {
     serviceDb
       .from("disputes")
       .select(
-        "id, reason, created_at, status, raised_by, job:jobs!job_id(id, title, budget, client_id, kinglancer_id)",
+        "id, reason, created_at, status, raised_by, job:jobs!job_id(id, title, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, client_id, kinglancer_id)",
       )
       .eq("status", "open")
       .order("created_at", { ascending: false })
@@ -74,7 +75,7 @@ export default async function AdminDashboard() {
     serviceDb
       .from("jobs")
       .select(
-        "id, title, status, budget, categories, created_at, client:profiles!client_id(full_name)",
+        "id, title, status, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, categories, created_at, client:profiles!client_id(full_name)",
       )
       .order("created_at", { ascending: false })
       .limit(5),
@@ -290,7 +291,7 @@ export default async function AdminDashboard() {
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       {dispute.job && (
                         <span className="text-sm font-black text-gray-900">
-                          {formatMoney(dispute.job.budget)}
+                          {jobPriceLabel(dispute.job)}
                         </span>
                       )}
                       <span className="text-xs text-gray-400">
@@ -396,7 +397,7 @@ export default async function AdminDashboard() {
                         {job.status.replace("_", " ")}
                       </span>
                       <span className="text-sm font-black text-gray-900">
-                        {formatMoney(job.budget)}
+                        {jobPriceLabel(job)}
                       </span>
                     </div>
                   </Link>

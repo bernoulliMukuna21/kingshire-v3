@@ -129,6 +129,11 @@ export async function PATCH(
       { error: "Only open jobs can be edited." },
       { status: 409 },
     );
+  if (job.posting_type === "role")
+    return NextResponse.json(
+      { error: "Recurring role postings cannot be edited yet." },
+      { status: 409 },
+    );
   // A committed payment (card checkout or pending bank transfer) locks edits.
   if (await getPendingPaymentAttemptByJob(id))
     return NextResponse.json(

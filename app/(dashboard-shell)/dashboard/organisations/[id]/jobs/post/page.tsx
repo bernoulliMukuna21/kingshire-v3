@@ -58,7 +58,11 @@ export default async function OrganisationPostJobPage({
           </p>
         </div>
         <Card className="p-6">
-          <PostJobForm organisationId={id} organisationName={organisationName} attachmentOrganisationIds={attachmentOrganisationIds} />
+          <PostJobForm
+            organisationId={id}
+            organisationName={organisationName}
+            attachmentOrganisationIds={attachmentOrganisationIds}
+          />
         </Card>
       </div>
     </div>
