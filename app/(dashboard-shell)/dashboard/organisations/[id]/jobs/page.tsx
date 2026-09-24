@@ -201,10 +201,7 @@ export default async function OrganisationJobsPage({
       {canPostJob && (
         <div className="flex flex-wrap justify-end gap-3">
           <ButtonLink href={`${basePath}/post`} size="sm">
-            Post one-off gig
-          </ButtonLink>
-          <ButtonLink href={`${basePath}/role/post`} size="sm">
-            Post recurring role
+            Post a job
           </ButtonLink>
         </div>
       )}

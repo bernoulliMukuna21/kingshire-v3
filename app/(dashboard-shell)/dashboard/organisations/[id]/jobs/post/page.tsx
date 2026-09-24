@@ -50,10 +50,11 @@ export default async function OrganisationPostJobPage({
             ← Back to workspace
           </Link>
           <h1 className="mt-2 text-2xl font-black text-slate-950">
-            Post an Organisation job
+            Post a job
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            An ordinary paid job owned by the Organisation.
+            A one-off paid gig or an ongoing recurring role, owned by the
+            Organisation.
           </p>
         </div>
         <Card className="p-6">
