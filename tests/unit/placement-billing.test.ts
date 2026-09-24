@@ -1,162 +1,44 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mocked external dependencies, controlled per test.
-const state = vi.hoisted(() => ({
-  customerId: "cus_1" as string | null,
-  customer: {
-    deleted: false,
-    invoice_settings: { default_payment_method: "pm_1" as unknown },
-  } as unknown as {
-    deleted: boolean;
-    invoice_settings: { default_payment_method: unknown };
-  },
-  cards: [{ id: "pm_list" }] as { id: string }[],
-  subscriptions: [] as { status: string; default_payment_method: unknown }[],
-  piResult: { id: "pi_1", status: "succeeded" } as {
-    id: string;
-    status: string;
-  },
-  piThrows: false,
-}));
-
-const createIntent = vi.hoisted(() => vi.fn());
-const updateStatus = vi.hoisted(() => vi.fn());
+const charge = vi.hoisted(() => vi.fn());
 const fulfill = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/supabase/service", () => ({
-  createServiceClient: () => ({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({
-            data: state.customerId
-              ? { stripe_customer_id: state.customerId }
-              : null,
-          }),
-        }),
-      }),
-    }),
-  }),
+vi.mock("@/lib/settlement/billing", () => ({
+  chargeEngagementPayment: charge,
+  getOrganisationStripePaymentContext: vi.fn(),
 }));
-
-vi.mock("@/lib/stripe", () => ({
-  stripe: {
-    customers: { retrieve: async () => state.customer },
-    paymentMethods: { list: async () => ({ data: state.cards }) },
-    subscriptions: { list: async () => ({ data: state.subscriptions }) },
-    paymentIntents: {
-      create: async (...args: unknown[]) => {
-        createIntent(...args);
-        if (state.piThrows) throw new Error("card_declined");
-        return state.piResult;
-      },
-    },
-  },
-}));
-
-vi.mock("@/lib/db/placement-payments", () => ({
-  updatePlacementPaymentStatus: (...args: unknown[]) => {
-    updateStatus(...args);
-    return Promise.resolve();
-  },
-}));
-
 vi.mock("@/lib/placement-payouts", () => ({
-  fulfillPlacementPayment: (...args: unknown[]) => {
-    fulfill(...args);
-    return Promise.resolve();
-  },
+  fulfillPlacementPayment: fulfill,
 }));
 
 import { chargeDuePlacementPayment } from "@/lib/placement-billing";
 
-const payment = {
-  id: "pay_1",
-  agreement_id: "ag_1",
-  organisation_id: "org_1",
-  kinglancer_id: "kl_1",
-  period_index: 1,
-  amount: "500",
-  platform_fee_client: "25.30",
-  platform_fee_kinglancer: "37.50",
-  status: "due",
-} as never;
+const payment = { id: "eng-payment-1" } as never;
 
 describe("chargeDuePlacementPayment", () => {
   beforeEach(() => {
-    state.customerId = "cus_1";
-    state.customer = {
-      deleted: false,
-      invoice_settings: { default_payment_method: "pm_1" },
-    };
-    state.cards = [{ id: "pm_list" }];
-    state.subscriptions = [];
-    state.piResult = { id: "pi_1", status: "succeeded" };
-    state.piThrows = false;
-    createIntent.mockClear();
-    updateStatus.mockClear();
-    fulfill.mockClear();
+    charge.mockReset();
+    fulfill.mockReset();
   });
 
-  it("charges the saved card and fulfils on success", async () => {
+  it("delegates a successful Placement charge to the shared engine", async () => {
+    charge.mockResolvedValueOnce("charged");
     const result = await chargeDuePlacementPayment(payment);
     expect(result).toBe("charged");
-    // amount = (500 + 25.30) * 100 = 52530 pence, off-session, confirmed.
-    expect(createIntent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        amount: 52530,
-        currency: "gbp",
-        off_session: true,
-        confirm: true,
-        metadata: expect.objectContaining({ purpose: "placement_payment" }),
-      }),
-      expect.objectContaining({ idempotencyKey: "placement-charge-pay_1" }),
-    );
-    expect(fulfill).toHaveBeenCalledWith("pay_1", "pi_1");
+    expect(charge).toHaveBeenCalledWith("eng-payment-1");
+    expect(fulfill).toHaveBeenCalledWith("eng-payment-1", null);
   });
 
-  it("skips charging when the org has no saved card", async () => {
-    state.customerId = null;
-    const result = await chargeDuePlacementPayment(payment);
-    expect(result).toBe("no_payment_method");
-    expect(createIntent).not.toHaveBeenCalled();
-    expect(updateStatus).not.toHaveBeenCalled();
-  });
-
-  it("falls back to the subscription's default card when the customer has none", async () => {
-    // Checkout attaches the card to the subscription, not invoice_settings.
-    state.customer = {
-      deleted: false,
-      invoice_settings: { default_payment_method: null },
-    };
-    state.cards = [];
-    state.subscriptions = [
-      { status: "active", default_payment_method: "pm_sub" },
-    ];
-    const result = await chargeDuePlacementPayment(payment);
-    expect(result).toBe("charged");
-    expect(createIntent).toHaveBeenCalledWith(
-      expect.objectContaining({ payment_method: "pm_sub" }),
-      expect.anything(),
+  it("preserves no-payment-method semantics", async () => {
+    charge.mockResolvedValueOnce("no_payment_method");
+    await expect(chargeDuePlacementPayment(payment)).resolves.toBe(
+      "no_payment_method",
     );
   });
 
-  it("marks the payment failed when the card is declined", async () => {
-    state.piThrows = true;
-    const result = await chargeDuePlacementPayment(payment);
-    expect(result).toBe("failed");
+  it("maps shared failures to the Placement contract", async () => {
+    charge.mockResolvedValueOnce("failed");
+    await expect(chargeDuePlacementPayment(payment)).resolves.toBe("failed");
     expect(fulfill).not.toHaveBeenCalled();
-    expect(updateStatus).toHaveBeenCalledWith("pay_1", { status: "failed" });
-  });
-
-  it("marks failed when the PaymentIntent needs further action", async () => {
-    state.piResult = { id: "pi_2", status: "requires_action" };
-    const result = await chargeDuePlacementPayment(payment);
-    expect(result).toBe("failed");
-    expect(fulfill).not.toHaveBeenCalled();
-    expect(updateStatus).toHaveBeenCalledWith("pay_1", {
-      status: "failed",
-      stripe_payment_intent_id: "pi_2",
-    });
   });
 });

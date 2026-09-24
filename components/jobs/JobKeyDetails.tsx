@@ -1,4 +1,4 @@
-import { Clock, MapPin, Monitor } from "lucide-react";
+import { Clock, MapPin, Monitor, Wallet } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { jobScheduleLabel, type JobKeyDetailsData } from "@/lib/jobs";
 
@@ -20,6 +20,7 @@ export default function JobKeyDetails({
   className?: string;
 }) {
   const schedule = jobScheduleLabel(job);
+  const isRole = job.posting_type === "role";
   const isOnline = job.work_mode === "online";
   const daysSuffix =
     job.work_mode === "hybrid" && job.days_on_site
@@ -44,6 +45,26 @@ export default function JobKeyDetails({
     <Card className={className ?? "p-5 sm:p-6"}>
       <h2 className="text-lg font-black text-slate-950">Job details</h2>
       <div className="mt-4 space-y-4 text-sm text-slate-600">
+        {isRole && (
+          <div className="flex items-start gap-3">
+            <Wallet size={16} className="mt-0.5 shrink-0 text-slate-400" />
+            <div>
+              <p className="font-semibold text-slate-800">
+                {job.employment_type === "temporary" ? "Temporary role" : "Permanent role"}
+              </p>
+              <p className="text-slate-500">
+                {job.pay_negotiable
+                  ? "Pay discussed during the interview"
+                  : `£${Number(job.pay_amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })} ${job.pay_cadence}`}
+              </p>
+              <p className="text-xs text-slate-400">
+                {job.settlement_mode === "direct"
+                  ? "Payment arranged directly with the organisation"
+                  : "Recurring payment managed through KingsHire"}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="flex items-start gap-3">
           {isOnline ? (
             <Monitor size={16} className="mt-0.5 shrink-0 text-slate-400" />

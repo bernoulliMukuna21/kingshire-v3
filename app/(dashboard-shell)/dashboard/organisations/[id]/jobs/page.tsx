@@ -66,6 +66,7 @@ function compactCategories(categories: string[]) {
 type JobRow = {
   id: string;
   title: string;
+  posting_type: string;
   status: JobStatus;
   budget: number;
   categories: string[];
@@ -113,7 +114,7 @@ export default async function OrganisationJobsPage({
 
   const db = createServiceClient();
   const JOB_SELECT = `
-    id, title, status, budget, categories, created_at, deadline,
+    id, title, posting_type, status, budget, categories, created_at, deadline,
     invited_kinglancer_id, direct_request_status,
     kinglancer:profiles!kinglancer_id(full_name),
     invited_kinglancer:profiles!invited_kinglancer_id(full_name)
@@ -196,6 +197,17 @@ export default async function OrganisationJobsPage({
         activeTab={tab}
         basePath={basePath}
       />
+
+      {canPostJob && (
+        <div className="flex flex-wrap justify-end gap-3">
+          <ButtonLink href={`${basePath}/post`} size="sm">
+            Post one-off gig
+          </ButtonLink>
+          <ButtonLink href={`${basePath}/role/post`} size="sm">
+            Post recurring role
+          </ButtonLink>
+        </div>
+      )}
 
       {jobs.length === 0 ? (
         <EmptyState
@@ -282,6 +294,11 @@ function JobCard({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="mb-1 flex items-center gap-2">
+              {job.posting_type === "role" && (
+                <span className="rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                  Recurring role
+                </span>
+              )}
               {isDirectRequest && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-bold text-violet-700 ring-1 ring-violet-100">
                   <Send size={10} />
@@ -293,9 +310,13 @@ function JobCard({
               </h3>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-              <span className="font-bold text-slate-900">
-                £{Number(job.budget).toLocaleString()}
-              </span>
+              {job.posting_type === "role" ? (
+                <span className="font-bold text-slate-900">Recurring pay</span>
+              ) : (
+                <span className="font-bold text-slate-900">
+                  £{Number(job.budget).toLocaleString()}
+                </span>
+              )}
               {isDirectRequest ? (
                 <>
                   {job.invited_kinglancer && (
