@@ -389,6 +389,7 @@ export type Database = {
       jobs: {
         Row: {
           address_line: string | null
+          attachment: Json | null
           budget: number
           categories: string[]
           client_id: string
@@ -430,6 +431,7 @@ export type Database = {
         }
         Insert: {
           address_line?: string | null
+          attachment?: Json | null
           budget: number
           categories?: string[]
           client_id: string
@@ -471,6 +473,7 @@ export type Database = {
         }
         Update: {
           address_line?: string | null
+          attachment?: Json | null
           budget?: number
           categories?: string[]
           client_id?: string
