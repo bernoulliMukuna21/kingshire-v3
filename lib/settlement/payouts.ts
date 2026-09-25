@@ -10,6 +10,65 @@ import {
   type EngagementPaymentRow,
 } from "@/lib/db/engagement-payments";
 import { periodEnd, releaseNoticeDays } from "./schedule";
+import { getOrgOwnerContact } from "@/lib/organisations";
+import { notifyEngagementReleasePending } from "@/lib/notifications";
+
+/** Resolves the human-facing title and dashboard link for whatever this
+ * engagement represents — org roles and placements are both `engagements`,
+ * but each is fronted by its own domain table. */
+async function resolveEngagementSource(
+  engagement: Engagement,
+): Promise<{ title: string; link: string } | null> {
+  const db = createServiceClient();
+  if (engagement.source_kind === "org_role") {
+    const { data: job } = await db
+      .from("jobs")
+      .select("title")
+      .eq("id", engagement.source_id)
+      .maybeSingle();
+    if (!job) return null;
+    return {
+      title: job.title,
+      link: `/dashboard/organisations/${engagement.organisation_id}/jobs/${engagement.source_id}`,
+    };
+  }
+  const { data: agreement } = await db
+    .from("placement_agreements")
+    .select("placement:placements(title)")
+    .eq("id", engagement.source_id)
+    .maybeSingle();
+  const title = (
+    agreement?.placement as { title?: string } | { title?: string }[] | null
+  ) ?? null;
+  const placementTitle = Array.isArray(title)
+    ? (title[0]?.title ?? null)
+    : (title?.title ?? null);
+  if (!placementTitle) return null;
+  return {
+    title: placementTitle,
+    link: `/dashboard/placements/agreements/${engagement.source_id}`,
+  };
+}
+
+async function sendReleaseNotice(
+  payment: EngagementPaymentRow,
+  engagement: Engagement,
+  releaseAt: number,
+): Promise<boolean> {
+  const [source, orgOwner] = await Promise.all([
+    resolveEngagementSource(engagement),
+    getOrgOwnerContact(engagement.organisation_id),
+  ]);
+  if (!source || !orgOwner?.email) return false;
+  await notifyEngagementReleasePending({
+    organisationEmail: orgOwner.email,
+    title: source.title,
+    link: source.link,
+    periodIndex: payment.period_index,
+    releaseDate: new Date(releaseAt).toISOString().slice(0, 10),
+  });
+  return true;
+}
 
 export type EngagementPayoutResult =
   | "released"
@@ -132,10 +191,24 @@ export async function processEngagementReleases(): Promise<ProcessReleaseResult>
     const noticeAt =
       end - releaseNoticeDays(engagement.cadence) * 24 * 60 * 60 * 1000;
     if (now >= noticeAt && !payment.notice_sent_at) {
-      await updateEngagementPaymentStatus(payment.id, "held", {
-        notice_sent_at: new Date().toISOString(),
-      });
-      noticed += 1;
+      // Only record notice_sent_at once the notice actually goes out —
+      // otherwise a failed send (or an org with no resolvable owner) would
+      // be marked "sent" and never retried.
+      const sent = await sendReleaseNotice(payment, engagement, end).catch(
+        (error) => {
+          console.error(
+            `[settlement] release notice failed for payment ${payment.id}:`,
+            error,
+          );
+          return false;
+        },
+      );
+      if (sent) {
+        await updateEngagementPaymentStatus(payment.id, "held", {
+          notice_sent_at: new Date().toISOString(),
+        });
+        noticed += 1;
+      }
     }
   }
 

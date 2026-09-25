@@ -18,8 +18,9 @@ import {
   type EngagementPaymentRow,
 } from "@/lib/db/engagement-payments";
 import { periodFees } from "@/lib/settlement/fees";
+import { dateOnly, periodDueDate } from "@/lib/settlement/schedule";
 import { settleEngagementPaymentsOnEarlyEnd } from "@/lib/settlement/termination";
-import { placementMonthlyAmounts } from "@/lib/placements";
+import { placementMonthlyAmounts, monthlyPaymentCount } from "@/lib/placements";
 import type { PlacementAgreementRow } from "@/lib/db/placements";
 import type { EngagementPaymentStatus } from "@/lib/settlement/types";
 
@@ -106,10 +107,16 @@ export async function getPlacementPayment(
 
 export async function ensurePaymentSchedule(
   agreement: PlacementAgreementRow,
+  // The caller usually hasn't persisted kinglancer_signed_at on `agreement`
+  // yet (it records it in a separate write) — pass it explicitly so the
+  // schedule anchors on acceptance, not on the stale org_signed_at fallback.
+  signedAt?: string,
 ): Promise<PlacementPaymentRow[]> {
   if (agreement.payment_mode !== "managed" || !agreement.monthly_amount) {
     return listPlacementPayments(agreement.id);
   }
+
+  const kinglancerSignedAt = signedAt ?? agreement.kinglancer_signed_at;
 
   let engagement = await findPlacementEngagement(agreement.id);
   if (!engagement) {
@@ -121,11 +128,13 @@ export async function ensurePaymentSchedule(
       settlement_mode: "managed",
       cadence: "monthly",
       amount_per_period: Number(agreement.monthly_amount),
-      duration_periods: null,
+      // A placement has a fixed term — bounding it stops the shared charge
+      // cron from rolling it forward as if it were open-ended.
+      duration_periods: monthlyPaymentCount(agreement.duration_weeks),
       status: "pending_funding",
       org_signed_by: agreement.org_signed_by,
       org_signed_at: agreement.org_signed_at,
-      kinglancer_signed_at: agreement.kinglancer_signed_at,
+      kinglancer_signed_at: kinglancerSignedAt,
     });
   }
 
@@ -135,26 +144,27 @@ export async function ensurePaymentSchedule(
       agreement.duration_weeks,
       Number(agreement.monthly_amount),
     );
-    const fees = periodFees({
-      amountPerPeriod: Number(agreement.monthly_amount),
-      mode: "managed",
-    });
+    const anchor = new Date(
+      kinglancerSignedAt ?? agreement.org_signed_at ?? new Date(),
+    );
     await createEngagementPayments(
-      amounts.map((amount, index) => ({
-        engagement_id: engagement!.id,
-        organisation_id: agreement.organisation_id,
-        kinglancer_id: agreement.kinglancer_id,
-        period_index: index + 1,
-        due_date: new Date(
-          new Date().setUTCMonth(new Date().getUTCMonth() + index),
-        )
-          .toISOString()
-          .slice(0, 10),
-        worker_amount: amount,
-        platform_fee_client: fees.platformFeeClient,
-        platform_fee_kinglancer: fees.platformFeeKinglancer,
-        status: "due",
-      })),
+      amounts.map((amount, index) => {
+        // Fees are computed from THIS period's own amount, not the full
+        // monthly rate — otherwise a prorated final period's fee wouldn't
+        // match its (smaller) amount.
+        const fee = periodFees({ amountPerPeriod: amount, mode: "managed" });
+        return {
+          engagement_id: engagement!.id,
+          organisation_id: agreement.organisation_id,
+          kinglancer_id: agreement.kinglancer_id,
+          period_index: index + 1,
+          due_date: dateOnly(periodDueDate(anchor, "monthly", index + 1)),
+          worker_amount: amount,
+          platform_fee_client: fee.platformFeeClient,
+          platform_fee_kinglancer: fee.platformFeeKinglancer,
+          status: "due",
+        };
+      }),
     );
   }
   return listPlacementPayments(agreement.id);

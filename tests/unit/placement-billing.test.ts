@@ -26,13 +26,22 @@ describe("chargeDuePlacementPayment", () => {
     const result = await chargeDuePlacementPayment(payment);
     expect(result).toBe("charged");
     expect(charge).toHaveBeenCalledWith("eng-payment-1");
-    expect(fulfill).toHaveBeenCalledWith("eng-payment-1", null);
+    // Fulfilment belongs to the shared engine; do not run a second hook
+    // with a null PaymentIntent or activate an agreement prematurely.
+    expect(fulfill).not.toHaveBeenCalled();
   });
 
   it("preserves no-payment-method semantics", async () => {
     charge.mockResolvedValueOnce("no_payment_method");
     await expect(chargeDuePlacementPayment(payment)).resolves.toBe(
       "no_payment_method",
+    );
+  });
+
+  it("preserves uncertain outcomes without reporting a failed charge", async () => {
+    charge.mockResolvedValueOnce("reconciliation_pending");
+    await expect(chargeDuePlacementPayment(payment)).resolves.toBe(
+      "reconciliation_pending",
     );
   });
 

@@ -23,11 +23,22 @@ export async function GET(request: Request) {
   }
 
   const due = await listDuePlacementPayments();
-  const tally = { charged: 0, failed: 0, no_payment_method: 0 };
+  const tally = {
+    charged: 0,
+    failed: 0,
+    no_payment_method: 0,
+    reconciliation_pending: 0,
+    skipped: 0,
+  };
 
   for (const payment of due) {
-    const result = await chargeDuePlacementPayment(payment);
-    tally[result] += 1;
+    try {
+      const result = await chargeDuePlacementPayment(payment);
+      tally[result] += 1;
+    } catch (error) {
+      tally.failed++;
+      console.error(`[charge-placements] ${payment.id}`, error);
+    }
   }
 
   return NextResponse.json({ ok: true, processed: due.length, ...tally });

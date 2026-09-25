@@ -82,26 +82,25 @@ export async function createEngagement(
 export async function updateEngagement(
   id: string,
   patch: Database["public"]["Tables"]["engagements"]["Update"],
+  expectedStatus?: EngagementStatus,
 ): Promise<Engagement | null> {
   const db = createServiceClient();
-  const { data, error } = await db
-    .from("engagements")
-    .update(patch)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
+  let query = db.from("engagements").update(patch).eq("id", id);
+  if (expectedStatus) query = query.eq("status", expectedStatus);
+  const { data, error } = await query.select("*").maybeSingle();
 
   if (error) throw error;
   return data ? asEngagement(data) : null;
 }
 
+/** Idempotent: a no-op if the engagement isn't (still) `pending_funding` —
+ * safe to call speculatively after every first-period charge. */
 export async function markEngagementActive(id: string): Promise<void> {
-  const now = new Date().toISOString();
-  const engagement = await updateEngagement(id, {
-    status: "active",
-    started_at: now,
-  });
-  if (!engagement) throw new Error("Engagement not found");
+  await updateEngagement(
+    id,
+    { status: "active", started_at: new Date().toISOString() },
+    "pending_funding",
+  );
 }
 
 export async function endEngagement(

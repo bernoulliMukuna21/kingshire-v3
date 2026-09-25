@@ -50,3 +50,14 @@ export function periodFees(args: {
     orgChargeGBP: round2(platformFeeClient + platformFeeKinglancer),
   };
 }
+
+/** What actually gets charged, not the raw pay amount — a direct-mode role
+ * only charges its (much smaller) facilitation fee, so a role can pass
+ * `meetsMinimumPeriodAmount` and still be unschedulable. Check this BEFORE
+ * mutating any state that assumes scheduling will succeed. */
+export function meetsMinimumPeriodCharge(
+  amountPerPeriod: number,
+  mode: SettlementMode,
+): boolean {
+  return periodFees({ amountPerPeriod, mode }).orgChargeGBP >= MIN_PERIOD_AMOUNT_GBP;
+}

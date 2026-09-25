@@ -20,7 +20,7 @@ export default function ApplyButton({
   // Tracks in-session consent for a Kinglancer who had not opted in before.
   const [consented, setConsented] = useState(openToPlacements);
   const [message, setMessage] = useState("");
-  const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [cvPath, setCvPath] = useState<string | null>(null);
   const [cvName, setCvName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -80,16 +80,13 @@ export default function ApplyButton({
       setUploading(false);
       return;
     }
-    const { data: urlData } = supabase.storage
-      .from("placement-cvs")
-      .getPublicUrl(path);
-    setCvUrl(urlData.publicUrl);
+    setCvPath(path);
     setCvName(file.name);
     setUploading(false);
   }
 
   async function apply() {
-    if (!cvUrl) {
+    if (!cvPath) {
       setError("Please attach your CV to apply.");
       return;
     }
@@ -100,7 +97,7 @@ export default function ApplyButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
-        cvUrl,
+        cvPath,
         optIn: openToPlacements ? undefined : consented,
       }),
     });

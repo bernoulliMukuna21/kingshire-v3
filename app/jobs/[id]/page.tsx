@@ -245,30 +245,37 @@ export default async function JobDetailPage({
               </Card>
             )}
 
-          {isAssignedKinglancer && job.status === "in_progress" && (
-            <Card className={cardPadding}>
-              <h2 className="font-bold text-gray-900 mb-1">Ready to submit?</h2>
-              <p className="text-sm text-gray-500 mb-4">
-                Once you mark your work as done, the client will be asked to
-                review and approve it.
-              </p>
-              <KinglancerCompleteButton jobId={id} />
-            </Card>
-          )}
+          {isAssignedKinglancer &&
+            job.status === "in_progress" &&
+            job.posting_type !== "role" && (
+              <Card className={cardPadding}>
+                <h2 className="font-bold text-gray-900 mb-1">
+                  Ready to submit?
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Once you mark your work as done, the client will be asked to
+                  review and approve it.
+                </p>
+                <KinglancerCompleteButton jobId={id} />
+              </Card>
+            )}
 
-          {isOwner && job.status === "completed" && (
-            <Card className={cardPadding}>
-              <h2 className="font-bold text-gray-900 mb-1">Work submitted</h2>
-              <p className="text-sm text-gray-500 mb-4">
-                The Kinglancer has marked this work as done. Review it and
-                release the payment, or raise a dispute if something is wrong.
-              </p>
-              <ClientApproveActions jobId={id} showApprove={true} />
-            </Card>
-          )}
+          {isOwner &&
+            job.status === "completed" &&
+            job.posting_type !== "role" && (
+              <Card className={cardPadding}>
+                <h2 className="font-bold text-gray-900 mb-1">Work submitted</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  The Kinglancer has marked this work as done. Review it and
+                  release the payment, or raise a dispute if something is wrong.
+                </p>
+                <ClientApproveActions jobId={id} showApprove={true} />
+              </Card>
+            )}
 
           {isOwner &&
             job.status === "in_progress" &&
+            job.posting_type !== "role" &&
             payment_failed !== "1" && (
               <Card className={cardPadding}>
                 <h2 className="font-bold text-gray-900 mb-1">

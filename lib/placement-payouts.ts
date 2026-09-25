@@ -1,8 +1,9 @@
-import { getEngagementBySource } from "@/lib/db/engagements";
-import { getEngagementPayment } from "@/lib/db/engagement-payments";
-import { releaseEngagementPayment, processEngagementReleases } from "@/lib/settlement/payouts";
+import { reconcileEngagementPayment } from "@/lib/settlement/billing";
+import {
+  releaseEngagementPayment,
+  processEngagementReleases,
+} from "@/lib/settlement/payouts";
 import { periodEnd } from "@/lib/settlement/schedule";
-import { activateAgreement } from "@/lib/db/placements";
 import type { PlacementPaymentRow } from "@/lib/db/placement-payments";
 
 export const RELEASE_NOTICE_DAYS = 7;
@@ -11,18 +12,16 @@ export function placementPeriodEnd(dueDate: string): Date {
   return periodEnd(new Date(`${dueDate}T00:00:00.000Z`), "monthly");
 }
 
-/** Placement-specific lifecycle hook; escrow state is owned by the shared ledger. */
+/** Placement-specific lifecycle hook for the on-session Checkout flow (see
+ * .../payments/[paymentId]/checkout/route.ts) — records the charge on the
+ * shared ledger, then activates the agreement if this funded its first month. */
 export async function fulfillPlacementPayment(
   paymentId: string,
   paymentIntentId: string | null,
 ): Promise<void> {
-  void paymentIntentId;
-  const payment = await getEngagementPayment(paymentId);
-  if (!payment) return;
-  if (payment.period_index === 1) {
-    const engagement = await getEngagementBySource("placement", payment.engagement_id);
-    if (engagement) await activateAgreement(engagement.source_id).catch(() => {});
-  }
+  if (!paymentIntentId)
+    throw new Error("PaymentIntent is required to confirm funding");
+  await reconcileEngagementPayment(paymentId, paymentIntentId);
 }
 
 export type PlacementPayoutResult =

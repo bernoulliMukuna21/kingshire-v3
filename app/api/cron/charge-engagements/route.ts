@@ -1,6 +1,7 @@
+import { recoverAcceptedSchedules } from "@/lib/settlement/hiring-recovery";
 import { NextResponse } from "next/server";
 import { getDueEngagementPayments } from "@/lib/db/engagement-payments";
-import { ensureEngagementSchedule } from "@/lib/settlement/schedules";
+import { recoverEngagementPayments } from "@/lib/settlement/recovery";
 import { chargeEngagementPayment } from "@/lib/settlement/billing";
 
 function authorised(request: Request): boolean {
@@ -15,11 +16,17 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
+  const setupErrors = await recoverAcceptedSchedules();
+  const recovery = await recoverEngagementPayments();
+
   const today = new Date().toISOString().slice(0, 10);
   const payments = await getDueEngagementPayments(today);
   const summary = {
     checked: payments.length,
+    recovery,
+    errors: setupErrors,
     charged: 0,
+    reconciliationPending: 0,
     alreadyProcessed: 0,
     failed: 0,
     noPaymentMethod: 0,
@@ -27,19 +34,18 @@ export async function GET(request: Request) {
   };
 
   for (const payment of payments) {
-    const result = await chargeEngagementPayment(payment.id);
-    if (result === "charged") summary.charged += 1;
-    if (result === "already_processed") summary.alreadyProcessed += 1;
-    if (result === "failed") summary.failed += 1;
-    if (result === "no_payment_method") summary.noPaymentMethod += 1;
-    if (result === "not_chargeable") summary.notChargeable += 1;
-
-    if (result === "charged") {
-      await ensureEngagementSchedule(payment.engagement_id).catch((error) =>
-        console.error(
-          `[charge-engagements] rolling schedule failed for ${payment.engagement_id}:`,
-          error,
-        ),
+    try {
+      const result = await chargeEngagementPayment(payment.id);
+      if (result === "charged") summary.charged += 1;
+      if (result === "reconciliation_pending")
+        summary.reconciliationPending += 1;
+      if (result === "already_processed") summary.alreadyProcessed += 1;
+      if (result === "failed") summary.failed += 1;
+      if (result === "no_payment_method") summary.noPaymentMethod += 1;
+      if (result === "not_chargeable") summary.notChargeable += 1;
+    } catch (error) {
+      summary.errors.push(
+        `${payment.id}: ${error instanceof Error ? error.message : "Charge failed"}`,
       );
     }
   }

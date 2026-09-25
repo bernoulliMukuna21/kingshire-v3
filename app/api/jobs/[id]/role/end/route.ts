@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getEngagementBySource, updateEngagement } from "@/lib/db/engagements";
 import { settleEngagementPaymentsOnEarlyEnd } from "@/lib/settlement/termination";
-import { requireOrganisationPermission } from "@/lib/organisations";
+import { requireOrganisationPermission, getOrgOwnerContact } from "@/lib/organisations";
 import {
   notifyRoleEndProposed,
   notifyRoleEndDeclined,
@@ -213,22 +213,6 @@ export async function POST(
   }
 
   return NextResponse.json({ ok: true });
-}
-
-async function getOrgOwnerContact(
-  organisationId: string,
-): Promise<{ userId: string; email: string | null } | null> {
-  const db = createServiceClient();
-  const { data } = await db
-    .from("organisation_members")
-    .select("user_id, profiles!user_id(email)")
-    .eq("organisation_id", organisationId)
-    .eq("role", "owner")
-    .maybeSingle();
-  if (!data) return null;
-  const profile = data.profiles as { email: string } | { email: string }[] | null;
-  const email = Array.isArray(profile) ? (profile[0]?.email ?? null) : (profile?.email ?? null);
-  return { userId: data.user_id, email };
 }
 
 async function getOrganisationName(organisationId: string): Promise<string | null> {

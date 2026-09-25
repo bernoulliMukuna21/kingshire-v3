@@ -49,6 +49,7 @@ import { canManageJob } from "@/lib/organisations";
 import { getEngagementBySource } from "@/lib/db/engagements";
 import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
 import { getEngagementPayments } from "@/lib/db/engagement-payments";
+import { signCvUrls } from "@/lib/cv-storage";
 
 type InvitedKinglancer = {
   id: string;
@@ -108,27 +109,41 @@ export default async function JobDetailWorkspace({
   const statusConfig = jobStatusPill(job.status);
   const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
 
-  const [applications, kinglancerResult, pendingAttempt, roleEngagement] = await Promise.all([
-    !isDirectRequest && job.status === "open"
-      ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
-      : Promise.resolve([] as ApplicationWithKinglancer[]),
-    kinglancerProfileId
-      ? supabase
-          .from("profiles")
-          .select("id, full_name, avatar_url, phone")
-          .eq("id", kinglancerProfileId)
-          .single()
-      : Promise.resolve({ data: null }),
-    job.status === "open"
-      ? getPendingPaymentAttemptByJob(id)
-      : Promise.resolve(null),
-    job.posting_type === "role"
-      ? getEngagementBySource("org_role", id)
-      : Promise.resolve(null),
-  ]);
+  const [applications, kinglancerResult, pendingAttempt, roleEngagement] =
+    await Promise.all([
+      !isDirectRequest && job.status === "open"
+        ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
+        : Promise.resolve([] as ApplicationWithKinglancer[]),
+      kinglancerProfileId
+        ? supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url, phone")
+            .eq("id", kinglancerProfileId)
+            .single()
+        : Promise.resolve({ data: null }),
+      job.status === "open"
+        ? getPendingPaymentAttemptByJob(id)
+        : Promise.resolve(null),
+      job.posting_type === "role"
+        ? getEngagementBySource("org_role", id)
+        : Promise.resolve(null),
+    ]);
   const rolePayments = roleEngagement
     ? await getEngagementPayments(roleEngagement.id)
     : [];
+  const cvSignedUrls = await signCvUrls(
+    "job-application-cvs",
+    applications.flatMap((a) => (a.cv_path ? [a.cv_path] : [])),
+  );
+  const applicationsWithCv = applications.map((a) => ({
+    ...a,
+    cv_view_url: a.cv_path ? (cvSignedUrls.get(a.cv_path) ?? null) : null,
+  }));
+  const roleOfferPending =
+    roleEngagement &&
+    ["pending_acceptance", "pending_funding", "active"].includes(
+      roleEngagement.status,
+    );
 
   // A pending payment locks selection and editing until it clears/cancels.
   const paymentPending = !!pendingAttempt;
@@ -190,12 +205,15 @@ export default async function JobDetailWorkspace({
         fallbackLabel={jobsListLabel}
       />
 
-      {job.posting_type === "role" && roleEngagement && (
+      {job.posting_type === "role" && roleOfferPending && roleEngagement && (
         <Card className="border-emerald-200 bg-emerald-50/60 p-5">
-          <h2 className="text-lg font-black text-emerald-950">Recurring role</h2>
+          <h2 className="text-lg font-black text-emerald-950">
+            Recurring role
+          </h2>
           <p className="mt-1 text-sm text-emerald-800">
-            {job.employment_type === "temporary" ? "Temporary" : "Permanent"} role · £
-            {Number(roleEngagement.amount_per_period).toFixed(2)} {roleEngagement.cadence} ·{" "}
+            {job.employment_type === "temporary" ? "Temporary" : "Permanent"}{" "}
+            role · £{Number(roleEngagement.amount_per_period).toFixed(2)}{" "}
+            {roleEngagement.cadence} ·{" "}
             {roleEngagement.settlement_mode === "managed"
               ? "KingsHire-managed settlement"
               : "Direct settlement with the organisation"}
@@ -205,12 +223,18 @@ export default async function JobDetailWorkspace({
           </p>
           {rolePayments.length > 0 && (
             <div className="mt-4 border-t border-emerald-200 pt-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Payment periods</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                Payment periods
+              </p>
               <div className="mt-2 space-y-1 text-sm text-emerald-900">
                 {rolePayments.map((payment) => (
                   <div key={payment.id} className="flex justify-between gap-3">
-                    <span>Period {payment.period_index} · {payment.due_date}</span>
-                    <span className="font-semibold capitalize">{payment.status}</span>
+                    <span>
+                      Period {payment.period_index} · {payment.due_date}
+                    </span>
+                    <span className="font-semibold capitalize">
+                      {payment.status}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -304,17 +328,17 @@ export default async function JobDetailWorkspace({
             </Card>
           )}
 
-          {!isDirectRequest && job.status === "open" && (
+          {!isDirectRequest && job.status === "open" && !roleOfferPending && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
                 Applicants ({applications.length})
               </h2>
               <p className="mb-4 mt-1 text-sm text-slate-500">
                 Review applicants and select one Kinglancer when you are ready
-                to fund escrow.
+                to send an offer.
               </p>
               <ApplicantsList
-                applications={applications}
+                applications={applicationsWithCv}
                 job={job}
                 locked={paymentPending}
                 cardEnabled={cardEnabled}
@@ -322,24 +346,37 @@ export default async function JobDetailWorkspace({
             </Card>
           )}
 
+          {job.posting_type === "role" &&
+            roleEngagement?.status === "pending_acceptance" && (
+              <Card className="border-amber-200 bg-amber-50 p-5">
+                <p className="text-sm font-bold text-amber-900">
+                  Role offer sent
+                </p>
+                <p className="mt-1 text-sm text-amber-800">
+                  The selected Kinglancer must accept the advertised role terms
+                  before the role can start.
+                </p>
+              </Card>
+            )}
+
           {job.status === "open" &&
             job.posting_type !== "role" &&
             !paymentPending && (
-            <div className="flex items-center justify-end gap-3">
-              <ButtonLink
-                href={`/dashboard/client/jobs/${id}/edit`}
-                variant="secondary"
-                size="sm"
-              >
-                Edit job
-              </ButtonLink>
-              <CancelJobButton
-                jobId={id}
-                status="open"
-                hasApplications={applications.length > 0}
-              />
-            </div>
-          )}
+              <div className="flex items-center justify-end gap-3">
+                <ButtonLink
+                  href={`/dashboard/client/jobs/${id}/edit`}
+                  variant="secondary"
+                  size="sm"
+                >
+                  Edit job
+                </ButtonLink>
+                <CancelJobButton
+                  jobId={id}
+                  status="open"
+                  hasApplications={applications.length > 0}
+                />
+              </div>
+            )}
 
           {job.status === "completed" && (
             <Card className={cardPadding}>
@@ -421,34 +458,34 @@ export default async function JobDetailWorkspace({
             ["approved", "completed", "cancelled", "disputed"].includes(
               job.status,
             ) && (
-            <Card className={cardPadding}>
-              <h2 className="text-lg font-black text-slate-950">
-                Need this job again?
-              </h2>
-              <p className="mb-4 mt-1 text-sm text-slate-500">
-                Repost it as a new listing — you&apos;ll set a fresh date and
-                confirm the price and location before it goes live.
-              </p>
-              <RepostJobButton
-                job={{
-                  id,
-                  title: job.title,
-                  description: job.description,
-                  categories: job.categories,
-                  budget: Number(job.budget),
-                  rate_type: job.rate_type as RateType,
-                  work_mode: job.work_mode as WorkMode,
-                  address_line: job.address_line,
-                  postcode: job.postcode,
-                  days_on_site: job.days_on_site,
-                  schedule_type:
-                    (job.schedule_type as ScheduleType) ?? "window",
-                  estimated_minutes: job.estimated_minutes,
-                  organisation_id: job.organisation_id,
-                }}
-              />
-            </Card>
-          )}
+              <Card className={cardPadding}>
+                <h2 className="text-lg font-black text-slate-950">
+                  Need this job again?
+                </h2>
+                <p className="mb-4 mt-1 text-sm text-slate-500">
+                  Repost it as a new listing — you&apos;ll set a fresh date and
+                  confirm the price and location before it goes live.
+                </p>
+                <RepostJobButton
+                  job={{
+                    id,
+                    title: job.title,
+                    description: job.description,
+                    categories: job.categories,
+                    budget: Number(job.budget),
+                    rate_type: job.rate_type as RateType,
+                    work_mode: job.work_mode as WorkMode,
+                    address_line: job.address_line,
+                    postcode: job.postcode,
+                    days_on_site: job.days_on_site,
+                    schedule_type:
+                      (job.schedule_type as ScheduleType) ?? "window",
+                    estimated_minutes: job.estimated_minutes,
+                    organisation_id: job.organisation_id,
+                  }}
+                />
+              </Card>
+            )}
         </div>
 
         <aside className="space-y-4">

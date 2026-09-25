@@ -20,6 +20,7 @@ import {
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
 import { jobStatusPill, canSeeExactLocation, jobPriceLabel } from "@/lib/jobs";
+import { applicationStatusPill } from "@/lib/applications";
 import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
 import { formatMoney, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
@@ -88,7 +89,7 @@ type JobWorkspace = {
 
 type Application = {
   id: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "offered" | "accepted" | "rejected";
   cover_letter: string;
   created_at: string;
 };
@@ -114,11 +115,36 @@ function nextAction({
   job,
   application,
   transaction,
+  roleEngagement,
 }: {
   job: JobWorkspace;
   application: Application | null;
   transaction: Transaction | null;
+  roleEngagement: RoleEngagement;
 }) {
+  // A role job's `status` flips to in_progress the moment it's accepted (so it
+  // stops taking applicants), but a recurring role never has a one-off
+  // "submit this work" moment the way a gig does — the generic in_progress
+  // branch below is gig-only and would be misleading here either way.
+  if (job.status === "in_progress" && job.posting_type === "role") {
+    if (roleEngagement?.status === "pending_funding") {
+      return {
+        title: "Waiting on funding",
+        description:
+          "You've accepted this role. It starts once the organisation funds the first pay period.",
+        icon: <Clock size={18} />,
+        action: null,
+      };
+    }
+    return {
+      title: "Role in progress",
+      description:
+        "This is a recurring role — pay periods are handled automatically. Manage it from the role agreement above.",
+      icon: <Briefcase size={18} />,
+      action: null,
+    };
+  }
+
   if (job.status === "in_progress") {
     return {
       title: "Ready to submit?",
@@ -164,6 +190,16 @@ function nextAction({
       title: "Direct request",
       description:
         "Review the request, accept it, decline it, or request changes before the client funds escrow.",
+      icon: <Briefcase size={18} />,
+      action: null,
+    };
+  }
+
+  if (job.posting_type === "role" && application?.status === "offered") {
+    return {
+      title: "Role offer",
+      description:
+        "The organisation offered you this role. Review the pay terms above and accept or decline.",
       icon: <Briefcase size={18} />,
       action: null,
     };
@@ -282,7 +318,7 @@ export default async function KinglancerJobWorkspacePage({
     ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
     : { label: "Open", className: "bg-green-100 text-green-700" };
   const status = job.status === "open" ? openStatus : jobStatusPill(job.status);
-  const action = nextAction({ job, application, transaction });
+  const action = nextAction({ job, application, transaction, roleEngagement });
   const netHeld =
     transaction && transaction.status === "held"
       ? transaction.amount - transaction.platform_fee_kinglancer
@@ -502,19 +538,9 @@ export default async function KinglancerJobWorkspacePage({
                 Your application
               </h2>
               <StatusBadge
-                className={
-                  application.status === "accepted"
-                    ? "mt-3 bg-green-100 text-green-700"
-                    : application.status === "rejected"
-                      ? "mt-3 bg-slate-100 text-slate-500"
-                      : "mt-3 bg-amber-100 text-amber-700"
-                }
+                className={`mt-3 ${applicationStatusPill(application.status).className}`}
               >
-                {application.status === "accepted"
-                  ? "Selected"
-                  : application.status === "rejected"
-                    ? "Not selected"
-                    : "Under review"}
+                {applicationStatusPill(application.status).label}
               </StatusBadge>
               <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
                 {application.cover_letter}

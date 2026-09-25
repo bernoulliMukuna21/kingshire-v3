@@ -1,3 +1,4 @@
+import { offerRoleApplication } from "@/lib/settlement/role-engagements";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -13,7 +14,7 @@ import { getManualBankDetails } from "@/lib/manual-payments";
 import { canManageJob } from "@/lib/organisations";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import { planForRole } from "@/lib/subscriptions/plans";
-import { createRoleEngagement } from "@/lib/settlement/role-engagements";
+import { coerceNumeric } from "@/lib/db/coerce";
 
 type ApplicationRow = {
   id: string;
@@ -79,7 +80,7 @@ export async function PATCH(
   }
 
   const application = applicationRaw as unknown as ApplicationRow;
-  const job = application.job;
+  const job = coerceNumeric(application.job, ["budget", "pay_amount"]);
 
   if (!(await canManageJob(job, user.id, "manage_applicants"))) {
     return NextResponse.json(
@@ -95,7 +96,10 @@ export async function PATCH(
     );
   }
 
-  if (application.status !== "pending") {
+  if (
+    application.status !== "pending" &&
+    !(job.posting_type === "role" && application.status === "offered")
+  ) {
     return NextResponse.json(
       { error: "This application is no longer pending" },
       { status: 409 },
@@ -103,47 +107,59 @@ export async function PATCH(
   }
 
   if (job.posting_type === "role") {
-    const agreedAmount = Number(body.agreed_amount ?? job.pay_amount);
-    const agreedCadence = body.agreed_cadence ?? job.pay_cadence;
-    const agreedSettlementMode = body.agreed_settlement_mode ?? job.settlement_mode;
-    if (!Number.isFinite(agreedAmount) || agreedAmount <= 0) {
+    if (job.pay_negotiable) {
       return NextResponse.json(
-        { error: "Agree the recurring pay before selecting this applicant." },
+        {
+          error:
+            "Negotiable roles cannot be offered yet. Set a fixed pay amount first.",
+        },
         { status: 400 },
       );
     }
-    if (!["weekly", "monthly"].includes(agreedCadence)) {
+
+    const agreedAmount = Number(job.pay_amount);
+    const agreedCadence = job.pay_cadence;
+    const agreedSettlementMode = job.settlement_mode;
+    if (!Number.isFinite(agreedAmount) || agreedAmount <= 0) {
+      return NextResponse.json(
+        {
+          error: "Set a fixed recurring pay amount before offering this role.",
+        },
+        { status: 400 },
+      );
+    }
+    if (agreedCadence !== "weekly" && agreedCadence !== "monthly") {
       return NextResponse.json(
         { error: "Choose weekly or monthly pay for this role." },
         { status: 400 },
       );
     }
-    if (!["managed", "direct"].includes(agreedSettlementMode)) {
+    if (
+      agreedSettlementMode !== "managed" &&
+      agreedSettlementMode !== "direct"
+    ) {
       return NextResponse.json(
         { error: "Choose how this role will be settled." },
         { status: 400 },
       );
     }
 
-    const engagement = await createRoleEngagement({
-      job: { ...job, organisation_id: job.organisation_id! },
-      kinglancerId: application.kinglancer_id,
-      organisationSignerId: user.id,
-      agreedAmount,
-      agreedCadence,
-      agreedSettlementMode,
-    });
-    const db = createServiceClient();
-    await Promise.all([
-      db.from("applications").update({ status: "accepted" }).eq("id", applicationId),
-      db.from("jobs").update({ status: "in_progress", kinglancer_id: application.kinglancer_id }).eq("id", application.job_id).eq("status", "open"),
-    ]);
+    let engagement;
+    try {
+      engagement = await offerRoleApplication(applicationId, user.id);
+    } catch {
+      return NextResponse.json(
+        { error: "The offer could not be created. Refresh and retry." },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({
       success: true,
       method: "role",
       jobId: application.job_id,
       engagementId: engagement.id,
       status: engagement.status,
+      offerStatus: "pending_acceptance",
     });
   }
 

@@ -100,7 +100,7 @@ type Transaction = {
 
 type ApplicationRow = {
   id: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "offered" | "accepted" | "rejected";
   created_at: string;
   job: {
     id: string;
@@ -139,7 +139,7 @@ export default async function KinglancerJobsPage({
       .from("applications")
       .select("id", { count: "exact", head: true })
       .eq("kinglancer_id", user.id)
-      .eq("status", "pending"),
+      .in("status", ["pending", "offered"]),
   ]);
 
   const statusRows = statusResult.data ?? [];
@@ -176,7 +176,7 @@ export default async function KinglancerJobsPage({
         { count: "exact" },
       )
       .eq("kinglancer_id", user.id)
-      .eq("status", "pending")
+      .in("status", ["pending", "offered"])
       .order("created_at", { ascending: false })
       .range(from, to);
     applications = (data ?? []) as unknown as ApplicationRow[];
@@ -421,10 +421,9 @@ function ApplicationCard({ app }: { app: ApplicationRow }) {
   if (!app.job) return null;
   const { job } = app;
   const statusCfg = applicationStatusPill(app.status);
-  const href =
-    app.status === "accepted"
-      ? `/dashboard/kinglancer/jobs/${job.id}`
-      : `/jobs/${job.id}`;
+  const href = ["offered", "accepted"].includes(app.status)
+    ? `/dashboard/kinglancer/jobs/${job.id}`
+    : `/jobs/${job.id}`;
 
   return (
     <Link href={href} className="group block">

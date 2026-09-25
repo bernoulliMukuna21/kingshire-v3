@@ -9,6 +9,7 @@ import {
 import {
   periodFees,
   meetsMinimumPeriodAmount,
+  meetsMinimumPeriodCharge,
   MIN_PERIOD_AMOUNT_GBP,
 } from "@/lib/settlement/fees";
 
@@ -21,6 +22,15 @@ describe("settlement schedule", () => {
     expect(day(addPeriods(anchor, 2, "weekly"))).toBe("2026-01-15");
     expect(day(addPeriods(anchor, 1, "monthly"))).toBe("2026-02-01");
     expect(day(addPeriods(anchor, 3, "monthly"))).toBe("2026-04-01");
+  });
+
+  it("clamps month-end anchors instead of overflowing into the month after next", () => {
+    const jan31 = new Date("2026-01-31T00:00:00.000Z");
+    // Feb 2026 has 28 days — native setUTCMonth would roll this to Mar 2/3.
+    expect(day(addPeriods(jan31, 1, "monthly"))).toBe("2026-02-28");
+    expect(day(addPeriods(jan31, 2, "monthly"))).toBe("2026-03-31");
+    const mar30 = new Date("2026-03-30T00:00:00.000Z");
+    expect(day(addPeriods(mar30, 1, "monthly"))).toBe("2026-04-30");
   });
 
   it("makes period 1 due at the anchor and later periods step by cadence", () => {
@@ -76,5 +86,16 @@ describe("settlement fees", () => {
     expect(MIN_PERIOD_AMOUNT_GBP).toBe(10);
     expect(meetsMinimumPeriodAmount(10)).toBe(true);
     expect(meetsMinimumPeriodAmount(9.99)).toBe(false);
+  });
+
+  it("checks the actual charge, not the raw pay amount — a direct role only charges its fee", () => {
+    // £100/period passes meetsMinimumPeriodAmount but the org is only charged
+    // the 7.5% facilitation fee (£7.50) in direct mode — below the £10 floor.
+    expect(meetsMinimumPeriodAmount(100)).toBe(true);
+    expect(meetsMinimumPeriodCharge(100, "direct")).toBe(false);
+    expect(meetsMinimumPeriodCharge(100, "managed")).toBe(true);
+    // A direct role needs enough pay that 7.5% of it clears £10.
+    expect(meetsMinimumPeriodCharge(133, "direct")).toBe(false);
+    expect(meetsMinimumPeriodCharge(134, "direct")).toBe(true);
   });
 });

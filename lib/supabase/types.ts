@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           cover_letter: string;
           created_at: string;
+          cv_path: string | null;
           cv_url: string | null;
           id: string;
           job_id: string;
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           cover_letter: string;
           created_at?: string;
+          cv_path?: string | null;
           cv_url?: string | null;
           id?: string;
           job_id: string;
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           cover_letter?: string;
           created_at?: string;
+          cv_path?: string | null;
           cv_url?: string | null;
           id?: string;
           job_id?: string;
@@ -112,11 +115,18 @@ export type Database = {
       };
       engagement_payments: {
         Row: {
+          attempt_customer_id: string | null;
+          attempt_id: string | null;
+          attempt_kind: string | null;
+          attempt_payment_method_id: string | null;
+          attempt_started_at: string | null;
           charged_at: string | null;
+          checkout_session_id: string | null;
           created_at: string;
           dispute_reason: string | null;
           due_date: string;
           engagement_id: string;
+          fulfilled_at: string | null;
           id: string;
           kinglancer_id: string;
           notice_sent_at: string | null;
@@ -132,11 +142,18 @@ export type Database = {
           worker_amount: number;
         };
         Insert: {
+          attempt_customer_id?: string | null;
+          attempt_id?: string | null;
+          attempt_kind?: string | null;
+          attempt_payment_method_id?: string | null;
+          attempt_started_at?: string | null;
           charged_at?: string | null;
+          checkout_session_id?: string | null;
           created_at?: string;
           dispute_reason?: string | null;
           due_date: string;
           engagement_id: string;
+          fulfilled_at?: string | null;
           id?: string;
           kinglancer_id: string;
           notice_sent_at?: string | null;
@@ -152,11 +169,18 @@ export type Database = {
           worker_amount?: number;
         };
         Update: {
+          attempt_customer_id?: string | null;
+          attempt_id?: string | null;
+          attempt_kind?: string | null;
+          attempt_payment_method_id?: string | null;
+          attempt_started_at?: string | null;
           charged_at?: string | null;
+          checkout_session_id?: string | null;
           created_at?: string;
           dispute_reason?: string | null;
           due_date?: string;
           engagement_id?: string;
+          fulfilled_at?: string | null;
           id?: string;
           kinglancer_id?: string;
           notice_sent_at?: string | null;
@@ -1104,6 +1128,7 @@ export type Database = {
       placement_applications: {
         Row: {
           created_at: string;
+          cv_path: string | null;
           cv_url: string | null;
           id: string;
           kinglancer_id: string;
@@ -1114,6 +1139,7 @@ export type Database = {
         };
         Insert: {
           created_at?: string;
+          cv_path?: string | null;
           cv_url?: string | null;
           id?: string;
           kinglancer_id: string;
@@ -1124,6 +1150,7 @@ export type Database = {
         };
         Update: {
           created_at?: string;
+          cv_path?: string | null;
           cv_url?: string | null;
           id?: string;
           kinglancer_id?: string;
@@ -1827,9 +1854,148 @@ export type Database = {
         Args: { user_id: string };
         Returns: undefined;
       };
+      offer_placement_application: {
+        Args: {
+          p_application_id: string;
+          p_expected_plan: string;
+          p_monthly_amount: number;
+          p_reward_terms: string;
+          p_seat_limit: number;
+          p_signer_id: string;
+        };
+        Returns: {
+          completed_at: string | null;
+          contribution_terms: string;
+          created_at: string;
+          duration_weeks: number;
+          end_reason: string | null;
+          end_requested_at: string | null;
+          end_requested_by: string | null;
+          id: string;
+          kinglancer_archived_at: string | null;
+          kinglancer_id: string;
+          kinglancer_signed_at: string | null;
+          monthly_amount: number | null;
+          org_signed_at: string | null;
+          org_signed_by: string | null;
+          organisation_id: string;
+          payment_mode: string;
+          placement_id: string;
+          reward_terms: string;
+          status: string;
+          updated_at: string;
+          version: number;
+          weekly_hours: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "placement_agreements";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      offer_role_application: {
+        Args: { p_application_id: string; p_signer_id: string };
+        Returns: {
+          amount_per_period: number | null;
+          cadence: string;
+          created_at: string;
+          duration_periods: number | null;
+          end_reason: string | null;
+          end_requested_at: string | null;
+          end_requested_by: string | null;
+          ended_at: string | null;
+          id: string;
+          kinglancer_id: string;
+          kinglancer_signed_at: string | null;
+          org_signed_at: string | null;
+          org_signed_by: string | null;
+          organisation_id: string;
+          settlement_mode: string;
+          source_id: string;
+          source_kind: string;
+          started_at: string | null;
+          status: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "engagements";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
       recompute_profile_rating: {
         Args: { target: string };
         Returns: undefined;
+      };
+      respond_placement_offer: {
+        Args: { p_action: string; p_agreement_id: string; p_worker_id: string };
+        Returns: {
+          completed_at: string | null;
+          contribution_terms: string;
+          created_at: string;
+          duration_weeks: number;
+          end_reason: string | null;
+          end_requested_at: string | null;
+          end_requested_by: string | null;
+          id: string;
+          kinglancer_archived_at: string | null;
+          kinglancer_id: string;
+          kinglancer_signed_at: string | null;
+          monthly_amount: number | null;
+          org_signed_at: string | null;
+          org_signed_by: string | null;
+          organisation_id: string;
+          payment_mode: string;
+          placement_id: string;
+          reward_terms: string;
+          status: string;
+          updated_at: string;
+          version: number;
+          weekly_hours: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "placement_agreements";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
+      };
+      respond_role_offer: {
+        Args: {
+          p_action: string;
+          p_engagement_id: string;
+          p_worker_id: string;
+        };
+        Returns: {
+          amount_per_period: number | null;
+          cadence: string;
+          created_at: string;
+          duration_periods: number | null;
+          end_reason: string | null;
+          end_requested_at: string | null;
+          end_requested_by: string | null;
+          ended_at: string | null;
+          id: string;
+          kinglancer_id: string;
+          kinglancer_signed_at: string | null;
+          org_signed_at: string | null;
+          org_signed_by: string | null;
+          organisation_id: string;
+          settlement_mode: string;
+          source_id: string;
+          source_kind: string;
+          started_at: string | null;
+          status: string;
+          updated_at: string;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "engagements";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       reveal_expired_reviews: {
         Args: never;

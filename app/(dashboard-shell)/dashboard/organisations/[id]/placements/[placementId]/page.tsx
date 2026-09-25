@@ -13,6 +13,7 @@ import {
   listPlacementAgreements,
   listPlacementApplicants,
 } from "@/lib/db/placements";
+import { signCvUrls } from "@/lib/cv-storage";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Avatar } from "@/components/ui/Avatar";
@@ -65,6 +66,10 @@ export default async function OrganisationPlacementDetailPage({
   ]);
   const pendingApplicants = applicants.filter((a) => a.status === "pending");
   const activeCount = agreements.filter((a) => a.status === "active").length;
+  const cvSignedUrls = await signCvUrls(
+    "placement-cvs",
+    pendingApplicants.flatMap((a) => (a.cv_path ? [a.cv_path] : [])),
+  );
 
   let postedByName: string | null = null;
   if (placement.created_by) {
@@ -164,9 +169,9 @@ export default async function OrganisationPlacementDetailPage({
                         {a.message}
                       </p>
                     )}
-                    {a.cv_url && (
+                    {a.cv_path && cvSignedUrls.get(a.cv_path) && (
                       <a
-                        href={a.cv_url}
+                        href={cvSignedUrls.get(a.cv_path)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-sm font-bold text-blue-600 hover:underline"

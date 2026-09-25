@@ -3,11 +3,28 @@ import type { Cadence } from "./types";
 // All arithmetic is done in UTC because a period's `due_date` is a calendar date
 // (no time zone) and the app runs in UTC — keeps scheduling deterministic.
 
-/** Advance a date by `n` cadence steps (a week or a calendar month). */
+/** A calendar-date string (no time component) for a `due_date`/`due_date`-like column. */
+export function dateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Advance a date by `n` cadence steps (a week or a calendar month). Monthly
+ * arithmetic clamps to the target month's last day instead of overflowing
+ * (native `setUTCMonth` on the 29th–31st can silently roll into the month
+ * after next, e.g. Jan 31 + 1 month → Mar 2/3 instead of Feb 28/29). */
 export function addPeriods(date: Date, n: number, cadence: Cadence): Date {
   const d = new Date(date);
-  if (cadence === "weekly") d.setUTCDate(d.getUTCDate() + 7 * n);
-  else d.setUTCMonth(d.getUTCMonth() + n);
+  if (cadence === "weekly") {
+    d.setUTCDate(d.getUTCDate() + 7 * n);
+    return d;
+  }
+  const originalDay = d.getUTCDate();
+  d.setUTCDate(1); // avoid day-overflow rolling into an extra month below
+  d.setUTCMonth(d.getUTCMonth() + n);
+  const lastDayOfTargetMonth = new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  d.setUTCDate(Math.min(originalDay, lastDayOfTargetMonth));
   return d;
 }
 

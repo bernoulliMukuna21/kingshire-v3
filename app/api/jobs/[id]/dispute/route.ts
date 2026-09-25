@@ -7,6 +7,7 @@ import {
 } from "@/lib/notifications";
 import { canManageJob } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 // POST /api/jobs/[id]/dispute — either party raises a dispute
 export async function POST(
@@ -40,7 +41,9 @@ export async function POST(
   // Fetch job — caller must be the client or kinglancer
   const { data: job } = await createServiceClient()
     .from("jobs")
-    .select("id, title, status, client_id, organisation_id, kinglancer_id")
+    .select(
+      "id, title, status, client_id, organisation_id, kinglancer_id, posting_type",
+    )
     .eq("id", jobId)
     .single();
 
@@ -52,6 +55,15 @@ export async function POST(
   const isParty = isClientParty || job.kinglancer_id === user.id;
   if (!isParty) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (job.posting_type === "role") {
+    return NextResponse.json(
+      {
+        error: `Disputes on recurring roles aren't handled here yet. Contact support at ${SUPPORT_EMAIL}.`,
+      },
+      { status: 400 },
+    );
   }
 
   if (!["in_progress", "completed"].includes(job.status)) {

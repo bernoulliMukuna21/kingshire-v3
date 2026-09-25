@@ -8,6 +8,7 @@ import { notifyJobCancelled } from "@/lib/notifications";
 import { canManageJob } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { SUPPORT_EMAIL } from "@/lib/contact";
+import { getEngagementBySource, updateEngagement } from "@/lib/db/engagements";
 
 const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -81,12 +82,22 @@ export async function POST(
       );
     }
 
-    // Bulk-reject any pending applications.
+    // Bulk-reject any pending or offered applications.
     await db
       .from("applications")
       .update({ status: "rejected" })
       .eq("job_id", jobId)
-      .eq("status", "pending");
+      .in("status", ["pending", "offered"]);
+
+    // A role offer awaiting the Kinglancer's decision must not survive the
+    // job it belongs to.
+    const pendingEngagement = await getEngagementBySource("org_role", jobId);
+    if (pendingEngagement?.status === "pending_acceptance") {
+      await updateEngagement(pendingEngagement.id, {
+        status: "cancelled",
+        end_reason: "Job cancelled by organisation",
+      });
+    }
 
     // Mark job cancelled.
     await db

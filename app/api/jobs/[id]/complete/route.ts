@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { notifyWorkSubmitted } from "@/lib/notifications";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { getOrgOwnerContact } from "@/lib/organisations";
 
 // POST /api/jobs/[id]/complete — kinglancer marks work as done
 export async function POST(
@@ -23,7 +24,7 @@ export async function POST(
   // Fetch job and verify the caller is the assigned kinglancer
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, status, kinglancer_id, client_id, title")
+    .select("id, status, kinglancer_id, client_id, organisation_id, title, posting_type")
     .eq("id", jobId)
     .single();
 
@@ -33,6 +34,16 @@ export async function POST(
 
   if (job.kinglancer_id !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (job.posting_type === "role") {
+    return NextResponse.json(
+      {
+        error:
+          "Recurring roles don't use this action. End the role engagement from its own page instead.",
+      },
+      { status: 400 },
+    );
   }
 
   if (job.status !== "in_progress") {
@@ -55,18 +66,28 @@ export async function POST(
     );
   }
 
-  // Notify client
-  const { data: clientProfile } = await supabase
-    .from("profiles")
-    .select("email")
-    .eq("id", job.client_id)
-    .single();
+  // Notify whoever manages this job: the org owner if it's org-owned (the
+  // original poster in client_id may not be who reviews applicants/work),
+  // otherwise the client directly.
+  const recipient = job.organisation_id
+    ? await getOrgOwnerContact(job.organisation_id)
+    : await supabase
+        .from("profiles")
+        .select("email")
+        .eq("id", job.client_id)
+        .single()
+        .then(({ data }) =>
+          data ? { userId: job.client_id, email: data.email } : null,
+        );
 
-  if (clientProfile?.email) {
+  if (recipient?.email) {
     notifyWorkSubmitted({
-      clientId: job.client_id,
-      clientEmail: clientProfile.email,
+      clientId: recipient.userId,
+      clientEmail: recipient.email,
       jobTitle: job.title,
+      link: job.organisation_id
+        ? `/dashboard/organisations/${job.organisation_id}/jobs/${jobId}`
+        : undefined,
     }).catch(() => {});
   }
 

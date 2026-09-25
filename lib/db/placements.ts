@@ -1,10 +1,7 @@
+import { resolveCvPath } from "@/lib/cv-storage";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 import type { PlacementInput, PlacementStatus } from "@/lib/placements";
-import {
-  managedMonthlyAmount,
-  summarizePlacementCompensation,
-} from "@/lib/placements";
 
 export type PlacementRow = Database["public"]["Tables"]["placements"]["Row"];
 
@@ -152,11 +149,18 @@ export async function cancelPendingAgreementsForPlacement(
   placementId: string,
 ): Promise<void> {
   const db = createServiceClient();
-  await db
-    .from("placement_agreements")
-    .update({ status: "cancelled" })
-    .eq("placement_id", placementId)
-    .in("status", ["pending_acceptance", "pending_funding"]);
+  await Promise.all([
+    db
+      .from("placement_agreements")
+      .update({ status: "cancelled" })
+      .eq("placement_id", placementId)
+      .in("status", ["pending_acceptance", "pending_funding"]),
+    db
+      .from("placement_applications")
+      .update({ status: "rejected" })
+      .eq("placement_id", placementId)
+      .in("status", ["pending", "offered"]),
+  ]);
 }
 
 /**
@@ -344,7 +348,7 @@ export async function createPlacementApplication(params: {
   placementId: string;
   kinglancerId: string;
   message: string | null;
-  cvUrl: string | null;
+  cvPath: string | null;
 }): Promise<PlacementApplicationRow> {
   const db = createServiceClient();
   const { data, error } = await db
@@ -353,7 +357,10 @@ export async function createPlacementApplication(params: {
       placement_id: params.placementId,
       kinglancer_id: params.kinglancerId,
       message: params.message,
-      cv_url: params.cvUrl,
+      cv_path: params.cvPath,
+      cv_url: params.cvPath
+        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/placement-cvs/${params.cvPath}`
+        : null,
     })
     .select()
     .single();
@@ -417,19 +424,29 @@ export async function listPlacementApplicants(
     .eq("placement_id", placementId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []) as unknown as PlacementApplicant[];
+  return ((data ?? []) as unknown as PlacementApplicant[]).map((app) => ({
+    ...app,
+    cv_path: resolveCvPath(
+      "placement-cvs",
+      app.cv_path ?? app.cv_url,
+      app.kinglancer_id,
+    ),
+  }));
 }
 
 export async function updatePlacementApplicationStatus(
   applicationId: string,
   status: PlacementApplicationRow["status"],
-): Promise<void> {
-  const db = createServiceClient();
-  const { error } = await db
+): Promise<boolean> {
+  const { data, error } = await createServiceClient()
     .from("placement_applications")
     .update({ status })
-    .eq("id", applicationId);
+    .eq("id", applicationId)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
   if (error) throw error;
+  return !!data;
 }
 
 export async function listKinglancerApplications(
@@ -458,38 +475,6 @@ export async function countReservedParticipants(
   return count ?? 0;
 }
 
-export async function createAgreementFromPlacement(params: {
-  placement: Placement;
-  kinglancerId: string;
-  orgSignedBy: string;
-}): Promise<PlacementAgreementRow> {
-  const db = createServiceClient();
-  const { placement } = params;
-  const { data, error } = await db
-    .from("placement_agreements")
-    .insert({
-      placement_id: placement.id,
-      organisation_id: placement.organisation_id,
-      kinglancer_id: params.kinglancerId,
-      contribution_terms: placement.contribution,
-      reward_terms:
-        summarizePlacementCompensation(placement) ||
-        placement.reward ||
-        "Supervised experience, mentoring and a verified record.",
-      weekly_hours: placement.weekly_hours,
-      duration_weeks: placement.duration_weeks,
-      status: "pending_acceptance",
-      org_signed_by: params.orgSignedBy,
-      org_signed_at: new Date().toISOString(),
-      payment_mode: placement.payment_mode,
-      monthly_amount: managedMonthlyAmount(placement),
-    })
-    .select()
-    .single();
-  if (error) throw error;
-  return data as PlacementAgreementRow;
-}
-
 export async function getAgreement(
   agreementId: string,
 ): Promise<PlacementAgreementRow | null> {
@@ -500,46 +485,6 @@ export async function getAgreement(
     .eq("id", agreementId)
     .maybeSingle();
   return (data as PlacementAgreementRow | null) ?? null;
-}
-
-/** Kinglancer signs a pending agreement; returns true if it became active. */
-export async function activateAgreement(agreementId: string): Promise<boolean> {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("placement_agreements")
-    .update({
-      status: "active",
-      kinglancer_signed_at: new Date().toISOString(),
-    })
-    .eq("id", agreementId)
-    .in("status", ["pending_acceptance", "pending_funding"])
-    .select("id")
-    .maybeSingle();
-  if (error) throw error;
-  return !!data;
-}
-
-/**
- * Kinglancer accepts a managed offer: they sign now, but the placement waits
- * in 'pending_funding' until the org funds the first month. Returns true if
- * the transition happened.
- */
-export async function markAgreementPendingFunding(
-  agreementId: string,
-): Promise<boolean> {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("placement_agreements")
-    .update({
-      status: "pending_funding",
-      kinglancer_signed_at: new Date().toISOString(),
-    })
-    .eq("id", agreementId)
-    .eq("status", "pending_acceptance")
-    .select("id")
-    .maybeSingle();
-  if (error) throw error;
-  return !!data;
 }
 
 export async function updateAgreementStatus(

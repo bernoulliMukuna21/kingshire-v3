@@ -92,11 +92,13 @@ export async function KinglancerApplicationsSection() {
                   <p className="mt-1 text-sm text-slate-500">
                     {isDisputed
                       ? "This job is under dispute."
-                      : app.status === "accepted"
-                        ? "You have been selected!"
-                        : app.status === "rejected"
-                          ? "Another applicant was chosen."
-                          : "Application under review."}
+                      : app.status === "offered"
+                        ? "You've been offered this role — review and respond."
+                        : app.status === "accepted"
+                          ? "You have been selected!"
+                          : app.status === "rejected"
+                            ? "Another applicant was chosen."
+                            : "Application under review."}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

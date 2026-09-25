@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { DirectRequestStatus } from "@/lib/jobs";
 import { planForRole } from "@/lib/subscriptions/plans";
-import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import {
   Loader2,
   CheckCircle,
@@ -76,7 +75,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [coverLetter, setCoverLetter] = useState("");
-  const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [cvPath, setCvPath] = useState<string | null>(null);
   const [cvName, setCvName] = useState<string | null>(null);
   const [uploadingCv, setUploadingCv] = useState(false);
   const [cvError, setCvError] = useState<string | null>(null);
@@ -120,10 +119,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       setUploadingCv(false);
       return;
     }
-    const { data: urlData } = supabase.storage
-      .from("job-application-cvs")
-      .getPublicUrl(path);
-    setCvUrl(urlData.publicUrl);
+    setCvPath(path);
     setCvName(file.name);
     setUploadingCv(false);
   }
@@ -136,7 +132,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       setError("Please write at least a couple of sentences.");
       return;
     }
-    if (!cvUrl) {
+    if (!cvPath) {
       setError("Please attach your CV to apply.");
       return;
     }
@@ -148,7 +144,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
         body: JSON.stringify({
           job_id: jobId,
           cover_letter: coverLetter,
-          cv_url: cvUrl,
+          cv_path: cvPath,
         }),
       });
 
@@ -791,7 +787,7 @@ export function ApplicantsList({
   locked = false,
   cardEnabled = true,
 }: {
-  applications: ApplicationWithKinglancer[];
+  applications: (ApplicationWithKinglancer & { cv_view_url?: string | null })[];
   job?: {
     posting_type: string;
     pay_negotiable: boolean;
@@ -810,17 +806,17 @@ export function ApplicantsList({
   const [payMethod, setPayMethod] = useState<"card" | "bank_transfer">(
     cardEnabled ? "card" : "bank_transfer",
   );
-  const [agreedAmount, setAgreedAmount] = useState(
-    job?.pay_amount != null ? String(job.pay_amount) : "",
-  );
-  const [agreedCadence, setAgreedCadence] = useState<"weekly" | "monthly">(
-    (job?.pay_cadence as "weekly" | "monthly") ?? "monthly",
-  );
-  const [agreedSettlementMode, setAgreedSettlementMode] = useState<
-    "managed" | "direct"
-  >((job?.settlement_mode as "managed" | "direct") ?? "managed");
   const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  if (isRole && job?.pay_negotiable) {
+    return (
+      <p className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+        This role uses negotiable pay and cannot send an offer yet. Set a fixed
+        recurring pay amount before selecting an applicant.
+      </p>
+    );
+  }
 
   if (applications.length === 0) {
     return (
@@ -844,9 +840,6 @@ export function ApplicantsList({
         isRole
           ? {
               action: "accept",
-              agreed_amount: Number(agreedAmount),
-              agreed_cadence: agreedCadence,
-              agreed_settlement_mode: agreedSettlementMode,
             }
           : { action: "accept", method: payMethod },
       ),
@@ -888,8 +881,6 @@ export function ApplicantsList({
   const pendingApp = pendingSelectId
     ? applications.find((a) => a.id === pendingSelectId)
     : null;
-  const agreedAmountValid = Number.isFinite(Number(agreedAmount)) && Number(agreedAmount) > 0;
-
   return (
     <>
       <ConfirmModal
@@ -899,7 +890,6 @@ export function ApplicantsList({
           if (pendingSelectId) handleSelect(pendingSelectId);
           setPendingSelectId(null);
         }}
-        confirmDisabled={isRole && !agreedAmountValid}
         title="Select this Kinglancer?"
         message={
           <div className="space-y-4">
@@ -910,67 +900,18 @@ export function ApplicantsList({
               </strong>{" "}
               for the {isRole ? "role" : "job"}.{" "}
               {isRole
-                ? "This starts their recurring pay schedule and cannot be undone."
+                ? "This sends them an offer using the role's advertised terms. They must accept before the role starts."
                 : "This will move the job to payment — the selection cannot be undone."}
             </p>
             {isRole ? (
-              <div className="space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                  {job?.pay_negotiable
-                    ? "Confirm the pay you agreed at interview"
-                    : "Recurring pay"}
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="text-sm font-semibold text-slate-700">
-                    Pay per period (£)
-                    <input
-                      type="number"
-                      min={MIN_JOB_BUDGET_GBP}
-                      step="0.01"
-                      value={agreedAmount}
-                      onChange={(e) => setAgreedAmount(e.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal"
-                    />
-                  </label>
-                  <label className="text-sm font-semibold text-slate-700">
-                    Pay cadence
-                    <select
-                      value={agreedCadence}
-                      onChange={(e) =>
-                        setAgreedCadence(e.target.value as "weekly" | "monthly")
-                      }
-                      className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal"
-                    >
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                    </select>
-                  </label>
-                </div>
-                <label className="block text-sm font-semibold text-slate-700">
-                  Payment handling
-                  <select
-                    value={agreedSettlementMode}
-                    onChange={(e) =>
-                      setAgreedSettlementMode(
-                        e.target.value as "managed" | "direct",
-                      )
-                    }
-                    className="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal"
-                  >
-                    <option value="managed">
-                      KingsHire-managed escrow and payout
-                    </option>
-                    <option value="direct">
-                      Organisation pays the Kinglancer directly
-                    </option>
-                  </select>
-                </label>
-                {!agreedAmountValid && (
-                  <p className="text-xs text-red-500">
-                    Enter the pay you agreed before confirming.
-                  </p>
-                )}
-              </div>
+              <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
+                Offer:{" "}
+                <strong>£{Number(job?.pay_amount ?? 0).toFixed(2)}</strong>{" "}
+                {job?.pay_cadence} ·{" "}
+                {job?.settlement_mode === "managed"
+                  ? "KingsHire-managed settlement"
+                  : "Organisation pays directly"}
+              </p>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -996,10 +937,12 @@ export function ApplicantsList({
                   </label>
                 ) : (
                   <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    <p className="font-bold">Card payments need a subscription</p>
+                    <p className="font-bold">
+                      Card payments need a subscription
+                    </p>
                     <p className="mt-0.5">
-                      Subscribe for £{planForRole("client").priceGBP}/month to pay
-                      by card, or continue with a bank transfer below.{" "}
+                      Subscribe for £{planForRole("client").priceGBP}/month to
+                      pay by card, or continue with a bank transfer below.{" "}
                       <Link
                         href="/dashboard/client/subscription"
                         className="font-bold underline"
@@ -1151,9 +1094,9 @@ export function ApplicantsList({
                       Their message
                     </p>
                     <p className="text-sm text-gray-700">{app.cover_letter}</p>
-                    {app.cv_url && (
+                    {app.cv_view_url && (
                       <a
-                        href={app.cv_url}
+                        href={app.cv_view_url}
                         target="_blank"
                         rel="noreferrer"
                         className="mt-3 inline-block text-sm font-semibold text-blue-600 hover:underline"

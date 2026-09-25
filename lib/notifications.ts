@@ -256,18 +256,20 @@ export async function notifyNewApplication({
   clientEmail,
   jobTitle,
   jobId,
+  link,
 }: {
   clientId: string;
   clientEmail: string;
   jobTitle: string;
   jobId: string;
+  link?: string;
 }) {
   await notify({
     userId: clientId,
     type: "new_application",
     title: "🎉 You've got a new applicant!",
     body: `Someone just applied to your job "${jobTitle}" — take a look and see if they're the right fit!`,
-    link: `/dashboard/client/jobs/${jobId}`,
+    link: link ?? `/dashboard/client/jobs/${jobId}`,
     email: {
       to: clientEmail,
       subject: `New application for "${jobTitle}"`,
@@ -302,17 +304,19 @@ export async function notifyWorkSubmitted({
   clientId,
   clientEmail,
   jobTitle,
+  link,
 }: {
   clientId: string;
   clientEmail: string;
   jobTitle: string;
+  link?: string;
 }) {
   await notify({
     userId: clientId,
     type: "work_submitted",
     title: "✅ Work submitted — ready for your review",
     body: `Your Kinglancer has marked "${jobTitle}" as complete. Take a look and approve to release their payment.`,
-    link: `/dashboard/client`,
+    link: link ?? `/dashboard/client`,
     email: {
       to: clientEmail,
       subject: `Work completed on "${jobTitle}" — your approval needed`,
@@ -507,27 +511,30 @@ export async function notifyAdminPlacementIssue({
   });
 }
 
-export async function notifyPlacementReleasePending({
+/** Shared by org roles and placements — both are `engagements` under the hood.
+ * Warns the organisation that a period is about to release so they have a
+ * window to dispute it first. */
+export async function notifyEngagementReleasePending({
   organisationEmail,
-  placementTitle,
-  agreementId,
+  title,
+  link,
   periodIndex,
   releaseDate,
 }: {
   organisationEmail: string;
-  placementTitle: string;
-  agreementId: string;
+  title: string;
+  link: string;
   periodIndex: number;
   releaseDate: string;
 }) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://kingshire.uk";
   await sendEmail({
     to: organisationEmail,
-    subject: `[Placement] Month ${periodIndex} releases on ${releaseDate}`,
-    title: "This month's payment is about to be released",
-    body: `Month ${periodIndex} for "${placementTitle}" will be released to the Kinglancer on ${releaseDate} unless you flag an issue. If something isn't right, open the placement and dispute this month before then.`,
-    link: `${appUrl}/dashboard/placements/agreements/${agreementId}`,
-    ctaLabel: "Review this month →",
+    subject: `Period ${periodIndex} for "${title}" releases on ${releaseDate}`,
+    title: "This period's payment is about to be released",
+    body: `Period ${periodIndex} for "${title}" will be released to the Kinglancer on ${releaseDate} unless you flag an issue. If something isn't right, open it and dispute this period before then.`,
+    link: `${appUrl}${link}`,
+    ctaLabel: "Review this period →",
   });
 }
 

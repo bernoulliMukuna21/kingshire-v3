@@ -1,3 +1,4 @@
+import { resolveCvPath } from "@/lib/cv-storage";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
@@ -40,7 +41,16 @@ export async function getApplicationsByJob(
     .order("created_at", { ascending: true });
 
   if (error) throw error;
-  return (data ?? []) as unknown as ApplicationWithKinglancer[];
+  return ((data ?? []) as unknown as ApplicationWithKinglancer[]).map(
+    (app) => ({
+      ...app,
+      cv_path: resolveCvPath(
+        "job-application-cvs",
+        app.cv_path ?? app.cv_url,
+        app.kinglancer_id,
+      ),
+    }),
+  );
 }
 
 export async function hasApplied(
@@ -64,7 +74,12 @@ export async function createApplication(
   const supabase = await createClient();
   const { data: app, error } = await supabase
     .from("applications")
-    .insert(data)
+    .insert({
+      ...data,
+      cv_url: data.cv_path
+        ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/job-application-cvs/${data.cv_path}`
+        : data.cv_url,
+    })
     .select()
     .single();
 

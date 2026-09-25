@@ -4,9 +4,10 @@ import { getEngagement } from "@/lib/db/engagements";
 import {
   getEngagementPayment,
   reserveEngagementPayment,
-  updateEngagementPaymentStatus,
+  patchPaymentAttempt,
   type EngagementPaymentRow,
 } from "@/lib/db/engagement-payments";
+import { fulfilEngagementPayment } from "./fulfilment";
 import type { SettlementMode } from "./types";
 
 export type OrganisationStripePaymentContext = {
@@ -31,7 +32,8 @@ export async function getOrganisationStripePaymentContext(
   const customer = await stripe.customers.retrieve(customerId);
   if (!customer || customer.deleted) return null;
 
-  const defaultPaymentMethod = customer.invoice_settings?.default_payment_method;
+  const defaultPaymentMethod =
+    customer.invoice_settings?.default_payment_method;
   let paymentMethodId =
     typeof defaultPaymentMethod === "string"
       ? defaultPaymentMethod
@@ -72,88 +74,186 @@ function chargeAmountGBP(
   mode: SettlementMode,
 ): number {
   if (mode === "direct") {
-    return Number(payment.platform_fee_client) +
-      Number(payment.platform_fee_kinglancer);
+    return (
+      Number(payment.platform_fee_client) +
+      Number(payment.platform_fee_kinglancer)
+    );
   }
   return Number(payment.worker_amount) + Number(payment.platform_fee_client);
 }
 
 export type EngagementChargeResult =
   | "charged"
+  | "reconciliation_pending"
   | "already_processed"
   | "no_payment_method"
   | "failed"
   | "not_chargeable";
 
-/** Charge one period and move it into escrow, or settle a direct fee period. */
+// A lost response must never be retried after Stripe may have discarded its
+// idempotency key. Older unidentified attempts require operator reconciliation.
+export function canRecoverCreation(startedAt: string | null): boolean {
+  return (
+    !!startedAt &&
+    Date.now() - new Date(startedAt).getTime() < 20 * 60 * 60 * 1000
+  );
+}
+
+export async function reconcileEngagementPayment(
+  paymentId: string,
+  intentId: string,
+): Promise<void> {
+  const payment = await getEngagementPayment(paymentId);
+  if (!payment) throw new Error("Payment not found");
+  const engagement = await getEngagement(payment.engagement_id);
+  if (!engagement) throw new Error("Engagement not found");
+  const intent = await stripe.paymentIntents.retrieve(intentId);
+  const sourcePaymentId =
+    intent.metadata.engagement_payment_id ??
+    intent.metadata.placement_payment_id;
+  if (
+    sourcePaymentId !== paymentId ||
+    intent.currency !== "gbp" ||
+    intent.amount !==
+      Math.round(chargeAmountGBP(payment, engagement.settlement_mode) * 100)
+  ) {
+    throw new Error("Stripe payment does not match the ledger");
+  }
+  if (intent.status !== "succeeded") return;
+  await fulfilEngagementPayment(paymentId, intent.id);
+}
+
+// A failure event is not a terminal attempt: Checkout may still be payable,
+// and an automatic PaymentIntent may be confirmed again with a replacement card.
+export async function reconcileFailedEngagementPayment(
+  paymentId: string,
+  intentId: string,
+): Promise<void> {
+  const payment = await getEngagementPayment(paymentId);
+  if (!payment || payment.status !== "processing") return;
+  const intent = await stripe.paymentIntents.retrieve(intentId);
+  if (
+    (intent.metadata.engagement_payment_id ??
+      intent.metadata.placement_payment_id) !== paymentId
+  ) {
+    throw new Error("PaymentIntent belongs to another payment");
+  }
+  if (
+    payment.stripe_payment_intent_id &&
+    payment.stripe_payment_intent_id !== intentId
+  )
+    return;
+  await patchPaymentAttempt(payment, { stripe_payment_intent_id: intentId });
+  if (intent.status === "succeeded")
+    await reconcileEngagementPayment(paymentId, intent.id);
+}
+
+async function resumeAutomaticPayment(
+  payment: EngagementPaymentRow,
+): Promise<EngagementChargeResult> {
+  if (
+    !payment.attempt_id ||
+    !payment.attempt_customer_id ||
+    !payment.attempt_payment_method_id
+  ) {
+    // Legacy or uncertain attempts cannot safely be charged again automatically.
+    return "reconciliation_pending";
+  }
+  const engagement = await getEngagement(payment.engagement_id);
+  if (!engagement) return "not_chargeable";
+  let intent;
+  if (payment.stripe_payment_intent_id) {
+    intent = await stripe.paymentIntents.retrieve(
+      payment.stripe_payment_intent_id,
+    );
+  } else {
+    if (!canRecoverCreation(payment.attempt_started_at))
+      return "reconciliation_pending";
+    // Persist the ID BEFORE confirmation. A crash during creation leaves an
+    // unconfirmed intent, which the same attempt key can safely retrieve.
+    intent = await stripe.paymentIntents.create(
+      {
+        amount: Math.round(
+          chargeAmountGBP(payment, engagement.settlement_mode) * 100,
+        ),
+        currency: "gbp",
+        customer: payment.attempt_customer_id,
+        payment_method: payment.attempt_payment_method_id,
+        metadata: {
+          purpose: "engagement_payment",
+          engagement_payment_id: payment.id,
+          engagement_id: engagement.id,
+        },
+      },
+      { idempotencyKey: `engagement-create-${payment.attempt_id}` },
+    );
+    await patchPaymentAttempt(payment, { stripe_payment_intent_id: intent.id });
+  }
+  if (intent.status === "succeeded") {
+    await reconcileEngagementPayment(payment.id, intent.id);
+    return "charged";
+  }
+  if (!["active", "pending_funding"].includes(engagement.status))
+    return "not_chargeable";
+  if (
+    intent.status === "requires_confirmation" ||
+    intent.status === "requires_payment_method"
+  ) {
+    const context = await getOrganisationStripePaymentContext(
+      payment.organisation_id,
+    );
+    if (!context) return "no_payment_method";
+    intent = await stripe.paymentIntents.confirm(intent.id, {
+      payment_method: context.paymentMethodId,
+      off_session: true,
+    });
+  }
+  if (intent.status !== "succeeded") return "reconciliation_pending";
+  await reconcileEngagementPayment(payment.id, intent.id);
+  return "charged";
+}
+
 export async function chargeEngagementPayment(
   paymentId: string,
 ): Promise<EngagementChargeResult> {
   const payment = await getEngagementPayment(paymentId);
   if (!payment) return "not_chargeable";
-  if (payment.status !== "due") return "already_processed";
-
-  const engagement = await getEngagement(payment.engagement_id);
-  if (!engagement || engagement.status === "cancelled" || engagement.status === "ended") {
-    return "not_chargeable";
+  if (payment.status === "processing") {
+    return payment.attempt_kind === "automatic"
+      ? resumeAutomaticPayment(payment)
+      : "already_processed";
   }
-
+  if (payment.status !== "due" && payment.status !== "failed")
+    return "already_processed";
+  if (payment.stripe_payment_intent_id) {
+    await reconcileEngagementPayment(
+      payment.id,
+      payment.stripe_payment_intent_id,
+    );
+    return "reconciliation_pending";
+  }
+  // Legacy failed rows can represent a lost Stripe response. New attempts
+  // remain processing until reconciled, so never create a fresh charge here.
+  if (payment.status === "failed") return "reconciliation_pending";
+  const engagement = await getEngagement(payment.engagement_id);
+  if (!engagement || !["active", "pending_funding"].includes(engagement.status))
+    return "not_chargeable";
+  // First placement funding is explicitly on-session. It cannot compete with
+  // an organisation opening Checkout using its subscription's saved card.
+  if (
+    engagement.source_kind === "placement" &&
+    engagement.status === "pending_funding"
+  )
+    return "not_chargeable";
   const context = await getOrganisationStripePaymentContext(
     payment.organisation_id,
   );
   if (!context) return "no_payment_method";
-
-  const amountGBP = chargeAmountGBP(payment, engagement.settlement_mode);
-  if (amountGBP <= 0) return "not_chargeable";
-
-  const reserved = await reserveEngagementPayment(payment.id);
+  const reserved = await reserveEngagementPayment(
+    payment.id,
+    "automatic",
+    context,
+  );
   if (!reserved) return "already_processed";
-
-  try {
-    const intent = await stripe.paymentIntents.create(
-      {
-        amount: Math.round(amountGBP * 100),
-        currency: "gbp",
-        customer: context.customerId,
-        payment_method: context.paymentMethodId,
-        off_session: true,
-        confirm: true,
-        metadata: {
-          purpose: "engagement_payment",
-          engagement_payment_id: payment.id,
-          engagement_id: payment.engagement_id,
-        },
-      },
-      { idempotencyKey: `engagement-charge-${payment.id}` },
-    );
-
-    if (intent.status !== "succeeded") {
-      await updateEngagementPaymentStatus(payment.id, "failed", {
-        stripe_payment_intent_id: intent.id,
-      });
-      return "failed";
-    }
-
-    const now = new Date().toISOString();
-    if (engagement.settlement_mode === "direct") {
-      await updateEngagementPaymentStatus(payment.id, "released", {
-        stripe_payment_intent_id: intent.id,
-        charged_at: now,
-        released_at: now,
-      });
-    } else {
-      await updateEngagementPaymentStatus(payment.id, "held", {
-        stripe_payment_intent_id: intent.id,
-        charged_at: now,
-      });
-    }
-    return "charged";
-  } catch (error) {
-    await updateEngagementPaymentStatus(payment.id, "failed");
-    console.error(
-      `[settlement] charge failed for payment ${payment.id}:`,
-      error instanceof Error ? error.message : error,
-    );
-    return "failed";
-  }
+  return resumeAutomaticPayment(reserved);
 }

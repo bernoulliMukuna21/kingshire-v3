@@ -42,7 +42,9 @@ export async function getDueEngagementPayments(
   const { data, error } = await db
     .from("engagement_payments")
     .select("*")
-    .eq("status", "due")
+    // "failed" is retried alongside "due" — a card issue today shouldn't
+    // permanently strand a period with no further attempt.
+    .in("status", ["due", "failed"])
     .lte("due_date", today)
     .order("due_date", { ascending: true });
 
@@ -50,7 +52,9 @@ export async function getDueEngagementPayments(
   return data ?? [];
 }
 
-export async function getHeldEngagementPayments(): Promise<EngagementPaymentRow[]> {
+export async function getHeldEngagementPayments(): Promise<
+  EngagementPaymentRow[]
+> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("engagement_payments")
@@ -77,7 +81,9 @@ export async function getHeldEngagementPaymentsForOrganisation(
   return data ?? [];
 }
 
-export async function getDisputedEngagementPayments(): Promise<EngagementPaymentRow[]> {
+export async function getDisputedEngagementPayments(): Promise<
+  EngagementPaymentRow[]
+> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("engagement_payments")
@@ -107,9 +113,15 @@ export async function createEngagementPayments(
 ): Promise<EngagementPaymentRow[]> {
   if (inputs.length === 0) return [];
   const db = createServiceClient();
+  // Insert-only: a row that already exists for this engagement/period is left
+  // untouched. Without `ignoreDuplicates`, upsert would overwrite an
+  // in-flight/settled row back to "due" under concurrent scheduling.
   const { data, error } = await db
     .from("engagement_payments")
-    .upsert(inputs, { onConflict: "engagement_id,period_index" })
+    .upsert(inputs, {
+      onConflict: "engagement_id,period_index",
+      ignoreDuplicates: true,
+    })
     .select("*");
 
   if (error) throw error;
@@ -137,16 +149,59 @@ export async function updateEngagementPaymentStatus(
 
 export async function reserveEngagementPayment(
   id: string,
+  kind: "checkout" | "automatic",
+  context?: { customerId: string; paymentMethodId: string },
 ): Promise<EngagementPaymentRow | null> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("engagement_payments")
-    .update({ status: "processing" })
+    .update({
+      status: "processing",
+      attempt_id: crypto.randomUUID(),
+      attempt_kind: kind,
+      attempt_started_at: new Date().toISOString(),
+      attempt_customer_id: context?.customerId ?? null,
+      attempt_payment_method_id: context?.paymentMethodId ?? null,
+    })
     .eq("id", id)
     .eq("status", "due")
+    .is("attempt_id", null)
+    .is("stripe_payment_intent_id", null)
     .select("*")
     .maybeSingle();
 
   if (error) throw error;
   return data ?? null;
+}
+
+/** Recovery scans durable state; never reset an uncertain Stripe attempt. */
+export async function getRecoverablePayments(
+  afterId?: string,
+): Promise<EngagementPaymentRow[]> {
+  let query = createServiceClient()
+    .from("engagement_payments")
+    .select("*")
+    .is("fulfilled_at", null)
+    .in("status", ["processing", "held", "released", "failed"])
+    .order("id")
+    .limit(100);
+  if (afterId) query = query.gt("id", afterId);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function patchPaymentAttempt(
+  payment: EngagementPaymentRow,
+  patch: Partial<EngagementPaymentInsert>,
+): Promise<void> {
+  let query = createServiceClient()
+    .from("engagement_payments")
+    .update(patch)
+    .eq("id", payment.id);
+  query = payment.attempt_id
+    ? query.eq("attempt_id", payment.attempt_id)
+    : query.is("attempt_id", null);
+  const { error } = await query;
+  if (error) throw error;
 }

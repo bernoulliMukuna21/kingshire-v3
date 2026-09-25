@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
-  activateAgreement,
   getAgreement,
-  markAgreementPendingFunding,
   setAgreementArchivedByKinglancer,
-  updateAgreementStatus,
 } from "@/lib/db/placements";
 import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
 import { notifyPlacementReadyToFund } from "@/lib/notifications";
 import { requireTermsAccepted } from "@/lib/terms";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function PATCH(
   request: Request,
@@ -33,7 +31,10 @@ export async function PATCH(
       { status: 400 },
     );
   }
-  const action = (body as { action?: unknown }).action;
+  const action =
+    body && typeof body === "object"
+      ? (body as { action?: unknown }).action
+      : null;
   if (action !== "accept" && action !== "decline" && action !== "archive") {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   }
@@ -58,57 +59,48 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   }
 
-  if (agreement.status !== "pending_acceptance") {
+  if (action === "accept" && !(await requireTermsAccepted(user.id))) {
     return NextResponse.json(
-      { error: "This agreement can no longer be changed." },
-      { status: 409 },
+      {
+        error: "Please accept our updated terms to continue.",
+        needsTerms: true,
+      },
+      { status: 403 },
     );
   }
-
-  if (action === "accept") {
-    if (!(await requireTermsAccepted(user.id))) {
+  const { data: responded, error } = await createServiceClient().rpc(
+    "respond_placement_offer",
+    {
+      p_agreement_id: agreementId,
+      p_worker_id: user.id,
+      p_action: action,
+    },
+  );
+  if (error)
+    return NextResponse.json(
+      { error: "The offer could not be updated. Refresh and retry." },
+      { status: 409 },
+    );
+  if (action === "accept" && responded.payment_mode === "managed") {
+    try {
+      await ensurePaymentSchedule(responded);
+    } catch (error) {
+      console.error("[placement/accept] schedule", error);
       return NextResponse.json(
         {
-          error: "Please accept our updated terms to continue.",
-          needsTerms: true,
+          error:
+            "Accepted, but payment setup needs another attempt. Please retry.",
         },
-        { status: 403 },
+        { status: 503 },
       );
     }
-    const isManaged =
-      agreement.payment_mode === "managed" && !!agreement.monthly_amount;
-
-    if (isManaged) {
-      // The Kinglancer commits now, but the placement only starts once the org
-      // explicitly funds the first month. Build the schedule and hand off.
-      await ensurePaymentSchedule(agreement);
-      const moved = await markAgreementPendingFunding(agreementId);
-      if (!moved) {
-        return NextResponse.json(
-          { error: "This agreement can no longer be accepted." },
-          { status: 409 },
-        );
-      }
+    if (agreement.status === "pending_acceptance") {
       void notifyPlacementReadyToFund({
         organisationId: agreement.organisation_id,
         placementId: agreement.placement_id,
         agreementId,
-      }).catch((err) =>
-        console.error("[placements] ready-to-fund notify failed:", err),
-      );
-      return NextResponse.json({ ok: true, status: "pending_funding" });
+      }).catch((error) => console.error("[placements] ready-to-fund", error));
     }
-
-    const activated = await activateAgreement(agreementId);
-    if (!activated) {
-      return NextResponse.json(
-        { error: "This agreement can no longer be accepted." },
-        { status: 409 },
-      );
-    }
-    return NextResponse.json({ ok: true });
   }
-
-  await updateAgreementStatus(agreementId, "cancelled");
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, status: responded.status });
 }

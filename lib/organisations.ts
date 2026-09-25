@@ -12,6 +12,7 @@ import type {
   OrganisationPermission,
 } from "@/modules/organisations/domain/types";
 import { organisationRepository } from "@/infrastructure/supabase/repositories/supabase-organisation-repository";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export { hasOrganisationPermission };
 export type { OrganisationMemberRole, OrganisationPermission };
@@ -54,4 +55,30 @@ export async function canManageJob(
       permission,
     ),
   );
+}
+
+/**
+ * A single contact for org-level notifications. Org-owned resources don't
+ * have one "poster" the way personal jobs have a `client_id` — this is the
+ * one recipient we notify until org notification preferences exist.
+ */
+export async function getOrgOwnerContact(
+  organisationId: string,
+): Promise<{ userId: string; email: string | null } | null> {
+  const db = createServiceClient();
+  const { data } = await db
+    .from("organisation_members")
+    .select("user_id, profiles!user_id(email)")
+    .eq("organisation_id", organisationId)
+    .eq("role", "owner")
+    .maybeSingle();
+  if (!data) return null;
+  const profile = data.profiles as
+    | { email: string }
+    | { email: string }[]
+    | null;
+  const email = Array.isArray(profile)
+    ? (profile[0]?.email ?? null)
+    : (profile?.email ?? null);
+  return { userId: data.user_id, email };
 }

@@ -64,13 +64,11 @@ export async function GET(request: Request) {
     calendarDaysPassed(new Date(job.updated_at), AUTO_RELEASE_DAYS),
   );
 
-  if (toRelease.length === 0) {
-    return NextResponse.json({ released: 0, message: "Nothing to release" });
-  }
-
   let released = 0;
   const errors: string[] = [];
 
+  // Note: no early return for an empty `toRelease` — the retry-transfer sweep
+  // below is independent of today's newly-eligible jobs and must always run.
   for (const job of toRelease) {
     // 1. Fetch the held transaction. If the kinglancer is already onboarded,
     // we transfer before marking it released so the DB/user-facing state only
