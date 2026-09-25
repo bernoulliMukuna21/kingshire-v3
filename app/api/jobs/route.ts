@@ -12,20 +12,13 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getOpenJobs, createJob } from "@/lib/db/jobs";
-import { jobAlertHeadline } from "@/lib/jobs";
-import { JOB_CATEGORIES } from "@/lib/job-categories";
-import {
-  hasValidCurrencyPrecision,
-  normalizeCurrencyAmount,
-} from "@/lib/validation";
-import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
-import { lookupPostcode } from "@/lib/postcodes";
-import { formatMoney } from "@/lib/utils";
-import { emailJobAlert } from "@/lib/notifications";
-import { sendPushToUser } from "@/lib/push";
+import { normalizeCurrencyAmount } from "@/lib/validation";
 import { requireOrganisationPermission } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { requireTermsAccepted } from "@/lib/terms";
+import { validateJobPostShape } from "./validateJobPostShape";
+import { resolveJobSchedule } from "./resolveJobSchedule";
+import { notifyMatchedKinglancers } from "./notifyMatchedKinglancers";
 
 export async function GET() {
   try {
@@ -210,89 +203,27 @@ export async function POST(request: Request) {
   const budgetNum = Number(budget);
   const normalizedBudget = normalizeCurrencyAmount(budgetNum);
 
-  if (!titleStr || !descStr || !categories?.length || (!isRole && !budget))
+  const shapeError = validateJobPostShape({
+    isRole,
+    titleStr,
+    descStr,
+    categories,
+    budget,
+    budgetNum,
+    normalizedBudget,
+    employment_type,
+    pay_cadence,
+    pay_negotiable,
+    pay_amount,
+    settlement_mode,
+    organisationId,
+    deadline,
+  });
+  if (shapeError)
     return NextResponse.json(
-      { error: "Missing required fields" },
-      { status: 400 },
+      { error: shapeError.error },
+      { status: shapeError.status },
     );
-  if (titleStr.length < 3 || titleStr.length > 120)
-    return NextResponse.json(
-      { error: "Title must be between 3 and 120 characters." },
-      { status: 400 },
-    );
-  if (descStr.length < 10 || descStr.length > 500)
-    return NextResponse.json(
-      { error: "Description must be between 10 and 500 characters." },
-      { status: 400 },
-    );
-  if (
-    (!isRole && !Number.isFinite(budgetNum)) ||
-    (!isRole && !hasValidCurrencyPrecision(budget)) ||
-    (!isRole && normalizedBudget < MIN_JOB_BUDGET_GBP) ||
-    (!isRole && normalizedBudget > 50000)
-  )
-    return NextResponse.json(
-      {
-        error: `Budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000 with up to 2 decimals.`,
-      },
-      { status: 400 },
-    );
-  if (
-    !Array.isArray(categories) ||
-    categories.some(
-      (c: string) => !(JOB_CATEGORIES as readonly string[]).includes(c),
-    )
-  )
-    return NextResponse.json({ error: "Invalid category." }, { status: 400 });
-
-  if (isRole) {
-    if (!organisationId) {
-      return NextResponse.json(
-        { error: "Organisation roles must belong to an organisation." },
-        { status: 400 },
-      );
-    }
-    if (!["permanent", "temporary"].includes(employment_type)) {
-      return NextResponse.json(
-        { error: "Choose whether the role is permanent or temporary." },
-        { status: 400 },
-      );
-    }
-    if (!["weekly", "monthly"].includes(pay_cadence) && !pay_negotiable) {
-      return NextResponse.json(
-        { error: "Choose weekly or monthly pay, or discuss pay at interview." },
-        { status: 400 },
-      );
-    }
-    if (
-      !pay_negotiable &&
-      (!Number.isFinite(Number(pay_amount)) ||
-        Number(pay_amount) < MIN_JOB_BUDGET_GBP)
-    ) {
-      return NextResponse.json(
-        {
-          error: `The recurring pay must be at least £${MIN_JOB_BUDGET_GBP} per period.`,
-        },
-        { status: 400 },
-      );
-    }
-    if (!["managed", "direct"].includes(settlement_mode)) {
-      return NextResponse.json(
-        { error: "Choose how the recurring payment will be settled." },
-        { status: 400 },
-      );
-    }
-  }
-  if (deadline) {
-    const d = new Date(deadline);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (isNaN(d.getTime()) || d < today)
-      return NextResponse.json(
-        { error: "Deadline must be today or a future date." },
-        { status: 400 },
-      );
-  }
 
   const validRateTypes = ["fixed", "per_hour", "per_day"];
   const resolvedRateType = validRateTypes.includes(rate_type)
@@ -303,178 +234,38 @@ export async function POST(request: Request) {
       ? invited_kinglancer_id.trim()
       : null;
 
-  const validWorkModes = ["online", "in_person", "hybrid"];
-  if (!validWorkModes.includes(work_mode)) {
+  const schedule = await resolveJobSchedule({
+    isRole,
+    employment_type,
+    work_mode,
+    scheduled_at,
+    ends_at,
+    days_on_site,
+    schedule_type,
+    estimated_minutes,
+    postcode,
+    address_line,
+    deadline,
+  });
+  if ("status" in schedule)
     return NextResponse.json(
-      { error: "Choose where the job happens." },
-      { status: 400 },
+      { error: schedule.error },
+      { status: schedule.status },
     );
-  }
-  const resolvedWorkMode = work_mode;
-  const addressStr =
-    typeof address_line === "string" ? address_line.trim() : "";
-  const postcodeStr = typeof postcode === "string" ? postcode.trim() : "";
-  let resolvedArea: string | null = null;
-  let resolvedPostcode: string | null = null;
-  let resolvedLat: number | null = null;
-  let resolvedLng: number | null = null;
-  let scheduledAtIso: string | null = null;
-  let endsAtIso: string | null = null;
-  let daysOnSite: number | null = null;
-
-  // Permanent roles have no end date; temporary roles must have a term.
-  if (isRole && employment_type === "temporary") {
-    const start = new Date(scheduled_at);
-    const end = new Date(ends_at);
-    if (!scheduled_at || isNaN(start.getTime())) {
-      return NextResponse.json(
-        { error: "Add the role's start date." },
-        { status: 400 },
-      );
-    }
-    if (!ends_at || isNaN(end.getTime())) {
-      return NextResponse.json(
-        { error: "Add the role's end date." },
-        { status: 400 },
-      );
-    }
-    if (end.getTime() < start.getTime()) {
-      return NextResponse.json(
-        { error: "The end date must be after the start date." },
-        { status: 400 },
-      );
-    }
-    scheduledAtIso = start.toISOString();
-    endsAtIso = end.toISOString();
-  }
-  if (!isRole && resolvedWorkMode === "online") {
-    const start = new Date(scheduled_at);
-    const end = new Date(ends_at);
-    if (!scheduled_at || isNaN(start.getTime())) {
-      return NextResponse.json(
-        { error: "Add the start date." },
-        { status: 400 },
-      );
-    }
-    if (!ends_at || isNaN(end.getTime())) {
-      return NextResponse.json({ error: "Add the end date." }, { status: 400 });
-    }
-    if (end.getTime() < start.getTime()) {
-      return NextResponse.json(
-        { error: "The end date must be after the start date." },
-        { status: 400 },
-      );
-    }
-    scheduledAtIso = start.toISOString();
-    endsAtIso = end.toISOString();
-  }
-  if (resolvedWorkMode === "in_person" || resolvedWorkMode === "hybrid") {
-    if (!addressStr) {
-      return NextResponse.json(
-        { error: "Add the street address for an in-person or hybrid job." },
-        { status: 400 },
-      );
-    }
-    const geo = await lookupPostcode(postcodeStr);
-    if (!geo) {
-      return NextResponse.json(
-        { error: "Enter a valid UK postcode." },
-        { status: 400 },
-      );
-    }
-    resolvedArea = geo.area;
-    resolvedPostcode = geo.postcode;
-    resolvedLat = geo.latitude;
-    resolvedLng = geo.longitude;
-  }
-  if (!isRole && resolvedWorkMode === "in_person") {
-    const startHasTime =
-      typeof scheduled_at === "string" && /T\d{2}:\d{2}/.test(scheduled_at);
-    const endHasTime =
-      typeof ends_at === "string" && /T\d{2}:\d{2}/.test(ends_at);
-    const start = new Date(scheduled_at);
-    const end = new Date(ends_at);
-    if (!startHasTime || isNaN(start.getTime())) {
-      return NextResponse.json(
-        { error: "Add the start date and time." },
-        { status: 400 },
-      );
-    }
-    if (!endHasTime || isNaN(end.getTime())) {
-      return NextResponse.json(
-        { error: "Add the end date and time." },
-        { status: 400 },
-      );
-    }
-    if (end.getTime() <= start.getTime()) {
-      return NextResponse.json(
-        { error: "The end time must be after the start time." },
-        { status: 400 },
-      );
-    }
-    scheduledAtIso = start.toISOString();
-    endsAtIso = end.toISOString();
-  }
-  if (resolvedWorkMode === "hybrid") {
-    daysOnSite = Number(days_on_site);
-    if (!Number.isInteger(daysOnSite) || daysOnSite < 1 || daysOnSite > 6) {
-      return NextResponse.json(
-        {
-          error: "Set how many days on-site per week (1–6) for a hybrid job.",
-        },
-        { status: 400 },
-      );
-    }
-    if (isRole) {
-      scheduledAtIso = null;
-      endsAtIso = null;
-    }
-    const start = new Date(scheduled_at);
-    const end = new Date(ends_at);
-    if (!isRole && (!scheduled_at || isNaN(start.getTime()))) {
-      return NextResponse.json(
-        { error: "Add the start date." },
-        { status: 400 },
-      );
-    }
-    if (!isRole && (!ends_at || isNaN(end.getTime()))) {
-      return NextResponse.json({ error: "Add the end date." }, { status: 400 });
-    }
-    if (!isRole && end.getTime() < start.getTime()) {
-      return NextResponse.json(
-        { error: "The end date must be after the start date." },
-        { status: 400 },
-      );
-    }
-    if (!isRole) {
-      scheduledAtIso = start.toISOString();
-      endsAtIso = end.toISOString();
-    }
-  }
-
-  // Schedule type only applies to in-person timed jobs: a fixed 'shift' vs a
-  // 'window' to complete the task. Online/hybrid stay 'window'. The optional
-  // duration estimate is kept only for in-person window jobs.
-  const resolvedScheduleType =
-    resolvedWorkMode === "in_person" && schedule_type === "shift"
-      ? "shift"
-      : "window";
-  let resolvedEstimatedMinutes: number | null = null;
-  if (
-    resolvedWorkMode === "in_person" &&
-    resolvedScheduleType === "window" &&
-    estimated_minutes != null
-  ) {
-    const m = Number(estimated_minutes);
-    if (Number.isInteger(m) && m >= 15 && m <= 1440)
-      resolvedEstimatedMinutes = m;
-  }
-
-  // Every job now carries a start/end window; the end date backs the legacy
-  // deadline column (job expiry, list displays) for continuity.
-  const resolvedDeadline = endsAtIso
-    ? endsAtIso.slice(0, 10)
-    : deadline || null;
+  const {
+    resolvedWorkMode,
+    addressStr,
+    resolvedArea,
+    resolvedPostcode,
+    resolvedLat,
+    resolvedLng,
+    scheduledAtIso,
+    endsAtIso,
+    daysOnSite,
+    resolvedScheduleType,
+    resolvedEstimatedMinutes,
+    resolvedDeadline,
+  } = schedule;
 
   if (invitedKinglancerId) {
     const { data: invitedKinglancer } = await supabase
@@ -559,74 +350,12 @@ export async function POST(request: Request) {
 
     jobCreated = true;
 
-    // MVP-safe fan-out: create bounded in-app notifications only.
-    // Avoid sending one email per kinglancer during the job-post request.
-    const { data: kinglancers } = invitedKinglancerId
-      ? await supabase
-          .from("profiles")
-          .select("id, email")
-          .eq("id", invitedKinglancerId)
-          .limit(1)
-      : await supabase
-          .from("profiles")
-          .select("id, email")
-          .eq("role", "kinglancer")
-          .order("jobs_completed", { ascending: false })
-          .limit(50);
-
-    const priceLabel = formatMoney(normalizedBudget);
-    const headline = jobAlertHeadline(job.title, priceLabel);
-    const alertTitle = invitedKinglancerId
-      ? `Direct request: ${headline}`
-      : headline;
-    const alertBody = invitedKinglancerId
-      ? `Congratulations 🎉! You have a new direct request! Log in now to review and respond.`
-      : `Good News 😀! A new job just went live! Log in now to be one of the first to apply.`;
-    const alertLink = `/jobs/${job.id}`;
-
-    if (kinglancers?.length) {
-      await createServiceClient()
-        .from("notifications")
-        .insert(
-          kinglancers.map((k) => ({
-            user_id: k.id,
-            type: invitedKinglancerId ? "direct_request" : "new_job",
-            title: alertTitle,
-            body: alertBody,
-            link: alertLink,
-          })),
-        )
-        .then(() => null);
-    }
-
-    // Fire-and-forget email fan-out — does not block the HTTP response.
-    // ENABLE_EMAIL must be true in the environment for emails to actually send.
-    if (kinglancers?.length) {
-      Promise.allSettled(
-        kinglancers
-          .filter((k) => k.email)
-          .map((k) =>
-            emailJobAlert({
-              to: k.email as string,
-              jobTitle: job.title,
-              priceLabel,
-              jobId: job.id,
-              isDirect: !!invitedKinglancerId,
-            }),
-          ),
-      ).catch(() => {});
-
-      // Fire-and-forget push fan-out — same bounded list as the in-app rows.
-      Promise.allSettled(
-        kinglancers.map((k) =>
-          sendPushToUser(k.id, {
-            title: alertTitle,
-            body: alertBody,
-            link: alertLink,
-          }),
-        ),
-      ).catch(() => {});
-    }
+    await notifyMatchedKinglancers(
+      supabase,
+      job,
+      invitedKinglancerId,
+      normalizedBudget,
+    );
 
     if (!invitedKinglancerId) {
       revalidateTag("open-jobs", "max");
