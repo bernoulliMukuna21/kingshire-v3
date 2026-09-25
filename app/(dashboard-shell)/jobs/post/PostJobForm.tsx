@@ -1,21 +1,22 @@
 "use client";
 
-import {
-  JOB_ATTACHMENT_ACCEPT,
-  jobAttachmentError,
-} from "@/lib/job-attachments";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
-import {
-  CURRENCY_VALIDATION_MESSAGE,
-  hasValidCurrencyPrecision,
-  normalizeCurrencyAmount,
-} from "@/lib/validation";
+import { normalizeCurrencyAmount } from "@/lib/validation";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import ScheduleTypeField from "@/components/jobs/ScheduleTypeField";
 import LocationField from "@/components/jobs/LocationField";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
+import { AttachmentField } from "./AttachmentField";
+import { CategoryPicker } from "./CategoryPicker";
+import { BudgetField } from "./BudgetField";
+import {
+  validatePostJobForm,
+  buildJobPostPayload,
+  type PostJobFieldErrors,
+} from "./postJobLogic";
 
 export function FormSkeleton() {
   return (
@@ -33,9 +34,6 @@ export function FormSkeleton() {
     </div>
   );
 }
-import { Loader2, AlertCircle } from "lucide-react";
-import { JOB_CATEGORIES } from "@/lib/job-categories";
-import { Avatar } from "@/components/ui/Avatar";
 
 type PreferredKinglancer = {
   id: string;
@@ -99,23 +97,9 @@ export default function PostJobForm({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{
-    title?: string;
-    description?: string;
-    categories?: string;
-    budget?: string;
-    address?: string;
-    postcode?: string;
-    scheduledAt?: string;
-    endsAt?: string;
-    daysOnSite?: string;
-    workMode?: string;
-    employmentType?: string;
-    payAmount?: string;
-    settlementMode?: string;
-  }>({});
+  const [fieldErrors, setFieldErrors] = useState<PostJobFieldErrors>({});
 
-  const clearFieldError = (field: keyof typeof fieldErrors) =>
+  const clearFieldError = (field: keyof PostJobFieldErrors) =>
     setFieldErrors((p) => ({ ...p, [field]: undefined }));
 
   const toggleCategory = (cat: string) =>
@@ -136,77 +120,25 @@ export default function PostJobForm({
     setFieldErrors({});
     const isRole = canPostRole && postingType === "role";
 
-    const fe: typeof fieldErrors = {};
-    if (!title.trim()) fe.title = "Job title is required.";
-    if (!description.trim()) fe.description = "Description is required.";
-    if (categories.length === 0)
-      fe.categories = "Please select at least one category.";
-
-    if (!isRole) {
-      if (!budget || totalBudget <= 0)
-        fe.budget = "Please enter a valid budget.";
-      else if (!hasValidCurrencyPrecision(budget))
-        fe.budget = CURRENCY_VALIDATION_MESSAGE;
-      else if (totalBudget < MIN_JOB_BUDGET_GBP)
-        fe.budget = `Minimum total budget is £${MIN_JOB_BUDGET_GBP}.`;
-      else if (totalBudget > 50000)
-        fe.budget = "Maximum total budget is £50,000.";
-    } else {
-      if (!payNegotiable) {
-        const amount = Number(payAmount);
-        if (!Number.isFinite(amount) || amount < MIN_JOB_BUDGET_GBP)
-          fe.payAmount = `The recurring pay must be at least £${MIN_JOB_BUDGET_GBP} per period.`;
-      }
-      if (employmentType === "temporary") {
-        if (!roleStartsAt) fe.scheduledAt = "Add the start date.";
-        if (!roleEndsAt) fe.endsAt = "Add the end date.";
-        else if (
-          roleStartsAt &&
-          new Date(roleEndsAt).getTime() < new Date(roleStartsAt).getTime()
-        )
-          fe.endsAt = "The end date must be after the start date.";
-      }
-    }
-
-    if (!workMode) fe.workMode = "Choose where the job happens.";
-    if (!isRole && workMode === "online") {
-      if (!scheduledAt) fe.scheduledAt = "Add the start date.";
-      if (!endsAt) fe.endsAt = "Add the end date.";
-      else if (
-        scheduledAt &&
-        new Date(endsAt).getTime() < new Date(scheduledAt).getTime()
-      )
-        fe.endsAt = "The end date must be after the start date.";
-    }
-    if (workMode === "in_person" || workMode === "hybrid") {
-      if (!addressLine.trim()) fe.address = "Add the street address.";
-      if (!postcode.trim()) fe.postcode = "Add the postcode.";
-    }
-    if (!isRole && workMode === "in_person") {
-      if (!scheduledAt || !/T\d{2}:\d{2}/.test(scheduledAt))
-        fe.scheduledAt = "Add the start date and time.";
-      if (!endsAt || !/T\d{2}:\d{2}/.test(endsAt))
-        fe.endsAt = "Add the end date and time.";
-      else if (
-        scheduledAt &&
-        new Date(endsAt).getTime() <= new Date(scheduledAt).getTime()
-      )
-        fe.endsAt = "The end time must be after the start time.";
-    }
-    if (workMode === "hybrid") {
-      const days = Number(daysOnSite);
-      if (!Number.isInteger(days) || days < 1 || days > 6)
-        fe.daysOnSite = "Set how many days on-site per week (1–6).";
-      if (!isRole) {
-        if (!scheduledAt) fe.scheduledAt = "Add the start date.";
-        if (!endsAt) fe.endsAt = "Add the end date.";
-        else if (
-          scheduledAt &&
-          new Date(endsAt).getTime() < new Date(scheduledAt).getTime()
-        )
-          fe.endsAt = "The end date must be after the start date.";
-      }
-    }
+    const fe = validatePostJobForm({
+      isRole,
+      title,
+      description,
+      categories,
+      budget,
+      totalBudget,
+      payNegotiable,
+      payAmount,
+      employmentType,
+      roleStartsAt,
+      roleEndsAt,
+      workMode,
+      scheduledAt,
+      endsAt,
+      addressLine,
+      postcode,
+      daysOnSite,
+    });
 
     if (Object.keys(fe).length > 0) {
       setFieldErrors(fe);
@@ -224,42 +156,32 @@ export default function PostJobForm({
     const isRole = canPostRole && postingType === "role";
 
     try {
-      const payload = JSON.stringify({
-        title,
-        description,
-        categories,
-        posting_type: isRole ? "role" : "gig",
-        ...(isRole
-          ? {
-              employment_type: employmentType,
-              pay_cadence: payNegotiable ? null : payCadence,
-              pay_amount: payNegotiable ? null : Number(payAmount),
-              pay_negotiable: payNegotiable,
-              settlement_mode: payNegotiable ? "direct" : settlementMode,
-              scheduled_at:
-                employmentType === "temporary" ? roleStartsAt : null,
-              ends_at: employmentType === "temporary" ? roleEndsAt : null,
-            }
-          : {
-              budget: totalBudget,
-              rate_type: "fixed",
-              invited_kinglancer_id: preferredKinglancer?.id ?? null,
-              scheduled_at: scheduledAt || null,
-              ends_at: endsAt || null,
-              schedule_type: workMode === "in_person" ? scheduleType : "window",
-              estimated_minutes:
-                workMode === "in_person" &&
-                scheduleType === "window" &&
-                estimatedMinutes
-                  ? Number(estimatedMinutes)
-                  : null,
-            }),
-        work_mode: workMode,
-        address_line: workMode !== "online" ? addressLine.trim() : null,
-        postcode: workMode !== "online" ? postcode.trim() : null,
-        days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
-        organisation_id: organisationId || null,
-      });
+      const payload = JSON.stringify(
+        buildJobPostPayload({
+          title,
+          description,
+          categories,
+          isRole,
+          employmentType,
+          payCadence,
+          payAmount,
+          payNegotiable,
+          settlementMode,
+          roleStartsAt,
+          roleEndsAt,
+          totalBudget,
+          preferredKinglancerId: preferredKinglancer?.id,
+          scheduledAt,
+          endsAt,
+          workMode,
+          scheduleType,
+          estimatedMinutes,
+          addressLine,
+          postcode,
+          daysOnSite,
+          organisationId,
+        }),
+      );
       const form = new FormData();
       form.set("job", payload);
       if (canAttach && attachmentFile) form.set("attachment", attachmentFile);
@@ -449,99 +371,24 @@ export default function PostJobForm({
       </div>
 
       {canAttach && (
-        <div>
-          <label
-            htmlFor="job-attachment"
-            className="mb-1.5 block text-sm font-medium text-gray-700"
-          >
-            Full job description document{" "}
-            <span className="font-normal text-gray-400">
-              (optional, recommended)
-            </span>
-          </label>
-          <p id="job-attachment-help" className="mb-2 text-xs text-gray-500">
-            Upload the full job description, including responsibilities and
-            requirements. PDF, Word or text, up to 3 MB. PDF is best for viewing
-            in a browser. Kinglancers and your Organisation can open it from the
-            job details page. Anyone who can view the job can view this
-            document.
-          </p>
-          <input
-            key={`${organisationId ?? "personal"}-${attachmentFile ? "selected" : "empty"}`}
-            id="job-attachment"
-            type="file"
-            accept={JOB_ATTACHMENT_ACCEPT}
-            disabled={loading}
-            aria-describedby="job-attachment-help"
-            aria-invalid={!!attachmentError}
-            onChange={(e) => {
-              const file = e.target.files?.[0] ?? null;
-              const message = file ? jobAttachmentError(file) : null;
-              setAttachmentError(message);
-              setAttachmentFile(message ? null : file);
-              if (message) e.target.value = "";
-            }}
-            className="block w-full rounded-xl border border-gray-200 p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700"
-          />
-          {attachmentFile && (
-            <p className="mt-2 break-words text-sm text-gray-600">
-              {attachmentFile.name}{" "}
-              <button
-                type="button"
-                disabled={loading}
-                className="font-semibold text-blue-700"
-                onClick={() => {
-                  setAttachmentFile(null);
-                  setAttachmentError(null);
-                }}
-              >
-                Remove
-              </button>
-            </p>
-          )}
-          {attachmentError && (
-            <p role="alert" className="mt-1 text-xs text-red-500">
-              {attachmentError}
-            </p>
-          )}
-        </div>
+        <AttachmentField
+          organisationId={organisationId}
+          attachmentFile={attachmentFile}
+          setAttachmentFile={setAttachmentFile}
+          attachmentError={attachmentError}
+          setAttachmentError={setAttachmentError}
+          loading={loading}
+        />
       )}
 
-      {/* Category */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Category <span className="text-red-500">*</span>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {JOB_CATEGORIES.map((cat) => {
-            const selected = categories.includes(cat);
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => {
-                  toggleCategory(cat);
-                  clearFieldError("categories");
-                }}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all cursor-pointer ${
-                  selected
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
-                }`}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
-        {fieldErrors.categories ? (
-          <p className="text-xs text-red-500 mt-2">{fieldErrors.categories}</p>
-        ) : categories.length > 0 ? (
-          <p className="text-xs text-gray-400 mt-2">
-            {categories.length} selected
-          </p>
-        ) : null}
-      </div>
+      <CategoryPicker
+        categories={categories}
+        onToggle={(cat) => {
+          toggleCategory(cat);
+          clearFieldError("categories");
+        }}
+        error={fieldErrors.categories}
+      />
 
       <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
         Where &amp; when
@@ -847,47 +694,14 @@ export default function PostJobForm({
           )}
         </>
       ) : (
-        <>
-          <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
-            Budget
-          </h3>
-          {/* Budget */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Total budget (£) <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
-                £
-              </span>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                inputMode="decimal"
-                value={budget}
-                onChange={(e) => {
-                  setBudget(e.target.value);
-                  clearFieldError("budget");
-                }}
-                className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
-                  fieldErrors.budget
-                    ? "border-red-400 focus:ring-red-300"
-                    : "border-gray-200 focus:ring-blue-500"
-                }`}
-                placeholder="0"
-              />
-            </div>
-            {fieldErrors.budget ? (
-              <p className="text-xs text-red-500 mt-1">{fieldErrors.budget}</p>
-            ) : (
-              <p className="text-xs text-gray-400 mt-1">
-                The total price for the whole job — held in escrow once you
-                select a Kinglancer.
-              </p>
-            )}
-          </div>
-        </>
+        <BudgetField
+          budget={budget}
+          onChange={(v) => {
+            setBudget(v);
+            clearFieldError("budget");
+          }}
+          error={fieldErrors.budget}
+        />
       )}
 
       {/* Error */}
