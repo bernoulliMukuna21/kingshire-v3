@@ -1,12 +1,11 @@
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  getEngagement,
-  type Engagement,
-} from "@/lib/db/engagements";
+import { getEngagement, type Engagement } from "@/lib/db/engagements";
 import {
   getHeldEngagementPayments,
   updateEngagementPaymentStatus,
+  updateEngagementPaymentStatusIf,
+  recordEngagementTransfer,
   type EngagementPaymentRow,
 } from "@/lib/db/engagement-payments";
 import { periodEnd, releaseNoticeDays } from "./schedule";
@@ -37,9 +36,11 @@ async function resolveEngagementSource(
     .select("placement:placements(title)")
     .eq("id", engagement.source_id)
     .maybeSingle();
-  const title = (
-    agreement?.placement as { title?: string } | { title?: string }[] | null
-  ) ?? null;
+  const title =
+    (agreement?.placement as
+      | { title?: string }
+      | { title?: string }[]
+      | null) ?? null;
   const placementTitle = Array.isArray(title)
     ? (title[0]?.title ?? null)
     : (title?.title ?? null);
@@ -90,7 +91,10 @@ export async function releaseEngagementPayment(
   // Admin may release a 'disputed' period directly (bypassing the normal
   // held→released cron path), so this accepts both — matching the pre-engine
   // Placement payout behaviour, which had no status guard beyond the transfer id.
-  if (!payment || (payment.status !== "held" && payment.status !== "disputed")) {
+  if (
+    !payment ||
+    (payment.status !== "held" && payment.status !== "disputed")
+  ) {
     return "not_eligible";
   }
   if (payment.stripe_transfer_id) return "already_transferred";
@@ -110,8 +114,7 @@ export async function releaseEngagementPayment(
   }
 
   const netPence = Math.round(
-    (Number(payment.worker_amount) -
-      Number(payment.platform_fee_kinglancer)) *
+    (Number(payment.worker_amount) - Number(payment.platform_fee_kinglancer)) *
       100,
   );
   if (netPence <= 0) return "skipped";
@@ -145,10 +148,28 @@ export async function releaseEngagementPayment(
     { idempotencyKey: `engagement-transfer-${payment.id}` },
   );
 
-  await updateEngagementPaymentStatus(payment.id, "released", {
-    stripe_transfer_id: transfer.id,
-    released_at: new Date().toISOString(),
-  });
+  const releasedAt = new Date().toISOString();
+  // CAS: only flip to "released" if nothing else (a dispute, a racing
+  // release call) moved the row off held/disputed while the transfer was
+  // in flight.
+  const settled = await updateEngagementPaymentStatusIf(
+    payment.id,
+    ["held", "disputed"],
+    "released",
+    { stripe_transfer_id: transfer.id, released_at: releasedAt },
+  );
+  if (!settled) {
+    // The transfer already succeeded — the transfer id must still be
+    // recorded so this is never mistaken for un-transferred money again,
+    // even though something else won the race on the status field.
+    console.warn(
+      `[settlement] payment ${payment.id} released but its status changed concurrently; recording the transfer anyway`,
+    );
+    await recordEngagementTransfer(payment.id, {
+      stripe_transfer_id: transfer.id,
+      released_at: releasedAt,
+    });
+  }
   return "released";
 }
 

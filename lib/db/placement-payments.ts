@@ -13,6 +13,7 @@ import {
   getEngagementPayments,
   getDueEngagementPayments,
   updateEngagementPaymentStatus,
+  updateEngagementPaymentStatusIf,
   getDisputedEngagementPayments,
   getHeldEngagementPaymentsForOrganisation,
   type EngagementPaymentRow,
@@ -26,7 +27,11 @@ import type { EngagementPaymentStatus } from "@/lib/settlement/types";
 
 export type PlacementPaymentRow =
   Database["public"]["Tables"]["placement_payments"]["Row"];
-const NUMERIC = ["amount", "platform_fee_client", "platform_fee_kinglancer"] as const;
+const NUMERIC = [
+  "amount",
+  "platform_fee_client",
+  "platform_fee_kinglancer",
+] as const;
 
 // `agreement_id` on the compat row is the real placement_agreements.id (the
 // engagement's `source_id`), NOT the engagement's own id — callers (routes,
@@ -220,8 +225,9 @@ async function getAgreementContexts(
       {
         id: row.id,
         organisationName:
-          first(row.organisation as { name: string } | { name: string }[] | null)
-            ?.name ?? null,
+          first(
+            row.organisation as { name: string } | { name: string }[] | null,
+          )?.name ?? null,
         placementTitle:
           first(row.placement as { title: string } | { title: string }[] | null)
             ?.title ?? null,
@@ -282,7 +288,8 @@ export type OrgHeldPlacementPayment = PlacementPaymentRow & {
 export async function listHeldPlacementPaymentsForOrg(
   organisationId: string,
 ): Promise<OrgHeldPlacementPayment[]> {
-  const payments = await getHeldEngagementPaymentsForOrganisation(organisationId);
+  const payments =
+    await getHeldEngagementPaymentsForOrganisation(organisationId);
   const placementPayments = await onlyPlacementPayments(payments);
   const [agreementContexts, kinglancerNames] = await Promise.all([
     getAgreementContexts(
@@ -307,43 +314,67 @@ export async function listHeldPlacementPaymentsForOrg(
   });
 }
 
+type PlacementPaymentStatusPatch = Partial<
+  Pick<
+    Database["public"]["Tables"]["placement_payments"]["Update"],
+    | "status"
+    | "stripe_payment_intent_id"
+    | "stripe_transfer_id"
+    | "paid_at"
+    | "released_at"
+    | "notice_sent_at"
+    | "dispute_reason"
+  >
+>;
+
+function toEngagementPaymentPatch(patch: PlacementPaymentStatusPatch) {
+  return {
+    ...(patch.stripe_payment_intent_id !== undefined
+      ? { stripe_payment_intent_id: patch.stripe_payment_intent_id }
+      : {}),
+    ...(patch.stripe_transfer_id !== undefined
+      ? { stripe_transfer_id: patch.stripe_transfer_id }
+      : {}),
+    ...(patch.paid_at !== undefined ? { charged_at: patch.paid_at } : {}),
+    ...(patch.released_at !== undefined
+      ? { released_at: patch.released_at }
+      : {}),
+    ...(patch.notice_sent_at !== undefined
+      ? { notice_sent_at: patch.notice_sent_at }
+      : {}),
+    ...(patch.dispute_reason !== undefined
+      ? { dispute_reason: patch.dispute_reason }
+      : {}),
+  };
+}
+
 export async function updatePlacementPaymentStatus(
   paymentId: string,
-  patch: Partial<
-    Pick<
-      Database["public"]["Tables"]["placement_payments"]["Update"],
-      | "status"
-      | "stripe_payment_intent_id"
-      | "stripe_transfer_id"
-      | "paid_at"
-      | "released_at"
-      | "notice_sent_at"
-      | "dispute_reason"
-    >
-  >,
+  patch: PlacementPaymentStatusPatch,
 ): Promise<void> {
   await updateEngagementPaymentStatus(
     paymentId,
     (patch.status ?? "due") as EngagementPaymentStatus,
-    {
-      ...(patch.stripe_payment_intent_id !== undefined
-        ? { stripe_payment_intent_id: patch.stripe_payment_intent_id }
-        : {}),
-      ...(patch.stripe_transfer_id !== undefined
-        ? { stripe_transfer_id: patch.stripe_transfer_id }
-        : {}),
-      ...(patch.paid_at !== undefined ? { charged_at: patch.paid_at } : {}),
-      ...(patch.released_at !== undefined
-        ? { released_at: patch.released_at }
-        : {}),
-      ...(patch.notice_sent_at !== undefined
-        ? { notice_sent_at: patch.notice_sent_at }
-        : {}),
-      ...(patch.dispute_reason !== undefined
-        ? { dispute_reason: patch.dispute_reason }
-        : {}),
-    },
+    toEngagementPaymentPatch(patch),
   );
+}
+
+/** CAS variant of updatePlacementPaymentStatus — only applies if the row is
+ * currently in one of `expectedStatuses`. Returns false (no-op) if a
+ * concurrent action already moved the payment on, e.g. the release cron
+ * beating an organisation's dispute action to the same row. */
+export async function updatePlacementPaymentStatusIf(
+  paymentId: string,
+  expectedStatuses: EngagementPaymentStatus[],
+  patch: PlacementPaymentStatusPatch,
+): Promise<boolean> {
+  const result = await updateEngagementPaymentStatusIf(
+    paymentId,
+    expectedStatuses,
+    (patch.status ?? "due") as EngagementPaymentStatus,
+    toEngagementPaymentPatch(patch),
+  );
+  return result !== null;
 }
 
 export async function settlePlacementPaymentsOnEarlyEnd(

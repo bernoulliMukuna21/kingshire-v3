@@ -4,7 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getEngagementBySource, updateEngagement } from "@/lib/db/engagements";
 import { settleEngagementPaymentsOnEarlyEnd } from "@/lib/settlement/termination";
-import { requireOrganisationPermission, getOrgOwnerContact } from "@/lib/organisations";
+import {
+  requireOrganisationPermission,
+  getOrgOwnerContact,
+} from "@/lib/organisations";
 import {
   notifyRoleEndProposed,
   notifyRoleEndDeclined,
@@ -159,7 +162,9 @@ export async function POST(
   }
 
   if (parsed.data.action === "escalate") {
-    const organisationName = await getOrganisationName(engagement.organisation_id);
+    const organisationName = await getOrganisationName(
+      engagement.organisation_id,
+    );
     void notifyAdminRoleEndDispute({
       jobTitle,
       organisationName: organisationName ?? "an organisation",
@@ -215,7 +220,9 @@ export async function POST(
   return NextResponse.json({ ok: true });
 }
 
-async function getOrganisationName(organisationId: string): Promise<string | null> {
+async function getOrganisationName(
+  organisationId: string,
+): Promise<string | null> {
   const db = createServiceClient();
   const { data } = await db
     .from("organisations")

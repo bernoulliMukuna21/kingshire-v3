@@ -7,12 +7,14 @@ import type {
   SettlementMode,
 } from "@/lib/settlement/types";
 
-export type EngagementRow =
-  Database["public"]["Tables"]["engagements"]["Row"];
+export type EngagementRow = Database["public"]["Tables"]["engagements"]["Row"];
 export type EngagementInsert =
   Database["public"]["Tables"]["engagements"]["Insert"];
 
-export type Engagement = Omit<EngagementRow, "cadence" | "settlement_mode" | "source_kind" | "status"> & {
+export type Engagement = Omit<
+  EngagementRow,
+  "cadence" | "settlement_mode" | "source_kind" | "status"
+> & {
   cadence: Cadence;
   settlement_mode: SettlementMode;
   source_kind: EngagementSourceKind;

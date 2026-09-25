@@ -523,3 +523,30 @@ grant select, insert, update, delete on all tables in schema public to authentic
 grant usage, select on all sequences in schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to service_role;
 grant usage, select on all sequences in schema public to service_role;
+
+-- profiles has sensitive columns (email, phone, cv_url, stripe_account_id,
+-- stripe_onboarding_complete, updated_at, terms_accepted_version,
+-- terms_accepted_at) that must NOT be reachable via anon/authenticated even
+-- though the table-level grant above is broad. See migration
+-- 069_restrict_profiles_column_grants.sql for the full rationale.
+revoke select on public.profiles from anon, authenticated;
+grant select (
+  id,
+  full_name,
+  avatar_url,
+  role,
+  bio,
+  service_tags,
+  location,
+  hourly_rate,
+  rate_type,
+  tagline,
+  services,
+  rating,
+  total_reviews,
+  jobs_completed,
+  is_verified,
+  portfolio_url,
+  open_to_placements,
+  created_at
+) on public.profiles to anon, authenticated;

@@ -124,4 +124,12 @@ describe("resumable payment fulfilment", () => {
     );
     expect(state.payment.stripe_payment_intent_id).toBe("original");
   });
+  it("routes a late-completing charge to disputed instead of held once the engagement has ended", async () => {
+    Object.assign(state.engagement, { status: "ended" });
+    await fulfilEngagementPayment("p1", "pi1");
+    expect(state.payment.status).toBe("disputed");
+    expect(state.payment.dispute_reason).toBeTruthy();
+    expect(state.activate).not.toHaveBeenCalled();
+    expect(state.schedule).not.toHaveBeenCalled();
+  });
 });

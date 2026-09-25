@@ -59,5 +59,7 @@ export function meetsMinimumPeriodCharge(
   amountPerPeriod: number,
   mode: SettlementMode,
 ): boolean {
-  return periodFees({ amountPerPeriod, mode }).orgChargeGBP >= MIN_PERIOD_AMOUNT_GBP;
+  return (
+    periodFees({ amountPerPeriod, mode }).orgChargeGBP >= MIN_PERIOD_AMOUNT_GBP
+  );
 }

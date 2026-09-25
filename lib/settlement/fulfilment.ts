@@ -23,13 +23,27 @@ export async function fulfilEngagementPayment(
   if (!engagement) throw new Error("Engagement not found");
   const db = createServiceClient();
   const now = new Date().toISOString();
+  // A charge that was already in flight when the engagement ended early
+  // still needs to land somewhere — route it to admin review instead of
+  // silently auto-releasing later, matching settleEngagementPaymentsOnEarlyEnd's
+  // disposition for periods that were already held at end time.
+  const endedEarly =
+    engagement.status === "ended" || engagement.status === "cancelled";
   const { error } = await db
     .from("engagement_payments")
     .update({
-      status: engagement.settlement_mode === "direct" ? "released" : "held",
+      status:
+        engagement.settlement_mode === "direct"
+          ? "released"
+          : endedEarly
+            ? "disputed"
+            : "held",
       stripe_payment_intent_id: intentId,
       charged_at: now,
       ...(engagement.settlement_mode === "direct" ? { released_at: now } : {}),
+      ...(endedEarly && engagement.settlement_mode !== "direct"
+        ? { dispute_reason: "Engagement ended before this period was released." }
+        : {}),
     })
     .eq("id", payment.id)
     .in("status", ["due", "processing", "failed"])

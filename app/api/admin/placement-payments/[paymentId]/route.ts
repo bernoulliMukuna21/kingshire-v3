@@ -54,6 +54,15 @@ export async function POST(
   }
 
   // refund — return the money to the organisation.
+  if (payment.stripe_transfer_id) {
+    return NextResponse.json(
+      {
+        error:
+          "This payment has already been transferred to the Kinglancer — refunding the organisation now would lose that money. Reconcile manually.",
+      },
+      { status: 409 },
+    );
+  }
   if (payment.stripe_payment_intent_id) {
     await stripe.refunds.create(
       { payment_intent: payment.stripe_payment_intent_id },

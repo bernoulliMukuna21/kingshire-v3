@@ -147,6 +147,48 @@ export async function updateEngagementPaymentStatus(
   return data ?? null;
 }
 
+/** Same as updateEngagementPaymentStatus but only applies if the row is
+ * currently in one of `expectedStatuses` — a compare-and-swap guard against
+ * a concurrent action (a dispute racing a release, two releases racing each
+ * other, etc.) silently overwriting a status change made in between. Returns
+ * null if the row had already moved on, without throwing. */
+export async function updateEngagementPaymentStatusIf(
+  id: string,
+  expectedStatuses: EngagementPaymentStatus[],
+  status: EngagementPaymentStatus,
+  patch: Partial<
+    Database["public"]["Tables"]["engagement_payments"]["Update"]
+  > = {},
+): Promise<EngagementPaymentRow | null> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("engagement_payments")
+    .update({ status, ...patch })
+    .eq("id", id)
+    .in("status", expectedStatuses)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
+}
+
+/** Records a completed Stripe transfer regardless of the row's current
+ * status. Used only as a fallback when a transfer succeeds but the
+ * accompanying CAS status update lost a race — the money moved, so losing
+ * track of the transfer id would be worse than a status mismatch. */
+export async function recordEngagementTransfer(
+  id: string,
+  patch: { stripe_transfer_id: string; released_at: string },
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("engagement_payments")
+    .update(patch)
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function reserveEngagementPayment(
   id: string,
   kind: "checkout" | "automatic",

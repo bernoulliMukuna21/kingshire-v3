@@ -24,7 +24,9 @@ export async function POST(
   // Fetch job and verify the caller is the assigned kinglancer
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, status, kinglancer_id, client_id, organisation_id, title, posting_type")
+    .select(
+      "id, status, kinglancer_id, client_id, organisation_id, title, posting_type",
+    )
     .eq("id", jobId)
     .single();
 

@@ -4,9 +4,7 @@
  * infrastructure/ directly.
  */
 import { requireOrganisationPermission as requirePermission } from "@/modules/organisations/application/permissions";
-import {
-  hasOrganisationPermission,
-} from "@/modules/organisations/domain/permissions";
+import { hasOrganisationPermission } from "@/modules/organisations/domain/permissions";
 import type {
   OrganisationMemberRole,
   OrganisationPermission,
