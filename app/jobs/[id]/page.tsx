@@ -23,7 +23,7 @@ import {
   KinglancerCompleteButton,
   ClientApproveActions,
   DirectRequestActions,
-} from "./JobActions";
+} from "./job-actions";
 import PublicShell from "@/components/ui/PublicShell";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, cardPadding } from "@/components/ui/Card";

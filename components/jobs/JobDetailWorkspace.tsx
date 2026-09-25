@@ -34,7 +34,7 @@ import {
   ApplicantsList,
   ClientApproveActions,
   DirectRequestActions,
-} from "@/app/jobs/[id]/JobActions";
+} from "@/app/jobs/[id]/job-actions";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, cardPadding } from "@/components/ui/Card";

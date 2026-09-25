@@ -35,7 +35,7 @@ import { getEngagementPayments } from "@/lib/db/engagement-payments";
 import {
   DirectRequestActions,
   KinglancerCompleteButton,
-} from "@/app/jobs/[id]/JobActions";
+} from "@/app/jobs/[id]/job-actions";
 
 type JobWorkspace = {
   attachment: unknown;
