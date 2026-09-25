@@ -718,13 +718,36 @@ export async function createExperienceRecord(params: {
     })
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    // 23505 = unique_violation on experience_records_agreement_unique_idx —
+    // a concurrent completion already wrote this agreement's record.
+    if (error.code === "23505") {
+      const existing = await getExperienceRecordByAgreement(agreement.id);
+      if (existing) return existing;
+    }
+    throw error;
+  }
   return data as ExperienceRecordRow;
 }
 
 export type PublicExperienceRecord = ExperienceRecordRow & {
   organisation: { name: string } | null;
 };
+
+/** Used to resume a completion that finished completeAgreement but failed
+ * before the experience record was written, without creating a duplicate. */
+export async function getExperienceRecordByAgreement(
+  agreementId: string,
+): Promise<ExperienceRecordRow | null> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("experience_records")
+    .select("*")
+    .eq("agreement_id", agreementId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as ExperienceRecordRow | null) ?? null;
+}
 
 export async function listPublicExperienceRecords(
   kinglancerId: string,
