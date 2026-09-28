@@ -151,7 +151,12 @@ export async function updateEngagementPaymentStatus(
  * currently in one of `expectedStatuses` — a compare-and-swap guard against
  * a concurrent action (a dispute racing a release, two releases racing each
  * other, etc.) silently overwriting a status change made in between. Returns
- * null if the row had already moved on, without throwing. */
+ * null if the row had already moved on, without throwing.
+ *
+ * `requireReleaseAttemptId`: pass `null` to refuse the update while a
+ * release/refund reservation is in flight for this row (e.g. a dispute must
+ * not land mid-release); pass a specific attempt id to require that exact
+ * reservation still be held (used by the release/refund finaliser itself). */
 export async function updateEngagementPaymentStatusIf(
   id: string,
   expectedStatuses: EngagementPaymentStatus[],
@@ -159,15 +164,21 @@ export async function updateEngagementPaymentStatusIf(
   patch: Partial<
     Database["public"]["Tables"]["engagement_payments"]["Update"]
   > = {},
+  options?: { requireReleaseAttemptId?: string | null },
 ): Promise<EngagementPaymentRow | null> {
   const db = createServiceClient();
-  const { data, error } = await db
+  let query = db
     .from("engagement_payments")
     .update({ status, ...patch })
     .eq("id", id)
-    .in("status", expectedStatuses)
-    .select("*")
-    .maybeSingle();
+    .in("status", expectedStatuses);
+  if (options && "requireReleaseAttemptId" in options) {
+    query =
+      options.requireReleaseAttemptId === null
+        ? query.is("release_attempt_id", null)
+        : query.eq("release_attempt_id", options.requireReleaseAttemptId!);
+  }
+  const { data, error } = await query.select("*").maybeSingle();
 
   if (error) throw error;
   return data ?? null;
@@ -186,6 +197,59 @@ export async function recordEngagementTransfer(
     .from("engagement_payments")
     .update(patch)
     .eq("id", id);
+  if (error) throw error;
+}
+
+// A release/refund is a single fast Stripe call, not a multi-step redirect
+// flow — a reservation older than this was abandoned by a crashed process
+// and can be safely reclaimed.
+const RELEASE_RESERVATION_STALE_MS = 15 * 60 * 1000;
+
+/** Atomically claims a payment for an outgoing settlement action (a Stripe
+ * transfer or refund) BEFORE the external call is made, so a concurrent
+ * release/refund/dispute can never act on the same row at the same time.
+ * Returns null if the row isn't in `expectedStatuses`, already has a
+ * transfer, or another attempt already holds a live reservation. */
+export async function reserveEngagementRelease(
+  id: string,
+  expectedStatuses: EngagementPaymentStatus[],
+): Promise<{ row: EngagementPaymentRow; attemptId: string } | null> {
+  const db = createServiceClient();
+  const attemptId = crypto.randomUUID();
+  const staleCutoff = new Date(
+    Date.now() - RELEASE_RESERVATION_STALE_MS,
+  ).toISOString();
+  const { data, error } = await db
+    .from("engagement_payments")
+    .update({
+      release_attempt_id: attemptId,
+      release_attempt_started_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .in("status", expectedStatuses)
+    .is("stripe_transfer_id", null)
+    .or(
+      `release_attempt_id.is.null,release_attempt_started_at.lt.${staleCutoff}`,
+    )
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { row: data as EngagementPaymentRow, attemptId } : null;
+}
+
+/** Releases a reservation without changing status — used when the external
+ * Stripe call fails, so the payment can be retried later (its idempotency
+ * key makes a retry safe even if the earlier call actually succeeded). */
+export async function clearEngagementReleaseAttempt(
+  id: string,
+  attemptId: string,
+): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db
+    .from("engagement_payments")
+    .update({ release_attempt_id: null, release_attempt_started_at: null })
+    .eq("id", id)
+    .eq("release_attempt_id", attemptId);
   if (error) throw error;
 }
 

@@ -367,12 +367,14 @@ export async function updatePlacementPaymentStatusIf(
   paymentId: string,
   expectedStatuses: EngagementPaymentStatus[],
   patch: PlacementPaymentStatusPatch,
+  options?: { requireReleaseAttemptId?: string | null },
 ): Promise<boolean> {
   const result = await updateEngagementPaymentStatusIf(
     paymentId,
     expectedStatuses,
     (patch.status ?? "due") as EngagementPaymentStatus,
     toEngagementPaymentPatch(patch),
+    options,
   );
   return result !== null;
 }

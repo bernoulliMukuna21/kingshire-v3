@@ -41,9 +41,12 @@ vi.mock("@/lib/db/engagements", () => ({
 }));
 vi.mock("@/lib/db/engagement-payments", () => ({
   getHeldEngagementPayments: vi.fn().mockResolvedValue([]),
-  updateEngagementPaymentStatus: vi.fn().mockResolvedValue(null),
   updateEngagementPaymentStatusIf: vi.fn().mockResolvedValue({ id: "settled" }),
   recordEngagementTransfer: vi.fn().mockResolvedValue(undefined),
+  reserveEngagementRelease: vi
+    .fn()
+    .mockResolvedValue({ row: {}, attemptId: "attempt-1" }),
+  clearEngagementReleaseAttempt: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/stripe", () => ({
   stripe: {
@@ -56,6 +59,7 @@ import { releaseEngagementPayment } from "@/lib/settlement/payouts";
 import {
   updateEngagementPaymentStatusIf,
   recordEngagementTransfer,
+  reserveEngagementRelease,
 } from "@/lib/db/engagement-payments";
 
 describe("releaseEngagementPayment", () => {
@@ -66,6 +70,10 @@ describe("releaseEngagementPayment", () => {
     vi.mocked(updateEngagementPaymentStatusIf).mockResolvedValue({
       id: "settled",
     } as never);
+    vi.mocked(reserveEngagementRelease).mockResolvedValue({
+      row: {} as never,
+      attemptId: "attempt-1",
+    });
   });
 
   it("is not eligible when there is no matching payment", async () => {
@@ -135,6 +143,7 @@ describe("releaseEngagementPayment", () => {
       ["held", "disputed"],
       "released",
       expect.objectContaining({ stripe_transfer_id: "tr_123" }),
+      { requireReleaseAttemptId: "attempt-1" },
     );
     expect(recordEngagementTransfer).not.toHaveBeenCalled();
   });
@@ -159,6 +168,55 @@ describe("releaseEngagementPayment", () => {
     expect(recordEngagementTransfer).toHaveBeenCalledWith(
       "p-6",
       expect.objectContaining({ stripe_transfer_id: "tr_123" }),
+    );
+  });
+
+  it("reserves before contacting Stripe, scoped to the eligible statuses for the mode", async () => {
+    state.payment = {
+      id: "p-7",
+      engagement_id: "e-1",
+      status: "disputed",
+      stripe_transfer_id: null,
+      worker_amount: 100,
+      platform_fee_kinglancer: 5,
+      kinglancer_id: "kl-1",
+    };
+    state.profile = {
+      stripe_account_id: "acct_1",
+      stripe_onboarding_complete: true,
+    };
+    // automatic (cron) mode may not touch a disputed period.
+    await expect(releaseEngagementPayment("p-7", "automatic")).resolves.toBe(
+      "not_eligible",
+    );
+    expect(reserveEngagementRelease).not.toHaveBeenCalled();
+
+    // admin mode may.
+    const result = await releaseEngagementPayment("p-7", "admin");
+    expect(result).toBe("released");
+    expect(reserveEngagementRelease).toHaveBeenCalledWith("p-7", [
+      "held",
+      "disputed",
+    ]);
+  });
+
+  it("does not contact Stripe when the reservation is lost to a concurrent action", async () => {
+    vi.mocked(reserveEngagementRelease).mockResolvedValueOnce(null);
+    state.payment = {
+      id: "p-8",
+      engagement_id: "e-1",
+      status: "held",
+      stripe_transfer_id: null,
+      worker_amount: 100,
+      platform_fee_kinglancer: 5,
+      kinglancer_id: "kl-1",
+    };
+    state.profile = {
+      stripe_account_id: "acct_1",
+      stripe_onboarding_complete: true,
+    };
+    await expect(releaseEngagementPayment("p-8")).resolves.toBe(
+      "not_eligible",
     );
   });
 });

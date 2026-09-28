@@ -1,28 +1,26 @@
-import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { jobAlertHeadline } from "@/lib/jobs";
 import { formatMoney } from "@/lib/utils";
 import { emailJobAlert } from "@/lib/notifications";
 import { sendPushToUser } from "@/lib/push";
 
-type Supabase = Awaited<ReturnType<typeof createClient>>;
-
 /** MVP-safe fan-out for a newly posted job: bounded in-app notifications
  * (inserted synchronously) plus fire-and-forget email/push so the HTTP
- * response never waits on either. */
+ * response never waits on either. Matching another user's email is a
+ * privileged, cross-user read, so this always uses the service client. */
 export async function notifyMatchedKinglancers(
-  supabase: Supabase,
   job: { id: string; title: string },
   invitedKinglancerId: string | null,
   normalizedBudget: number,
 ): Promise<void> {
+  const db = createServiceClient();
   const { data: kinglancers } = invitedKinglancerId
-    ? await supabase
+    ? await db
         .from("profiles")
         .select("id, email")
         .eq("id", invitedKinglancerId)
         .limit(1)
-    : await supabase
+    : await db
         .from("profiles")
         .select("id, email")
         .eq("role", "kinglancer")

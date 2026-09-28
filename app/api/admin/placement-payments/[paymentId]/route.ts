@@ -4,8 +4,12 @@ import { hasValidAdminSession } from "@/lib/admin-auth";
 import { stripe } from "@/lib/stripe";
 import {
   getPlacementPayment,
-  updatePlacementPaymentStatus,
+  updatePlacementPaymentStatusIf,
 } from "@/lib/db/placement-payments";
+import {
+  reserveEngagementRelease,
+  clearEngagementReleaseAttempt,
+} from "@/lib/db/engagement-payments";
 import { firePlacementPayout } from "@/lib/placement-payouts";
 
 export async function POST(
@@ -63,12 +67,31 @@ export async function POST(
       { status: 409 },
     );
   }
-  if (payment.stripe_payment_intent_id) {
-    await stripe.refunds.create(
-      { payment_intent: payment.stripe_payment_intent_id },
-      { idempotencyKey: `placement-refund-${payment.id}` },
+  // Reserve before contacting Stripe so a concurrent release can never fire
+  // for the same payment.
+  const reservation = await reserveEngagementRelease(paymentId, ["disputed"]);
+  if (!reservation) {
+    return NextResponse.json(
+      { error: "This payment is no longer eligible for a refund." },
+      { status: 409 },
     );
   }
-  await updatePlacementPaymentStatus(paymentId, { status: "refunded" });
+  try {
+    if (payment.stripe_payment_intent_id) {
+      await stripe.refunds.create(
+        { payment_intent: payment.stripe_payment_intent_id },
+        { idempotencyKey: `placement-refund-${payment.id}` },
+      );
+    }
+    await updatePlacementPaymentStatusIf(
+      paymentId,
+      ["disputed"],
+      { status: "refunded" },
+      { requireReleaseAttemptId: reservation.attemptId },
+    );
+  } catch (err) {
+    await clearEngagementReleaseAttempt(paymentId, reservation.attemptId);
+    throw err;
+  }
   return NextResponse.json({ ok: true });
 }

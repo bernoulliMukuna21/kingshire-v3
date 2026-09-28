@@ -30,10 +30,11 @@ vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({
     from: (table: string) => {
       const query = {
-        select: () => query, eq: () => query,
+        select: () => query, eq: () => query, order: () => query,
         maybeSingle: async () => table === "jobs"
           ? { data: state.job, error: null }
           : { data: state.status ? { status: state.status } : null, error: state.subscriptionError ? new Error("unavailable") : null },
+        limit: async () => ({ data: [] }),
       };
       return query;
     },

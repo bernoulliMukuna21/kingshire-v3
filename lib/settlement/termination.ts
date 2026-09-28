@@ -23,10 +23,15 @@ export async function settleEngagementPaymentsOnEarlyEnd(
       }
       if (payment.status === "held") {
         // CAS: don't stomp a concurrent release/refund that already moved
-        // this period out of "held".
-        return updateEngagementPaymentStatusIf(payment.id, ["held"], "disputed", {
-          dispute_reason: reason,
-        });
+        // this period out of "held", or interrupt one that has already
+        // reserved this row and is mid-transfer.
+        return updateEngagementPaymentStatusIf(
+          payment.id,
+          ["held"],
+          "disputed",
+          { dispute_reason: reason },
+          { requireReleaseAttemptId: null },
+        );
       }
       // "processing": a charge may already be in flight with Stripe — forcing
       // a status here would race the webhook/cron that completes it.

@@ -45,6 +45,7 @@ describe("settleEngagementPaymentsOnEarlyEnd", () => {
       ["held"],
       "disputed",
       { dispute_reason: "ended early" },
+      { requireReleaseAttemptId: null },
     );
   });
 

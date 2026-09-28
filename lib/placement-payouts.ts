@@ -32,8 +32,9 @@ export type PlacementPayoutResult =
 
 export async function firePlacementPayout(
   payment: PlacementPaymentRow,
+  mode: "automatic" | "admin" = "admin",
 ): Promise<PlacementPayoutResult> {
-  const result = await releaseEngagementPayment(payment.id);
+  const result = await releaseEngagementPayment(payment.id, mode);
   if (result === "not_eligible") return "skipped";
   return result;
 }

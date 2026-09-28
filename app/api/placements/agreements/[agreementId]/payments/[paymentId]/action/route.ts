@@ -78,12 +78,15 @@ export async function POST(
     return NextResponse.json({ ok: true, released: true });
   }
 
-  // dispute — hold for admin resolution. CAS: only if it's still "held" —
-  // a concurrent release (e.g. the cron beating this request) must win.
-  const disputed = await updatePlacementPaymentStatusIf(paymentId, ["held"], {
-    status: "disputed",
-    dispute_reason: parsed.data.reason ?? null,
-  });
+  // dispute — hold for admin resolution. CAS: only if it's still "held" and
+  // no release/refund reservation is in flight — a concurrent release (e.g.
+  // the cron beating this request) must win.
+  const disputed = await updatePlacementPaymentStatusIf(
+    paymentId,
+    ["held"],
+    { status: "disputed", dispute_reason: parsed.data.reason ?? null },
+    { requireReleaseAttemptId: null },
+  );
   if (!disputed) {
     return NextResponse.json(
       {

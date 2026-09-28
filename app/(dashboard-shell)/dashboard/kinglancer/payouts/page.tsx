@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { CheckCircle, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { Card } from "@/components/ui/Card";
 import { ButtonLink } from "@/components/ui/Button";
 import { syncStripePayoutStatus } from "@/lib/stripe-connect";
@@ -16,7 +17,11 @@ export default async function PayoutsReturnPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const { data: profile } = await supabase
+  // stripe_account_id/stripe_onboarding_complete are restricted from
+  // anon/authenticated (migration 069) — use the service client for this
+  // owner-scoped read.
+  const db = createServiceClient();
+  const { data: profile } = await db
     .from("profiles")
     .select("role, stripe_account_id, stripe_onboarding_complete")
     .eq("id", user.id)
