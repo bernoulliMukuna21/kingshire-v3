@@ -6,22 +6,6 @@ export type CvBucket = "job-application-cvs" | "placement-cvs";
 // that a leaked link is useless soon after.
 const SIGNED_URL_TTL_SECONDS = 60 * 10;
 
-/** Sign one stored CV path so a reviewer (not the file's owner) can view it
- * without the bucket being public. Returns null if there's nothing to sign
- * or signing fails (e.g. the object was deleted). */
-export async function signCvUrl(
-  bucket: CvBucket,
-  path: string | null,
-): Promise<string | null> {
-  if (!path) return null;
-  const db = createServiceClient();
-  const { data, error } = await db.storage
-    .from(bucket)
-    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
-  if (error || !data) return null;
-  return data.signedUrl;
-}
-
 /** Batch-sign for list views — one Storage call for every path instead of one
  * call per row. */
 export async function signCvUrls(

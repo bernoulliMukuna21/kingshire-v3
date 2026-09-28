@@ -3,14 +3,7 @@ import {
   releaseEngagementPayment,
   processEngagementReleases,
 } from "@/lib/settlement/payouts";
-import { periodEnd } from "@/lib/settlement/schedule";
 import type { PlacementPaymentRow } from "@/lib/db/placement-payments";
-
-export const RELEASE_NOTICE_DAYS = 7;
-
-export function placementPeriodEnd(dueDate: string): Date {
-  return periodEnd(new Date(`${dueDate}T00:00:00.000Z`), "monthly");
-}
 
 /** Placement-specific lifecycle hook for the on-session Checkout flow (see
  * .../payments/[paymentId]/checkout/route.ts) — records the charge on the

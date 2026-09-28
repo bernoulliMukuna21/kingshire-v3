@@ -1,6 +1,6 @@
 // Single source of truth for an APPLICATION's status pill — shared by job
 // applications and placement applications, whose statuses mean the same
-// thing (see lib/hiring.ts for the offer lifecycle these values drive).
+// thing.
 
 export type ApplicationStatus = "pending" | "offered" | "accepted" | "rejected";
 

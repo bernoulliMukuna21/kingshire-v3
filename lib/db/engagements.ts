@@ -104,15 +104,3 @@ export async function markEngagementActive(id: string): Promise<void> {
     "pending_funding",
   );
 }
-
-export async function endEngagement(
-  id: string,
-  reason?: string,
-): Promise<void> {
-  const engagement = await updateEngagement(id, {
-    status: "ended",
-    ended_at: new Date().toISOString(),
-    end_reason: reason ?? null,
-  });
-  if (!engagement) throw new Error("Engagement not found");
-}

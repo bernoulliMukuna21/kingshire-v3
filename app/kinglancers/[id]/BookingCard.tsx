@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { getRoleHome } from "@/lib/roles";
@@ -9,7 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 
 type Props = {
   kinglancerId: string;
-  kinglancerFirstName: string;
   bookingHref: string;
 };
 
@@ -17,11 +15,7 @@ type ViewerState =
   | { ready: false }
   | { ready: true; userId: string | null; role: string | null };
 
-export function BookingCard({
-  kinglancerId,
-  kinglancerFirstName,
-  bookingHref,
-}: Props) {
+export function BookingCard({ kinglancerId, bookingHref }: Props) {
   const [viewer, setViewer] = useState<ViewerState>({ ready: false });
 
   useEffect(() => {
@@ -128,7 +122,7 @@ export function BookingCardWrapper({
   kinglancerId,
   kinglancerFirstName,
   bookingHref,
-}: Props) {
+}: Props & { kinglancerFirstName: string }) {
   return (
     <>
       {/* Mobile card */}
@@ -141,11 +135,7 @@ export function BookingCardWrapper({
             Send a private job request. They can accept, decline, or suggest
             changes before you fund escrow.
           </p>
-          <BookingCard
-            kinglancerId={kinglancerId}
-            kinglancerFirstName={kinglancerFirstName}
-            bookingHref={bookingHref}
-          />
+          <BookingCard kinglancerId={kinglancerId} bookingHref={bookingHref} />
         </Card>
       </div>
 

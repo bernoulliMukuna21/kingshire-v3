@@ -12,7 +12,6 @@ import {
   getEngagementPayment,
   getEngagementPayments,
   getDueEngagementPayments,
-  updateEngagementPaymentStatus,
   updateEngagementPaymentStatusIf,
   getDisputedEngagementPayments,
   getHeldEngagementPaymentsForOrganisation,
@@ -20,7 +19,6 @@ import {
 } from "@/lib/db/engagement-payments";
 import { periodFees } from "@/lib/settlement/fees";
 import { dateOnly, periodDueDate } from "@/lib/settlement/schedule";
-import { settleEngagementPaymentsOnEarlyEnd } from "@/lib/settlement/termination";
 import { placementMonthlyAmounts, monthlyPaymentCount } from "@/lib/placements";
 import type { PlacementAgreementRow } from "@/lib/db/placements";
 import type { EngagementPaymentStatus } from "@/lib/settlement/types";
@@ -348,18 +346,7 @@ function toEngagementPaymentPatch(patch: PlacementPaymentStatusPatch) {
   };
 }
 
-export async function updatePlacementPaymentStatus(
-  paymentId: string,
-  patch: PlacementPaymentStatusPatch,
-): Promise<void> {
-  await updateEngagementPaymentStatus(
-    paymentId,
-    (patch.status ?? "due") as EngagementPaymentStatus,
-    toEngagementPaymentPatch(patch),
-  );
-}
-
-/** CAS variant of updatePlacementPaymentStatus — only applies if the row is
+/** Updates a placement payment only if the row is
  * currently in one of `expectedStatuses`. Returns false (no-op) if a
  * concurrent action already moved the payment on, e.g. the release cron
  * beating an organisation's dispute action to the same row. */
@@ -377,13 +364,4 @@ export async function updatePlacementPaymentStatusIf(
     options,
   );
   return result !== null;
-}
-
-export async function settlePlacementPaymentsOnEarlyEnd(
-  agreementId: string,
-  reason: string,
-): Promise<void> {
-  const engagement = await findPlacementEngagement(agreementId);
-  if (!engagement) return;
-  await settleEngagementPaymentsOnEarlyEnd(engagement.id, reason);
 }
