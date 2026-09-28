@@ -2,24 +2,8 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  updateTransactionStatusByJobId,
-  getTransactionByJob,
-} from "@/lib/db/transactions";
-import {
-  notifyPaymentReleased,
-  notifyPayoutClaimReady,
-  notifyReviewRequestsForJob,
-} from "@/lib/notifications";
-import {
-  getOrCreateStripeAccount,
-  createOnboardingLink,
-  fireTransfer,
-} from "@/lib/stripe-connect";
 import { canManageJob } from "@/lib/organisations";
-import { hasEntitlement } from "@/lib/subscriptions";
-import { shouldPayoutManually } from "@/lib/payments/policy";
-import { captureServerEvent } from "@/lib/posthog-server";
+import { approveJobPayment } from "@/lib/settlement/job-payments";
 
 // POST /api/jobs/[id]/approve — client approves completed work, releases payment
 export async function POST(
@@ -59,159 +43,22 @@ export async function POST(
     );
   }
 
-  const transaction = await getTransactionByJob(jobId);
-  if (!transaction || transaction.status !== "held") {
-    return NextResponse.json(
-      { error: "No held payment found for this job" },
-      { status: 409 },
-    );
-  }
-
-  if (!job.kinglancer_id) {
-    return NextResponse.json(
-      { error: "No kinglancer assigned to this job" },
-      { status: 409 },
-    );
-  }
-
-  // Payout rail: unsubscribed workers (and all bank-transfer jobs) are paid by
-  // hand via the Awaiting-payout queue — they never touch Stripe Connect, so no
-  // £2/month active-account fee. Subscribed workers on card jobs get an instant
-  // Stripe payout.
-  const workerStripePayout = await hasEntitlement(
-    job.kinglancer_id,
-    "kinglancer",
-    "stripePayout",
-  );
-
-  if (
-    shouldPayoutManually({
-      paymentMethod: transaction.payment_method,
-      workerStripePayout,
-    })
-  ) {
-    const serviceDb = createServiceClient();
-    await serviceDb.from("jobs").update({ status: "approved" }).eq("id", jobId);
-    await serviceDb
-      .from("transactions")
-      .update({ payout_method: "manual" })
-      .eq("job_id", jobId)
-      .eq("status", "held");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (serviceDb as any)
-      .rpc("increment_jobs_completed", { user_id: job.kinglancer_id })
-      .then(() => null);
+  try {
+    const result = await approveJobPayment(jobId);
     revalidateTag("kinglancer-profiles", { expire: 0 });
-    return NextResponse.json({ success: true, manual: true });
-  }
-
-  const { data: kinglancerProfile } = await supabase
-    .from("profiles")
-    .select("email, full_name, stripe_account_id, stripe_onboarding_complete")
-    .eq("id", job.kinglancer_id)
-    .single();
-
-  // A missing profile or email is a data-integrity problem — fail hard so the
-  // client retries rather than silently returning success with nothing released.
-  if (!kinglancerProfile?.email) {
-    console.error(
-      `[approve] Kinglancer profile/email not found for ${job.kinglancer_id}`,
-    );
+    return NextResponse.json({
+      success: true,
+      manual: result === "manual",
+      result,
+    });
+  } catch (error) {
+    console.error("[approve]", error);
     return NextResponse.json(
-      { error: "Kinglancer profile not found" },
-      { status: 500 },
+      {
+        error:
+          "Payment could not be released. Check its status before retrying.",
+      },
+      { status: 409 },
     );
   }
-
-  const netAmount = transaction.amount - transaction.platform_fee_kinglancer;
-  const serviceDb = createServiceClient();
-
-  if (kinglancerProfile.stripe_onboarding_complete) {
-    // Attempt the Stripe transfer FIRST. Only release if it succeeds.
-    // This prevents the kinglancer from being told "payment released" when
-    // the transfer actually failed and stripe_transfer_id is still null.
-    const amountPence = Math.round(netAmount * 100);
-    try {
-      await fireTransfer({
-        transactionId: transaction.id,
-        amountPence,
-        destinationAccountId: kinglancerProfile.stripe_account_id!,
-        jobId,
-        paymentIntentId: transaction.stripe_payment_intent_id ?? undefined,
-      });
-    } catch (err) {
-      console.error("[approve] Stripe transfer failed:", err);
-      return NextResponse.json(
-        { error: "Payment transfer failed. Please try again." },
-        { status: 502 },
-      );
-    }
-    // Transfer succeeded — now persist the state change and notify.
-    await updateTransactionStatusByJobId(
-      jobId,
-      "released",
-      new Date().toISOString(),
-    );
-    await serviceDb.from("jobs").update({ status: "approved" }).eq("id", jobId);
-    // Increment counter AFTER state is committed. The transaction is now
-    // "released" so a retry from the client would hit the 409 guard above
-    // — making this increment effectively idempotent.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (serviceDb as any)
-      .rpc("increment_jobs_completed", { user_id: job.kinglancer_id })
-      .then(() => null);
-    notifyPaymentReleased({
-      kinglancerId: job.kinglancer_id,
-      kinglancerEmail: kinglancerProfile.email,
-      jobTitle: job.title,
-      amount: netAmount,
-    }).catch(() => {});
-  } else {
-    // Kinglancer hasn't set up payouts yet — send them the claim link.
-    // No Stripe transfer attempted; mark released so the cron doesn't
-    // re-trigger and so the auto-release cron's fireTransfer will run
-    // once they complete onboarding (via account.updated webhook).
-    const accountId = await getOrCreateStripeAccount(
-      job.kinglancer_id,
-      kinglancerProfile.email,
-      kinglancerProfile.stripe_account_id,
-      kinglancerProfile.full_name ?? undefined,
-    );
-    const onboardingUrl = await createOnboardingLink(accountId);
-    await updateTransactionStatusByJobId(
-      jobId,
-      "released",
-      new Date().toISOString(),
-    );
-    await serviceDb.from("jobs").update({ status: "approved" }).eq("id", jobId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (serviceDb as any)
-      .rpc("increment_jobs_completed", { user_id: job.kinglancer_id })
-      .then(() => null);
-    notifyPayoutClaimReady({
-      kinglancerId: job.kinglancer_id,
-      kinglancerEmail: kinglancerProfile.email,
-      jobTitle: job.title,
-      amount: netAmount,
-      onboardingUrl,
-    }).catch(() => {});
-  }
-
-  // Both parties can now review each other (double-blind, 7-day window).
-  notifyReviewRequestsForJob(jobId, job.title).catch(() => {});
-
-  // Invalidate all kinglancer profile caches — jobs_completed changed.
-  revalidateTag("kinglancer-profiles", { expire: 0 });
-
-  await captureServerEvent({
-    distinctId: user.id,
-    event: "payment_released",
-    properties: {
-      job_id: jobId,
-      amount: netAmount,
-      payout_onboarding_complete: kinglancerProfile.stripe_onboarding_complete,
-    },
-  });
-
-  return NextResponse.json({ success: true });
 }

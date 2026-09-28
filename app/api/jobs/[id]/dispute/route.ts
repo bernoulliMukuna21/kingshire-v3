@@ -73,30 +73,26 @@ export async function POST(
     );
   }
 
-  // Freeze the job (service client — kinglancer no longer has SDK update rights on jobs)
-  const serviceDb = createServiceClient();
-  await serviceDb.from("jobs").update({ status: "disputed" }).eq("id", jobId);
-
-  // Create dispute record
-  const { error } = await serviceDb.from("disputes").insert({
-    job_id: jobId,
-    raised_by: user.id,
-    reason,
+  const { error } = await createServiceClient().rpc("raise_job_dispute", {
+    p_job: jobId,
+    p_actor: user.id,
+    p_reason: reason,
   });
-
-  if (error) {
+  if (error)
     return NextResponse.json(
-      { error: "Failed to raise dispute" },
-      { status: 500 },
+      {
+        error:
+          "The job changed or settlement has already started. Refresh and try again.",
+      },
+      { status: 409 },
     );
-  }
 
   // Notify the other party
   const raisedBy = isClientParty ? "client" : "kinglancer";
   const recipientId = raisedBy === "client" ? job.kinglancer_id : job.client_id;
 
   // Always alert the admin inbox with full details
-  const { data: raiser } = await supabase
+  const { data: raiser } = await createServiceClient()
     .from("profiles")
     .select("email")
     .eq("id", user.id)
@@ -111,7 +107,7 @@ export async function POST(
   }).catch(() => {});
 
   if (recipientId) {
-    const { data: recipient } = await supabase
+    const { data: recipient } = await createServiceClient()
       .from("profiles")
       .select("email")
       .eq("id", recipientId)

@@ -1,15 +1,14 @@
+import { approveJobPayment } from "@/lib/settlement/job-payments";
+import {
+  refundJobPayment,
+  reserveJobSettlement,
+  finishJobSettlement,
+} from "@/lib/settlement/job-transfers";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { hasValidAdminSession } from "@/lib/admin-auth";
-import { stripe } from "@/lib/stripe";
-import {
-  fireTransfer,
-  getOrCreateStripeAccount,
-  createOnboardingLink,
-} from "@/lib/stripe-connect";
 import { getTransactionByJob } from "@/lib/db/transactions";
-import { hasEntitlement } from "@/lib/subscriptions";
 import { notifyDisputeResolved } from "@/lib/notifications";
 
 // POST /api/admin/disputes/[id]/resolve
@@ -101,256 +100,50 @@ export async function POST(
     );
   }
 
-  // ── Fetch both party profiles for notifications ────────
-  const [clientResult, kinglancerResult] = await Promise.all([
-    db
-      .from("profiles")
-      .select("email, full_name")
-      .eq("id", job.client_id)
-      .single(),
-    job.kinglancer_id
-      ? db
-          .from("profiles")
-          .select(
-            "email, full_name, stripe_account_id, stripe_onboarding_complete",
-          )
-          .eq("id", job.kinglancer_id)
-          .single()
-      : Promise.resolve({ data: null }),
-  ]);
-  const clientProfile = clientResult.data;
-  const kinglancerProfile = kinglancerResult.data as {
-    email: string;
-    full_name: string | null;
-    stripe_account_id: string | null;
-    stripe_onboarding_complete: boolean;
-  } | null;
-
-  // Release payouts follow the worker's subscription: unsubscribed workers are
-  // paid by hand (no Stripe Connect). Refunds still follow the funding method.
-  const workerStripePayout = job.kinglancer_id
-    ? await hasEntitlement(job.kinglancer_id, "kinglancer", "stripePayout")
-    : false;
-
-  // ── Execute the resolution ─────────────────────────────
-  // Manual (bank transfer) dispute: no Stripe. Release leaves the escrow held
-  // and approves the job so it lands in the Awaiting-payout queue (paid via the
-  // worker's payout link); refund marks it refunded for the admin to return by
-  // bank. The money moves by hand either way.
-  if (transaction.payment_method === "bank_transfer") {
+  try {
     if (action === "release") {
-      if (!job.kinglancer_id) {
-        return NextResponse.json(
-          { error: "No kinglancer assigned to this job." },
-          { status: 409 },
-        );
-      }
-      await Promise.all([
-        db.from("jobs").update({ status: "approved" }).eq("id", job.id),
-        db
-          .from("disputes")
-          .update({ status: "resolved", resolved_at: new Date().toISOString() })
-          .eq("id", disputeId),
-      ]);
-      if (kinglancerProfile?.email) {
-        notifyDisputeResolved({
-          userId: job.kinglancer_id,
-          userEmail: kinglancerProfile.email,
-          jobTitle: job.title,
-          outcome: "release",
-        }).catch(() => {});
-      }
-      if (clientProfile?.email) {
-        notifyDisputeResolved({
-          userId: job.client_id,
-          userEmail: clientProfile.email,
-          jobTitle: job.title,
-          outcome: "release",
-        }).catch(() => {});
-      }
+      await approveJobPayment(job.id, disputeId);
+    } else if (transaction.payment_method === "bank_transfer") {
+      const reservation = await reserveJobSettlement(
+        transaction.id,
+        "manual_refund",
+        disputeId,
+      );
+      await finishJobSettlement(
+        transaction.id,
+        reservation.release_attempt_id,
+        undefined,
+        undefined,
+        user.id,
+      );
     } else {
-      await Promise.all([
-        db
-          .from("transactions")
-          .update({ status: "refunded" })
-          .eq("job_id", job.id),
-        db.from("jobs").update({ status: "cancelled" }).eq("id", job.id),
-        db
-          .from("disputes")
-          .update({ status: "resolved", resolved_at: new Date().toISOString() })
-          .eq("id", disputeId),
-      ]);
-      if (clientProfile?.email) {
-        notifyDisputeResolved({
-          userId: job.client_id,
-          userEmail: clientProfile.email,
-          jobTitle: job.title,
-          outcome: "refund",
-        }).catch(() => {});
-      }
+      await refundJobPayment(transaction.id, { disputeId });
     }
-    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("[dispute/resolve]", error);
+    return NextResponse.json(
+      {
+        error:
+          "Settlement was not completed. Check its status before taking another action.",
+      },
+      { status: 409 },
+    );
   }
-
-  if (action === "release") {
-    if (!job.kinglancer_id || !kinglancerProfile) {
-      return NextResponse.json(
-        { error: "No kinglancer assigned to this job." },
-        { status: 409 },
-      );
-    }
-
-    // Unsubscribed worker — pay manually (leave escrow held, approve the job so
-    // it lands in the Awaiting-payout queue). No Stripe Connect involved.
-    if (!workerStripePayout) {
-      await Promise.all([
-        db
-          .from("transactions")
-          .update({ payout_method: "manual" })
-          .eq("job_id", job.id)
-          .eq("status", "held"),
-        db.from("jobs").update({ status: "approved" }).eq("id", job.id),
-        db
-          .from("disputes")
-          .update({ status: "resolved", resolved_at: new Date().toISOString() })
-          .eq("id", disputeId),
-      ]);
-      if (kinglancerProfile.email) {
-        notifyDisputeResolved({
-          userId: job.kinglancer_id,
-          userEmail: kinglancerProfile.email,
-          jobTitle: job.title,
-          outcome: "release",
-        }).catch(() => {});
-      }
-      if (clientProfile?.email) {
-        notifyDisputeResolved({
-          userId: job.client_id,
-          userEmail: clientProfile.email,
-          jobTitle: job.title,
-          outcome: "release",
-        }).catch(() => {});
-      }
-      return NextResponse.json({ success: true });
-    }
-
-    const netAmount = transaction.amount - transaction.platform_fee_kinglancer;
-    const amountPence = Math.round(netAmount * 100);
-
-    if (
-      kinglancerProfile.stripe_onboarding_complete &&
-      kinglancerProfile.stripe_account_id
-    ) {
-      try {
-        await fireTransfer({
-          transactionId: transaction.id,
-          amountPence,
-          destinationAccountId: kinglancerProfile.stripe_account_id,
-          jobId: job.id,
-          paymentIntentId: transaction.stripe_payment_intent_id ?? undefined,
-        });
-      } catch (err) {
-        console.error("[dispute/resolve] Transfer failed:", err);
-        return NextResponse.json(
-          { error: "Stripe transfer failed. Please try again." },
-          { status: 502 },
-        );
-      }
-    } else {
-      // Kinglancer not onboarded — create/get their account and send claim link
-      const accountId = await getOrCreateStripeAccount(
-        job.kinglancer_id,
-        kinglancerProfile.email,
-        kinglancerProfile.stripe_account_id,
-        kinglancerProfile.full_name ?? undefined,
-      );
-      const onboardingUrl = await createOnboardingLink(accountId);
-      // Notify kinglancer to claim payout via onboarding
-      notifyDisputeResolved({
-        userId: job.kinglancer_id,
-        userEmail: kinglancerProfile.email,
+  const { data: recipients } = await db
+    .from("profiles")
+    .select("id,email")
+    .in(
+      "id",
+      [job.client_id, job.kinglancer_id].filter((id): id is string => !!id),
+    );
+  for (const recipient of recipients ?? []) {
+    if (recipient.email)
+      void notifyDisputeResolved({
+        userId: recipient.id,
+        userEmail: recipient.email,
         jobTitle: job.title,
-        outcome: "release",
-        claimUrl: onboardingUrl,
-      }).catch(() => {});
-    }
-
-    await Promise.all([
-      db
-        .from("transactions")
-        .update({ status: "released", released_at: new Date().toISOString() })
-        .eq("job_id", job.id),
-      db.from("jobs").update({ status: "approved" }).eq("id", job.id),
-      db
-        .from("disputes")
-        .update({ status: "resolved", resolved_at: new Date().toISOString() })
-        .eq("id", disputeId),
-    ]);
-
-    // Notify both parties
-    if (kinglancerProfile.stripe_onboarding_complete) {
-      notifyDisputeResolved({
-        userId: job.kinglancer_id,
-        userEmail: kinglancerProfile.email,
-        jobTitle: job.title,
-        outcome: "release",
-      }).catch(() => {});
-    }
-    if (clientProfile?.email) {
-      notifyDisputeResolved({
-        userId: job.client_id,
-        userEmail: clientProfile.email,
-        jobTitle: job.title,
-        outcome: "release",
-      }).catch(() => {});
-    }
-  } else {
-    // action === "refund"
-    const totalCharged = transaction.amount + transaction.platform_fee_client;
-    const amountPence = Math.round(totalCharged * 100);
-
-    try {
-      await stripe.refunds.create({
-        payment_intent: transaction.stripe_payment_intent_id!,
-        amount: amountPence,
-      });
-    } catch (err) {
-      console.error("[dispute/resolve] Refund failed:", err);
-      return NextResponse.json(
-        { error: "Stripe refund failed. Please try again." },
-        { status: 502 },
-      );
-    }
-
-    await Promise.all([
-      db
-        .from("transactions")
-        .update({ status: "refunded" })
-        .eq("job_id", job.id),
-      db.from("jobs").update({ status: "cancelled" }).eq("id", job.id),
-      db
-        .from("disputes")
-        .update({ status: "resolved", resolved_at: new Date().toISOString() })
-        .eq("id", disputeId),
-    ]);
-
-    if (clientProfile?.email) {
-      notifyDisputeResolved({
-        userId: job.client_id,
-        userEmail: clientProfile.email,
-        jobTitle: job.title,
-        outcome: "refund",
-      }).catch(() => {});
-    }
-    if (job.kinglancer_id && kinglancerProfile?.email) {
-      notifyDisputeResolved({
-        userId: job.kinglancer_id,
-        userEmail: kinglancerProfile.email,
-        jobTitle: job.title,
-        outcome: "refund",
-      }).catch(() => {});
-    }
+        outcome: action,
+      }).catch(console.error);
   }
-
   return NextResponse.json({ success: true });
 }

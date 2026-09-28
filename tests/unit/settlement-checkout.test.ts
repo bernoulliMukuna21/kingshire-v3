@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   payment: {} as Record<string, unknown>,
+  hold: null as string | null,
+  expire: vi.fn(),
   sessions: new Map<
     string,
     { id: string; status: string; payment_status: string; url: string }
@@ -32,12 +34,20 @@ vi.mock("@/lib/supabase/service", () => ({
 }));
 vi.mock("@/lib/stripe", () => ({
   stripe: {
-    checkout: { sessions: { create: mocks.create, retrieve: mocks.retrieve } },
+    checkout: {
+      sessions: {
+        create: mocks.create,
+        retrieve: mocks.retrieve,
+        expire: mocks.expire,
+      },
+    },
   },
 }));
 vi.mock("@/lib/db/engagements", () => ({
   getEngagement: async () => ({
     source_kind: "placement",
+    status: "active",
+    settlement_hold_at: mocks.hold,
     source_id: "agreement1",
   }),
 }));
@@ -67,6 +77,7 @@ describe("one checkout attempt per period", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.sessions.clear();
+    mocks.hold = null;
     process.env.NEXT_PUBLIC_APP_URL = "https://example.test";
     mocks.payment = {
       id: "payment1",
@@ -107,6 +118,18 @@ describe("one checkout attempt per period", () => {
     await startEngagementCheckout("payment1");
     expect(mocks.create).toHaveBeenCalledTimes(calls);
     expect(mocks.retrieve).toHaveBeenCalled();
+  });
+  it("expires an unpaid checkout when a hold is added", async () => {
+    await startEngagementCheckout("payment1");
+    mocks.hold = new Date().toISOString();
+    expect(await startEngagementCheckout("payment1")).toBeNull();
+    expect(mocks.expire).toHaveBeenCalledWith("cs1");
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+  });
+  it("does not create checkout during a hold", async () => {
+    mocks.hold = new Date().toISOString();
+    expect(await startEngagementCheckout("payment1")).toBeNull();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
   it("does not start checkout while an automatic attempt owns the payment", async () => {
     Object.assign(mocks.payment, {

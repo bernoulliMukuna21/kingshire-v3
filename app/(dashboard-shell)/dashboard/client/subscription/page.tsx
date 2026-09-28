@@ -1,3 +1,5 @@
+import { deriveSubscriptionView } from "@/lib/subscriptions/view";
+import { OtherRoleSubscription } from "@/components/subscription/OtherRoleSubscription";
 import { redirect } from "next/navigation";
 import { CheckCircle2, CreditCard, Banknote } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +54,10 @@ export default async function ClientSubscriptionPage({
   }
 
   const subscription = await getUserSubscription(user.id);
-  const isActive = subscription?.isActive ?? false;
+  const { isActive, otherActiveRole } = deriveSubscriptionView(
+    subscription,
+    "client",
+  );
   const priceGBP = planForRole("client").priceGBP;
 
   const renewalDate = subscription?.currentPeriodEnd
@@ -84,7 +89,9 @@ export default async function ClientSubscriptionPage({
       )}
 
       <Card className="p-6">
-        {isActive ? (
+        {otherActiveRole ? (
+          <OtherRoleSubscription role={otherActiveRole} />
+        ) : isActive ? (
           <>
             <div className="mb-1 flex items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">

@@ -46,7 +46,7 @@ vi.mock("@/lib/db/engagement-payments", () => ({
   reserveEngagementRelease: vi
     .fn()
     .mockResolvedValue({ row: {}, attemptId: "attempt-1" }),
-  clearEngagementReleaseAttempt: vi.fn().mockResolvedValue(undefined),
+  recordSettlementError: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@/lib/stripe", () => ({
   stripe: {
@@ -55,11 +55,16 @@ vi.mock("@/lib/stripe", () => ({
   },
 }));
 
+vi.mock("@/lib/settlement/dispatch", () => ({
+  dispatchSettlement: vi.fn().mockResolvedValue({ id: "tr_123" }),
+}));
+
 import { releaseEngagementPayment } from "@/lib/settlement/payouts";
 import {
   updateEngagementPaymentStatusIf,
   recordEngagementTransfer,
   reserveEngagementRelease,
+  recordSettlementError,
 } from "@/lib/db/engagement-payments";
 
 describe("releaseEngagementPayment", () => {
@@ -113,13 +118,9 @@ describe("releaseEngagementPayment", () => {
 
   it("rejects a period that is still 'due' or already 'refunded'", async () => {
     state.payment = { id: "p-3", status: "due", stripe_transfer_id: null };
-    await expect(releaseEngagementPayment("p-3")).resolves.toBe(
-      "not_eligible",
-    );
+    await expect(releaseEngagementPayment("p-3")).resolves.toBe("not_eligible");
     state.payment = { id: "p-4", status: "refunded", stripe_transfer_id: null };
-    await expect(releaseEngagementPayment("p-4")).resolves.toBe(
-      "not_eligible",
-    );
+    await expect(releaseEngagementPayment("p-4")).resolves.toBe("not_eligible");
   });
 
   it("fires the transfer then CAS-writes 'released', guarded against a concurrent status change", async () => {
@@ -194,10 +195,11 @@ describe("releaseEngagementPayment", () => {
     // admin mode may.
     const result = await releaseEngagementPayment("p-7", "admin");
     expect(result).toBe("released");
-    expect(reserveEngagementRelease).toHaveBeenCalledWith("p-7", [
-      "held",
-      "disputed",
-    ]);
+    expect(reserveEngagementRelease).toHaveBeenCalledWith(
+      "p-7",
+      ["held", "disputed"],
+      "admin",
+    );
   });
 
   it("does not contact Stripe when the reservation is lost to a concurrent action", async () => {
@@ -215,9 +217,58 @@ describe("releaseEngagementPayment", () => {
       stripe_account_id: "acct_1",
       stripe_onboarding_complete: true,
     };
-    await expect(releaseEngagementPayment("p-8")).resolves.toBe(
-      "not_eligible",
-    );
+    await expect(releaseEngagementPayment("p-8")).resolves.toBe("not_eligible");
   });
 });
 
+import { dispatchSettlement } from "@/lib/settlement/dispatch";
+
+describe("uncertain settlement outcomes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    state.payment = {
+      id: "p-uncertain",
+      engagement_id: "e-1",
+      status: "disputed",
+      stripe_transfer_id: null,
+      worker_amount: 100,
+      platform_fee_kinglancer: 5,
+      kinglancer_id: "kl-1",
+    };
+    state.profile = {
+      stripe_account_id: "acct_1",
+      stripe_onboarding_complete: true,
+    };
+    vi.mocked(reserveEngagementRelease).mockResolvedValue({
+      row: {} as never,
+      attemptId: "attempt-1",
+    });
+    vi.mocked(updateEngagementPaymentStatusIf).mockResolvedValue({
+      id: "p-uncertain",
+    } as never);
+  });
+  it("keeps a successful external transfer reserved when its database write fails", async () => {
+    vi.mocked(updateEngagementPaymentStatusIf).mockRejectedValueOnce(
+      new Error("database offline"),
+    );
+    await expect(releaseEngagementPayment("p-uncertain")).rejects.toThrow(
+      "database offline",
+    );
+    expect(dispatchSettlement).toHaveBeenCalledOnce();
+    expect(recordSettlementError).toHaveBeenCalledWith(
+      "p-uncertain",
+      "attempt-1",
+    );
+  });
+  it("retains uncertainty when the Stripe response is lost", async () => {
+    vi.mocked(dispatchSettlement).mockRejectedValueOnce(new Error("timeout"));
+    await expect(releaseEngagementPayment("p-uncertain")).rejects.toThrow(
+      "timeout",
+    );
+    expect(updateEngagementPaymentStatusIf).not.toHaveBeenCalled();
+    expect(recordSettlementError).toHaveBeenCalledWith(
+      "p-uncertain",
+      "attempt-1",
+    );
+  });
+});

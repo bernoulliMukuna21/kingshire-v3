@@ -1,13 +1,9 @@
+import { refundEngagementPayment } from "@/lib/settlement/refunds";
+import { settlementResponse } from "@/lib/settlement/http";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasValidAdminSession } from "@/lib/admin-auth";
-import { stripe } from "@/lib/stripe";
-import {
-  getEngagementPayment,
-  updateEngagementPaymentStatusIf,
-  reserveEngagementRelease,
-  clearEngagementReleaseAttempt,
-} from "@/lib/db/engagement-payments";
+import { getEngagementPayment } from "@/lib/db/engagement-payments";
 import { releaseEngagementPayment } from "@/lib/settlement/payouts";
 
 // POST /api/admin/role-payments/[paymentId] — resolve a disputed Organisation
@@ -53,46 +49,10 @@ export async function POST(
   }
 
   if (action === "release") {
-    await releaseEngagementPayment(paymentId);
-    return NextResponse.json({ ok: true });
+    const result = await releaseEngagementPayment(paymentId, "admin");
+    return settlementResponse(result);
   }
 
-  // refund — return the money to the organisation.
-  if (payment.stripe_transfer_id) {
-    return NextResponse.json(
-      {
-        error:
-          "This payment has already been transferred to the Kinglancer — refunding the organisation now would lose that money. Reconcile manually.",
-      },
-      { status: 409 },
-    );
-  }
-  // Reserve before contacting Stripe so a concurrent release can never fire
-  // for the same payment.
-  const reservation = await reserveEngagementRelease(paymentId, ["disputed"]);
-  if (!reservation) {
-    return NextResponse.json(
-      { error: "This payment is no longer eligible for a refund." },
-      { status: 409 },
-    );
-  }
-  try {
-    if (payment.stripe_payment_intent_id) {
-      await stripe.refunds.create(
-        { payment_intent: payment.stripe_payment_intent_id },
-        { idempotencyKey: `engagement-refund-${payment.id}` },
-      );
-    }
-    await updateEngagementPaymentStatusIf(
-      paymentId,
-      ["disputed"],
-      "refunded",
-      {},
-      { requireReleaseAttemptId: reservation.attemptId },
-    );
-  } catch (err) {
-    await clearEngagementReleaseAttempt(paymentId, reservation.attemptId);
-    throw err;
-  }
-  return NextResponse.json({ ok: true });
+  const result = await refundEngagementPayment(paymentId);
+  return settlementResponse(result);
 }

@@ -200,54 +200,42 @@ export async function recordEngagementTransfer(
   if (error) throw error;
 }
 
-// A release/refund is a single fast Stripe call, not a multi-step redirect
-// flow — a reservation older than this was abandoned by a crashed process
-// and can be safely reclaimed.
-const RELEASE_RESERVATION_STALE_MS = 15 * 60 * 1000;
-
-/** Atomically claims a payment for an outgoing settlement action (a Stripe
- * transfer or refund) BEFORE the external call is made, so a concurrent
- * release/refund/dispute can never act on the same row at the same time.
- * Returns null if the row isn't in `expectedStatuses`, already has a
- * transfer, or another attempt already holds a live reservation. */
+/** Reserve once. An uncertain operation is reconciled, never reclaimed by age. */
 export async function reserveEngagementRelease(
   id: string,
   expectedStatuses: EngagementPaymentStatus[],
+  operation: "automatic" | "admin" | "refund" = "admin",
 ): Promise<{ row: EngagementPaymentRow; attemptId: string } | null> {
   const db = createServiceClient();
   const attemptId = crypto.randomUUID();
-  const staleCutoff = new Date(
-    Date.now() - RELEASE_RESERVATION_STALE_MS,
-  ).toISOString();
   const { data, error } = await db
     .from("engagement_payments")
     .update({
       release_attempt_id: attemptId,
+      release_operation: operation,
+      release_outcome: "reserved",
       release_attempt_started_at: new Date().toISOString(),
     })
     .eq("id", id)
     .in("status", expectedStatuses)
     .is("stripe_transfer_id", null)
-    .or(
-      `release_attempt_id.is.null,release_attempt_started_at.lt.${staleCutoff}`,
-    )
+    .is("release_attempt_id", null)
     .select("*")
     .maybeSingle();
   if (error) throw error;
   return data ? { row: data as EngagementPaymentRow, attemptId } : null;
 }
 
-/** Releases a reservation without changing status — used when the external
- * Stripe call fails, so the payment can be retried later (its idempotency
- * key makes a retry safe even if the earlier call actually succeeded). */
-export async function clearEngagementReleaseAttempt(
+/** Persist uncertainty without making the payment eligible for another operation. */
+export async function recordSettlementError(
   id: string,
   attemptId: string,
 ): Promise<void> {
-  const db = createServiceClient();
-  const { error } = await db
+  const { error } = await createServiceClient()
     .from("engagement_payments")
-    .update({ release_attempt_id: null, release_attempt_started_at: null })
+    .update({
+      settlement_error: "External settlement outcome requires reconciliation",
+    })
     .eq("id", id)
     .eq("release_attempt_id", attemptId);
   if (error) throw error;
@@ -309,5 +297,19 @@ export async function patchPaymentAttempt(
     ? query.eq("attempt_id", payment.attempt_id)
     : query.is("attempt_id", null);
   const { error } = await query;
+  if (error) throw error;
+}
+
+/** Never erase evidence of a charge, even when our earlier read said due. */
+export async function cancelUnchargedEngagementPayment(
+  id: string,
+): Promise<void> {
+  const { error } = await createServiceClient()
+    .from("engagement_payments")
+    .update({ status: "cancelled" })
+    .eq("id", id)
+    .in("status", ["due", "failed"])
+    .is("attempt_id", null)
+    .is("stripe_payment_intent_id", null);
   if (error) throw error;
 }

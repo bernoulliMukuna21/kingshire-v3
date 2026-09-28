@@ -73,7 +73,7 @@ export async function POST(
   // otherwise the client directly.
   const recipient = job.organisation_id
     ? await getOrgOwnerContact(job.organisation_id)
-    : await supabase
+    : await createServiceClient()
         .from("profiles")
         .select("email")
         .eq("id", job.client_id)

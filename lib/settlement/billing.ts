@@ -1,3 +1,4 @@
+import { canCollectEngagementPayment } from "./collection-policy";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getEngagement } from "@/lib/db/engagements";
@@ -167,6 +168,7 @@ async function resumeAutomaticPayment(
       payment.stripe_payment_intent_id,
     );
   } else {
+    if (!canCollectEngagementPayment(engagement)) return "not_chargeable";
     if (!canRecoverCreation(payment.attempt_started_at))
       return "reconciliation_pending";
     // Persist the ID BEFORE confirmation. A crash during creation leaves an
@@ -193,8 +195,9 @@ async function resumeAutomaticPayment(
     await reconcileEngagementPayment(payment.id, intent.id);
     return "charged";
   }
-  if (!["active", "pending_funding"].includes(engagement.status))
-    return "not_chargeable";
+  // Re-read immediately before confirmation: recovery may have started before a hold.
+  const current = await getEngagement(payment.engagement_id);
+  if (!canCollectEngagementPayment(current)) return "not_chargeable";
   if (
     intent.status === "requires_confirmation" ||
     intent.status === "requires_payment_method"
@@ -236,7 +239,7 @@ export async function chargeEngagementPayment(
   // remain processing until reconciled, so never create a fresh charge here.
   if (payment.status === "failed") return "reconciliation_pending";
   const engagement = await getEngagement(payment.engagement_id);
-  if (!engagement || !["active", "pending_funding"].includes(engagement.status))
+  if (!engagement || !canCollectEngagementPayment(engagement))
     return "not_chargeable";
   // First placement funding is explicitly on-session. It cannot compete with
   // an organisation opening Checkout using its subscription's saved card.

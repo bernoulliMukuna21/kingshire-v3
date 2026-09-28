@@ -1,6 +1,6 @@
 import {
   getEngagementPayments,
-  updateEngagementPaymentStatus,
+  cancelUnchargedEngagementPayment,
   updateEngagementPaymentStatusIf,
 } from "@/lib/db/engagement-payments";
 
@@ -14,7 +14,7 @@ export async function cancelRemainingEngagementPayments(
   await Promise.all(
     payments
       .filter((p) => p.status === "due" || p.status === "failed")
-      .map((p) => updateEngagementPaymentStatus(p.id, "cancelled")),
+      .map((p) => cancelUnchargedEngagementPayment(p.id)),
   );
 }
 

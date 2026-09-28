@@ -6,12 +6,12 @@ const state = vi.hoisted(() => ({
 
 vi.mock("@/lib/db/engagement-payments", () => ({
   getEngagementPayments: async () => state.payments,
-  updateEngagementPaymentStatus: vi.fn().mockResolvedValue(null),
+  cancelUnchargedEngagementPayment: vi.fn().mockResolvedValue(null),
   updateEngagementPaymentStatusIf: vi.fn().mockResolvedValue(null),
 }));
 
 import {
-  updateEngagementPaymentStatus,
+  cancelUnchargedEngagementPayment,
   updateEngagementPaymentStatusIf,
 } from "@/lib/db/engagement-payments";
 import {
@@ -30,14 +30,8 @@ describe("settleEngagementPaymentsOnEarlyEnd", () => {
       { id: "p-failed", status: "failed" },
     ];
     await settleEngagementPaymentsOnEarlyEnd("e-1", "ended early");
-    expect(updateEngagementPaymentStatus).toHaveBeenCalledWith(
-      "p-due",
-      "cancelled",
-    );
-    expect(updateEngagementPaymentStatus).toHaveBeenCalledWith(
-      "p-failed",
-      "cancelled",
-    );
+    expect(cancelUnchargedEngagementPayment).toHaveBeenCalledWith("p-due");
+    expect(cancelUnchargedEngagementPayment).toHaveBeenCalledWith("p-failed");
   });
 
   it("sends a 'held' period to admin via a CAS dispute (doesn't stomp a racing release)", async () => {
@@ -55,7 +49,7 @@ describe("settleEngagementPaymentsOnEarlyEnd", () => {
   it("leaves an in-flight 'processing' period alone (fulfilment routes it to disputed on completion)", async () => {
     state.payments = [{ id: "p-processing", status: "processing" }];
     await settleEngagementPaymentsOnEarlyEnd("e-1", "ended early");
-    expect(updateEngagementPaymentStatus).not.toHaveBeenCalled();
+    expect(cancelUnchargedEngagementPayment).not.toHaveBeenCalled();
     expect(updateEngagementPaymentStatusIf).not.toHaveBeenCalled();
   });
 });
@@ -72,15 +66,9 @@ describe("cancelRemainingEngagementPayments", () => {
       { id: "p-held", status: "held" },
     ];
     await cancelRemainingEngagementPayments("e-1");
-    expect(updateEngagementPaymentStatus).toHaveBeenCalledWith(
-      "p-due",
-      "cancelled",
-    );
-    expect(updateEngagementPaymentStatus).toHaveBeenCalledWith(
-      "p-failed",
-      "cancelled",
-    );
-    expect(updateEngagementPaymentStatus).not.toHaveBeenCalledWith(
+    expect(cancelUnchargedEngagementPayment).toHaveBeenCalledWith("p-due");
+    expect(cancelUnchargedEngagementPayment).toHaveBeenCalledWith("p-failed");
+    expect(cancelUnchargedEngagementPayment).not.toHaveBeenCalledWith(
       "p-held",
       expect.anything(),
     );

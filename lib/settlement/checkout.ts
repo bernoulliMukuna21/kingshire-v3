@@ -1,3 +1,4 @@
+import { canCollectEngagementPayment } from "./collection-policy";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getEngagement } from "@/lib/db/engagements";
@@ -23,6 +24,7 @@ export async function resumeEngagementCheckout(
       payment.checkout_session_id,
     );
   } else {
+    if (!canCollectEngagementPayment(engagement)) return null;
     if (!canRecoverCreation(payment.attempt_started_at))
       throw new Error(
         "Checkout needs reconciliation before another payment can be started.",
@@ -87,6 +89,12 @@ export async function resumeEngagementCheckout(
       .eq("attempt_id", payment.attempt_id)
       .eq("status", "processing");
     if (error) throw error;
+    return null;
+  }
+  const current = await getEngagement(payment.engagement_id);
+  if (!canCollectEngagementPayment(current)) {
+    if (session.status === "open")
+      await stripe.checkout.sessions.expire(session.id);
     return null;
   }
   return session.status === "open" ? session.url : null;

@@ -1,3 +1,4 @@
+import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createApplication, hasApplied } from "@/lib/db/applications";
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
   // manages applicants), or the client directly for a personal job.
   const recipient = job.organisation_id
     ? await getOrgOwnerContact(job.organisation_id)
-    : await supabase
+    : await createServiceClient()
         .from("profiles")
         .select("email")
         .eq("id", job.client_id)

@@ -139,6 +139,46 @@ describe("durable automatic payment attempts", () => {
     expect(await chargeEngagementPayment("p1")).toBe("reconciliation_pending");
     expect(m.create).not.toHaveBeenCalled();
   });
+  it("does not confirm a recoverable intent while the engagement is on hold", async () => {
+    Object.assign(m.payment, {
+      status: "processing",
+      attempt_kind: "automatic",
+      attempt_id: "a1",
+      attempt_customer_id: "cus1",
+      attempt_payment_method_id: "pm1",
+      stripe_payment_intent_id: "pi1",
+    });
+    m.engagement.settlement_hold_at = new Date().toISOString();
+    m.retrieve.mockResolvedValue({
+      ...succeeded(),
+      status: "requires_confirmation",
+    });
+    expect(await chargeEngagementPayment("p1")).toBe("not_chargeable");
+    expect(m.confirm).not.toHaveBeenCalled();
+    expect(m.create).not.toHaveBeenCalled();
+  });
+  it("still reconciles money already collected before a hold", async () => {
+    Object.assign(m.payment, {
+      status: "processing",
+      attempt_kind: "automatic",
+      attempt_id: "a1",
+      attempt_customer_id: "cus1",
+      attempt_payment_method_id: "pm1",
+      stripe_payment_intent_id: "pi1",
+    });
+    m.engagement.settlement_hold_at = new Date().toISOString();
+    expect(await chargeEngagementPayment("p1")).toBe("charged");
+    expect(m.fulfil).toHaveBeenCalledWith("p1", "pi1");
+    expect(m.confirm).not.toHaveBeenCalled();
+  });
+  it("rechecks a hold added while the intent is being created", async () => {
+    m.create.mockImplementationOnce(async () => {
+      m.engagement.settlement_hold_at = new Date().toISOString();
+      return { id: "pi1", status: "requires_confirmation" };
+    });
+    expect(await chargeEngagementPayment("p1")).toBe("not_chargeable");
+    expect(m.confirm).not.toHaveBeenCalled();
+  });
   it("rejects incorrect amounts and cross-payment events", async () => {
     m.retrieve.mockResolvedValue({ ...succeeded(), amount: 1 });
     await expect(reconcileEngagementPayment("p1", "pi1")).rejects.toThrow(

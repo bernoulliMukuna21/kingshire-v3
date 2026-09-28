@@ -1,3 +1,4 @@
+import { dispatchSettlement } from "./dispatch";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getEngagement, type Engagement } from "@/lib/db/engagements";
@@ -6,10 +7,10 @@ import {
   updateEngagementPaymentStatusIf,
   recordEngagementTransfer,
   reserveEngagementRelease,
-  clearEngagementReleaseAttempt,
+  recordSettlementError,
   type EngagementPaymentRow,
 } from "@/lib/db/engagement-payments";
-import { periodEnd, releaseNoticeDays } from "./schedule";
+import { anchoredPeriodEnd, releaseNoticeDays } from "./schedule";
 import { getOrgOwnerContact } from "@/lib/organisations";
 import { notifyEngagementReleasePending } from "@/lib/notifications";
 import type { EngagementPaymentStatus } from "./types";
@@ -127,6 +128,7 @@ export async function releaseEngagementPayment(
   const reservation = await reserveEngagementRelease(
     paymentId,
     eligibleStatuses,
+    mode,
   );
   if (!reservation) return "not_eligible";
 
@@ -146,18 +148,25 @@ export async function releaseEngagementPayment(
       }
     }
 
-    const transfer = await stripe.transfers.create(
+    const transfer = await dispatchSettlement(
+      "engagement_payments",
+      payment.id,
+      reservation.attemptId,
       {
-        amount: netPence,
-        currency: "gbp",
-        destination: profile.stripe_account_id,
-        ...(sourceTransaction ? { source_transaction: sourceTransaction } : {}),
-        metadata: {
-          engagement_payment_id: payment.id,
-          engagement_id: payment.engagement_id,
+        kind: "transfer",
+        params: {
+          amount: netPence,
+          currency: "gbp",
+          destination: profile.stripe_account_id,
+          ...(sourceTransaction
+            ? { source_transaction: sourceTransaction }
+            : {}),
+          metadata: {
+            engagement_payment_id: payment.id,
+            engagement_id: payment.engagement_id,
+          },
         },
       },
-      { idempotencyKey: `engagement-transfer-${payment.id}` },
     );
 
     const releasedAt = new Date().toISOString();
@@ -167,7 +176,11 @@ export async function releaseEngagementPayment(
       payment.id,
       ["held", "disputed"],
       "released",
-      { stripe_transfer_id: transfer.id, released_at: releasedAt },
+      {
+        stripe_transfer_id: transfer.id,
+        released_at: releasedAt,
+        release_outcome: "succeeded",
+      },
       { requireReleaseAttemptId: reservation.attemptId },
     );
     if (!settled) {
@@ -183,21 +196,28 @@ export async function releaseEngagementPayment(
     }
     return "released";
   } catch (err) {
-    // The Stripe call didn't confirm success — free the reservation so a
-    // retry is possible. The transfer's idempotency key makes a retry safe
-    // even if this call actually succeeded but the response was lost.
-    await clearEngagementReleaseAttempt(paymentId, reservation.attemptId);
+    // A failed response or DB write does not prove that Stripe did nothing.
+    await recordSettlementError(paymentId, reservation.attemptId);
     throw err;
   }
 }
 
-function periodEndTimestamp(
+async function periodEndTimestamp(
   payment: EngagementPaymentRow,
   engagement: Engagement,
-): number {
-  return periodEnd(
-    new Date(`${payment.due_date}T00:00:00.000Z`),
+): Promise<number> {
+  const { data: first, error } = await createServiceClient()
+    .from("engagement_payments")
+    .select("due_date")
+    .eq("engagement_id", engagement.id)
+    .eq("period_index", 1)
+    .single();
+  if (error) throw error;
+  if (!first) throw new Error("Payment schedule anchor is missing");
+  return anchoredPeriodEnd(
+    new Date(`${first.due_date}T00:00:00.000Z`),
     engagement.cadence,
+    payment.period_index,
   ).getTime();
 }
 
@@ -219,7 +239,7 @@ export async function processEngagementReleases(): Promise<ProcessReleaseResult>
     const engagement = await getEngagement(payment.engagement_id);
     if (!engagement || engagement.settlement_mode !== "managed") continue;
 
-    const end = periodEndTimestamp(payment, engagement);
+    const end = await periodEndTimestamp(payment, engagement);
     if (end <= now) {
       const result = await releaseEngagementPayment(payment.id, "automatic");
       if (result === "released") released += 1;

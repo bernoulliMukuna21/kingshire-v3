@@ -3,7 +3,6 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getEngagementBySource, updateEngagement } from "@/lib/db/engagements";
-import { settleEngagementPaymentsOnEarlyEnd } from "@/lib/settlement/termination";
 import {
   requireOrganisationPermission,
   getOrgOwnerContact,
@@ -162,6 +161,11 @@ export async function POST(
   }
 
   if (parsed.data.action === "escalate") {
+    await updateEngagement(engagement.id, {
+      settlement_hold_at: new Date().toISOString(),
+      settlement_hold_reason:
+        parsed.data.reason ?? engagement.end_reason ?? "Early-end dispute",
+    });
     const organisationName = await getOrganisationName(
       engagement.organisation_id,
     );
@@ -197,11 +201,6 @@ export async function POST(
     end_requested_by: null,
     end_requested_at: null,
   });
-  await settleEngagementPaymentsOnEarlyEnd(
-    engagement.id,
-    "Role ended early by mutual agreement",
-  );
-
   void notifyRoleEnded({
     recipientId: engagement.kinglancer_id,
     recipientEmail: kinglancer?.email ?? undefined,

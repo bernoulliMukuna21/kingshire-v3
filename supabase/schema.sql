@@ -361,23 +361,7 @@ create policy "Parties can view own transactions" on public.transactions
 -- service-role submission route).
 create policy "Published reviews are public" on public.reviews
   for select using (is_published or auth.uid() = reviewer_id);
-create policy "Users can leave a review" on public.reviews
-  for insert with check (
-    auth.uid() = reviewer_id
-    AND reviewer_id <> reviewee_id
-    AND is_published = false
-    AND published_at is null
-    AND exists (
-      select 1 from public.jobs
-      where jobs.id = reviews.job_id
-        AND jobs.status = 'approved'
-        AND (
-          (jobs.client_id = reviews.reviewer_id AND jobs.kinglancer_id = reviews.reviewee_id)
-          OR
-          (jobs.kinglancer_id = reviews.reviewer_id AND jobs.client_id = reviews.reviewee_id)
-        )
-    )
-  );
+-- Reviews are inserted through the authorized server route (migration 073).
 
 -- Disputes: only parties involved can view/create
 create policy "Parties can view disputes" on public.disputes
@@ -388,16 +372,8 @@ create policy "Parties can view disputes" on public.disputes
         AND (jobs.client_id = auth.uid() OR jobs.kinglancer_id = auth.uid())
     )
   );
-create policy "Users can raise disputes" on public.disputes
-  for insert with check (
-    auth.uid() = raised_by
-    AND exists (
-      select 1 from public.jobs
-      where jobs.id = disputes.job_id
-        AND jobs.status in ('in_progress', 'completed')
-        AND (jobs.client_id = auth.uid() OR jobs.kinglancer_id = auth.uid())
-    )
-  );
+-- Dispute insertion uses the server settlement operation (migration 074).
+revoke insert on public.disputes from anon, authenticated;
 
 -- ── NOTIFICATIONS ──────────────────────────────────────────
 create table if not exists public.notifications (
@@ -552,3 +528,5 @@ grant select (
   open_to_placements,
   created_at
 ) on public.profiles to anon, authenticated;
+
+revoke insert on public.reviews from anon, authenticated;

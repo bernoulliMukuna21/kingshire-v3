@@ -1,14 +1,12 @@
+import { refundJobPayment } from "@/lib/settlement/job-transfers";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { stripe } from "@/lib/stripe";
 import { getTransactionByJob } from "@/lib/db/transactions";
-import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { notifyJobCancelled } from "@/lib/notifications";
 import { canManageJob } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { SUPPORT_EMAIL } from "@/lib/contact";
-import { getEngagementBySource, updateEngagement } from "@/lib/db/engagements";
 
 const GRACE_PERIOD_MS = 2 * 60 * 60 * 1000; // 2 hours
 
@@ -66,45 +64,17 @@ export async function POST(
 
   // ── Open job: direct cancellation ──────────────────────────
   if (job.status === "open") {
-    // If the client has already said they've sent a bank transfer, the money
-    // may have arrived — route the cancellation through support.
-    const pendingAttempt = await getPendingPaymentAttemptByJob(jobId);
-    if (
-      pendingAttempt?.method === "bank_transfer" &&
-      pendingAttempt.client_marked_paid_at
-    ) {
+    const { error } = await db.rpc("cancel_open_job", { p_job: jobId });
+    if (error) {
       return NextResponse.json(
         {
-          error: `You've told us you've sent a bank transfer for this job. To cancel and arrange a refund, please contact support at ${SUPPORT_EMAIL}.`,
-          code: "MANUAL_REFUND_CONTACT_SUPPORT",
+          error:
+            "The job changed or has an unresolved payment. Cancel the pending payment first; if it has completed or you have sent a bank transfer, contact support.",
+          code: "JOB_CANCELLATION_BLOCKED",
         },
         { status: 409 },
       );
     }
-
-    // Bulk-reject any pending or offered applications.
-    await db
-      .from("applications")
-      .update({ status: "rejected" })
-      .eq("job_id", jobId)
-      .in("status", ["pending", "offered"]);
-
-    // A role offer awaiting the Kinglancer's decision must not survive the
-    // job it belongs to.
-    const pendingEngagement = await getEngagementBySource("org_role", jobId);
-    if (pendingEngagement?.status === "pending_acceptance") {
-      await updateEngagement(pendingEngagement.id, {
-        status: "cancelled",
-        end_reason: "Job cancelled by organisation",
-      });
-    }
-
-    // Mark job cancelled.
-    await db
-      .from("jobs")
-      .update({ status: "cancelled" })
-      .eq("id", jobId)
-      .eq("status", "open"); // guard against race
 
     // Notify the invited kinglancer on a direct request (applicants don't
     // receive individual notifications for open-market cancellations).
@@ -170,33 +140,18 @@ export async function POST(
     );
   }
 
-  // Stripe refund first; then update DB so we never leave funds in limbo.
   try {
-    await stripe.refunds.create({
-      payment_intent: transaction.stripe_payment_intent_id,
-    });
-  } catch (err) {
-    console.error("[cancel-job] Stripe refund failed:", err);
+    await refundJobPayment(transaction.id, { cancellation: true });
+  } catch (error) {
+    console.error("[cancel-job]", error);
     return NextResponse.json(
-      { error: "Refund failed. Please try again or contact support." },
-      { status: 502 },
+      {
+        error:
+          "Cancellation could not be settled. Check the payment status or contact support.",
+      },
+      { status: 409 },
     );
   }
-
-  await Promise.all([
-    db
-      .from("transactions")
-      .update({ status: "refunded" })
-      .eq("id", transaction.id),
-    db
-      .from("jobs")
-      .update({
-        status: "cancelled",
-        kinglancer_id: null,
-      })
-      .eq("id", jobId)
-      .eq("status", "in_progress"), // guard against race
-  ]);
 
   // Notify the kinglancer.
   if (job.kinglancer_id) {

@@ -1,3 +1,5 @@
+import { deriveSubscriptionView } from "@/lib/subscriptions/view";
+import { OtherRoleSubscription } from "@/components/subscription/OtherRoleSubscription";
 import { redirect } from "next/navigation";
 import { CheckCircle2, Zap, Briefcase } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -51,7 +53,10 @@ export default async function KinglancerSubscriptionPage({
   }
 
   const subscription = await getUserSubscription(user.id);
-  const isActive = subscription?.isActive ?? false;
+  const { isActive, otherActiveRole } = deriveSubscriptionView(
+    subscription,
+    "kinglancer",
+  );
   const priceGBP = planForRole("kinglancer").priceGBP;
 
   const renewalDate = subscription?.currentPeriodEnd
@@ -83,7 +88,9 @@ export default async function KinglancerSubscriptionPage({
       )}
 
       <Card className="p-6">
-        {isActive ? (
+        {otherActiveRole ? (
+          <OtherRoleSubscription role={otherActiveRole} />
+        ) : isActive ? (
           <>
             <div className="mb-1 flex items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
@@ -115,7 +122,8 @@ export default async function KinglancerSubscriptionPage({
             <p className="mb-5 mt-1 text-sm text-slate-500">
               Unlock automatic Stripe payouts and the ability to apply to
               smaller jobs. Without it you&apos;re still paid for every job by
-              manual transfer, and can apply to jobs of £{SMALL_JOB_THRESHOLD_GBP}
+              manual transfer, and can apply to jobs of £
+              {SMALL_JOB_THRESHOLD_GBP}
               and over.
             </p>
             <SubscribeButton priceGBP={priceGBP} />

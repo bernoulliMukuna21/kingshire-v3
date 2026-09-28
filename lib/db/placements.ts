@@ -487,16 +487,22 @@ export async function getAgreement(
   return (data as PlacementAgreementRow | null) ?? null;
 }
 
+/** End only the active agreement/proposal that the caller authorized. */
 export async function updateAgreementStatus(
   agreementId: string,
   status: PlacementAgreementRow["status"],
-): Promise<void> {
-  const db = createServiceClient();
-  const { error } = await db
+  expectedProposer: string,
+): Promise<boolean> {
+  const { data, error } = await createServiceClient()
     .from("placement_agreements")
-    .update({ status })
-    .eq("id", agreementId);
+    .update({ status, end_requested_by: null, end_requested_at: null })
+    .eq("id", agreementId)
+    .eq("status", "active")
+    .eq("end_requested_by", expectedProposer)
+    .select("id")
+    .maybeSingle();
   if (error) throw error;
+  return !!data;
 }
 
 /** Records one party's proposal to end an active agreement early. */
@@ -678,6 +684,7 @@ export async function completeAgreement(agreementId: string): Promise<boolean> {
     .update({ status: "completed", completed_at: new Date().toISOString() })
     .eq("id", agreementId)
     .eq("status", "active")
+    .is("end_requested_by", null)
     .select("id")
     .maybeSingle();
   if (error) throw error;

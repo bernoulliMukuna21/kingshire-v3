@@ -1,3 +1,4 @@
+import { collectPages } from "@/lib/db/pagination";
 import { getPendingReviewJobs } from "@/lib/db/reviews";
 import { listKinglancerAgreements } from "@/lib/db/placements";
 import type {
@@ -20,12 +21,18 @@ async function getFundedJobIds(
   jobIds: string[],
 ): Promise<Set<string>> {
   if (jobIds.length === 0) return new Set<string>();
-  const { data } = await supabase
-    .from("transactions")
-    .select("job_id")
-    .in("job_id", jobIds)
-    .in("status", ["held", "released", "disputed"]);
-  return new Set((data ?? []).map((transaction) => transaction.job_id));
+  const funded = new Set<string>();
+  for (let i = 0; i < jobIds.length; i += 200) {
+    const query = supabase
+      .from("transactions")
+      .select("job_id")
+      .in("job_id", jobIds.slice(i, i + 200))
+      .in("status", ["held", "released", "disputed"])
+      .order("id");
+    const rows = await collectPages((from, to) => query.range(from, to));
+    rows.forEach((row) => funded.add(row.job_id));
+  }
+  return funded;
 }
 
 export const clientJobsProvider: ActionProvider = ({ supabase, userId }) =>
@@ -54,45 +61,44 @@ export async function fetchClientStyleJobItems(
   // Personal scope excludes org-owned jobs — they belong to the org workspace.
   if (column === "client_id") query = query.is("organisation_id", null);
 
-  const { data: jobsRaw } = await query
+  const filtered = query
     .or(
       "status.eq.completed,status.eq.open,direct_request_status.eq.changes_requested,direct_request_status.eq.accepted_pending_payment,direct_request_status.eq.pending",
     )
     .order("updated_at", { ascending: false })
-    .limit(100);
+    .order("id");
+  const jobsRaw = await collectPages((from, to) => filtered.range(from, to));
 
   const jobs = (jobsRaw ?? []) as unknown as ClientActionJob[];
   const jobIds = jobs.map((job) => job.id);
 
-  const [applicationsResult, fundedJobIds, pendingPaymentResult] =
-    await Promise.all([
-      jobIds.length
-        ? supabase
-            .from("applications")
-            .select("job_id")
-            .in("job_id", jobIds)
-            .eq("status", "pending")
-        : Promise.resolve({ data: [] }),
-      getFundedJobIds(supabase, jobIds),
-      jobIds.length
-        ? supabase
-            .from("payment_attempts")
-            .select("job_id")
-            .in("job_id", jobIds)
-            .eq("status", "pending")
-        : Promise.resolve({ data: [] }),
+  const fundedJobIds = await getFundedJobIds(supabase, jobIds);
+  const pendingPaymentJobIds = new Set<string>();
+  const applicantCountByJob: Record<string, number> = {};
+  for (let i = 0; i < jobIds.length; i += 200) {
+    const ids = jobIds.slice(i, i + 200);
+    const applications = supabase
+      .from("applications")
+      .select("job_id")
+      .in("job_id", ids)
+      .eq("status", "pending")
+      .order("id");
+    const attempts = supabase
+      .from("payment_attempts")
+      .select("job_id")
+      .in("job_id", ids)
+      .eq("status", "pending")
+      .order("id");
+    const [applicants, payments] = await Promise.all([
+      collectPages((from, to) => applications.range(from, to)),
+      collectPages((from, to) => attempts.range(from, to)),
     ]);
-
-  const pendingPaymentJobIds = new Set(
-    (pendingPaymentResult.data ?? []).map((row) => row.job_id),
-  );
-
-  const applicantCountByJob = (applicationsResult.data ?? []).reduce<
-    Record<string, number>
-  >((acc, row) => {
-    acc[row.job_id] = (acc[row.job_id] ?? 0) + 1;
-    return acc;
-  }, {});
+    applicants.forEach((row) => {
+      applicantCountByJob[row.job_id] =
+        (applicantCountByJob[row.job_id] ?? 0) + 1;
+    });
+    payments.forEach((row) => pendingPaymentJobIds.add(row.job_id));
+  }
 
   const jobsWithFunding = jobs.map((job) => ({
     ...job,
@@ -107,7 +113,7 @@ export const kinglancerJobsProvider: ActionProvider = async ({
   supabase,
   userId,
 }) => {
-  const { data: jobsRaw } = await supabase
+  const filtered = supabase
     .from("jobs")
     .select(
       "id, title, status, budget, rate_type, posting_type, pay_negotiable, pay_amount, pay_cadence, direct_request_status, client:profiles!client_id(full_name)",
@@ -119,7 +125,8 @@ export const kinglancerJobsProvider: ActionProvider = async ({
       "accepted_pending_payment",
     ])
     .order("updated_at", { ascending: false })
-    .limit(100);
+    .order("id");
+  const jobsRaw = await collectPages((from, to) => filtered.range(from, to));
 
   const jobs = (jobsRaw ?? []) as unknown as KinglancerActionJob[];
   const fundedJobIds = await getFundedJobIds(

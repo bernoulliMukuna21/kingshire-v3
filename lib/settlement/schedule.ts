@@ -68,3 +68,12 @@ export function plannedPeriodIndexes(args: {
   for (let i = from; i <= args.durationPeriods; i++) out.push(i);
   return out;
 }
+
+/** Derive every boundary from period one's date, preserving month-end anchors. */
+export function anchoredPeriodEnd(
+  anchor: Date,
+  cadence: Cadence,
+  periodIndex: number,
+): Date {
+  return periodDueDate(anchor, cadence, periodIndex + 1);
+}

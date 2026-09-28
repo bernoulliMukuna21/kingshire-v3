@@ -1,3 +1,7 @@
+import {
+  reserveJobSettlement,
+  finishJobSettlement,
+} from "@/lib/settlement/job-transfers";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 import { coerceNumeric } from "@/lib/db/coerce";
@@ -94,24 +98,17 @@ export async function recordManualPayout(
   jobId: string,
   opts: { reference: string; adminId: string },
 ) {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("transactions")
-    .update({
-      status: "released",
-      released_at: new Date().toISOString(),
-      payout_method: "manual",
-      manual_payout_reference: opts.reference,
-      confirmed_by: opts.adminId,
-    })
-    .eq("job_id", jobId)
-    .eq("status", "held")
-    .select()
-    .maybeSingle();
-  if (error) throw error;
-  return data
-    ? coerceNumeric(data as TransactionRow, TRANSACTION_NUMERIC)
-    : null;
+  const payment = await getTransactionByJob(jobId);
+  if (!payment) return null;
+  const reservation = await reserveJobSettlement(payment.id, "manual_paid");
+  const tx = await finishJobSettlement(
+    payment.id,
+    reservation.release_attempt_id,
+    undefined,
+    opts.reference,
+    opts.adminId,
+  );
+  return coerceNumeric(tx as TransactionRow, TRANSACTION_NUMERIC);
 }
 
 export type ManualPayoutQueueItem = {
