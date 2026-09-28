@@ -26,7 +26,12 @@ export async function fulfilEngagementPayment(
   // A charge that was already in flight when the engagement ended early
   // still needs to land somewhere — route it to admin review instead of
   // silently auto-releasing later, matching settleEngagementPaymentsOnEarlyEnd's
-  // disposition for periods that were already held at end time.
+  // disposition for periods that were already held at end time. Normal
+  // completion also marks the engagement "ended" (so future periods stop
+  // billing), so a charge that was mid-flight at the exact moment of a
+  // normal completion is also routed here rather than "held" — a rare,
+  // recoverable-by-admin-release edge case, accepted rather than adding a
+  // third engagement status just to distinguish the two.
   const endedEarly =
     engagement.status === "ended" || engagement.status === "cancelled";
   const { error } = await db

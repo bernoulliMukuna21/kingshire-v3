@@ -10,6 +10,7 @@ import {
   getPlacementTitle,
 } from "@/lib/db/placements";
 import { settlePlacementPaymentsOnEarlyEnd } from "@/lib/db/placement-payments";
+import { getEngagementBySource, updateEngagement } from "@/lib/db/engagements";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import {
   notifyPlacementEndProposed,
@@ -233,6 +234,21 @@ export async function POST(
 
   await updateAgreementStatus(agreementId, "cancelled");
   await clearAgreementEndRequest(agreementId);
+  // The agreement and the shared engagement are separate records — without
+  // this, a payment already in flight would still see an "active"
+  // engagement and could land as held instead of going to admin review.
+  const engagement = await getEngagementBySource("placement", agreementId);
+  if (engagement) {
+    await updateEngagement(
+      engagement.id,
+      {
+        status: "ended",
+        ended_at: new Date().toISOString(),
+        end_reason: "Placement ended early by mutual agreement",
+      },
+      "active",
+    );
+  }
   await settlePlacementPaymentsOnEarlyEnd(
     agreementId,
     "Placement ended early by mutual agreement",

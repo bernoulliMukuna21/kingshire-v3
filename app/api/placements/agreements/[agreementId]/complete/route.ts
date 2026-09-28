@@ -8,6 +8,8 @@ import {
   getExperienceRecordByAgreement,
   placementPromisedReference,
 } from "@/lib/db/placements";
+import { getEngagementBySource, updateEngagement } from "@/lib/db/engagements";
+import { cancelRemainingEngagementPayments } from "@/lib/settlement/termination";
 
 export async function POST(
   request: Request,
@@ -101,6 +103,27 @@ export async function POST(
         { status: 409 },
       );
     }
+  }
+
+  // The agreement and its underlying engagement are separate records —
+  // without this, the engagement stays "active" forever, so a period still
+  // scheduled past completion would keep getting charged. Any currently
+  // held period is left alone (unlike early-end) — it's a legitimate final
+  // month and should still release normally once its period ends. CAS on
+  // "active" and only-cancel-not-yet-charged make this safe to repeat on a
+  // resumed request.
+  const engagement = await getEngagementBySource("placement", agreementId);
+  if (engagement) {
+    await updateEngagement(
+      engagement.id,
+      {
+        status: "ended",
+        ended_at: new Date().toISOString(),
+        end_reason: "Placement completed",
+      },
+      "active",
+    );
+    await cancelRemainingEngagementPayments(engagement.id);
   }
 
   await createExperienceRecord({

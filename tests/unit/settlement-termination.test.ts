@@ -14,7 +14,10 @@ import {
   updateEngagementPaymentStatus,
   updateEngagementPaymentStatusIf,
 } from "@/lib/db/engagement-payments";
-import { settleEngagementPaymentsOnEarlyEnd } from "@/lib/settlement/termination";
+import {
+  settleEngagementPaymentsOnEarlyEnd,
+  cancelRemainingEngagementPayments,
+} from "@/lib/settlement/termination";
 
 describe("settleEngagementPaymentsOnEarlyEnd", () => {
   beforeEach(() => {
@@ -53,6 +56,34 @@ describe("settleEngagementPaymentsOnEarlyEnd", () => {
     state.payments = [{ id: "p-processing", status: "processing" }];
     await settleEngagementPaymentsOnEarlyEnd("e-1", "ended early");
     expect(updateEngagementPaymentStatus).not.toHaveBeenCalled();
+    expect(updateEngagementPaymentStatusIf).not.toHaveBeenCalled();
+  });
+});
+
+describe("cancelRemainingEngagementPayments", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("cancels due/failed periods but never touches a held one (normal completion shouldn't dispute a legitimate final month)", async () => {
+    state.payments = [
+      { id: "p-due", status: "due" },
+      { id: "p-failed", status: "failed" },
+      { id: "p-held", status: "held" },
+    ];
+    await cancelRemainingEngagementPayments("e-1");
+    expect(updateEngagementPaymentStatus).toHaveBeenCalledWith(
+      "p-due",
+      "cancelled",
+    );
+    expect(updateEngagementPaymentStatus).toHaveBeenCalledWith(
+      "p-failed",
+      "cancelled",
+    );
+    expect(updateEngagementPaymentStatus).not.toHaveBeenCalledWith(
+      "p-held",
+      expect.anything(),
+    );
     expect(updateEngagementPaymentStatusIf).not.toHaveBeenCalled();
   });
 });
