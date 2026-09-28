@@ -365,6 +365,8 @@ create policy "Users can leave a review" on public.reviews
   for insert with check (
     auth.uid() = reviewer_id
     AND reviewer_id <> reviewee_id
+    AND is_published = false
+    AND published_at is null
     AND exists (
       select 1 from public.jobs
       where jobs.id = reviews.job_id
