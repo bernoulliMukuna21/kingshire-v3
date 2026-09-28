@@ -1,6 +1,9 @@
 "use client";
 
-import { JOB_ATTACHMENT_ACCEPT, jobAttachmentError } from "@/lib/job-attachments";
+import {
+  JOB_ATTACHMENT_ACCEPT,
+  jobAttachmentError,
+} from "@/lib/job-attachments";
 
 export function AttachmentField({
   organisationId,

@@ -128,6 +128,15 @@ describe("buildClientJobItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0].kind).toBe("waiting");
   });
+
+  it("links org-owned jobs to the org workspace, not the personal jobs route", () => {
+    const items = buildClientJobItems(
+      [clientJob({ status: "open" })],
+      { "job-1": 1 },
+      "org-1",
+    );
+    expect(items[0].href).toBe("/dashboard/organisations/org-1/jobs/job-1");
+  });
 });
 
 describe("buildKinglancerJobItems", () => {

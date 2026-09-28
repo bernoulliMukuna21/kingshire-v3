@@ -90,8 +90,7 @@ export async function POST(
   if (!disputed) {
     return NextResponse.json(
       {
-        error:
-          "This payment was just released and can no longer be disputed.",
+        error: "This payment was just released and can no longer be disputed.",
       },
       { status: 409 },
     );

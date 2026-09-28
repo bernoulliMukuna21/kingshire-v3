@@ -1,7 +1,4 @@
-import {
-  reviewWindowRemaining,
-  type PendingReviewJob,
-} from "@/lib/db/reviews";
+import { reviewWindowRemaining, type PendingReviewJob } from "@/lib/db/reviews";
 import {
   type KinglancerAgreement,
   type OrgPendingApplication,
@@ -40,7 +37,12 @@ function jobMeta(job: {
 export function buildClientJobItems(
   jobs: ClientActionJob[],
   applicantCountByJob: Record<string, number>,
+  organisationId?: string,
 ): ActionCentreItem[] {
+  // Org-owned jobs live in the org workspace, not the personal jobs route.
+  const basePath = organisationId
+    ? `/dashboard/organisations/${organisationId}/jobs`
+    : "/dashboard/client/jobs";
   const actions: ActionCentreItem[] = [];
 
   for (const job of jobs) {
@@ -57,7 +59,7 @@ export function buildClientJobItems(
         description: `${
           job.invited_kinglancer?.full_name ?? "The Kinglancer"
         } requested changes. Review the proposed terms before funding escrow.`,
-        href: `/dashboard/client/jobs/${job.id}`,
+        href: `${basePath}/${job.id}`,
         icon: "request",
         badge: "Review changes",
         tone: "purple",
@@ -76,7 +78,7 @@ export function buildClientJobItems(
         description: `${
           job.invited_kinglancer?.full_name ?? "The Kinglancer"
         } accepted your request. Fund escrow to start the job.`,
-        href: `/dashboard/client/jobs/${job.id}`,
+        href: `${basePath}/${job.id}`,
         icon: "payment",
         badge: "Payment required",
         tone: "blue",
@@ -92,7 +94,7 @@ export function buildClientJobItems(
         description: `${
           job.kinglancer?.full_name ?? "Your Kinglancer"
         } submitted this work. Approve it to release payment.`,
-        href: `/dashboard/client/jobs/${job.id}`,
+        href: `${basePath}/${job.id}`,
         icon: "review-work",
         badge: "Review work",
         tone: "amber",
@@ -113,7 +115,7 @@ export function buildClientJobItems(
         description: `${applicantCount} applicant${
           applicantCount !== 1 ? "s" : ""
         } waiting for your decision.`,
-        href: `/dashboard/client/jobs/${job.id}`,
+        href: `${basePath}/${job.id}`,
         icon: "applicants",
         badge: "Review applicants",
         tone: "green",
@@ -134,7 +136,7 @@ export function buildClientJobItems(
         description: `Waiting for ${
           job.invited_kinglancer?.full_name ?? "the Kinglancer"
         } to respond to your direct request.`,
-        href: `/dashboard/client/jobs/${job.id}`,
+        href: `${basePath}/${job.id}`,
         icon: "request" as const,
         badge: "Waiting",
         tone: "slate" as const,
@@ -148,7 +150,7 @@ export function buildClientJobItems(
         title: job.title,
         description:
           "Payment in progress — we'll confirm it and start the job shortly.",
-        href: `/dashboard/client/jobs/${job.id}`,
+        href: `${basePath}/${job.id}`,
         icon: "payment" as const,
         badge: "Payment in progress",
         tone: "slate" as const,

@@ -106,7 +106,12 @@ export async function fetchClientStyleJobItems(
     has_pending_payment: pendingPaymentJobIds.has(job.id),
   }));
 
-  return buildClientJobItems(jobsWithFunding, applicantCountByJob);
+  const organisationId = column === "organisation_id" ? value : undefined;
+  return buildClientJobItems(
+    jobsWithFunding,
+    applicantCountByJob,
+    organisationId,
+  );
 }
 
 export const kinglancerJobsProvider: ActionProvider = async ({

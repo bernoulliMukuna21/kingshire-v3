@@ -41,8 +41,8 @@ export function BudgetField({
           <p className="text-xs text-red-500 mt-1">{error}</p>
         ) : (
           <p className="text-xs text-gray-400 mt-1">
-            The total price for the whole job — held in escrow once you select
-            a Kinglancer.
+            The total price for the whole job — held in escrow once you select a
+            Kinglancer.
           </p>
         )}
       </div>

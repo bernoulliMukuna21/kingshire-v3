@@ -1,10 +1,11 @@
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  listPendingPlacementApplicationsForOrg,
-} from "@/lib/db/placements";
+import { listPendingPlacementApplicationsForOrg } from "@/lib/db/placements";
 import { listHeldPlacementPaymentsForOrg } from "@/lib/db/placement-payments";
 import type { ActionCentreItem, ServerClient } from "./types";
-import { buildOrgApplicationItems, buildOrgPlacementPaymentItems } from "./mappers";
+import {
+  buildOrgApplicationItems,
+  buildOrgPlacementPaymentItems,
+} from "./mappers";
 import { fetchClientStyleJobItems } from "./personal-providers";
 
 // ── Organisation actions (folded into the account Action Centre) ─

@@ -99,8 +99,7 @@ export async function resolveJobSchedule(input: {
         status: 400,
       };
     const geo = await lookupPostcode(postcodeStr);
-    if (!geo)
-      return { error: "Enter a valid UK postcode.", status: 400 };
+    if (!geo) return { error: "Enter a valid UK postcode.", status: 400 };
     resolvedArea = geo.area;
     resolvedPostcode = geo.postcode;
     resolvedLat = geo.latitude;

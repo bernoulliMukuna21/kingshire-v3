@@ -37,17 +37,15 @@ export function ApplicantsList({
   const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (isRole && job?.pay_negotiable) {
-    return (
+  const payNotSet = Boolean(isRole && job?.pay_negotiable);
+
+  if (applications.length === 0) {
+    return payNotSet ? (
       <p className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
         This role uses negotiable pay and cannot send an offer yet. Set a fixed
         recurring pay amount before selecting an applicant.
       </p>
-    );
-  }
-
-  if (applications.length === 0) {
-    return (
+    ) : (
       <p className="text-gray-500 text-sm py-4">
         No applications yet. Check back soon.
       </p>
@@ -227,6 +225,14 @@ export function ApplicantsList({
           </div>
         )}
 
+        {payNotSet && (
+          <p className="rounded-xl bg-amber-50 p-4 text-sm font-semibold text-amber-800">
+            This role uses negotiable pay and cannot send an offer yet. You can
+            still review applicants below — set a fixed recurring pay amount
+            before selecting one.
+          </p>
+        )}
+
         {applications.map((app) => {
           const k = app.kinglancer;
           const expanded = expandedId === app.id;
@@ -337,6 +343,10 @@ export function ApplicantsList({
                   {locked ? (
                     <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-sm font-semibold text-slate-500">
                       Payment in progress — selection locked
+                    </p>
+                  ) : payNotSet ? (
+                    <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-sm font-semibold text-slate-500">
+                      Set a fixed pay amount to hire
                     </p>
                   ) : (
                     <button
