@@ -1,5 +1,6 @@
 "use client";
 
+import ConfirmModal from "@/components/ConfirmModal";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -17,6 +18,7 @@ export default function RoleTerminationPanel({
   kinglancerId: string;
 }) {
   const router = useRouter();
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,32 +57,33 @@ export default function RoleTerminationPanel({
       return;
     }
     setReason("");
+    setWithdrawOpen(false);
     router.refresh();
   }
 
   if (status !== "active") {
     return (
-      <div className="mt-4 border-t border-slate-200 pt-3">
-        {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
-        <p className="mb-2 text-xs text-slate-500">
-          No money has moved yet — withdrawing is immediate and doesn&apos;t
-          need the other party&apos;s confirmation.
-        </p>
-        <textarea
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          placeholder="Reason for withdrawing (optional)"
-          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-          rows={2}
+      <div>
+        <details className="relative inline-block">
+          <summary className="cursor-pointer rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600">Offer actions</summary>
+          <button type="button" onClick={(event) => { setWithdrawOpen(true); event.currentTarget.closest("details")?.removeAttribute("open"); }} className="mt-2 block rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-700">Withdraw offer</button>
+        </details>
+        <ConfirmModal
+          isOpen={withdrawOpen}
+          onClose={() => { if (!busy) { setWithdrawOpen(false); setError(null); } }}
+          onConfirm={withdraw}
+          title="Withdraw this offer?"
+          confirmLabel="Withdraw offer"
+          variant="danger"
+          loading={busy === "withdraw"}
+          error={error ?? undefined}
+          message={<div className="space-y-4">
+            <p>The Kinglancer will no longer be able to start this role under this offer. Withdrawal is available only while funding has not been processed.</p>
+            <label className="block text-sm font-medium">Reason (optional)
+              <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm" rows={3} />
+            </label>
+          </div>}
         />
-        <button
-          type="button"
-          onClick={withdraw}
-          disabled={busy !== null}
-          className="mt-2 rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-50"
-        >
-          {busy === "withdraw" ? "Withdrawing..." : "Withdraw offer"}
-        </button>
       </div>
     );
   }
@@ -100,6 +103,7 @@ export default function RoleTerminationPanel({
       return;
     }
     setReason("");
+    setWithdrawOpen(false);
     router.refresh();
   }
 

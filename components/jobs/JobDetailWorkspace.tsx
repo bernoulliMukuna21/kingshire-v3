@@ -1,3 +1,4 @@
+import { deriveRoleOfferView, rolePayLabel } from "@/lib/role-offer-view";
 import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -106,9 +107,13 @@ export default async function JobDetailWorkspace({
 
   const isDirectRequest = !!job.invited_kinglancer_id;
   const statusConfig = jobStatusPill(job.status);
-  const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
+  const roleEngagement = job.posting_type === "role"
+    ? await getEngagementBySource("org_role", id)
+    : null;
+  const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id ??
+    (roleEngagement?.status !== "cancelled" ? roleEngagement?.kinglancer_id : null);
 
-  const [applications, kinglancerResult, pendingAttempt, roleEngagement] =
+  const [applications, kinglancerResult, pendingAttempt] =
     await Promise.all([
       !isDirectRequest && job.status === "open"
         ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
@@ -122,9 +127,6 @@ export default async function JobDetailWorkspace({
         : Promise.resolve({ data: null }),
       job.status === "open"
         ? getPendingPaymentAttemptByJob(id)
-        : Promise.resolve(null),
-      job.posting_type === "role"
-        ? getEngagementBySource("org_role", id)
         : Promise.resolve(null),
     ]);
   const cvSignedUrls = await signCvUrls(
@@ -194,7 +196,7 @@ export default async function JobDetailWorkspace({
     kinglancer?.full_name?.split(" ")[0] ?? "the Kinglancer";
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 [&_.shadow-xl]:shadow-sm">
       {header}
       <DashboardBackLink
         source={from}
@@ -202,6 +204,10 @@ export default async function JobDetailWorkspace({
         fallbackLabel={jobsListLabel}
       />
 
+      <div>
+        <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">{job.title}</h1>
+        <p className="mt-1 text-sm text-slate-500">Job overview</p>
+      </div>
       {job.posting_type === "role" &&
         roleEngagement &&
         roleEngagement.status !== "cancelled" &&
@@ -236,13 +242,11 @@ export default async function JobDetailWorkspace({
                 </StatusBadge>
               )}
               <StatusBadge className={statusConfig.className}>
-                {statusConfig.label}
+                {roleEngagement && roleEngagement.status !== "cancelled" ? deriveRoleOfferView(roleEngagement.status).label : statusConfig.label}
               </StatusBadge>
             </div>
 
-            <h1 className="text-2xl font-black text-slate-950 sm:text-3xl">
-              {job.title}
-            </h1>
+            <h2 className="text-lg font-bold text-slate-950">Job description</h2>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
               {job.description}
             </p>
@@ -262,7 +266,7 @@ export default async function JobDetailWorkspace({
             )}
           </Card>
 
-          <JobKeyDetails job={job} showExactLocation className={cardPadding} />
+          <JobKeyDetails job={job} showExactLocation showPay={false} className={cardPadding} />
 
           {job.status === "open" && <PendingPaymentCard jobId={id} />}
 
@@ -310,18 +314,6 @@ export default async function JobDetailWorkspace({
             </Card>
           )}
 
-          {job.posting_type === "role" &&
-            roleEngagement?.status === "pending_acceptance" && (
-              <Card className="border-amber-200 bg-amber-50 p-5">
-                <p className="text-sm font-bold text-amber-900">
-                  Role offer sent
-                </p>
-                <p className="mt-1 text-sm text-amber-800">
-                  The selected Kinglancer must accept the advertised role terms
-                  before the role can start.
-                </p>
-              </Card>
-            )}
 
           {job.status === "open" &&
             job.posting_type !== "role" &&
@@ -460,16 +452,14 @@ export default async function JobDetailWorkspace({
               {job.posting_type === "role" ? "Pay" : "Budget"}
             </p>
             <p className="mt-2 text-3xl font-black text-emerald-600">
-              {jobPriceLabel(job)}
+              {job.posting_type === "role" && !job.pay_negotiable ? rolePayLabel(job.pay_amount, job.pay_cadence ?? "monthly") : jobPriceLabel(job)}
             </p>
             {job.posting_type !== "role" && (
               <p className="mt-1 text-sm text-slate-500">
                 {formatRateType(job.rate_type)}
               </p>
             )}
-          </Card>
-
-          <Card className="space-y-3 p-5">
+            <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
             {deadline && (
               <div className="flex items-center gap-3 text-sm text-slate-600">
                 <Calendar size={16} className="shrink-0 text-slate-400" />
@@ -494,11 +484,12 @@ export default async function JobDetailWorkspace({
                 })}
               </span>
             </div>
+            </div>
           </Card>
 
           <Card className="p-5">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Kinglancer
+              {roleEngagement?.status === "pending_acceptance" ? "Offer recipient" : "Kinglancer"}
             </p>
             {kinglancerName ? (
               <div className="mt-3 flex items-center gap-3">
@@ -510,7 +501,7 @@ export default async function JobDetailWorkspace({
                 <div>
                   <p className="font-bold text-slate-950">{kinglancerName}</p>
                   <p className="text-sm text-slate-500">
-                    {job.kinglancer_id ? "Assigned" : "Invited"}
+                    {job.kinglancer_id ? "Hired" : roleEngagement ? "Offer sent" : "Invited"}
                   </p>
                   {contactRevealed && kinglancer?.phone && (
                     <a
