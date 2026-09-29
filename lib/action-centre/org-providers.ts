@@ -1,9 +1,12 @@
+import { getOrganisationMembership, hasOrganisationPermission } from "@/lib/organisations";
+import { getPendingReviewJobs } from "@/lib/db/reviews";
 import { createServiceClient } from "@/lib/supabase/service";
 import { listPendingPlacementApplicationsForOrg } from "@/lib/db/placements";
 import { listHeldPlacementPaymentsForOrg } from "@/lib/db/placement-payments";
 import { listOrgPendingRoleOffers } from "@/lib/db/engagements";
 import type { ActionCentreItem, ServerClient } from "./types";
 import {
+  buildReviewItems,
   buildOrgApplicationItems,
   buildOrgPlacementPaymentItems,
   buildOrgRoleOfferItems,
@@ -11,8 +14,7 @@ import {
 import { fetchClientStyleJobItems } from "./personal-providers";
 
 // ── Organisation actions (folded into the account Action Centre) ─
-// Org-wide reads use the service client (bypasses RLS); membership is verified
-// by the caller — the dashboard context only lists the user's own workspaces.
+// Service reads are gated by a fresh membership check in the collector.
 
 async function orgJobItems(
   organisationId: string,
@@ -49,18 +51,23 @@ async function orgRoleOfferItems(
   return buildOrgRoleOfferItems(offers, organisationId);
 }
 
-const ORGANISATION_PROVIDERS = [
-  orgJobItems,
-  orgPaymentItems,
-  orgApplicationItems,
-  orgRoleOfferItems,
-];
-
 export async function collectOrgActionItems(
   organisationId: string,
+  userId: string,
 ): Promise<ActionCentreItem[]> {
-  const results = await Promise.all(
-    ORGANISATION_PROVIDERS.map((provider) => provider(organisationId)),
-  );
+  const membership = await getOrganisationMembership(organisationId, userId);
+  if (!membership) return [];
+
+  const providers = [];
+  if (hasOrganisationPermission(membership.role, "manage_jobs")) {
+    providers.push(orgJobItems, orgPaymentItems, orgRoleOfferItems);
+    providers.push(async (id: string) => buildReviewItems(
+      await getPendingReviewJobs(userId, "client", id), "client", id,
+    ));
+  }
+  if (hasOrganisationPermission(membership.role, "manage_applicants")) {
+    providers.push(orgApplicationItems);
+  }
+  const results = await Promise.all(providers.map(provider => provider(organisationId)));
   return results.flat();
 }

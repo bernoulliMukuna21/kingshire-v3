@@ -210,6 +210,7 @@ export function buildKinglancerJobItems(
 export function buildReviewItems(
   pending: PendingReviewJob[],
   role: ActionCentreRole,
+  organisationId?: string,
 ): ActionCentreItem[] {
   return pending.map((job) => {
     const name =
@@ -221,7 +222,9 @@ export function buildReviewItems(
       kind: "action",
       title: job.jobTitle,
       description: `This job is complete. Share your honest feedback on working with ${name}.`,
-      href: `/dashboard/${role}/jobs/${job.jobId}#leave-review`,
+      href: organisationId
+        ? `/dashboard/organisations/${organisationId}/jobs/${job.jobId}#leave-review`
+        : `/dashboard/${role}/jobs/${job.jobId}#leave-review`,
       icon: "review",
       badge: remaining?.urgent ? "Closes soon" : "Leave a review",
       tone: remaining?.urgent ? "red" : "amber",
@@ -317,18 +320,38 @@ export function buildOrgRoleOfferItems(
   offers: OrgPendingRoleOffer[],
   organisationId: string,
 ): ActionCentreItem[] {
-  return offers.map((offer) => ({
-    id: `${offer.engagementId}:role-offer-waiting`,
-    kind: "waiting",
-    title: offer.jobTitle,
-    description: `Waiting for ${
-      offer.kinglancerName ?? "the Kinglancer"
-    } to respond to this role offer.`,
-    href: `/dashboard/organisations/${organisationId}/jobs/${offer.jobId}/offer`,
-    icon: "request",
-    badge: "Waiting",
-    tone: "slate",
-  }));
+  return offers.map((offer) => {
+    const href = `/dashboard/organisations/${organisationId}/jobs/${offer.jobId}/offer`;
+    // Accepted roles are never funded automatically (first-period funding
+    // is always an explicit, on-session action) — this is a real action for
+    // the org, not something to wait out.
+    if (offer.status === "pending_funding") {
+      return {
+        id: `${offer.engagementId}:role-funding-needed`,
+        kind: "action",
+        title: offer.jobTitle,
+        description: `${
+          offer.kinglancerName ?? "The Kinglancer"
+        } accepted this offer. Fund the first payment period to activate it.`,
+        href,
+        icon: "payment",
+        badge: "Fund to activate",
+        tone: "blue",
+      };
+    }
+    return {
+      id: `${offer.engagementId}:role-offer-waiting`,
+      kind: "waiting",
+      title: offer.jobTitle,
+      description: `Waiting for ${
+        offer.kinglancerName ?? "the Kinglancer"
+      } to respond to this role offer.`,
+      href,
+      icon: "request",
+      badge: "Waiting",
+      tone: "slate",
+    };
+  });
 }
 
 export function buildOrgPlacementPaymentItems(

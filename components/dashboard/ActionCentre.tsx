@@ -314,6 +314,7 @@ export function ActionItemCard({ item }: { item: ActionItem }) {
 
 export function WaitingItemCard({ item }: { item: ActionItem }) {
   return (
+    <Link href={item.href} className="block rounded-3xl focus-visible:outline-2 focus-visible:outline-blue-600">
     <Card className="grid gap-4 p-5 opacity-90 sm:grid-cols-[auto_1fr] sm:items-center sm:p-6">
       <div
         className={cn(
@@ -345,6 +346,7 @@ export function WaitingItemCard({ item }: { item: ActionItem }) {
         )}
       </div>
     </Card>
+    </Link>
   );
 }
 

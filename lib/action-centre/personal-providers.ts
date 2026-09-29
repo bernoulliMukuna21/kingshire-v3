@@ -1,3 +1,4 @@
+import { coerceNumericList } from "@/lib/db/coerce";
 import { collectPages } from "@/lib/db/pagination";
 import { getPendingReviewJobs } from "@/lib/db/reviews";
 import { listKinglancerAgreements } from "@/lib/db/placements";
@@ -71,7 +72,7 @@ export async function fetchClientStyleJobItems(
     .order("id");
   const jobsRaw = await collectPages((from, to) => filtered.range(from, to));
 
-  const jobs = (jobsRaw ?? []) as unknown as ClientActionJob[];
+  const jobs = coerceNumericList(jobsRaw, ["budget", "pay_amount", "counter_budget"]) as unknown as ClientActionJob[];
   const jobIds = jobs.map((job) => job.id);
 
   const fundedJobIds = await getFundedJobIds(supabase, jobIds);
@@ -135,7 +136,7 @@ export const kinglancerJobsProvider: ActionProvider = async ({
     .order("id");
   const jobsRaw = await collectPages((from, to) => filtered.range(from, to));
 
-  const jobs = (jobsRaw ?? []) as unknown as KinglancerActionJob[];
+  const jobs = coerceNumericList(jobsRaw, ["budget", "pay_amount"]) as unknown as KinglancerActionJob[];
   const fundedJobIds = await getFundedJobIds(
     supabase,
     jobs.map((job) => job.id),

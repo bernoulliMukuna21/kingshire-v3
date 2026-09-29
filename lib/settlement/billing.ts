@@ -241,13 +241,11 @@ export async function chargeEngagementPayment(
   const engagement = await getEngagement(payment.engagement_id);
   if (!engagement || !canCollectEngagementPayment(engagement))
     return "not_chargeable";
-  // First placement funding is explicitly on-session. It cannot compete with
-  // an organisation opening Checkout using its subscription's saved card.
-  if (
-    engagement.source_kind === "placement" &&
-    engagement.status === "pending_funding"
-  )
-    return "not_chargeable";
+  // First-period funding (either placement or role) is explicitly on-session
+  // — it cannot compete with an organisation opening Checkout using its
+  // subscription's saved card, and it's the only funding step with no prior
+  // charge history to fall back on if it silently gets stuck off-session.
+  if (engagement.status === "pending_funding") return "not_chargeable";
   const context = await getOrganisationStripePaymentContext(
     payment.organisation_id,
   );

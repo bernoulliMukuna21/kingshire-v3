@@ -17,7 +17,13 @@ export async function resumeEngagementCheckout(
 ): Promise<string | null> {
   if (payment.attempt_kind !== "checkout" || !payment.attempt_id) return null;
   const engagement = await getEngagement(payment.engagement_id);
-  if (!engagement || engagement.source_kind !== "placement") return null;
+  if (
+    !engagement ||
+    (engagement.source_kind !== "placement" &&
+      engagement.source_kind !== "org_role")
+  )
+    return null;
+  const isRole = engagement.source_kind === "org_role";
   let session;
   if (payment.checkout_session_id) {
     session = await stripe.checkout.sessions.retrieve(
@@ -31,10 +37,14 @@ export async function resumeEngagementCheckout(
       );
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     if (!appUrl) throw new Error("Application URL is missing");
-    const metadata = {
-      purpose: "placement_payment",
-      placement_payment_id: payment.id,
-    };
+    // Roles use a new, generic metadata shape (reconciled via the shared
+    // engine); placements keep their original shape unchanged.
+    const metadata: Record<string, string> = isRole
+      ? { purpose: "engagement_payment", engagement_payment_id: payment.id }
+      : { purpose: "placement_payment", placement_payment_id: payment.id };
+    const returnBase = isRole
+      ? `${appUrl}/dashboard/organisations/${engagement.organisation_id}/jobs/${engagement.source_id}/offer`
+      : `${appUrl}/dashboard/placements/agreements/${engagement.source_id}`;
     session = await stripe.checkout.sessions.create(
       {
         mode: "payment",
@@ -50,15 +60,17 @@ export async function resumeEngagementCheckout(
                   100,
               ),
               product_data: {
-                name: `Placement payment — month ${payment.period_index}`,
+                name: isRole
+                  ? `Role payment — period ${payment.period_index}`
+                  : `Placement payment — month ${payment.period_index}`,
               },
             },
           },
         ],
         payment_intent_data: { metadata },
         metadata,
-        success_url: `${appUrl}/dashboard/placements/agreements/${engagement.source_id}?paid=1`,
-        cancel_url: `${appUrl}/dashboard/placements/agreements/${engagement.source_id}?cancelled=1`,
+        success_url: `${returnBase}?paid=1`,
+        cancel_url: `${returnBase}?cancelled=1`,
       },
       { idempotencyKey: `engagement-checkout-${payment.attempt_id}` },
     );

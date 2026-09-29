@@ -162,21 +162,24 @@ export type OrgPendingRoleOffer = {
   jobTitle: string;
   kinglancerName: string | null;
   orgSignedAt: string | null;
+  status: EngagementStatus;
 };
 
-/** Role offers an organisation has sent that are still awaiting the
- * Kinglancer's response — surfaced as "waiting on others", mirroring how a
- * sent direct request shows up for the client. */
+/** Role offers an organisation has sent that are awaiting the Kinglancer's
+ * response (`pending_acceptance` — "waiting on others", mirroring a sent
+ * direct request) or already accepted and awaiting the org's own funding
+ * action (`pending_funding` — first-period funding is always explicit, see
+ * billing.ts, so this is a genuine action, not a wait). */
 export async function listOrgPendingRoleOffers(
   organisationId: string,
 ): Promise<OrgPendingRoleOffer[]> {
   const db = createServiceClient();
   const { data, error } = await db
     .from("engagements")
-    .select("id, source_id, kinglancer_id, org_signed_at")
+    .select("id, source_id, kinglancer_id, org_signed_at, status")
     .eq("source_kind", "org_role")
     .eq("organisation_id", organisationId)
-    .eq("status", "pending_acceptance");
+    .in("status", ["pending_acceptance", "pending_funding"]);
   if (error) throw error;
   const rows = data ?? [];
   if (rows.length === 0) return [];
@@ -196,5 +199,6 @@ export async function listOrgPendingRoleOffers(
     jobTitle: jobTitleById.get(row.source_id) ?? "Role",
     kinglancerName: nameById.get(row.kinglancer_id) ?? null,
     orgSignedAt: row.org_signed_at,
+    status: row.status as EngagementStatus,
   }));
 }

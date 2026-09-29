@@ -36,7 +36,7 @@ export default async function ProfilePage() {
           <div>
             <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wide text-sky-100 ring-1 ring-white/15">
               <Sparkles size={13} />
-              Public identity
+              Profile & account
             </span>
             <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
               My Profile

@@ -14,6 +14,7 @@ import { getEngagementBySource } from "@/lib/db/engagements";
 import { getEngagementPayments } from "@/lib/db/engagement-payments";
 import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
 import RolePaymentActionButton from "@/components/jobs/RolePaymentActionButton";
+import RolePayPeriodButton from "@/components/jobs/RolePayPeriodButton";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import OrganisationWorkspaceHeader from "../../../OrganisationWorkspaceHeader";
@@ -125,6 +126,28 @@ export default async function OrganisationRoleOfferPage({
           </div>
         </Card>
 
+        {canManage && engagement.status === "pending_funding" && (
+          <Card className="border-blue-100 bg-blue-50/60 p-6 sm:p-8">
+            <h2 className="text-lg font-black text-slate-950">
+              Fund this role to activate it
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              {recipient?.full_name ?? "The Kinglancer"} accepted this
+              offer. Pay the first period to start the role — this needs an
+              explicit payment, it is never charged automatically.
+            </p>
+            {payments[0] && (
+              <div className="mt-4">
+                <RolePayPeriodButton
+                  jobId={jobId}
+                  paymentId={payments[0].id}
+                  label="Fund this role"
+                />
+              </div>
+            )}
+          </Card>
+        )}
+
         <Card className="p-6 sm:p-8">
           <h2 className="text-lg font-black text-slate-950">Activity</h2>
           <div className="mt-4 space-y-3 text-sm text-slate-600">
@@ -186,6 +209,21 @@ export default async function OrganisationRoleOfferPage({
                         <RolePaymentActionButton
                           organisationId={organisationId}
                           paymentId={payment.id}
+                        />
+                      )}
+                    {canManage &&
+                      (payment.status === "due" ||
+                        payment.status === "failed") &&
+                      (engagement.status !== "pending_funding" ||
+                        payment.period_index === 1) && (
+                        <RolePayPeriodButton
+                          jobId={jobId}
+                          paymentId={payment.id}
+                          label={
+                            payment.status === "failed"
+                              ? "Retry payment"
+                              : "Pay now"
+                          }
                         />
                       )}
                   </span>

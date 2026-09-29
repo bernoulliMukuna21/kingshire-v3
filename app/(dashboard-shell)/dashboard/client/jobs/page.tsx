@@ -38,7 +38,7 @@ const TAB_STATUSES: Record<Tab, JobStatus[]> = {
 };
 
 const TAB_LABELS: Record<Tab, string> = {
-  history: "History",
+  history: "All jobs",
   open: "Open",
   active: "Active",
   completed: "Completed",
@@ -173,7 +173,7 @@ export default async function MyJobsPage({
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <PageHeader
         eyebrow="Client"
-        title="My Jobs"
+        title="Jobs"
         description="All jobs you have posted — track progress and manage applicants."
         action={
           <ButtonLink href="/jobs/post" variant="secondary">

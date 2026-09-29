@@ -119,6 +119,14 @@ describe("durable automatic payment attempts", () => {
     expect(await chargeEngagementPayment("p1")).toBe("not_chargeable");
     expect(m.create).not.toHaveBeenCalled();
   });
+  it("does not automatically fund the first role period either", async () => {
+    Object.assign(m.engagement, {
+      source_kind: "org_role",
+      status: "pending_funding",
+    });
+    expect(await chargeEngagementPayment("p1")).toBe("not_chargeable");
+    expect(m.create).not.toHaveBeenCalled();
+  });
   it("reconciles already held payments whose remaining effects failed", async () => {
     Object.assign(m.payment, {
       status: "held",

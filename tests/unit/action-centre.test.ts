@@ -159,6 +159,7 @@ describe("buildOrgRoleOfferItems", () => {
           jobTitle: "Tesco Manager",
           kinglancerName: "Ashley",
           orgSignedAt: "2026-09-28T00:00:00Z",
+          status: "pending_acceptance",
         },
       ],
       "org-1",
@@ -168,6 +169,25 @@ describe("buildOrgRoleOfferItems", () => {
     expect(items[0].href).toBe(
       "/dashboard/organisations/org-1/jobs/job-1/offer",
     );
+  });
+
+  it("surfaces an accepted-but-unfunded role as an org action (accepted offer, Action Centre showed 0)", () => {
+    const items = buildOrgRoleOfferItems(
+      [
+        {
+          engagementId: "eng-1",
+          jobId: "job-1",
+          jobTitle: "Tesco Manager",
+          kinglancerName: "Ashley",
+          orgSignedAt: "2026-09-28T00:00:00Z",
+          status: "pending_funding",
+        },
+      ],
+      "org-1",
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("action");
+    expect(items[0].badge).toBe("Fund to activate");
   });
 });
 
@@ -233,6 +253,10 @@ describe("buildReviewItems", () => {
     counterpartRole: "kinglancer",
     closesAt: null,
   };
+
+  it("routes organisation reviews through the organisation workspace", () => {
+    expect(buildReviewItems([pending], "client", "org-1")[0].href).toBe("/dashboard/organisations/org-1/jobs/job-9#leave-review");
+  });
 
   it("builds a role-scoped leave-review action", () => {
     const items = buildReviewItems([pending], "client");

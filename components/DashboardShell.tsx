@@ -1,8 +1,9 @@
 "use client";
 
+import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import NotificationBell from "@/components/NotificationBell";
 import SignOutButton from "@/components/SignOutButton";
 import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
@@ -26,7 +27,9 @@ type Props = {
 
 export default function DashboardShell({ profile, organisations, children }: Props) {
   const pathname = usePathname();
-  const navItems = getNavItems(profile.role, pathname);
+  const searchParams = useSearchParams();
+  const currentOrg = organisations.find(org => searchParams.get("workspace") === org.id || pathname === `/dashboard/organisations/${org.id}` || pathname.startsWith(`/dashboard/organisations/${org.id}/`));
+  const navItems = getNavItems(profile.role, pathname, currentOrg, searchParams.get("tab") ?? undefined);
   const isKinglancer = profile.role === "kinglancer";
   const isAdmin = profile.role === "admin";
   const initials = getInitials(profile.full_name);
@@ -72,6 +75,7 @@ export default function DashboardShell({ profile, organisations, children }: Pro
           </div>
         </div>
 
+        <WorkspaceSwitcher organisations={organisations} currentId={currentOrg?.id} personalHref={isKinglancer ? "/dashboard/kinglancer" : "/dashboard/client"} />
         <nav className="relative flex-1 p-4 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => (
             <Link
@@ -90,28 +94,6 @@ export default function DashboardShell({ profile, organisations, children }: Pro
         </nav>
 
         <div className="relative p-4 border-t border-white/10 space-y-3">
-          {organisations.length > 0 && (
-            <div className="rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
-              <p className="px-2 pb-1 text-[10px] font-bold uppercase tracking-wide text-white/35">
-                Switch workspace
-              </p>
-              <Link
-                href={isKinglancer ? "/dashboard/kinglancer" : "/dashboard/client"}
-                className="block rounded-xl px-2 py-1.5 text-xs font-semibold text-white/65 hover:bg-white/10 hover:text-white"
-              >
-                Personal workspace
-              </Link>
-              {organisations.slice(0, 4).map((organisation) => (
-                <Link
-                  key={organisation.id}
-                  href={`/dashboard/organisations/${organisation.id}`}
-                  className="block truncate rounded-xl px-2 py-1.5 text-xs font-semibold text-white/65 hover:bg-white/10 hover:text-white"
-                >
-                  {organisation.name}
-                </Link>
-              ))}
-            </div>
-          )}
           <div className="flex items-center gap-3 rounded-2xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
             <div
               className={`w-10 h-10 rounded-2xl ${avatarGradient} flex items-center justify-center text-white font-bold text-sm overflow-hidden shrink-0 shadow-lg shadow-slate-950/20`}
@@ -136,12 +118,13 @@ export default function DashboardShell({ profile, organisations, children }: Pro
               </p>
             </div>
           </div>
+          <div className="flex gap-4 px-2 text-sm text-white/80"><Link href="/dashboard/profile">My profile</Link><Link href="/dashboard/settings">Account settings</Link></div>
           <SignOutButton className="w-full" />
         </div>
       </div>
 
       {/* Mobile nav (top bar + drawer) */}
-      <MobileNav profile={profile} />
+      <MobileNav profile={profile} organisations={organisations} />
 
       {/* Main content */}
       <div className="lg:pl-72">{children}</div>
