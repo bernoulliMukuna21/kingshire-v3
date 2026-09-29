@@ -1,8 +1,8 @@
 /** Shared presentation for the offer summary and agreement page. */
-export function deriveRoleOfferView(status: string) {
+export function deriveRoleOfferView(status: string, viewer: "organisation" | "kinglancer" = "organisation") {
   const awaiting = status === "pending_acceptance";
   const label = ({
-    pending_acceptance: "Awaiting response",
+    pending_acceptance: viewer === "kinglancer" ? "Awaiting your response" : "Awaiting response",
     pending_funding: "Accepted · awaiting funding",
     active: "Agreement active",
     ended: "Agreement ended",

@@ -1,3 +1,4 @@
+import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { createServiceClient } from "@/lib/supabase/service";
 import { deriveRoleOfferView } from "@/lib/role-offer-view";
 import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
@@ -73,6 +74,7 @@ type JobWorkspace = {
   ends_at: string | null;
   schedule_type: string | null;
   estimated_minutes: number | null;
+  organisation_id: string | null;
   client_id: string;
   kinglancer_id: string | null;
   invited_kinglancer_id: string | null;
@@ -257,7 +259,7 @@ export default async function KinglancerJobWorkspacePage({
           id, title, description, attachment, budget, rate_type, status, deadline, categories, posting_type,
           employment_type, pay_cadence, pay_amount, pay_negotiable, settlement_mode,
           work_mode, location, address_line, postcode, location_area, latitude, longitude, days_on_site, scheduled_at, ends_at, schedule_type, estimated_minutes,
-          client_id, kinglancer_id, invited_kinglancer_id,
+          organisation_id, client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
           client:profiles!client_id(full_name, avatar_url)
@@ -329,6 +331,10 @@ export default async function KinglancerJobWorkspacePage({
     job.client.phone = contact?.phone ?? null;
   }
 
+  const organisationName = job.organisation_id ? await getOrganisationName(job.organisation_id) : null;
+  const employerName = organisationName ?? job.client?.full_name ?? "the client";
+  const isRoleOffer = !!roleEngagement;
+
   // Bank-transfer jobs are paid manually to the worker's payout link — nudge
   // them to add one (in Settings) before payout is due.
   const needsPayoutLink =
@@ -341,7 +347,7 @@ export default async function KinglancerJobWorkspacePage({
     ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
     : { label: "Open", className: "bg-green-100 text-green-700" };
   const status = roleEngagement
-    ? { label: deriveRoleOfferView(roleEngagement.status).label, className: "bg-blue-50 text-blue-700" }
+    ? { label: deriveRoleOfferView(roleEngagement.status, "kinglancer").label, className: "bg-blue-50 text-blue-700" }
     : job.status === "open" ? openStatus : jobStatusPill(job.status);
   const action = nextAction({ job, application, transaction, roleEngagement });
   const netHeld =
@@ -372,7 +378,7 @@ export default async function KinglancerJobWorkspacePage({
   const clientFirstName = job.client?.full_name?.split(" ")[0] ?? "the client";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+    <div className={`mx-auto ${isRoleOffer ? "max-w-4xl" : "max-w-6xl"} space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10`}>
       <DashboardBackLink
         source={from}
         fallbackHref="/dashboard/kinglancer/jobs"
@@ -409,12 +415,11 @@ export default async function KinglancerJobWorkspacePage({
               {job.title}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/70">
-              This is your private job workspace. Actions here are specific to
-              your kinglancer role and are separate from the public job view.
+              {isRoleOffer ? `${deriveRoleOfferView(roleEngagement.status).title} from ${employerName}` : `Your job with ${employerName}`}
             </p>
           </div>
         </div>
-        <div className="grid gap-4 p-5 sm:grid-cols-3 sm:p-6">
+        <div className={`grid gap-4 p-5 ${isRoleOffer ? "sm:grid-cols-2" : "sm:grid-cols-3"} sm:p-6`}>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
               Status
@@ -425,16 +430,16 @@ export default async function KinglancerJobWorkspacePage({
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Client
+              {organisationName ? "Organisation" : "Client"}
             </p>
             <div className="mt-2 flex items-center gap-2">
               <Avatar
-                name={job.client?.full_name}
-                src={job.client?.avatar_url}
+                name={employerName}
+                src={organisationName ? undefined : job.client?.avatar_url}
                 className="h-8 w-8 rounded-xl"
               />
               <span className="font-bold text-slate-950">
-                {job.client?.full_name ?? "Client"}
+                {employerName}
               </span>
             </div>
             {isAssigned && job.client?.phone && (
@@ -446,27 +451,37 @@ export default async function KinglancerJobWorkspacePage({
               </a>
             )}
           </div>
-          <div>
+          {!isRoleOffer && <div>
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
               Budget
             </p>
             <p className="mt-2 text-lg font-black text-slate-950">
               {jobPriceLabel(job)}
             </p>
-          </div>
+          </div>}
         </div>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className={`grid gap-6 ${isRoleOffer ? "" : "lg:grid-cols-[1fr_22rem]"}`}>
         <div className="space-y-6">
           {job.posting_type === "role" && roleEngagement && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
-                Role agreement
+                Your {deriveRoleOfferView(roleEngagement.status).title.toLowerCase()}
               </h2>
               <p className="mb-3 mt-1 text-sm text-slate-500">
                 {roleEngagement.status === "pending_acceptance" ? "Review the agreed pay and payment arrangement, then accept or decline the offer." : "Your agreed role terms and payment periods."}
               </p>
+              <JobKeyDetails
+            job={job}
+            showExactLocation={canSeeExactLocation({
+              status: job.status,
+              isOwner: false,
+              isAssignedKinglancer: isAssigned,
+            })}
+            showPay={false}
+            className="mb-5 border-0 bg-transparent p-0 shadow-none ring-0"
+          />
               <RoleEngagementActions
                 jobId={id}
                 status={roleEngagement.status}
@@ -506,7 +521,7 @@ export default async function KinglancerJobWorkspacePage({
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
               {job.description}
             </p>
-            <JobAttachmentLink jobId={job.id} attachment={job.attachment} />
+            <JobAttachmentLink jobId={job.id} attachment={job.attachment} compact={isRoleOffer} />
             {(job.categories ?? []).length > 0 && (
               <div className="mt-5 flex flex-wrap gap-2">
                 {job.categories.map((category) => (
@@ -521,7 +536,7 @@ export default async function KinglancerJobWorkspacePage({
             )}
           </Card>
 
-          <JobKeyDetails
+          {!isRoleOffer && (<JobKeyDetails
             job={job}
             showExactLocation={canSeeExactLocation({
               status: job.status,
@@ -529,7 +544,7 @@ export default async function KinglancerJobWorkspacePage({
               isAssignedKinglancer: isAssigned,
             })}
             className={cardPadding}
-          />
+          />)}
 
           {job.direct_request_status && job.status === "open" && (
             <Card className={cardPadding}>
@@ -559,17 +574,17 @@ export default async function KinglancerJobWorkspacePage({
 
           {application && (
             <Card className={cardPadding}>
-              <h2 className="text-lg font-black text-slate-950">
-                Your application
-              </h2>
+              <details>
+              <summary className="cursor-pointer text-lg font-bold text-slate-950">Your application</summary>
               <StatusBadge
                 className={`mt-3 ${applicationStatusPill(application.status).className}`}
               >
-                {applicationStatusPill(application.status).label}
+                {application.status === "offered" ? "Offer received" : applicationStatusPill(application.status).label}
               </StatusBadge>
               <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
                 {application.cover_letter}
               </p>
+              </details>
             </Card>
           )}
 
@@ -594,7 +609,7 @@ export default async function KinglancerJobWorkspacePage({
           )}
         </div>
 
-        <aside className="space-y-5">
+        {!isRoleOffer && <aside className="space-y-5">
           {" "}
           <Card className={cardPadding}>
             <div className="flex items-start gap-3">
@@ -639,7 +654,7 @@ export default async function KinglancerJobWorkspacePage({
               )}
             </div>
           </Card>
-        </aside>
+        </aside>}
       </div>
     </div>
   );

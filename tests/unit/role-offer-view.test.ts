@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { deriveRoleOfferView, rolePayLabel } from "@/lib/role-offer-view";
 
 describe("role offer presentation", () => {
+  it("addresses the candidate directly without changing organisation wording", () => {
+    expect(deriveRoleOfferView("pending_acceptance", "kinglancer").label).toBe("Awaiting your response");
+    expect(deriveRoleOfferView("pending_acceptance").label).toBe("Awaiting response");
+  });
   it("does not describe a closed offer as a completed hire", () => {
     expect(deriveRoleOfferView("cancelled")).toMatchObject({ label: "Offer closed", recipientLabel: "Offer to", canManage: false });
   });
