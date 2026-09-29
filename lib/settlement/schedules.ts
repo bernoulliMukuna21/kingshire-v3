@@ -72,7 +72,9 @@ export async function ensureEngagementSchedule(
         settlementMode: engagement.settlement_mode,
       })
     ) {
-      throw new Error("Every prorated role payment must meet the minimum charge");
+      throw new Error(
+        "Every prorated role payment must meet the minimum charge",
+      );
     }
     const fractions = roleBillingFractions(anchorDate, boundEnd, cadence);
     const inputs = fractions

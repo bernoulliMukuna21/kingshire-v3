@@ -47,10 +47,8 @@ import RepostJobButton from "@/app/(dashboard-shell)/dashboard/client/jobs/[id]/
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import { canManageJob } from "@/lib/organisations";
 import { getEngagementBySource } from "@/lib/db/engagements";
-import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
-import { getEngagementPayments } from "@/lib/db/engagement-payments";
 import { signCvUrls } from "@/lib/cv-storage";
-import RolePaymentActionButton from "@/components/jobs/RolePaymentActionButton";
+import RoleOfferSummary from "@/components/jobs/RoleOfferSummary";
 
 type InvitedKinglancer = {
   id: string;
@@ -129,9 +127,6 @@ export default async function JobDetailWorkspace({
         ? getEngagementBySource("org_role", id)
         : Promise.resolve(null),
     ]);
-  const rolePayments = roleEngagement
-    ? await getEngagementPayments(roleEngagement.id)
-    : [];
   const cvSignedUrls = await signCvUrls(
     "job-application-cvs",
     applications.flatMap((a) => (a.cv_path ? [a.cv_path] : [])),
@@ -207,52 +202,16 @@ export default async function JobDetailWorkspace({
         fallbackLabel={jobsListLabel}
       />
 
-      {job.posting_type === "role" && roleOfferPending && roleEngagement && (
-        <Card className="border-emerald-200 bg-emerald-50/60 p-5">
-          <h2 className="text-lg font-black text-emerald-950">
-            Recurring role
-          </h2>
-          <p className="mt-1 text-sm text-emerald-800">
-            {job.employment_type === "temporary" ? "Temporary" : "Permanent"}{" "}
-            role · £{Number(roleEngagement.amount_per_period).toFixed(2)}{" "}
-            {roleEngagement.cadence} ·{" "}
-            {roleEngagement.settlement_mode === "managed"
-              ? "KingsHire-managed settlement"
-              : "Direct settlement with the organisation"}
-          </p>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Engagement: {roleEngagement.status.replaceAll("_", " ")}
-          </p>
-          {rolePayments.length > 0 && (
-            <div className="mt-4 border-t border-emerald-200 pt-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-                Payment periods
-              </p>
-              <div className="mt-2 space-y-1 text-sm text-emerald-900">
-                {rolePayments.map((payment) => (
-                  <div key={payment.id} className="flex justify-between gap-3">
-                    <span>
-                      Period {payment.period_index} · {payment.due_date}
-                    </span>
-                    <div>
-                      <span className="block font-semibold capitalize">{payment.status}</span>
-                      {organisationId && payment.status === "processing" && payment.stripe_payment_intent_id && (
-                        <RolePaymentActionButton organisationId={organisationId} paymentId={payment.id} />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <RoleTerminationPanel
-            jobId={id}
-            status={roleEngagement.status}
-            endRequestedBy={roleEngagement.end_requested_by}
-            viewerId={user.id}
-            kinglancerId={roleEngagement.kinglancer_id}
-          />
-        </Card>
+      {job.posting_type === "role" &&
+        roleEngagement &&
+        roleEngagement.status !== "cancelled" &&
+        organisationId && (
+        <RoleOfferSummary
+          jobId={id}
+          organisationId={organisationId}
+          engagement={roleEngagement}
+          recipientName={kinglancerName ?? "Selected Kinglancer"}
+        />
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">

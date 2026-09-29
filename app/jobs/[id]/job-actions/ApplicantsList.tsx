@@ -42,9 +42,9 @@ export function ApplicantsList({
   const [payAmountInput, setPayAmountInput] = useState(
     job?.pay_amount ? String(job.pay_amount) : "",
   );
-  const [payCadenceInput, setPayCadenceInput] = useState<
-    "weekly" | "monthly"
-  >(job?.pay_cadence === "weekly" ? "weekly" : "monthly");
+  const [payCadenceInput, setPayCadenceInput] = useState<"weekly" | "monthly">(
+    job?.pay_cadence === "weekly" ? "weekly" : "monthly",
+  );
   const [settlementModeInput, setSettlementModeInput] = useState<
     "managed" | "direct"
   >(job?.settlement_mode === "direct" ? "direct" : "managed");

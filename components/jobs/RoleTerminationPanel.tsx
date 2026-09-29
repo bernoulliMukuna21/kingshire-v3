@@ -26,7 +26,11 @@ export default function RoleTerminationPanel({
   // pending_acceptance already has an accept/decline UI for the kinglancer —
   // only the org needs a way to retract before the candidate responds.
   if (status === "pending_acceptance" && viewerIsKinglancer) return null;
-  if (status !== "active" && status !== "pending_acceptance" && status !== "pending_funding")
+  if (
+    status !== "active" &&
+    status !== "pending_acceptance" &&
+    status !== "pending_funding"
+  )
     return null;
 
   const hasRequest = !!endRequestedBy;
@@ -131,7 +135,9 @@ export default function RoleTerminationPanel({
         </p>
       ) : (
         <>
-          <p className="text-slate-600">The other party asked to end this role early.</p>
+          <p className="text-slate-600">
+            The other party asked to end this role early.
+          </p>
           <div className="mt-2 flex gap-2">
             <button
               type="button"

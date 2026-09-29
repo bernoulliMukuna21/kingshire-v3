@@ -104,7 +104,10 @@ export function validateJobPostShape(input: {
     if (
       !pay_negotiable &&
       (!Number.isFinite(Number(pay_amount)) ||
-        !meetsMinimumPeriodCharge(Number(pay_amount), settlement_mode as SettlementMode))
+        !meetsMinimumPeriodCharge(
+          Number(pay_amount),
+          settlement_mode as SettlementMode,
+        ))
     )
       return {
         error: `The recurring charge must be at least £${MIN_JOB_BUDGET_GBP} per period. Direct settlement only charges the facilitation fee — raise the pay amount or switch to managed settlement.`,

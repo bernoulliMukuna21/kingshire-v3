@@ -55,7 +55,11 @@ describe("retryable settlement schedules", () => {
     state.rows = [];
     state.engagement.duration_periods = null;
     state.engagement.status = "active";
-    state.job = { employment_type: "permanent", scheduled_at: null, ends_at: null };
+    state.job = {
+      employment_type: "permanent",
+      scheduled_at: null,
+      ends_at: null,
+    };
   });
   it("repeated and concurrent acceptance creates only period one", async () => {
     await Promise.all([
@@ -173,7 +177,9 @@ describe("bounded temporary-role schedules", () => {
     await ensureEngagementSchedule("e1", 10);
     expect(state.rows.map((row) => row.period_index)).toEqual([1, 2, 3]);
     expect(state.rows[0].due_date).toBe("2026-01-01");
-    expect(state.rows[2].worker_amount).toBeLessThan(state.rows[0].worker_amount);
+    expect(state.rows[2].worker_amount).toBeLessThan(
+      state.rows[0].worker_amount,
+    );
   });
   it("does not create periods beyond the advertised end date", async () => {
     await ensureEngagementSchedule("e1", 10);
