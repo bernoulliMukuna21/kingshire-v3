@@ -1,5 +1,5 @@
 import Link from "next/link";
-import PageHeader from "@/components/ui/PageHeader";
+
 import { ButtonLink } from "@/components/ui/Button";
 import {
   hasOrganisationPermission,
@@ -12,12 +12,14 @@ export default function OrganisationWorkspaceHeader({
   role,
   active,
   canManageMembers,
+  showCreateAction = false,
 }: {
   organisationId: string;
   organisationName: string;
   role: OrganisationMemberRole;
   active: string;
   canManageMembers: boolean;
+  showCreateAction?: boolean;
 }) {
   const base = `/dashboard/organisations/${organisationId}`;
   // Placements are applicant management, which every member can do.
@@ -49,26 +51,25 @@ export default function OrganisationWorkspaceHeader({
   ];
 
   return (
-    <div className="space-y-7">
-      <PageHeader
-        eyebrow={`${role} workspace`}
-        title={organisationName}
-        action={
-          <div className="flex flex-wrap gap-2">
-            <ButtonLink href={`${base}/jobs/post`}>Post a job</ButtonLink>
-            {canManageApplicants && (
-              <ButtonLink href={`${base}/placements/new`} variant="secondary">
-                Post a placement
-              </ButtonLink>
-            )}
-          </div>
-        }
-      />
-      <div className="flex gap-1 overflow-x-auto border-b border-slate-200 scrollbar-none [&::-webkit-scrollbar]:hidden">
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Link href={base} className="flex min-w-0 items-center gap-3">
+          <span aria-hidden="true" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-950 text-lg font-bold text-white">{organisationName.slice(0, 1).toUpperCase()}</span>
+          <span className="text-xl font-bold text-slate-950">{organisationName}</span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold capitalize text-slate-600">{role}</span>
+        </Link>
+        {showCreateAction && (
+          <ButtonLink href={active === "placements" ? `${base}/placements/new` : `${base}/jobs/post`}>
+            {active === "placements" ? "Post a placement" : "Post a job"}
+          </ButtonLink>
+        )}
+      </div>
+      <nav aria-label="Organisation" className="flex gap-1 overflow-x-auto border-b border-slate-200 scrollbar-none [&::-webkit-scrollbar]:hidden">
         {tabs.map((t) => (
           <Link
             key={t.key}
             href={t.href}
+            aria-current={active === t.key ? "page" : undefined}
             className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-bold transition-colors ${
               active === t.key
                 ? "border-blue-600 text-blue-700"
@@ -78,7 +79,7 @@ export default function OrganisationWorkspaceHeader({
             {t.label}
           </Link>
         ))}
-      </div>
+      </nav>
     </div>
   );
 }

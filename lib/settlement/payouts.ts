@@ -10,7 +10,11 @@ import {
   recordSettlementError,
   type EngagementPaymentRow,
 } from "@/lib/db/engagement-payments";
-import { anchoredPeriodEnd, releaseNoticeDays, roleBillingFractions } from "./schedule";
+import {
+  anchoredPeriodEnd,
+  releaseNoticeDays,
+  roleBillingFractions,
+} from "./schedule";
 import { getOrgOwnerContact } from "@/lib/organisations";
 import { notifyEngagementReleasePending } from "@/lib/notifications";
 import type { EngagementPaymentStatus } from "./types";
@@ -230,7 +234,11 @@ async function periodEndTimestamp(
       .select("employment_type, scheduled_at, ends_at")
       .eq("id", engagement.source_id)
       .maybeSingle();
-    if (job?.employment_type === "temporary" && job.scheduled_at && job.ends_at) {
+    if (
+      job?.employment_type === "temporary" &&
+      job.scheduled_at &&
+      job.ends_at
+    ) {
       const fractions = roleBillingFractions(
         new Date(job.scheduled_at),
         new Date(job.ends_at),

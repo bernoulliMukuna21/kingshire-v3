@@ -14,10 +14,12 @@ export default function JobKeyDetails({
   job,
   showExactLocation = false,
   className,
+  showPay = true,
 }: {
   job: JobKeyDetailsData;
   showExactLocation?: boolean;
   className?: string;
+  showPay?: boolean;
 }) {
   const schedule = jobScheduleLabel(job);
   const isRole = job.posting_type === "role";
@@ -52,11 +54,11 @@ export default function JobKeyDetails({
               <p className="font-semibold text-slate-800">
                 {job.employment_type === "temporary" ? "Temporary role" : "Permanent role"}
               </p>
-              <p className="text-slate-500">
+              {showPay && <p className="text-slate-500">
                 {job.pay_negotiable
                   ? "Pay discussed during the interview"
                   : `£${Number(job.pay_amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })} ${job.pay_cadence}`}
-              </p>
+              </p>}
               <p className="text-xs text-slate-400">
                 {job.settlement_mode === "direct"
                   ? "Payment arranged directly with the organisation"

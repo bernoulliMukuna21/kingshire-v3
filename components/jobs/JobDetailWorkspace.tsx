@@ -1,3 +1,4 @@
+import { deriveRoleOfferView, rolePayLabel } from "@/lib/role-offer-view";
 import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -47,10 +48,8 @@ import RepostJobButton from "@/app/(dashboard-shell)/dashboard/client/jobs/[id]/
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import { canManageJob } from "@/lib/organisations";
 import { getEngagementBySource } from "@/lib/db/engagements";
-import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
-import { getEngagementPayments } from "@/lib/db/engagement-payments";
 import { signCvUrls } from "@/lib/cv-storage";
-import RolePaymentActionButton from "@/components/jobs/RolePaymentActionButton";
+import RoleOfferSummary from "@/components/jobs/RoleOfferSummary";
 
 type InvitedKinglancer = {
   id: string;
@@ -108,9 +107,13 @@ export default async function JobDetailWorkspace({
 
   const isDirectRequest = !!job.invited_kinglancer_id;
   const statusConfig = jobStatusPill(job.status);
-  const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id;
+  const roleEngagement = job.posting_type === "role"
+    ? await getEngagementBySource("org_role", id)
+    : null;
+  const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id ??
+    (roleEngagement?.status !== "cancelled" ? roleEngagement?.kinglancer_id : null);
 
-  const [applications, kinglancerResult, pendingAttempt, roleEngagement] =
+  const [applications, kinglancerResult, pendingAttempt] =
     await Promise.all([
       !isDirectRequest && job.status === "open"
         ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
@@ -125,13 +128,7 @@ export default async function JobDetailWorkspace({
       job.status === "open"
         ? getPendingPaymentAttemptByJob(id)
         : Promise.resolve(null),
-      job.posting_type === "role"
-        ? getEngagementBySource("org_role", id)
-        : Promise.resolve(null),
     ]);
-  const rolePayments = roleEngagement
-    ? await getEngagementPayments(roleEngagement.id)
-    : [];
   const cvSignedUrls = await signCvUrls(
     "job-application-cvs",
     applications.flatMap((a) => (a.cv_path ? [a.cv_path] : [])),
@@ -199,7 +196,7 @@ export default async function JobDetailWorkspace({
     kinglancer?.full_name?.split(" ")[0] ?? "the Kinglancer";
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6 [&_.shadow-xl]:shadow-sm">
       {header}
       <DashboardBackLink
         source={from}
@@ -207,52 +204,20 @@ export default async function JobDetailWorkspace({
         fallbackLabel={jobsListLabel}
       />
 
-      {job.posting_type === "role" && roleOfferPending && roleEngagement && (
-        <Card className="border-emerald-200 bg-emerald-50/60 p-5">
-          <h2 className="text-lg font-black text-emerald-950">
-            Recurring role
-          </h2>
-          <p className="mt-1 text-sm text-emerald-800">
-            {job.employment_type === "temporary" ? "Temporary" : "Permanent"}{" "}
-            role · £{Number(roleEngagement.amount_per_period).toFixed(2)}{" "}
-            {roleEngagement.cadence} ·{" "}
-            {roleEngagement.settlement_mode === "managed"
-              ? "KingsHire-managed settlement"
-              : "Direct settlement with the organisation"}
-          </p>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Engagement: {roleEngagement.status.replaceAll("_", " ")}
-          </p>
-          {rolePayments.length > 0 && (
-            <div className="mt-4 border-t border-emerald-200 pt-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-emerald-700">
-                Payment periods
-              </p>
-              <div className="mt-2 space-y-1 text-sm text-emerald-900">
-                {rolePayments.map((payment) => (
-                  <div key={payment.id} className="flex justify-between gap-3">
-                    <span>
-                      Period {payment.period_index} · {payment.due_date}
-                    </span>
-                    <div>
-                      <span className="block font-semibold capitalize">{payment.status}</span>
-                      {organisationId && payment.status === "processing" && payment.stripe_payment_intent_id && (
-                        <RolePaymentActionButton organisationId={organisationId} paymentId={payment.id} />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <RoleTerminationPanel
-            jobId={id}
-            status={roleEngagement.status}
-            endRequestedBy={roleEngagement.end_requested_by}
-            viewerId={user.id}
-            kinglancerId={roleEngagement.kinglancer_id}
-          />
-        </Card>
+      <div>
+        <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">{job.title}</h1>
+        <p className="mt-1 text-sm text-slate-500">Job overview</p>
+      </div>
+      {job.posting_type === "role" &&
+        roleEngagement &&
+        roleEngagement.status !== "cancelled" &&
+        organisationId && (
+        <RoleOfferSummary
+          jobId={id}
+          organisationId={organisationId}
+          engagement={roleEngagement}
+          recipientName={kinglancerName ?? "Selected Kinglancer"}
+        />
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -277,13 +242,11 @@ export default async function JobDetailWorkspace({
                 </StatusBadge>
               )}
               <StatusBadge className={statusConfig.className}>
-                {statusConfig.label}
+                {roleEngagement && roleEngagement.status !== "cancelled" ? deriveRoleOfferView(roleEngagement.status).label : statusConfig.label}
               </StatusBadge>
             </div>
 
-            <h1 className="text-2xl font-black text-slate-950 sm:text-3xl">
-              {job.title}
-            </h1>
+            <h2 className="text-lg font-bold text-slate-950">Job description</h2>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
               {job.description}
             </p>
@@ -303,7 +266,7 @@ export default async function JobDetailWorkspace({
             )}
           </Card>
 
-          <JobKeyDetails job={job} showExactLocation className={cardPadding} />
+          <JobKeyDetails job={job} showExactLocation showPay={false} className={cardPadding} />
 
           {job.status === "open" && <PendingPaymentCard jobId={id} />}
 
@@ -351,18 +314,6 @@ export default async function JobDetailWorkspace({
             </Card>
           )}
 
-          {job.posting_type === "role" &&
-            roleEngagement?.status === "pending_acceptance" && (
-              <Card className="border-amber-200 bg-amber-50 p-5">
-                <p className="text-sm font-bold text-amber-900">
-                  Role offer sent
-                </p>
-                <p className="mt-1 text-sm text-amber-800">
-                  The selected Kinglancer must accept the advertised role terms
-                  before the role can start.
-                </p>
-              </Card>
-            )}
 
           {job.status === "open" &&
             job.posting_type !== "role" &&
@@ -501,16 +452,14 @@ export default async function JobDetailWorkspace({
               {job.posting_type === "role" ? "Pay" : "Budget"}
             </p>
             <p className="mt-2 text-3xl font-black text-emerald-600">
-              {jobPriceLabel(job)}
+              {job.posting_type === "role" && !job.pay_negotiable ? rolePayLabel(job.pay_amount, job.pay_cadence ?? "monthly") : jobPriceLabel(job)}
             </p>
             {job.posting_type !== "role" && (
               <p className="mt-1 text-sm text-slate-500">
                 {formatRateType(job.rate_type)}
               </p>
             )}
-          </Card>
-
-          <Card className="space-y-3 p-5">
+            <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
             {deadline && (
               <div className="flex items-center gap-3 text-sm text-slate-600">
                 <Calendar size={16} className="shrink-0 text-slate-400" />
@@ -535,11 +484,12 @@ export default async function JobDetailWorkspace({
                 })}
               </span>
             </div>
+            </div>
           </Card>
 
           <Card className="p-5">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              Kinglancer
+              {roleEngagement?.status === "pending_acceptance" ? "Offer recipient" : "Kinglancer"}
             </p>
             {kinglancerName ? (
               <div className="mt-3 flex items-center gap-3">
@@ -551,7 +501,7 @@ export default async function JobDetailWorkspace({
                 <div>
                   <p className="font-bold text-slate-950">{kinglancerName}</p>
                   <p className="text-sm text-slate-500">
-                    {job.kinglancer_id ? "Assigned" : "Invited"}
+                    {job.kinglancer_id ? "Hired" : roleEngagement ? "Offer sent" : "Invited"}
                   </p>
                   {contactRevealed && kinglancer?.phone && (
                     <a

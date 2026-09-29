@@ -117,7 +117,11 @@ export async function PATCH(
     // time) — the database re-checks that under lock before writing anything.
     const settingPay = body.pay_amount !== undefined;
     let terms:
-      | { payAmount: number; payCadence: "weekly" | "monthly"; settlementMode: "managed" | "direct" }
+      | {
+          payAmount: number;
+          payCadence: "weekly" | "monthly";
+          settlementMode: "managed" | "direct";
+        }
       | undefined;
 
     if (settingPay) {
@@ -144,7 +148,8 @@ export async function PATCH(
       if (!meetsMinimumPeriodCharge(payAmountNum, settlementMode))
         return NextResponse.json(
           {
-            error: `The recurring charge must be at least £${MIN_JOB_BUDGET_GBP} per period. ${settlementMode === "direct" ? "Direct settlement only charges the facilitation fee — raise the pay amount or switch to managed settlement." : ""}`.trim(),
+            error:
+              `The recurring charge must be at least £${MIN_JOB_BUDGET_GBP} per period. ${settlementMode === "direct" ? "Direct settlement only charges the facilitation fee — raise the pay amount or switch to managed settlement." : ""}`.trim(),
           },
           { status: 400 },
         );
