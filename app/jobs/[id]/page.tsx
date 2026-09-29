@@ -353,7 +353,11 @@ export default async function JobDetailPage({
                 </div>
               ) : canApply ? (
                 <div className="mt-3">
-                  <ApplyForm jobId={id} />
+                  <ApplyForm
+                    jobId={id}
+                    postingType={job.posting_type}
+                    organisationId={job.organisation_id}
+                  />
                 </div>
               ) : profile?.role === "client" ? (
                 <p className="text-sm text-gray-500 mt-3">
