@@ -4,6 +4,7 @@ import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
+import { Settings, UserRound } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import SignOutButton from "@/components/SignOutButton";
 import PushNotificationsPrompt from "@/components/PushNotificationsPrompt";
@@ -118,7 +119,30 @@ export default function DashboardShell({ profile, organisations, children }: Pro
               </p>
             </div>
           </div>
-          <div className="flex gap-4 px-2 text-sm text-white/80"><Link href="/dashboard/profile">My profile</Link><Link href="/dashboard/settings">Account settings</Link></div>
+          <div className="flex gap-2 px-0.5">
+            <Link
+              href="/dashboard/profile"
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                pathname === "/dashboard/profile"
+                  ? "bg-white text-[#10234b]"
+                  : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white"
+              }`}
+            >
+              <UserRound size={14} />
+              My profile
+            </Link>
+            <Link
+              href="/dashboard/settings"
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                pathname === "/dashboard/settings"
+                  ? "bg-white text-[#10234b]"
+                  : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white"
+              }`}
+            >
+              <Settings size={14} />
+              Settings
+            </Link>
+          </div>
           <SignOutButton className="w-full" />
         </div>
       </div>

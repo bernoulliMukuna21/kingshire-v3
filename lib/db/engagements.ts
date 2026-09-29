@@ -202,3 +202,51 @@ export async function listOrgPendingRoleOffers(
     status: row.status as EngagementStatus,
   }));
 }
+
+export type EngagementCheckIn = {
+  id: string;
+  engagementId: string;
+  authorId: string;
+  authorName: string | null;
+  note: string;
+  createdAt: string;
+};
+
+/** Generic check-in feed shared by any engagement (currently roles; the
+ * natural next step is migrating placements onto this instead of their own
+ * placement_check_ins table). */
+export async function listEngagementCheckIns(
+  engagementId: string,
+): Promise<EngagementCheckIn[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("engagement_check_ins")
+    .select("id, engagement_id, author_id, note, created_at, author:profiles!author_id(full_name)")
+    .eq("engagement_id", engagementId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    engagementId: row.engagement_id,
+    authorId: row.author_id,
+    authorName:
+      (row.author as unknown as { full_name: string | null } | null)
+        ?.full_name ?? null,
+    note: row.note,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function createEngagementCheckIn(params: {
+  engagementId: string;
+  authorId: string;
+  note: string;
+}): Promise<void> {
+  const db = createServiceClient();
+  const { error } = await db.from("engagement_check_ins").insert({
+    engagement_id: params.engagementId,
+    author_id: params.authorId,
+    note: params.note,
+  });
+  if (error) throw error;
+}

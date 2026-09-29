@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CheckInForm({ agreementId }: { agreementId: string }) {
+export default function CheckInForm({ endpoint }: { endpoint: string }) {
   const router = useRouter();
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
@@ -14,14 +14,11 @@ export default function CheckInForm({ agreementId }: { agreementId: string }) {
     if (!note.trim()) return;
     setSaving(true);
     setError(null);
-    const res = await fetch(
-      `/api/placements/agreements/${agreementId}/check-ins`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note }),
-      },
-    );
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note }),
+    });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Could not post the check-in.");

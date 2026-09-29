@@ -31,6 +31,35 @@ export async function notifyRoleOffer({
   });
 }
 
+export async function notifyRoleCheckIn({
+  recipientId,
+  recipientEmail,
+  jobTitle,
+  authorName,
+  link,
+}: {
+  recipientId: string;
+  recipientEmail?: string;
+  jobTitle: string;
+  authorName: string;
+  link: string;
+}) {
+  await notify({
+    userId: recipientId,
+    type: "work_submitted",
+    title: "📝 New check-in posted",
+    body: `${authorName} just posted a check-in on "${jobTitle}" — take a look at the latest update.`,
+    link,
+    email: recipientEmail
+      ? {
+          to: recipientEmail,
+          subject: `New check-in: ${jobTitle}`,
+          ctaLabel: "View check-in →",
+        }
+      : undefined,
+  });
+}
+
 export async function notifyRoleEndProposed({
   recipientId,
   recipientEmail,

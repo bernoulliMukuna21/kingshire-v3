@@ -34,7 +34,10 @@ import ReviewPanel from "@/components/jobs/ReviewPanel";
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import RoleEngagementActions from "./RoleEngagementActions";
 import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
+import CheckInForm from "@/components/CheckInForm";
+import CheckInFeed from "@/components/CheckInFeed";
 import { getEngagementPayments } from "@/lib/db/engagement-payments";
+import { listEngagementCheckIns } from "@/lib/db/engagements";
 import {
   DirectRequestActions,
   KinglancerCompleteButton,
@@ -317,6 +320,9 @@ export default async function KinglancerJobWorkspacePage({
   const rolePayments = roleEngagement
     ? await getEngagementPayments(roleEngagement.id)
     : [];
+  const roleCheckIns = roleEngagement
+    ? await listEngagementCheckIns(roleEngagement.id)
+    : [];
   const isAssigned = job.kinglancer_id === user.id;
   const isInvited = job.invited_kinglancer_id === user.id;
   const canViewWorkspace = isAssigned || isInvited || !!application || !!roleEngagement;
@@ -514,6 +520,27 @@ export default async function KinglancerJobWorkspacePage({
                 viewerId={user.id}
                 kinglancerId={job.kinglancer_id ?? user.id}
               />
+            </Card>
+          )}
+          {roleEngagement && roleEngagement.status === "active" && (
+            <Card className={cardPadding}>
+              <h2 className="text-lg font-black text-slate-950">Check-ins</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Post an update on the work, or ask {employerName} a question.
+              </p>
+              <div className="mt-4 space-y-4">
+                <CheckInForm endpoint={`/api/jobs/${id}/role/check-ins`} />
+                <CheckInFeed
+                  checkIns={roleCheckIns.map((c) => ({
+                    id: c.id,
+                    authorId: c.authorId,
+                    authorName: c.authorName,
+                    note: c.note,
+                    createdAt: c.createdAt,
+                  }))}
+                  kinglancerId={job.kinglancer_id ?? user.id}
+                />
+              </div>
             </Card>
           )}
           <Card className={cardPadding}>

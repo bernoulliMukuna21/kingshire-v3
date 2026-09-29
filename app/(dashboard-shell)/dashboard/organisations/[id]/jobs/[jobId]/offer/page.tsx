@@ -10,11 +10,13 @@ import {
 } from "@/lib/organisations";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import { getJobById } from "@/lib/db/jobs";
-import { getEngagementBySource } from "@/lib/db/engagements";
+import { getEngagementBySource, listEngagementCheckIns } from "@/lib/db/engagements";
 import { getEngagementPayments } from "@/lib/db/engagement-payments";
 import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
 import RolePaymentActionButton from "@/components/jobs/RolePaymentActionButton";
 import RolePayPeriodButton from "@/components/jobs/RolePayPeriodButton";
+import CheckInForm from "@/components/CheckInForm";
+import CheckInFeed from "@/components/CheckInFeed";
 import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import OrganisationWorkspaceHeader from "../../../OrganisationWorkspaceHeader";
@@ -40,7 +42,10 @@ export default async function OrganisationRoleOfferPage({
 
   const engagement = await getEngagementBySource("org_role", jobId);
   if (!engagement) notFound();
-  const payments = await getEngagementPayments(engagement.id);
+  const [payments, checkIns] = await Promise.all([
+    getEngagementPayments(engagement.id),
+    listEngagementCheckIns(engagement.id),
+  ]);
   const db = createServiceClient();
   const { data: recipient } = await db
     .from("profiles")
@@ -229,6 +234,30 @@ export default async function OrganisationRoleOfferPage({
                   </span>
                 </div>
               ))}
+            </div>
+          </Card>
+        )}
+
+        {engagement.status === "active" && (
+          <Card className="p-6 sm:p-8">
+            <h2 className="text-lg font-black text-slate-950">Check-ins</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Post an update on the work, or ask {recipient?.full_name ?? "the Kinglancer"} a question.
+            </p>
+            <div className="mt-4 space-y-4">
+              {canManage && (
+                <CheckInForm endpoint={`/api/jobs/${jobId}/role/check-ins`} />
+              )}
+              <CheckInFeed
+                checkIns={checkIns.map((c) => ({
+                  id: c.id,
+                  authorId: c.authorId,
+                  authorName: c.authorName,
+                  note: c.note,
+                  createdAt: c.createdAt,
+                }))}
+                kinglancerId={engagement.kinglancer_id}
+              />
             </div>
           </Card>
         )}
