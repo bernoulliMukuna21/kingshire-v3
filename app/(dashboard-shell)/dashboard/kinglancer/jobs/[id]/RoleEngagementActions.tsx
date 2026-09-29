@@ -1,5 +1,6 @@
 "use client";
 
+import { deriveRoleOfferView, rolePayLabel } from "@/lib/role-offer-view";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -23,44 +24,31 @@ export default function RoleEngagementActions({
   if (status !== "pending_acceptance") {
     return (
       <p className="text-sm text-slate-600">
-        Role agreement: <strong>{status.replaceAll("_", " ")}</strong>. Pay is £
-        {amount.toFixed(2)} {cadence}.
+        <strong>{deriveRoleOfferView(status).label}</strong> · {rolePayLabel(amount, cadence)}.
       </p>
     );
   }
 
-  async function accept() {
+  async function respond(action: "accept" | "decline") {
     setLoading(true);
     setError(null);
-    const response = await fetch(`/api/jobs/${jobId}/role/accept`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "accept" }),
-    });
-    const data = await response.json().catch(() => ({}));
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error ?? "Could not accept this role.");
-      return;
+    try {
+      const response = await fetch(`/api/jobs/${jobId}/role/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(data.error ?? "Could not update this offer. Please retry.");
+        return;
+      }
+      router.refresh();
+    } catch {
+      setError("We couldn't connect. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    router.refresh();
-  }
-
-  async function decline() {
-    setLoading(true);
-    setError(null);
-    const response = await fetch(`/api/jobs/${jobId}/role/accept`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "decline" }),
-    });
-    const data = await response.json().catch(() => ({}));
-    setLoading(false);
-    if (!response.ok) {
-      setError(data.error ?? "Could not decline this role.");
-      return;
-    }
-    router.refresh();
   }
 
   return (
@@ -68,25 +56,25 @@ export default function RoleEngagementActions({
       <p className="text-sm text-slate-600">
         Pay:{" "}
         <strong>
-          £{amount.toFixed(2)} {cadence}
+          {rolePayLabel(amount, cadence)}
         </strong>{" "}
         ·{" "}
         {settlementMode === "managed"
           ? "KingsHire-managed escrow"
           : "Organisation pays directly"}
       </p>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       <button
         type="button"
-        onClick={accept}
+        onClick={() => respond("accept")}
         disabled={loading}
         className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
       >
-        {loading ? "Accepting..." : "Accept role terms"}
+        {loading ? "Updating offer..." : "Accept role terms"}
       </button>
       <button
         type="button"
-        onClick={decline}
+        onClick={() => respond("decline")}
         disabled={loading}
         className="rounded-xl border border-red-200 px-4 py-2.5 text-sm font-bold text-red-700 disabled:opacity-50"
       >

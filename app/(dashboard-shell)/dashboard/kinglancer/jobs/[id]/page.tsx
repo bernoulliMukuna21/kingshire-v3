@@ -1,3 +1,5 @@
+import { createServiceClient } from "@/lib/supabase/service";
+import { deriveRoleOfferView } from "@/lib/role-offer-view";
 import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
@@ -258,7 +260,7 @@ export default async function KinglancerJobWorkspacePage({
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
-          client:profiles!client_id(full_name, avatar_url, phone)
+          client:profiles!client_id(full_name, avatar_url)
         `,
         )
         .eq("id", id)
@@ -290,6 +292,10 @@ export default async function KinglancerJobWorkspacePage({
         .maybeSingle(),
     ]);
 
+  // A failed query is an operational error, not a missing job.
+  for (const result of [jobResult, applicationResult, transactionResult, engagementResult]) {
+    if (result.error && result.error.code !== "PGRST116") throw result.error;
+  }
   const job = (jobResult as unknown as { data: JobWorkspace | null }).data;
   if (!job) notFound();
 
@@ -311,9 +317,17 @@ export default async function KinglancerJobWorkspacePage({
     : [];
   const isAssigned = job.kinglancer_id === user.id;
   const isInvited = job.invited_kinglancer_id === user.id;
-  const canViewWorkspace = isAssigned || isInvited || !!application;
+  const canViewWorkspace = isAssigned || isInvited || !!application || !!roleEngagement;
 
   if (!canViewWorkspace) redirect(`/jobs/${id}`);
+
+  // Private contact details are shared only with the assigned worker.
+  if (isAssigned && job.client) {
+    const { data: contact, error } = await createServiceClient()
+      .from("profiles").select("phone").eq("id", job.client_id).maybeSingle();
+    if (error) throw error;
+    job.client.phone = contact?.phone ?? null;
+  }
 
   // Bank-transfer jobs are paid manually to the worker's payout link — nudge
   // them to add one (in Settings) before payout is due.
@@ -326,7 +340,9 @@ export default async function KinglancerJobWorkspacePage({
   const openStatus = isInvited
     ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
     : { label: "Open", className: "bg-green-100 text-green-700" };
-  const status = job.status === "open" ? openStatus : jobStatusPill(job.status);
+  const status = roleEngagement
+    ? { label: deriveRoleOfferView(roleEngagement.status).label, className: "bg-blue-50 text-blue-700" }
+    : job.status === "open" ? openStatus : jobStatusPill(job.status);
   const action = nextAction({ job, application, transaction, roleEngagement });
   const netHeld =
     transaction && transaction.status === "held"
@@ -449,7 +465,7 @@ export default async function KinglancerJobWorkspacePage({
                 Role agreement
               </h2>
               <p className="mb-3 mt-1 text-sm text-slate-500">
-                Review the recurring role terms before you accept.
+                {roleEngagement.status === "pending_acceptance" ? "Review the agreed pay and payment arrangement, then accept or decline the offer." : "Your agreed role terms and payment periods."}
               </p>
               <RoleEngagementActions
                 jobId={id}
