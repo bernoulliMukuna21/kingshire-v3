@@ -7,6 +7,7 @@ import {
 } from "@/lib/notifications";
 import { canManageJob } from "@/lib/organisations";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 
 // POST /api/jobs/[id]/dispute — either party raises a dispute
 export async function POST(
@@ -40,7 +41,9 @@ export async function POST(
   // Fetch job — caller must be the client or kinglancer
   const { data: job } = await createServiceClient()
     .from("jobs")
-    .select("id, title, status, client_id, organisation_id, kinglancer_id")
+    .select(
+      "id, title, status, client_id, organisation_id, kinglancer_id, posting_type",
+    )
     .eq("id", jobId)
     .single();
 
@@ -54,6 +57,15 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  if (job.posting_type === "role") {
+    return NextResponse.json(
+      {
+        error: `Disputes on recurring roles aren't handled here yet. Contact support at ${SUPPORT_EMAIL}.`,
+      },
+      { status: 400 },
+    );
+  }
+
   if (!["in_progress", "completed"].includes(job.status)) {
     return NextResponse.json(
       { error: "A dispute can only be raised on an active or completed job" },
@@ -61,30 +73,26 @@ export async function POST(
     );
   }
 
-  // Freeze the job (service client — kinglancer no longer has SDK update rights on jobs)
-  const serviceDb = createServiceClient();
-  await serviceDb.from("jobs").update({ status: "disputed" }).eq("id", jobId);
-
-  // Create dispute record
-  const { error } = await serviceDb.from("disputes").insert({
-    job_id: jobId,
-    raised_by: user.id,
-    reason,
+  const { error } = await createServiceClient().rpc("raise_job_dispute", {
+    p_job: jobId,
+    p_actor: user.id,
+    p_reason: reason,
   });
-
-  if (error) {
+  if (error)
     return NextResponse.json(
-      { error: "Failed to raise dispute" },
-      { status: 500 },
+      {
+        error:
+          "The job changed or settlement has already started. Refresh and try again.",
+      },
+      { status: 409 },
     );
-  }
 
   // Notify the other party
   const raisedBy = isClientParty ? "client" : "kinglancer";
   const recipientId = raisedBy === "client" ? job.kinglancer_id : job.client_id;
 
   // Always alert the admin inbox with full details
-  const { data: raiser } = await supabase
+  const { data: raiser } = await createServiceClient()
     .from("profiles")
     .select("email")
     .eq("id", user.id)
@@ -99,7 +107,7 @@ export async function POST(
   }).catch(() => {});
 
   if (recipientId) {
-    const { data: recipient } = await supabase
+    const { data: recipient } = await createServiceClient()
       .from("profiles")
       .select("email")
       .eq("id", recipientId)

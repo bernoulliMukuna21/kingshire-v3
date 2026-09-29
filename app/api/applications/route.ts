@@ -1,3 +1,4 @@
+import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createApplication, hasApplied } from "@/lib/db/applications";
@@ -9,6 +10,8 @@ import {
 import { hasEntitlement } from "@/lib/subscriptions";
 import { notifyNewApplication } from "@/lib/notifications";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { resolveCvPath } from "@/lib/cv-storage";
+import { getOrgOwnerContact } from "@/lib/organisations";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -59,6 +62,18 @@ export async function POST(request: Request) {
     );
   }
 
+  const rawCv = body.cv_path ?? body.cv_url;
+  if (typeof rawCv !== "string" || !rawCv.trim()) {
+    return NextResponse.json(
+      { error: "Please attach your CV to apply." },
+      { status: 400 },
+    );
+  }
+  const cvPath = resolveCvPath("job-application-cvs", rawCv, user.id);
+  if (!cvPath) {
+    return NextResponse.json({ error: "Invalid CV upload." }, { status: 400 });
+  }
+
   // Verify the job exists and is open
   const job = await getJobById(job_id);
   if (!job) {
@@ -78,8 +93,10 @@ export async function POST(request: Request) {
   }
 
   // Small jobs are subscriber-only to apply to (direct requests are exempt —
-  // they're handled above).
+  // they're handled above). Roles have no "budget" (recurring pay instead),
+  // so the small-job gate never applies to them.
   if (
+    job.posting_type !== "role" &&
     jobRequiresSubscriptionToApply(job.budget) &&
     !(await hasEntitlement(user.id, "kinglancer", "applyToSmallJobs"))
   ) {
@@ -101,27 +118,38 @@ export async function POST(request: Request) {
     );
   }
 
-  // Fetch the client's email now, while the request context is still live
-  const { data: clientProfile } = await supabase
-    .from("profiles")
-    .select("email")
-    .eq("id", job.client_id)
-    .single();
+  // Fetch whoever should be notified: the org owner for an org-owned job
+  // (client_id is just whoever originally posted it, not necessarily who
+  // manages applicants), or the client directly for a personal job.
+  const recipient = job.organisation_id
+    ? await getOrgOwnerContact(job.organisation_id)
+    : await createServiceClient()
+        .from("profiles")
+        .select("email")
+        .eq("id", job.client_id)
+        .single()
+        .then(({ data }) =>
+          data ? { userId: job.client_id, email: data.email } : null,
+        );
 
   try {
     const application = await createApplication({
       job_id,
       kinglancer_id: user.id,
       cover_letter: cover_letter.trim(),
+      cv_path: cvPath,
     });
 
     // Notify the client — fire-and-forget, never blocks the response
-    if (clientProfile?.email) {
+    if (recipient?.email) {
       notifyNewApplication({
-        clientId: job.client_id,
-        clientEmail: clientProfile.email,
+        clientId: recipient.userId,
+        clientEmail: recipient.email,
         jobTitle: job.title,
         jobId: job_id,
+        link: job.organisation_id
+          ? `/dashboard/organisations/${job.organisation_id}/jobs/${job_id}`
+          : undefined,
       }).catch(() => {});
     }
 

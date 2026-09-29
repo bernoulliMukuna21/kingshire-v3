@@ -18,6 +18,8 @@ export type Database = {
         Row: {
           cover_letter: string
           created_at: string
+          cv_path: string | null
+          cv_url: string | null
           id: string
           job_id: string
           kinglancer_id: string
@@ -27,6 +29,8 @@ export type Database = {
         Insert: {
           cover_letter: string
           created_at?: string
+          cv_path?: string | null
+          cv_url?: string | null
           id?: string
           job_id: string
           kinglancer_id: string
@@ -36,6 +40,8 @@ export type Database = {
         Update: {
           cover_letter?: string
           created_at?: string
+          cv_path?: string | null
+          cv_url?: string | null
           id?: string
           job_id?: string
           kinglancer_id?: string
@@ -109,11 +115,18 @@ export type Database = {
       }
       engagement_payments: {
         Row: {
+          attempt_customer_id: string | null
+          attempt_id: string | null
+          attempt_kind: string | null
+          attempt_payment_method_id: string | null
+          attempt_started_at: string | null
           charged_at: string | null
+          checkout_session_id: string | null
           created_at: string
           dispute_reason: string | null
           due_date: string
           engagement_id: string
+          fulfilled_at: string | null
           id: string
           kinglancer_id: string
           notice_sent_at: string | null
@@ -121,19 +134,36 @@ export type Database = {
           period_index: number
           platform_fee_client: number
           platform_fee_kinglancer: number
+          release_attempt_id: string | null
+          release_attempt_started_at: string | null
+          release_dispatch_started_at: string | null
+          release_failure_code: string | null
+          release_idempotency_key: string | null
+          release_operation: string | null
+          release_outcome: string | null
+          release_request: Json | null
           released_at: string | null
+          settlement_error: string | null
           status: string
           stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
           stripe_transfer_id: string | null
           updated_at: string
           worker_amount: number
         }
         Insert: {
+          attempt_customer_id?: string | null
+          attempt_id?: string | null
+          attempt_kind?: string | null
+          attempt_payment_method_id?: string | null
+          attempt_started_at?: string | null
           charged_at?: string | null
+          checkout_session_id?: string | null
           created_at?: string
           dispute_reason?: string | null
           due_date: string
           engagement_id: string
+          fulfilled_at?: string | null
           id?: string
           kinglancer_id: string
           notice_sent_at?: string | null
@@ -141,19 +171,36 @@ export type Database = {
           period_index: number
           platform_fee_client?: number
           platform_fee_kinglancer?: number
+          release_attempt_id?: string | null
+          release_attempt_started_at?: string | null
+          release_dispatch_started_at?: string | null
+          release_failure_code?: string | null
+          release_idempotency_key?: string | null
+          release_operation?: string | null
+          release_outcome?: string | null
+          release_request?: Json | null
           released_at?: string | null
+          settlement_error?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
           stripe_transfer_id?: string | null
           updated_at?: string
           worker_amount?: number
         }
         Update: {
+          attempt_customer_id?: string | null
+          attempt_id?: string | null
+          attempt_kind?: string | null
+          attempt_payment_method_id?: string | null
+          attempt_started_at?: string | null
           charged_at?: string | null
+          checkout_session_id?: string | null
           created_at?: string
           dispute_reason?: string | null
           due_date?: string
           engagement_id?: string
+          fulfilled_at?: string | null
           id?: string
           kinglancer_id?: string
           notice_sent_at?: string | null
@@ -161,9 +208,19 @@ export type Database = {
           period_index?: number
           platform_fee_client?: number
           platform_fee_kinglancer?: number
+          release_attempt_id?: string | null
+          release_attempt_started_at?: string | null
+          release_dispatch_started_at?: string | null
+          release_failure_code?: string | null
+          release_idempotency_key?: string | null
+          release_operation?: string | null
+          release_outcome?: string | null
+          release_request?: Json | null
           released_at?: string | null
+          settlement_error?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
           stripe_transfer_id?: string | null
           updated_at?: string
           worker_amount?: number
@@ -208,11 +265,14 @@ export type Database = {
           org_signed_at: string | null
           org_signed_by: string | null
           organisation_id: string
+          settlement_hold_at: string | null
+          settlement_hold_reason: string | null
           settlement_mode: string
           source_id: string
           source_kind: string
           started_at: string | null
           status: string
+          termination_kind: string | null
           updated_at: string
         }
         Insert: {
@@ -230,11 +290,14 @@ export type Database = {
           org_signed_at?: string | null
           org_signed_by?: string | null
           organisation_id: string
+          settlement_hold_at?: string | null
+          settlement_hold_reason?: string | null
           settlement_mode: string
           source_id: string
           source_kind: string
           started_at?: string | null
           status?: string
+          termination_kind?: string | null
           updated_at?: string
         }
         Update: {
@@ -252,11 +315,14 @@ export type Database = {
           org_signed_at?: string | null
           org_signed_by?: string | null
           organisation_id?: string
+          settlement_hold_at?: string | null
+          settlement_hold_reason?: string | null
           settlement_mode?: string
           source_id?: string
           source_kind?: string
           started_at?: string | null
           status?: string
+          termination_kind?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1101,6 +1167,7 @@ export type Database = {
       placement_applications: {
         Row: {
           created_at: string
+          cv_path: string | null
           cv_url: string | null
           id: string
           kinglancer_id: string
@@ -1111,6 +1178,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          cv_path?: string | null
           cv_url?: string | null
           id?: string
           kinglancer_id: string
@@ -1121,6 +1189,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          cv_path?: string | null
           cv_url?: string | null
           id?: string
           kinglancer_id?: string
@@ -1552,6 +1621,7 @@ export type Database = {
           id: string
           is_published: boolean
           job_id: string
+          on_behalf_of_user_id: string | null
           published_at: string | null
           rating: number
           reviewee_id: string
@@ -1563,6 +1633,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           job_id: string
+          on_behalf_of_user_id?: string | null
           published_at?: string | null
           rating: number
           reviewee_id: string
@@ -1574,6 +1645,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           job_id?: string
+          on_behalf_of_user_id?: string | null
           published_at?: string | null
           rating?: number
           reviewee_id?: string
@@ -1588,6 +1660,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reviews_on_behalf_of_user_id_fkey"
+            columns: ["on_behalf_of_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reviews_reviewee_id_fkey"
             columns: ["reviewee_id"]
             isOneToOne: false
@@ -1597,6 +1676,50 @@ export type Database = {
           {
             foreignKeyName: "reviews_reviewer_id_fkey"
             columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settlement_recovery_audit: {
+        Row: {
+          action: string
+          actor_id: string
+          attempt_id: string | null
+          created_at: string
+          id: string
+          ledger: string
+          payment_id: string
+          prior_state: Json
+          reason: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          attempt_id?: string | null
+          created_at?: string
+          id?: string
+          ledger: string
+          payment_id: string
+          prior_state: Json
+          reason: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          attempt_id?: string | null
+          created_at?: string
+          id?: string
+          ledger?: string
+          payment_id?: string
+          prior_state?: Json
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "settlement_recovery_audit_actor_id_fkey"
+            columns: ["actor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1618,9 +1741,19 @@ export type Database = {
           payout_method: string | null
           platform_fee_client: number
           platform_fee_kinglancer: number
+          release_attempt_id: string | null
+          release_attempt_started_at: string | null
+          release_dispatch_started_at: string | null
+          release_failure_code: string | null
+          release_idempotency_key: string | null
+          release_operation: string | null
+          release_outcome: string | null
+          release_request: Json | null
           released_at: string | null
+          settlement_error: string | null
           status: string
           stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
           stripe_transfer_id: string | null
         }
         Insert: {
@@ -1637,9 +1770,19 @@ export type Database = {
           payout_method?: string | null
           platform_fee_client: number
           platform_fee_kinglancer: number
+          release_attempt_id?: string | null
+          release_attempt_started_at?: string | null
+          release_dispatch_started_at?: string | null
+          release_failure_code?: string | null
+          release_idempotency_key?: string | null
+          release_operation?: string | null
+          release_outcome?: string | null
+          release_request?: Json | null
           released_at?: string | null
+          settlement_error?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
           stripe_transfer_id?: string | null
         }
         Update: {
@@ -1656,9 +1799,19 @@ export type Database = {
           payout_method?: string | null
           platform_fee_client?: number
           platform_fee_kinglancer?: number
+          release_attempt_id?: string | null
+          release_attempt_started_at?: string | null
+          release_dispatch_started_at?: string | null
+          release_failure_code?: string | null
+          release_idempotency_key?: string | null
+          release_operation?: string | null
+          release_outcome?: string | null
+          release_request?: Json | null
           released_at?: string | null
+          settlement_error?: string | null
           status?: string
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
           stripe_transfer_id?: string | null
         }
         Relationships: [
@@ -1769,6 +1922,41 @@ export type Database = {
         }
         Returns: string
       }
+      cancel_open_job: { Args: { p_job: string }; Returns: undefined }
+      close_role_engagement: {
+        Args: { p_engagement_id: string; p_termination_kind?: string }
+        Returns: {
+          amount_per_period: number | null
+          cadence: string
+          created_at: string
+          duration_periods: number | null
+          end_reason: string | null
+          end_requested_at: string | null
+          end_requested_by: string | null
+          ended_at: string | null
+          id: string
+          kinglancer_id: string
+          kinglancer_signed_at: string | null
+          org_signed_at: string | null
+          org_signed_by: string | null
+          organisation_id: string
+          settlement_hold_at: string | null
+          settlement_hold_reason: string | null
+          settlement_mode: string
+          source_id: string
+          source_kind: string
+          started_at: string | null
+          status: string
+          termination_kind: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "engagements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_organisation_with_owner: {
         Args: {
           p_actor_id: string
@@ -1783,6 +1971,7 @@ export type Database = {
         }
         Returns: string
       }
+      delete_open_job: { Args: { p_job_id: string }; Returns: undefined }
       delete_organisation_if_allowed: {
         Args: { p_actor_id: string; p_organisation_id: string }
         Returns: undefined
@@ -1794,6 +1983,50 @@ export type Database = {
       finalize_payment_attempt: {
         Args: { p_payment_intent_id: string }
         Returns: Json
+      }
+      finish_job_settlement: {
+        Args: {
+          p_actor?: string
+          p_attempt: string
+          p_external?: string
+          p_payment: string
+          p_reference?: string
+        }
+        Returns: {
+          amount: number
+          application_id: string | null
+          client_id: string
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          job_id: string
+          kinglancer_id: string
+          manual_payout_reference: string | null
+          payment_method: string
+          payout_method: string | null
+          platform_fee_client: number
+          platform_fee_kinglancer: number
+          release_attempt_id: string | null
+          release_attempt_started_at: string | null
+          release_dispatch_started_at: string | null
+          release_failure_code: string | null
+          release_idempotency_key: string | null
+          release_operation: string | null
+          release_outcome: string | null
+          release_request: Json | null
+          released_at: string | null
+          settlement_error: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
+          stripe_transfer_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_client_stats: {
         Args: { p_client_id: string }
@@ -1824,7 +2057,210 @@ export type Database = {
         Args: { user_id: string }
         Returns: undefined
       }
+      offer_placement_application: {
+        Args: {
+          p_application_id: string
+          p_expected_plan: string
+          p_monthly_amount: number
+          p_reward_terms: string
+          p_seat_limit: number
+          p_signer_id: string
+        }
+        Returns: {
+          completed_at: string | null
+          contribution_terms: string
+          created_at: string
+          duration_weeks: number
+          end_reason: string | null
+          end_requested_at: string | null
+          end_requested_by: string | null
+          id: string
+          kinglancer_archived_at: string | null
+          kinglancer_id: string
+          kinglancer_signed_at: string | null
+          monthly_amount: number | null
+          org_signed_at: string | null
+          org_signed_by: string | null
+          organisation_id: string
+          payment_mode: string
+          placement_id: string
+          reward_terms: string
+          status: string
+          updated_at: string
+          version: number
+          weekly_hours: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "placement_agreements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      offer_role_application: {
+        Args: {
+          p_application_id: string
+          p_pay_amount?: number
+          p_pay_cadence?: string
+          p_settlement_mode?: string
+          p_signer_id: string
+        }
+        Returns: {
+          amount_per_period: number | null
+          cadence: string
+          created_at: string
+          duration_periods: number | null
+          end_reason: string | null
+          end_requested_at: string | null
+          end_requested_by: string | null
+          ended_at: string | null
+          id: string
+          kinglancer_id: string
+          kinglancer_signed_at: string | null
+          org_signed_at: string | null
+          org_signed_by: string | null
+          organisation_id: string
+          settlement_hold_at: string | null
+          settlement_hold_reason: string | null
+          settlement_mode: string
+          source_id: string
+          source_kind: string
+          started_at: string | null
+          status: string
+          termination_kind: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "engagements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      raise_job_dispute: {
+        Args: { p_actor: string; p_job: string; p_reason: string }
+        Returns: undefined
+      }
       recompute_profile_rating: { Args: { target: string }; Returns: undefined }
+      reserve_job_settlement: {
+        Args: { p_action: string; p_dispute?: string; p_payment: string }
+        Returns: {
+          amount: number
+          application_id: string | null
+          client_id: string
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          job_id: string
+          kinglancer_id: string
+          manual_payout_reference: string | null
+          payment_method: string
+          payout_method: string | null
+          platform_fee_client: number
+          platform_fee_kinglancer: number
+          release_attempt_id: string | null
+          release_attempt_started_at: string | null
+          release_dispatch_started_at: string | null
+          release_failure_code: string | null
+          release_idempotency_key: string | null
+          release_operation: string | null
+          release_outcome: string | null
+          release_request: Json | null
+          released_at: string | null
+          settlement_error: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
+          stripe_transfer_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      reset_settlement_reservation: {
+        Args: {
+          p_actor: string
+          p_attempt: string
+          p_ledger: string
+          p_payment: string
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      respond_placement_offer: {
+        Args: { p_action: string; p_agreement_id: string; p_worker_id: string }
+        Returns: {
+          completed_at: string | null
+          contribution_terms: string
+          created_at: string
+          duration_weeks: number
+          end_reason: string | null
+          end_requested_at: string | null
+          end_requested_by: string | null
+          id: string
+          kinglancer_archived_at: string | null
+          kinglancer_id: string
+          kinglancer_signed_at: string | null
+          monthly_amount: number | null
+          org_signed_at: string | null
+          org_signed_by: string | null
+          organisation_id: string
+          payment_mode: string
+          placement_id: string
+          reward_terms: string
+          status: string
+          updated_at: string
+          version: number
+          weekly_hours: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "placement_agreements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      respond_role_offer: {
+        Args: { p_action: string; p_engagement_id: string; p_worker_id: string }
+        Returns: {
+          amount_per_period: number | null
+          cadence: string
+          created_at: string
+          duration_periods: number | null
+          end_reason: string | null
+          end_requested_at: string | null
+          end_requested_by: string | null
+          ended_at: string | null
+          id: string
+          kinglancer_id: string
+          kinglancer_signed_at: string | null
+          org_signed_at: string | null
+          org_signed_by: string | null
+          organisation_id: string
+          settlement_hold_at: string | null
+          settlement_hold_reason: string | null
+          settlement_mode: string
+          source_id: string
+          source_kind: string
+          started_at: string | null
+          status: string
+          termination_kind: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "engagements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      resume_engagement_settlement: {
+        Args: { p_actor: string; p_engagement: string; p_reason: string }
+        Returns: undefined
+      }
       reveal_expired_reviews: {
         Args: never
         Returns: {
@@ -1840,6 +2276,40 @@ export type Database = {
           p_organisation_id: string
         }
         Returns: undefined
+      }
+      withdraw_pending_engagement: {
+        Args: { p_actor_id: string; p_engagement_id: string; p_reason?: string }
+        Returns: {
+          amount_per_period: number | null
+          cadence: string
+          created_at: string
+          duration_periods: number | null
+          end_reason: string | null
+          end_requested_at: string | null
+          end_requested_by: string | null
+          ended_at: string | null
+          id: string
+          kinglancer_id: string
+          kinglancer_signed_at: string | null
+          org_signed_at: string | null
+          org_signed_by: string | null
+          organisation_id: string
+          settlement_hold_at: string | null
+          settlement_hold_reason: string | null
+          settlement_mode: string
+          source_id: string
+          source_kind: string
+          started_at: string | null
+          status: string
+          termination_kind: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "engagements"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

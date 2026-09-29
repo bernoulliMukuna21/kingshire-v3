@@ -1,8 +1,18 @@
 -- Optional supporting documents for subscribed Organisation jobs.
 -- Apply to staging before deploying code. Existing jobs remain unchanged.
 alter table public.jobs add column if not exists attachment jsonb;
-alter table public.jobs add constraint jobs_attachment_organisation_check
-  check (attachment is null or organisation_id is not null);
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.jobs'::regclass
+      and conname = 'jobs_attachment_organisation_check'
+  ) then
+    alter table public.jobs add constraint jobs_attachment_organisation_check
+      check (attachment is null or organisation_id is not null);
+  end if;
+end;
+$$;
 
 -- Only server routes may set attachment metadata. In particular, personal
 -- clients cannot bypass the subscription check through the Supabase REST API.
@@ -18,7 +28,7 @@ begin
   return new;
 end;
 $$;
-create trigger guard_job_attachment
+create or replace trigger guard_job_attachment
   before insert or update on public.jobs
   for each row execute function public.guard_job_attachment();
 

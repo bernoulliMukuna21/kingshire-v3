@@ -1,9 +1,12 @@
+import {
+  reserveJobSettlement,
+  finishJobSettlement,
+} from "@/lib/settlement/job-transfers";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 import { coerceNumeric } from "@/lib/db/coerce";
 
 type TransactionRow = Database["public"]["Tables"]["transactions"]["Row"];
-type TransactionInsert = Database["public"]["Tables"]["transactions"]["Insert"];
 
 export type { TransactionRow };
 
@@ -13,17 +16,6 @@ const TRANSACTION_NUMERIC = [
   "platform_fee_client",
   "platform_fee_kinglancer",
 ] as const;
-
-export async function createTransaction(data: TransactionInsert) {
-  const db = createServiceClient();
-  const { data: tx, error } = await db
-    .from("transactions")
-    .insert(data)
-    .select()
-    .single();
-  if (error) throw error;
-  return coerceNumeric(tx as TransactionRow, TRANSACTION_NUMERIC);
-}
 
 export async function getTransactionByJob(jobId: string) {
   const db = createServiceClient();
@@ -51,40 +43,6 @@ export async function getTransactionByPaymentIntent(
     : null;
 }
 
-export async function updateTransactionStatus(
-  stripePaymentIntentId: string,
-  status: TransactionRow["status"],
-  releasedAt?: string,
-) {
-  const db = createServiceClient();
-  const update: Database["public"]["Tables"]["transactions"]["Update"] = {
-    status,
-    ...(releasedAt ? { released_at: releasedAt } : {}),
-  };
-  const { error } = await db
-    .from("transactions")
-    .update(update)
-    .eq("stripe_payment_intent_id", stripePaymentIntentId);
-  if (error) throw error;
-}
-
-export async function updateTransactionStatusByJobId(
-  jobId: string,
-  status: TransactionRow["status"],
-  releasedAt?: string,
-) {
-  const db = createServiceClient();
-  const update: Database["public"]["Tables"]["transactions"]["Update"] = {
-    status,
-    ...(releasedAt ? { released_at: releasedAt } : {}),
-  };
-  const { error } = await db
-    .from("transactions")
-    .update(update)
-    .eq("job_id", jobId);
-  if (error) throw error;
-}
-
 /**
  * Admin "record payout" — the manual equivalent of fireTransfer. Releases a
  * held escrow once the worker has been paid by hand. A held escrow on an
@@ -94,24 +52,17 @@ export async function recordManualPayout(
   jobId: string,
   opts: { reference: string; adminId: string },
 ) {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("transactions")
-    .update({
-      status: "released",
-      released_at: new Date().toISOString(),
-      payout_method: "manual",
-      manual_payout_reference: opts.reference,
-      confirmed_by: opts.adminId,
-    })
-    .eq("job_id", jobId)
-    .eq("status", "held")
-    .select()
-    .maybeSingle();
-  if (error) throw error;
-  return data
-    ? coerceNumeric(data as TransactionRow, TRANSACTION_NUMERIC)
-    : null;
+  const payment = await getTransactionByJob(jobId);
+  if (!payment) return null;
+  const reservation = await reserveJobSettlement(payment.id, "manual_paid");
+  const tx = await finishJobSettlement(
+    payment.id,
+    reservation.release_attempt_id,
+    undefined,
+    opts.reference,
+    opts.adminId,
+  );
+  return coerceNumeric(tx as TransactionRow, TRANSACTION_NUMERIC);
 }
 
 export type ManualPayoutQueueItem = {

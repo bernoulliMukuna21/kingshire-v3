@@ -11,9 +11,10 @@ import {
   type RateType,
   JOBS_PAGE_SIZE,
   jobStatusPill,
+  jobPriceLabel,
 } from "@/lib/jobs";
 import { applicationStatusPill } from "@/lib/applications";
-import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
+import { formatMoney, formatDeadline } from "@/lib/utils";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -80,6 +81,10 @@ type JobRow = {
   title: string;
   budget: number;
   rate_type: RateType;
+  posting_type: string;
+  pay_negotiable: boolean | null;
+  pay_amount: number | null;
+  pay_cadence: string | null;
   status: JobStatus;
   deadline: string | null;
   updated_at: string;
@@ -95,13 +100,17 @@ type Transaction = {
 
 type ApplicationRow = {
   id: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "offered" | "accepted" | "rejected";
   created_at: string;
   job: {
     id: string;
     title: string;
     budget: number;
     rate_type: RateType;
+    posting_type: string;
+    pay_negotiable: boolean | null;
+    pay_amount: number | null;
+    pay_cadence: string | null;
     status: JobStatus;
     deadline: string | null;
     categories: string[];
@@ -130,7 +139,7 @@ export default async function KinglancerJobsPage({
       .from("applications")
       .select("id", { count: "exact", head: true })
       .eq("kinglancer_id", user.id)
-      .eq("status", "pending"),
+      .in("status", ["pending", "offered"]),
   ]);
 
   const statusRows = statusResult.data ?? [];
@@ -163,11 +172,11 @@ export default async function KinglancerJobsPage({
     const { data, count: c } = await supabase
       .from("applications")
       .select(
-        "id, status, created_at, job:jobs!job_id(id, title, budget, rate_type, status, deadline, categories)",
+        "id, status, created_at, job:jobs!job_id(id, title, budget, rate_type, posting_type, pay_negotiable, pay_amount, pay_cadence, status, deadline, categories)",
         { count: "exact" },
       )
       .eq("kinglancer_id", user.id)
-      .eq("status", "pending")
+      .in("status", ["pending", "offered"])
       .order("created_at", { ascending: false })
       .range(from, to);
     applications = (data ?? []) as unknown as ApplicationRow[];
@@ -176,7 +185,7 @@ export default async function KinglancerJobsPage({
     let jobsQuery = supabase
       .from("jobs")
       .select(
-        "id, title, budget, rate_type, status, deadline, updated_at, client:profiles!client_id(full_name)",
+        "id, title, budget, rate_type, posting_type, pay_negotiable, pay_amount, pay_cadence, status, deadline, updated_at, client:profiles!client_id(full_name)",
         { count: "exact" },
       )
       .eq("kinglancer_id", user.id)
@@ -374,10 +383,7 @@ export default async function KinglancerJobsPage({
                   <div className="flex items-center justify-between gap-4 sm:justify-end">
                     <div className="text-left sm:text-right">
                       <p className="text-lg font-black text-slate-950">
-                        {formatMoney(Number(job.budget))}
-                        <span className="ml-1 text-sm font-bold text-slate-400">
-                          {formatRateType(job.rate_type)}
-                        </span>
+                        {jobPriceLabel(job)}
                       </p>
                       <p className="text-xs text-slate-400">
                         {heldAmount !== null
@@ -415,10 +421,9 @@ function ApplicationCard({ app }: { app: ApplicationRow }) {
   if (!app.job) return null;
   const { job } = app;
   const statusCfg = applicationStatusPill(app.status);
-  const href =
-    app.status === "accepted"
-      ? `/dashboard/kinglancer/jobs/${job.id}`
-      : `/jobs/${job.id}`;
+  const href = ["offered", "accepted"].includes(app.status)
+    ? `/dashboard/kinglancer/jobs/${job.id}`
+    : `/jobs/${job.id}`;
 
   return (
     <Link href={href} className="group block">
@@ -452,10 +457,7 @@ function ApplicationCard({ app }: { app: ApplicationRow }) {
         </div>
         <div className="flex items-center justify-between gap-4 sm:justify-end">
           <p className="text-lg font-black text-slate-950">
-            {formatMoney(Number(job.budget))}
-            <span className="ml-1 text-sm font-bold text-slate-400">
-              {formatRateType(job.rate_type)}
-            </span>
+            {jobPriceLabel(job)}
           </p>
           <ChevronRight
             size={18}

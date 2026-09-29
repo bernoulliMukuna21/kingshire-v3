@@ -1,3 +1,8 @@
+import {
+  createKingsChatState,
+  KINGSCHAT_STATE_COOKIE,
+  KINGSCHAT_STATE_OPTIONS,
+} from "@/lib/kingschat-state";
 import { NextResponse } from "next/server";
 
 // GET /api/auth/kingschat
@@ -21,7 +26,10 @@ export async function GET(request: Request) {
 
   const loginUrl = new URL("https://accounts.kingschat.online/log-in");
   loginUrl.searchParams.set("clientId", clientId);
-  loginUrl.searchParams.set("origin", next);
+  const state = createKingsChatState(next);
+  loginUrl.searchParams.set("origin", state);
 
-  return NextResponse.redirect(loginUrl.toString());
+  const response = NextResponse.redirect(loginUrl.toString());
+  response.cookies.set(KINGSCHAT_STATE_COOKIE, state, KINGSCHAT_STATE_OPTIONS);
+  return response;
 }

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authoriseAgreement } from "@/lib/placement-access";
 import {
   getPlacementPayment,
-  updatePlacementPaymentStatus,
+  updatePlacementPaymentStatusIf,
 } from "@/lib/db/placement-payments";
 import { firePlacementPayout } from "@/lib/placement-payouts";
 import { getPlacementTitle } from "@/lib/db/placements";
@@ -78,11 +78,23 @@ export async function POST(
     return NextResponse.json({ ok: true, released: true });
   }
 
-  // dispute — hold for admin resolution.
-  await updatePlacementPaymentStatus(paymentId, {
-    status: "disputed",
-    dispute_reason: parsed.data.reason ?? null,
-  });
+  // dispute — hold for admin resolution. CAS: only if it's still "held" and
+  // no release/refund reservation is in flight — a concurrent release (e.g.
+  // the cron beating this request) must win.
+  const disputed = await updatePlacementPaymentStatusIf(
+    paymentId,
+    ["held"],
+    { status: "disputed", dispute_reason: parsed.data.reason ?? null },
+    { requireReleaseAttemptId: null },
+  );
+  if (!disputed) {
+    return NextResponse.json(
+      {
+        error: "This payment was just released and can no longer be disputed.",
+      },
+      { status: 409 },
+    );
+  }
 
   const [placementTitle, organisationName] = await Promise.all([
     getPlacementTitle(access.agreement.placement_id),

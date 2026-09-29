@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getUserOrganisationSummaries } from "@/infrastructure/supabase/queries/organisation-queries";
 
 export type DashboardProfile = {
@@ -24,7 +25,12 @@ export const getDashboardContext = cache(async () => {
 
   if (!user) redirect("/sign-in");
 
-  const { data: profile } = await supabase
+  // stripe_account_id/stripe_onboarding_complete/terms_accepted_version are
+  // restricted from anon/authenticated by migration 069 — the cookie client
+  // can no longer read them even for the owner's own row. Ownership is
+  // enforced by the .eq("id", user.id) scope below.
+  const db = createServiceClient();
+  const { data: profile } = await db
     .from("profiles")
     .select(
       "full_name, role, avatar_url, rating, jobs_completed, stripe_account_id, stripe_onboarding_complete, bio, services, terms_accepted_version",

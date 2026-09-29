@@ -45,12 +45,16 @@ export function calculateFees(
   budgetGBP: number,
   opts?: { includeFixed?: boolean },
 ) {
+  // Postgres `numeric` columns arrive as strings at runtime (see
+  // lib/db/coerce.ts) — coerce here so a raw DB row can never silently
+  // string-concatenate through the `+` below.
+  const budget = Number(budgetGBP);
   const fixed = (opts?.includeFixed ?? true) ? PLATFORM_FEE_FIXED_CLIENT : 0;
   const platformFeeClient =
-    Math.round((budgetGBP * PLATFORM_FEE_RATE_CLIENT + fixed) * 100) / 100;
+    Math.round((budget * PLATFORM_FEE_RATE_CLIENT + fixed) * 100) / 100;
   const platformFeeKinglancer =
-    Math.round(budgetGBP * PLATFORM_FEE_RATE_KINGLANCER * 100) / 100;
-  const clientChargeGBP = budgetGBP + platformFeeClient;
+    Math.round(budget * PLATFORM_FEE_RATE_KINGLANCER * 100) / 100;
+  const clientChargeGBP = budget + platformFeeClient;
   const clientChargePence = Math.round(clientChargeGBP * 100);
   return {
     platformFeeClient,

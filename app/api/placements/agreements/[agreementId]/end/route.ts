@@ -9,7 +9,7 @@ import {
   updateAgreementStatus,
   getPlacementTitle,
 } from "@/lib/db/placements";
-import { settlePlacementPaymentsOnEarlyEnd } from "@/lib/db/placement-payments";
+import { getEngagementBySource, updateEngagement } from "@/lib/db/engagements";
 import { getOrganisationName } from "@/infrastructure/supabase/queries/organisation-queries";
 import {
   notifyPlacementEndProposed,
@@ -171,6 +171,14 @@ export async function POST(
   }
 
   if (parsed.data.action === "escalate") {
+    const engagement = await getEngagementBySource("placement", agreementId);
+    if (engagement)
+      await updateEngagement(engagement.id, {
+        settlement_hold_at: new Date().toISOString(),
+        settlement_hold_reason:
+          parsed.data.reason ?? agreement.end_reason ?? "Early-end dispute",
+      });
+
     // Either party can pull KingsHire in to settle an early-end disagreement.
     // The placement stays active and any funded month stays in escrow.
     const [placementTitle, organisationName] = await Promise.all([
@@ -231,13 +239,19 @@ export async function POST(
     );
   }
 
-  await updateAgreementStatus(agreementId, "cancelled");
-  await clearAgreementEndRequest(agreementId);
-  await settlePlacementPaymentsOnEarlyEnd(
+  const ended = await updateAgreementStatus(
     agreementId,
-    "Placement ended early by mutual agreement",
+    "cancelled",
+    agreement.end_requested_by!,
   );
-
+  if (!ended)
+    return NextResponse.json(
+      {
+        error:
+          "This agreement or its end request changed. Refresh and try again.",
+      },
+      { status: 409 },
+    );
   // Let both parties know it's ended (in-app + email).
   const placementTitle =
     (await getPlacementTitle(agreement.placement_id)) ?? "the placement";

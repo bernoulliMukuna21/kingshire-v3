@@ -101,7 +101,9 @@ export async function createUserSubscriptionCheckout(input: {
   ) {
     throw new UserSubscriptionError(
       "already_active",
-      "You already have an active subscription.",
+      existing.role !== input.role
+        ? `Your ${existing.role} subscription is still active. Manage it in billing or switch back to that workspace to use its benefits.`
+        : "You already have an active subscription.",
     );
   }
 

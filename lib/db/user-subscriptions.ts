@@ -48,10 +48,11 @@ function table(): UserSubscriptionsTable {
 export async function getUserSubscriptionRow(
   userId: string,
 ): Promise<UserSubscriptionRow | null> {
-  const { data } = await table()
+  const { data, error } = await table()
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
+  if (error) throw new Error(`Unable to read subscription: ${error.message}`);
   return data;
 }
 

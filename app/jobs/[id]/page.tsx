@@ -1,3 +1,4 @@
+import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -22,7 +23,7 @@ import {
   KinglancerCompleteButton,
   ClientApproveActions,
   DirectRequestActions,
-} from "./JobActions";
+} from "./job-actions";
 import PublicShell from "@/components/ui/PublicShell";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, cardPadding } from "@/components/ui/Card";
@@ -131,10 +132,12 @@ export default async function JobDetailPage({
     !alreadyApplied;
   const isAdmin = profile?.role === "admin";
 
-  // Small jobs are subscriber-only to apply to.
+  // Small jobs are subscriber-only to apply to. Roles have no "budget" (pay is
+  // recurring, negotiable or not) so the small-job gate never applies to them.
   const applyNeedsSubscription =
     !!canApply &&
     !!profile &&
+    job.posting_type !== "role" &&
     jobRequiresSubscriptionToApply(job.budget) &&
     !(await hasEntitlement(profile.id, "kinglancer", "applyToSmallJobs"));
 
@@ -185,6 +188,7 @@ export default async function JobDetailPage({
             <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
               {job.description}
             </p>
+            <JobAttachmentLink jobId={job.id} attachment={job.attachment} />
 
             {(job.categories ?? []).length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-5">
@@ -217,6 +221,7 @@ export default async function JobDetailPage({
               </h2>
               <ApplicantsList
                 applications={applications}
+                job={job}
                 cardEnabled={cardEnabled}
               />
             </Card>
@@ -234,35 +239,43 @@ export default async function JobDetailPage({
                 </h2>
                 <ApplicantsList
                   applications={applications}
+                  job={job}
                   cardEnabled={cardEnabled}
                 />
               </Card>
             )}
 
-          {isAssignedKinglancer && job.status === "in_progress" && (
-            <Card className={cardPadding}>
-              <h2 className="font-bold text-gray-900 mb-1">Ready to submit?</h2>
-              <p className="text-sm text-gray-500 mb-4">
-                Once you mark your work as done, the client will be asked to
-                review and approve it.
-              </p>
-              <KinglancerCompleteButton jobId={id} />
-            </Card>
-          )}
+          {isAssignedKinglancer &&
+            job.status === "in_progress" &&
+            job.posting_type !== "role" && (
+              <Card className={cardPadding}>
+                <h2 className="font-bold text-gray-900 mb-1">
+                  Ready to submit?
+                </h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  Once you mark your work as done, the client will be asked to
+                  review and approve it.
+                </p>
+                <KinglancerCompleteButton jobId={id} />
+              </Card>
+            )}
 
-          {isOwner && job.status === "completed" && (
-            <Card className={cardPadding}>
-              <h2 className="font-bold text-gray-900 mb-1">Work submitted</h2>
-              <p className="text-sm text-gray-500 mb-4">
-                The Kinglancer has marked this work as done. Review it and
-                release the payment, or raise a dispute if something is wrong.
-              </p>
-              <ClientApproveActions jobId={id} showApprove={true} />
-            </Card>
-          )}
+          {isOwner &&
+            job.status === "completed" &&
+            job.posting_type !== "role" && (
+              <Card className={cardPadding}>
+                <h2 className="font-bold text-gray-900 mb-1">Work submitted</h2>
+                <p className="text-sm text-gray-500 mb-4">
+                  The Kinglancer has marked this work as done. Review it and
+                  release the payment, or raise a dispute if something is wrong.
+                </p>
+                <ClientApproveActions jobId={id} showApprove={true} />
+              </Card>
+            )}
 
           {isOwner &&
             job.status === "in_progress" &&
+            job.posting_type !== "role" &&
             payment_failed !== "1" && (
               <Card className={cardPadding}>
                 <h2 className="font-bold text-gray-900 mb-1">
@@ -353,21 +366,53 @@ export default async function JobDetailPage({
 
         <div className="space-y-4">
           <Card className="p-5">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Budget
-            </p>
-            <p className="text-3xl font-black text-green-600">
-              £{Number(job.budget).toLocaleString()}
-              <span className="text-base font-medium text-gray-500 ml-1">
-                {budgetSuffix}
-              </span>
-            </p>
-            <p className="text-xs text-gray-400 mt-1">{budgetNote}</p>
-            {canApply && (
-              <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
-                By applying you agree to complete this work for the budget
-                stated above.
-              </p>
+            {job.posting_type === "role" ? (
+              <>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Pay
+                </p>
+                {job.pay_negotiable ? (
+                  <p className="text-2xl font-black text-green-600">
+                    Discussed at interview
+                  </p>
+                ) : (
+                  <p className="text-3xl font-black text-green-600">
+                    £{Number(job.pay_amount).toLocaleString()}
+                    <span className="text-base font-medium text-gray-500 ml-1">
+                      /{job.pay_cadence}
+                    </span>
+                  </p>
+                )}
+                <p className="text-xs text-gray-400 mt-1">
+                  {job.settlement_mode === "direct"
+                    ? "Payment arranged directly with the organisation"
+                    : "Recurring payment managed through KingsHire"}
+                </p>
+                {canApply && (
+                  <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
+                    By applying you agree to the pay terms shown above.
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Budget
+                </p>
+                <p className="text-3xl font-black text-green-600">
+                  £{Number(job.budget).toLocaleString()}
+                  <span className="text-base font-medium text-gray-500 ml-1">
+                    {budgetSuffix}
+                  </span>
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{budgetNote}</p>
+                {canApply && (
+                  <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
+                    By applying you agree to complete this work for the budget
+                    stated above.
+                  </p>
+                )}
+              </>
             )}
           </Card>
 

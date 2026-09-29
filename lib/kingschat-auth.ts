@@ -1,5 +1,10 @@
+import {
+  verifyKingsChatState,
+  KINGSCHAT_STATE_COOKIE,
+  KINGSCHAT_STATE_OPTIONS,
+} from "./kingschat-state";
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getRoleHome } from "@/lib/roles";
 
@@ -94,7 +99,6 @@ export async function handleKingsChatCallback(
       contentType,
       hasCode: Boolean(code),
       hasOrigin: Boolean(origin),
-      origin,
     });
   } catch {
     log("error", "invalid_payload", { traceId });
@@ -105,6 +109,18 @@ export async function handleKingsChatCallback(
     log("error", "missing_code", { traceId });
     return authFailedRedirect(appUrl);
   }
+
+  const destination = verifyKingsChatState(
+    origin,
+    new NextRequest(request.url, { headers: request.headers }).cookies.get(
+      KINGSCHAT_STATE_COOKIE,
+    )?.value,
+  );
+  if (destination === null) {
+    log("error", "invalid_login_state", { traceId });
+    return authFailedRedirect(appUrl);
+  }
+  origin = destination;
 
   const clientId = process.env.KINGSCHAT_CLIENT_ID;
   const apiKey = process.env.KINGSCHAT_API_KEY;
@@ -440,6 +456,10 @@ export async function handleKingsChatCallback(
     // POST navigations — so the session would be invisible to middleware and
     // the user bounced to /sign-in. A GET navigation carries the Lax cookies.
     const response = NextResponse.redirect(`${appUrl}${safeNext}`, 303);
+    response.cookies.set(KINGSCHAT_STATE_COOKIE, "", {
+      ...KINGSCHAT_STATE_OPTIONS,
+      maxAge: 0,
+    });
 
     log("info", "redirect_target", {
       traceId,

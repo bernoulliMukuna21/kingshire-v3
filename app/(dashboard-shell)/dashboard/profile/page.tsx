@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import ProfileForm from "./ProfileForm";
 import { BadgeCheck, Sparkles } from "lucide-react";
 
@@ -11,7 +12,12 @@ export default async function ProfilePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const { data: profile } = await supabase
+  // Own-profile edit form needs sensitive columns (email, phone, cv_url,
+  // stripe fields) that anon/authenticated no longer have SELECT grants on
+  // (see migration 069). The service client bypasses that; ownership is
+  // still enforced by the .eq("id", user.id) scope below.
+  const db = createServiceClient();
+  const { data: profile } = await db
     .from("profiles")
     .select("*")
     .eq("id", user.id)

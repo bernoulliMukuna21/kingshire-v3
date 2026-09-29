@@ -1,3 +1,4 @@
+import JobAttachmentLink from "@/components/jobs/JobAttachmentLink";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -18,22 +19,33 @@ import {
   reviewWindowRemaining,
   REVIEW_WINDOW_DAYS,
 } from "@/lib/db/reviews";
-import { jobStatusPill, canSeeExactLocation } from "@/lib/jobs";
+import { jobStatusPill, canSeeExactLocation, jobPriceLabel } from "@/lib/jobs";
+import { applicationStatusPill } from "@/lib/applications";
 import type { RateType, WorkMode, DirectRequestStatus } from "@/lib/jobs";
-import { formatMoney, formatRateType, formatDeadline } from "@/lib/utils";
+import { formatMoney, formatDeadline } from "@/lib/utils";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, cardPadding } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import ReviewPanel from "@/components/jobs/ReviewPanel";
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
+import RoleEngagementActions from "./RoleEngagementActions";
+import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
+import { getEngagementPayments } from "@/lib/db/engagement-payments";
 import {
   DirectRequestActions,
   KinglancerCompleteButton,
-} from "@/app/jobs/[id]/JobActions";
+} from "@/app/jobs/[id]/job-actions";
 
 type JobWorkspace = {
+  attachment: unknown;
   id: string;
+  posting_type: string;
+  employment_type: string | null;
+  pay_cadence: string | null;
+  pay_amount: number | string | null;
+  pay_negotiable: boolean;
+  settlement_mode: string | null;
   title: string;
   description: string;
   budget: number;
@@ -77,7 +89,7 @@ type JobWorkspace = {
 
 type Application = {
   id: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "offered" | "accepted" | "rejected";
   cover_letter: string;
   created_at: string;
 };
@@ -90,15 +102,49 @@ type Transaction = {
   released_at: string | null;
 };
 
+type RoleEngagement = {
+  id: string;
+  status: string;
+  cadence: string;
+  amount_per_period: number;
+  settlement_mode: string;
+  end_requested_by: string | null;
+} | null;
+
 function nextAction({
   job,
   application,
   transaction,
+  roleEngagement,
 }: {
   job: JobWorkspace;
   application: Application | null;
   transaction: Transaction | null;
+  roleEngagement: RoleEngagement;
 }) {
+  // A role job's `status` flips to in_progress the moment it's accepted (so it
+  // stops taking applicants), but a recurring role never has a one-off
+  // "submit this work" moment the way a gig does — the generic in_progress
+  // branch below is gig-only and would be misleading here either way.
+  if (job.status === "in_progress" && job.posting_type === "role") {
+    if (roleEngagement?.status === "pending_funding") {
+      return {
+        title: "Waiting on funding",
+        description:
+          "You've accepted this role. It starts once the organisation funds the first pay period.",
+        icon: <Clock size={18} />,
+        action: null,
+      };
+    }
+    return {
+      title: "Role in progress",
+      description:
+        "This is a recurring role — pay periods are handled automatically. Manage it from the role agreement above.",
+      icon: <Briefcase size={18} />,
+      action: null,
+    };
+  }
+
   if (job.status === "in_progress") {
     return {
       title: "Ready to submit?",
@@ -130,6 +176,15 @@ function nextAction({
   }
 
   if (job.status === "approved" || transaction?.status === "released") {
+    if (job.posting_type === "role") {
+      return {
+        title: "Role completed",
+        description:
+          "This role has ended. Each completed pay period keeps its own settlement status below.",
+        icon: <CheckCircle2 size={18} />,
+        action: null,
+      };
+    }
     return {
       title: "Payment released",
       description:
@@ -144,6 +199,16 @@ function nextAction({
       title: "Direct request",
       description:
         "Review the request, accept it, decline it, or request changes before the client funds escrow.",
+      icon: <Briefcase size={18} />,
+      action: null,
+    };
+  }
+
+  if (job.posting_type === "role" && application?.status === "offered") {
+    return {
+      title: "Role offer",
+      description:
+        "The organisation offered you this role. Review the pay terms above and accept or decline.",
       icon: <Briefcase size={18} />,
       action: null,
     };
@@ -181,38 +246,49 @@ export default async function KinglancerJobWorkspacePage({
   // by the layout with zero extra DB round trips.
   const { supabase, user } = await getDashboardContext();
 
-  const [jobResult, applicationResult, transactionResult] = await Promise.all([
-    supabase
-      .from("jobs")
-      .select(
-        `
-          id, title, description, budget, rate_type, status, deadline, categories,
+  const [jobResult, applicationResult, transactionResult, engagementResult] =
+    await Promise.all([
+      supabase
+        .from("jobs")
+        .select(
+          `
+          id, title, description, attachment, budget, rate_type, status, deadline, categories, posting_type,
+          employment_type, pay_cadence, pay_amount, pay_negotiable, settlement_mode,
           work_mode, location, address_line, postcode, location_area, latitude, longitude, days_on_site, scheduled_at, ends_at, schedule_type, estimated_minutes,
           client_id, kinglancer_id, invited_kinglancer_id,
           direct_request_status, direct_request_message,
           counter_budget, counter_rate_type, counter_deadline, created_at,
           client:profiles!client_id(full_name, avatar_url, phone)
         `,
-      )
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("applications")
-      .select("id, status, cover_letter, created_at")
-      .eq("job_id", id)
-      .eq("kinglancer_id", user.id)
-      .maybeSingle(),
-    // released_at included here so we do not need a second getTransactionByJob
-    // call for the review window calculation on approved jobs.
-    supabase
-      .from("transactions")
-      .select(
-        "amount, platform_fee_kinglancer, status, payment_method, released_at",
-      )
-      .eq("job_id", id)
-      .eq("kinglancer_id", user.id)
-      .maybeSingle(),
-  ]);
+        )
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("applications")
+        .select("id, status, cover_letter, created_at")
+        .eq("job_id", id)
+        .eq("kinglancer_id", user.id)
+        .maybeSingle(),
+      // released_at included here so we do not need a second getTransactionByJob
+      // call for the review window calculation on approved jobs.
+      supabase
+        .from("transactions")
+        .select(
+          "amount, platform_fee_kinglancer, status, payment_method, released_at",
+        )
+        .eq("job_id", id)
+        .eq("kinglancer_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("engagements")
+        .select(
+          "id, status, cadence, amount_per_period, settlement_mode, end_requested_by",
+        )
+        .eq("source_kind", "org_role")
+        .eq("source_id", id)
+        .eq("kinglancer_id", user.id)
+        .maybeSingle(),
+    ]);
 
   const job = (jobResult as unknown as { data: JobWorkspace | null }).data;
   if (!job) notFound();
@@ -227,6 +303,12 @@ export default async function KinglancerJobWorkspacePage({
       data: Transaction | null;
     }
   ).data;
+  const roleEngagement = (
+    engagementResult as unknown as { data: RoleEngagement }
+  ).data;
+  const rolePayments = roleEngagement
+    ? await getEngagementPayments(roleEngagement.id)
+    : [];
   const isAssigned = job.kinglancer_id === user.id;
   const isInvited = job.invited_kinglancer_id === user.id;
   const canViewWorkspace = isAssigned || isInvited || !!application;
@@ -245,7 +327,7 @@ export default async function KinglancerJobWorkspacePage({
     ? { label: "Direct request", className: "bg-violet-100 text-violet-700" }
     : { label: "Open", className: "bg-green-100 text-green-700" };
   const status = job.status === "open" ? openStatus : jobStatusPill(job.status);
-  const action = nextAction({ job, application, transaction });
+  const action = nextAction({ job, application, transaction, roleEngagement });
   const netHeld =
     transaction && transaction.status === "held"
       ? transaction.amount - transaction.platform_fee_kinglancer
@@ -353,10 +435,7 @@ export default async function KinglancerJobWorkspacePage({
               Budget
             </p>
             <p className="mt-2 text-lg font-black text-slate-950">
-              {formatMoney(Number(job.budget))}
-              <span className="ml-1 text-sm font-bold text-slate-400">
-                {formatRateType(job.rate_type)}
-              </span>
+              {jobPriceLabel(job)}
             </p>
           </div>
         </div>
@@ -364,11 +443,54 @@ export default async function KinglancerJobWorkspacePage({
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-6">
+          {job.posting_type === "role" && roleEngagement && (
+            <Card className={cardPadding}>
+              <h2 className="text-lg font-black text-slate-950">
+                Role agreement
+              </h2>
+              <p className="mb-3 mt-1 text-sm text-slate-500">
+                Review the recurring role terms before you accept.
+              </p>
+              <RoleEngagementActions
+                jobId={id}
+                status={roleEngagement.status}
+                cadence={roleEngagement.cadence}
+                amount={Number(roleEngagement.amount_per_period)}
+                settlementMode={roleEngagement.settlement_mode}
+              />
+              {rolePayments.length > 0 && (
+                <div className="mt-4 border-t border-slate-200 pt-3 text-sm text-slate-600">
+                  <p className="font-bold text-slate-800">Payment periods</p>
+                  {rolePayments.map((payment) => (
+                    <p
+                      key={payment.id}
+                      className="mt-1 flex justify-between gap-3"
+                    >
+                      <span>
+                        Period {payment.period_index} · {payment.due_date}
+                      </span>
+                      <span className="font-semibold capitalize">
+                        {payment.status}
+                      </span>
+                    </p>
+                  ))}
+                </div>
+              )}
+              <RoleTerminationPanel
+                jobId={id}
+                status={roleEngagement.status}
+                endRequestedBy={roleEngagement.end_requested_by}
+                viewerId={user.id}
+                kinglancerId={job.kinglancer_id ?? user.id}
+              />
+            </Card>
+          )}
           <Card className={cardPadding}>
             <h2 className="text-lg font-black text-slate-950">Job brief</h2>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
               {job.description}
             </p>
+            <JobAttachmentLink jobId={job.id} attachment={job.attachment} />
             {(job.categories ?? []).length > 0 && (
               <div className="mt-5 flex flex-wrap gap-2">
                 {job.categories.map((category) => (
@@ -425,19 +547,9 @@ export default async function KinglancerJobWorkspacePage({
                 Your application
               </h2>
               <StatusBadge
-                className={
-                  application.status === "accepted"
-                    ? "mt-3 bg-green-100 text-green-700"
-                    : application.status === "rejected"
-                      ? "mt-3 bg-slate-100 text-slate-500"
-                      : "mt-3 bg-amber-100 text-amber-700"
-                }
+                className={`mt-3 ${applicationStatusPill(application.status).className}`}
               >
-                {application.status === "accepted"
-                  ? "Selected"
-                  : application.status === "rejected"
-                    ? "Not selected"
-                    : "Under review"}
+                {applicationStatusPill(application.status).label}
               </StatusBadge>
               <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-600">
                 {application.cover_letter}
@@ -489,10 +601,7 @@ export default async function KinglancerJobWorkspacePage({
             <div className="mt-4 space-y-3 text-sm text-slate-600">
               <div className="flex items-start gap-3">
                 <Briefcase size={16} className="mt-0.5 text-slate-400" />
-                <span>
-                  {formatMoney(Number(job.budget))}{" "}
-                  {formatRateType(job.rate_type)}
-                </span>
+                <span>{jobPriceLabel(job)}</span>
               </div>
               {netHeld !== null && (
                 <div className="flex items-start gap-3">

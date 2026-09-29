@@ -18,6 +18,8 @@ interface ConfirmModalProps {
   hideCancel?: boolean;
   // Label for the secondary/dismiss button.
   cancelLabel?: string;
+  // Disable the confirm button (e.g. required inline fields not yet valid).
+  confirmDisabled?: boolean;
 }
 
 export default function ConfirmModal({
@@ -32,6 +34,7 @@ export default function ConfirmModal({
   error,
   hideCancel = false,
   cancelLabel = "Cancel",
+  confirmDisabled = false,
 }: ConfirmModalProps) {
   // Keep a ref to the latest onClose so the keydown listener never needs to
   // be torn down and re-registered just because the parent re-renders.
@@ -120,7 +123,7 @@ export default function ConfirmModal({
           )}
           <button
             onClick={onConfirm}
-            disabled={loading}
+            disabled={loading || confirmDisabled}
             className={`flex-1 py-2.5 ${btnColors} text-white font-bold rounded-xl text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2`}
           >
             {loading ? (

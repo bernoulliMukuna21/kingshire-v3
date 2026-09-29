@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireOrganisationPermission } from "@/lib/organisations";
-import { activeParticipantLimit } from "@/lib/placements";
+import {
+  activeParticipantLimit,
+  summarizePlacementCompensation,
+  managedMonthlyAmount,
+} from "@/lib/placements";
 import { requireTermsAccepted } from "@/lib/terms";
 import type { OrganisationPlanId } from "@/modules/organisations/domain/plans";
 import {
-  countReservedParticipants,
-  createAgreementFromPlacement,
   getOrganisationPlacement,
   getPlacementApplication,
   updatePlacementApplicationStatus,
@@ -46,7 +48,10 @@ export async function POST(
       { status: 400 },
     );
   }
-  const action = (body as { action?: unknown }).action;
+  const action =
+    body && typeof body === "object"
+      ? (body as { action?: unknown }).action
+      : null;
   if (action !== "accept" && action !== "reject") {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
   }
@@ -67,7 +72,10 @@ export async function POST(
       { status: 404 },
     );
   }
-  if (application.status !== "pending") {
+  if (
+    application.status !== "pending" &&
+    !(action === "accept" && application.status === "offered")
+  ) {
     return NextResponse.json(
       { error: "This application has already been handled." },
       { status: 409 },
@@ -75,7 +83,15 @@ export async function POST(
   }
 
   if (action === "reject") {
-    await updatePlacementApplicationStatus(applicationId, "rejected");
+    const rejected = await updatePlacementApplicationStatus(
+      applicationId,
+      "rejected",
+    );
+    if (!rejected)
+      return NextResponse.json(
+        { error: "This application has already been handled." },
+        { status: 409 },
+      );
     return NextResponse.json({ ok: true });
   }
 
@@ -92,57 +108,49 @@ export async function POST(
   // Accept — run the seat/subscription checks and the notify-email lookup
   // together rather than one sequential round trip after another.
   const service = createServiceClient();
-  const [{ data: subscription }, reserved, { data: kinglancer }] =
-    await Promise.all([
-      service
-        .from("organisation_subscriptions")
-        .select("plan, status")
-        .eq("organisation_id", id)
-        .maybeSingle(),
-      countReservedParticipants(id),
-      service
-        .from("profiles")
-        .select("email")
-        .eq("id", application.kinglancer_id)
-        .maybeSingle(),
-    ]);
+  const [{ data: subscription }, { data: kinglancer }] = await Promise.all([
+    service
+      .from("organisation_subscriptions")
+      .select("plan, status")
+      .eq("organisation_id", id)
+      .maybeSingle(),
+    service
+      .from("profiles")
+      .select("email")
+      .eq("id", application.kinglancer_id)
+      .maybeSingle(),
+  ]);
 
-  if (
-    subscription &&
-    subscription.status !== "active" &&
-    subscription.status !== "trialing"
-  ) {
+  if (!subscription || !["active", "trialing"].includes(subscription.status)) {
     return NextResponse.json(
       { error: "Reactivate the Organisation subscription first." },
       { status: 402 },
     );
   }
-  if (subscription) {
-    const limit = activeParticipantLimit(
-      subscription.plan as OrganisationPlanId,
+  const { data: agreement, error: offerError } = await service.rpc(
+    "offer_placement_application",
+    {
+      p_application_id: applicationId,
+      p_signer_id: user.id,
+      p_expected_plan: subscription.plan,
+      p_seat_limit: activeParticipantLimit(
+        subscription.plan as OrganisationPlanId,
+      ),
+      p_reward_terms:
+        summarizePlacementCompensation(placement) ||
+        placement.reward ||
+        "Supervised experience, mentoring and a verified record.",
+      p_monthly_amount: managedMonthlyAmount(placement) ?? 0,
+    },
+  );
+  if (offerError)
+    return NextResponse.json(
+      {
+        error:
+          "The offer could not be created. Check available participant seats and refresh before retrying.",
+      },
+      { status: 409 },
     );
-    if (reserved >= limit) {
-      return NextResponse.json(
-        {
-          error: `Your plan allows ${limit} active participant${limit === 1 ? "" : "s"}. Complete or cancel a placement to free a seat.`,
-        },
-        { status: 409 },
-      );
-    }
-  }
-
-  // A managed placement collects payment later, when the org explicitly funds
-  // the first month (an on-session Stripe Checkout that can add a card), so we
-  // don't block accepting an applicant on a saved card here.
-
-  const [agreement] = await Promise.all([
-    createAgreementFromPlacement({
-      placement,
-      kinglancerId: application.kinglancer_id,
-      orgSignedBy: user.id,
-    }),
-    updatePlacementApplicationStatus(applicationId, "accepted"),
-  ]);
 
   // Fire-and-forget: a slow email must not hang the accept response.
   void notifyPlacementOffer({

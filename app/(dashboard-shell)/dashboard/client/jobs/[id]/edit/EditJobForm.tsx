@@ -118,16 +118,16 @@ export default function EditJobForm({
       {/* Description */}
       <div className="space-y-1.5">
         <label className="block text-sm font-bold text-slate-900">
-          Description
+          Job summary
         </label>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          rows={6}
+          rows={4}
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
           placeholder="Describe the work, requirements, and any relevant details."
           minLength={10}
-          maxLength={2000}
+          maxLength={500}
           required
         />
       </div>
@@ -157,9 +157,7 @@ export default function EditJobForm({
           })}
         </div>
         {selectedCategories.length === 0 && (
-          <p className="text-xs text-red-600">
-            Select at least one category.
-          </p>
+          <p className="text-xs text-red-600">Select at least one category.</p>
         )}
       </div>
 

@@ -12,7 +12,10 @@ import {
   fulfillPlacementPayment,
   firePendingPlacementPayouts,
 } from "@/lib/placement-payouts";
-import { updatePlacementPaymentStatus } from "@/lib/db/placement-payments";
+import {
+  reconcileEngagementPayment,
+  reconcileFailedEngagementPayment,
+} from "@/lib/settlement/billing";
 import { notifyJobAwarded, notifyPaymentFailed } from "@/lib/notifications";
 import {
   fulfillOrganisationCheckout,
@@ -72,7 +75,8 @@ export async function POST(request: Request) {
             typeof session.payment_intent === "string"
               ? session.payment_intent
               : null;
-          if (paymentId) await fulfillPlacementPayment(paymentId, piId);
+          if (paymentId && piId && session.payment_status === "paid")
+            await fulfillPlacementPayment(paymentId, piId);
         }
         break;
       }
@@ -94,6 +98,14 @@ export async function POST(request: Request) {
         if (pi.metadata?.purpose === "placement_payment") {
           const paymentId = pi.metadata.placement_payment_id;
           if (paymentId) await fulfillPlacementPayment(paymentId, pi.id);
+          break;
+        }
+        // The shared settlement engine (org roles and placements) records a
+        // successful charge synchronously; this only fires if that write
+        // crashed and left the ledger row stuck at "processing".
+        if (pi.metadata?.purpose === "engagement_payment") {
+          const paymentId = pi.metadata.engagement_payment_id;
+          if (paymentId) await reconcileEngagementPayment(paymentId, pi.id);
           break;
         }
         await finalizePaymentAttempt(pi.id);
@@ -124,7 +136,13 @@ export async function POST(request: Request) {
         if (pi.metadata?.purpose === "placement_payment") {
           const paymentId = pi.metadata.placement_payment_id;
           if (paymentId)
-            await updatePlacementPaymentStatus(paymentId, { status: "failed" });
+            await reconcileFailedEngagementPayment(paymentId, pi.id);
+          break;
+        }
+        if (pi.metadata?.purpose === "engagement_payment") {
+          const paymentId = pi.metadata.engagement_payment_id;
+          if (paymentId)
+            await reconcileFailedEngagementPayment(paymentId, pi.id);
           break;
         }
         const jobId = pi.metadata?.job_id;

@@ -20,7 +20,7 @@ export default function ApplyButton({
   // Tracks in-session consent for a Kinglancer who had not opted in before.
   const [consented, setConsented] = useState(openToPlacements);
   const [message, setMessage] = useState("");
-  const [cvUrl, setCvUrl] = useState<string | null>(null);
+  const [cvPath, setCvPath] = useState<string | null>(null);
   const [cvName, setCvName] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -80,15 +80,16 @@ export default function ApplyButton({
       setUploading(false);
       return;
     }
-    const { data: urlData } = supabase.storage
-      .from("placement-cvs")
-      .getPublicUrl(path);
-    setCvUrl(urlData.publicUrl);
+    setCvPath(path);
     setCvName(file.name);
     setUploading(false);
   }
 
   async function apply() {
+    if (!cvPath) {
+      setError("Please attach your CV to apply.");
+      return;
+    }
     setSaving(true);
     setError(null);
     const res = await fetch(`/api/placements/${placementId}/apply`, {
@@ -96,7 +97,7 @@ export default function ApplyButton({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
-        cvUrl,
+        cvPath,
         optIn: openToPlacements ? undefined : consented,
       }),
     });
@@ -188,6 +189,9 @@ export default function ApplyButton({
         className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
       <div>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">
+          CV <span className="text-red-500">*</span>
+        </label>
         <input
           ref={fileInputRef}
           type="file"
@@ -201,11 +205,7 @@ export default function ApplyButton({
           disabled={uploading}
           className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
-          {uploading
-            ? "Uploading…"
-            : cvName
-              ? "Replace CV"
-              : "Attach CV (optional)"}
+          {uploading ? "Uploading…" : cvName ? "Replace CV" : "Attach CV"}
         </button>
         {cvName && (
           <p className="mt-1.5 text-xs text-slate-500">

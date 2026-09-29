@@ -93,12 +93,19 @@ export async function DELETE(
     }
   }
 
-  // Delete job — ON DELETE CASCADE removes applications automatically
-  const { error } = await db.from("jobs").delete().eq("id", id);
+  // The status check and the pending-payment check must be re-verified
+  // atomically under a lock on the job row — checking here and deleting
+  // separately left a gap for a payment to start in between.
+  const { error } = await db.rpc("delete_open_job", { p_job_id: id });
   if (error)
     return NextResponse.json(
-      { error: "Failed to delete job" },
-      { status: 500 },
+      {
+        error:
+          error.message && error.message.length < 200
+            ? error.message
+            : "Failed to delete job",
+      },
+      { status: 409 },
     );
 
   revalidateTag("open-jobs", { expire: 0 });
@@ -127,6 +134,11 @@ export async function PATCH(
   if (job.status !== "open")
     return NextResponse.json(
       { error: "Only open jobs can be edited." },
+      { status: 409 },
+    );
+  if (job.posting_type === "role")
+    return NextResponse.json(
+      { error: "Recurring role postings cannot be edited yet." },
       { status: 409 },
     );
   // A committed payment (card checkout or pending bank transfer) locks edits.
@@ -158,9 +170,9 @@ export async function PATCH(
       { error: "Title must be between 3 and 120 characters." },
       { status: 400 },
     );
-  if (!descStr || descStr.length < 10 || descStr.length > 2000)
+  if (!descStr || descStr.length < 10 || descStr.length > 500)
     return NextResponse.json(
-      { error: "Description must be between 10 and 2000 characters." },
+      { error: "Description must be between 10 and 500 characters." },
       { status: 400 },
     );
   // Only validate + apply budget/rate changes when there are no applicants

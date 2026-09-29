@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChevronRight, DollarSign } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import { applicationStatusPill } from "@/lib/applications";
+import { jobPriceLabel } from "@/lib/jobs";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
 
 const JOB_DISPUTED_STATUS = {
@@ -15,7 +16,7 @@ export async function KinglancerApplicationsSection() {
   const { data } = await supabase
     .from("applications")
     .select(
-      "id, status, cover_letter, created_at, job:jobs(id, title, budget, status, deadline, client_id)",
+      "id, status, cover_letter, created_at, job:jobs(id, title, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, status, deadline, client_id)",
     )
     .eq("kinglancer_id", user.id)
     .order("created_at", { ascending: false })
@@ -30,6 +31,10 @@ export async function KinglancerApplicationsSection() {
       id: string;
       title: string;
       budget: number;
+      posting_type: string | null;
+      pay_negotiable: boolean | null;
+      pay_amount: number | null;
+      pay_cadence: string | null;
       status: string;
       deadline: string | null;
       client_id: string;
@@ -87,11 +92,13 @@ export async function KinglancerApplicationsSection() {
                   <p className="mt-1 text-sm text-slate-500">
                     {isDisputed
                       ? "This job is under dispute."
-                      : app.status === "accepted"
-                        ? "You have been selected!"
-                        : app.status === "rejected"
-                          ? "Another applicant was chosen."
-                          : "Application under review."}
+                      : app.status === "offered"
+                        ? "You've been offered this role — review and respond."
+                        : app.status === "accepted"
+                          ? "You have been selected!"
+                          : app.status === "rejected"
+                            ? "Another applicant was chosen."
+                            : "Application under review."}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
@@ -101,7 +108,7 @@ export async function KinglancerApplicationsSection() {
                     {s.label}
                   </span>
                   <span className="font-black text-slate-950">
-                    £{Number(app.job.budget).toLocaleString()}
+                    {jobPriceLabel(app.job)}
                   </span>
                   <ChevronRight
                     size={16}

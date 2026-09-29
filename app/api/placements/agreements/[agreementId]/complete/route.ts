@@ -5,6 +5,7 @@ import { deriveAgreementView } from "@/lib/placement-agreements";
 import {
   completeAgreement,
   createExperienceRecord,
+  getExperienceRecordByAgreement,
   placementPromisedReference,
 } from "@/lib/db/placements";
 
@@ -26,8 +27,18 @@ export async function POST(
       { status: 403 },
     );
   }
-  // Mirror the UI: can't complete unless it's active and not mid early-end.
-  if (!deriveAgreementView(access.agreement).canComplete) {
+
+  // A prior attempt may have completed the agreement but failed before
+  // writing the experience record — resume instead of rejecting as "not
+  // active", and never write a second record for an already-finished one.
+  const alreadyCompleted = access.agreement.status === "completed";
+  if (alreadyCompleted) {
+    const existing = await getExperienceRecordByAgreement(agreementId);
+    if (existing) {
+      return NextResponse.json({ ok: true, alreadyCompleted: true });
+    }
+  } else if (!deriveAgreementView(access.agreement).canComplete) {
+    // Mirror the UI: can't complete unless it's active and not mid early-end.
     return NextResponse.json(
       { error: "This placement can't be completed right now." },
       { status: 409 },
@@ -82,12 +93,14 @@ export async function POST(
   }
 
   // Completing frees the participant seat and publishes the experience record.
-  const completed = await completeAgreement(agreementId);
-  if (!completed) {
-    return NextResponse.json(
-      { error: "This placement is no longer active." },
-      { status: 409 },
-    );
+  if (!alreadyCompleted) {
+    const completed = await completeAgreement(agreementId);
+    if (!completed) {
+      return NextResponse.json(
+        { error: "This placement is no longer active." },
+        { status: 409 },
+      );
+    }
   }
 
   await createExperienceRecord({

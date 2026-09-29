@@ -1,7 +1,8 @@
+import { offerRoleApplication } from "@/lib/settlement/role-engagements";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { stripe, calculateFees } from "@/lib/stripe";
+import { stripe, calculateFees, MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import {
   createPaymentAttempt,
   finalizePaymentAttempt,
@@ -13,6 +14,11 @@ import { getManualBankDetails } from "@/lib/manual-payments";
 import { canManageJob } from "@/lib/organisations";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import { planForRole } from "@/lib/subscriptions/plans";
+import { coerceNumeric } from "@/lib/db/coerce";
+import { normalizeCurrencyAmount } from "@/lib/validation";
+import { meetsMinimumPeriodCharge } from "@/lib/settlement/fees";
+import { notifyRoleOffer } from "@/lib/notifications";
+import { roleScheduleMeetsMinimumCharge } from "@/lib/settlement/role-schedule-policy";
 
 type ApplicationRow = {
   id: string;
@@ -23,11 +29,20 @@ type ApplicationRow = {
   proposed_rate: number | null;
   created_at: string;
   job: {
+    id: string;
     client_id: string;
     organisation_id: string | null;
     status: string;
     budget: number;
     title: string;
+    posting_type: string;
+    employment_type: string | null;
+    pay_cadence: string | null;
+    pay_amount: number | null;
+    pay_negotiable: boolean;
+    settlement_mode: string | null;
+    scheduled_at: string | null;
+    ends_at: string | null;
   };
 };
 
@@ -58,7 +73,7 @@ export async function PATCH(
   const { data: applicationRaw } = await createServiceClient()
     .from("applications")
     .select(
-      "*, job:jobs!job_id(client_id, organisation_id, status, budget, title)",
+      "*, job:jobs!job_id(id, client_id, organisation_id, status, budget, title, posting_type, employment_type, pay_cadence, pay_amount, pay_negotiable, settlement_mode, scheduled_at, ends_at)",
     )
     .eq("id", applicationId)
     .single();
@@ -71,7 +86,7 @@ export async function PATCH(
   }
 
   const application = applicationRaw as unknown as ApplicationRow;
-  const job = application.job;
+  const job = coerceNumeric(application.job, ["budget", "pay_amount"]);
 
   if (!(await canManageJob(job, user.id, "manage_applicants"))) {
     return NextResponse.json(
@@ -87,11 +102,122 @@ export async function PATCH(
     );
   }
 
-  if (application.status !== "pending") {
+  if (
+    application.status !== "pending" &&
+    !(job.posting_type === "role" && application.status === "offered")
+  ) {
     return NextResponse.json(
       { error: "This application is no longer pending" },
       { status: 409 },
     );
+  }
+
+  if (job.posting_type === "role") {
+    // Revising pay is allowed any time it's safe to (not just the first
+    // time) — the database re-checks that under lock before writing anything.
+    const settingPay = body.pay_amount !== undefined;
+    let terms:
+      | { payAmount: number; payCadence: "weekly" | "monthly"; settlementMode: "managed" | "direct" }
+      | undefined;
+
+    if (settingPay) {
+      const payAmountNum = Number(body.pay_amount);
+      const payCadence = body.pay_cadence;
+      const settlementMode = body.settlement_mode;
+      if (!Number.isFinite(payAmountNum) || payAmountNum <= 0)
+        return NextResponse.json(
+          { error: "Enter a valid recurring pay amount." },
+          { status: 400 },
+        );
+      if (payCadence !== "weekly" && payCadence !== "monthly")
+        return NextResponse.json(
+          { error: "Choose weekly or monthly pay for this role." },
+          { status: 400 },
+        );
+      if (settlementMode !== "managed" && settlementMode !== "direct")
+        return NextResponse.json(
+          { error: "Choose how this role will be settled." },
+          { status: 400 },
+        );
+      // Direct settlement only charges the facilitation fee, not the raw pay
+      // amount — check what's actually charged, not the advertised figure.
+      if (!meetsMinimumPeriodCharge(payAmountNum, settlementMode))
+        return NextResponse.json(
+          {
+            error: `The recurring charge must be at least £${MIN_JOB_BUDGET_GBP} per period. ${settlementMode === "direct" ? "Direct settlement only charges the facilitation fee — raise the pay amount or switch to managed settlement." : ""}`.trim(),
+          },
+          { status: 400 },
+        );
+      if (
+        job.employment_type === "temporary" &&
+        job.scheduled_at &&
+        job.ends_at &&
+        !roleScheduleMeetsMinimumCharge({
+          anchor: new Date(job.scheduled_at),
+          boundEnd: new Date(job.ends_at),
+          cadence: payCadence,
+          amountPerPeriod: payAmountNum,
+          settlementMode,
+        })
+      )
+        return NextResponse.json(
+          {
+            error:
+              "The prorated pay for this temporary role is too small to process. Raise the pay amount or use a shorter pay cadence.",
+          },
+          { status: 400 },
+        );
+      terms = {
+        payAmount: normalizeCurrencyAmount(payAmountNum),
+        payCadence,
+        settlementMode,
+      };
+    } else if (job.pay_negotiable) {
+      return NextResponse.json(
+        {
+          error: "Set a fixed recurring pay amount before offering this role.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Saving revised terms and creating the offer happen in one transaction —
+    // a failure here leaves the previous (still-valid) terms in place instead
+    // of a posting stuck fixed-pay with no offer sent.
+    let engagement;
+    try {
+      engagement = await offerRoleApplication(applicationId, user.id, terms);
+    } catch (err) {
+      const message = (err as { message?: string } | null)?.message;
+      return NextResponse.json(
+        {
+          error:
+            message && message.length < 200
+              ? message
+              : "The offer could not be created. Refresh and retry.",
+        },
+        { status: 409 },
+      );
+    }
+    const { data: kinglancer } = await createServiceClient()
+      .from("profiles")
+      .select("email")
+      .eq("id", application.kinglancer_id)
+      .single();
+    void notifyRoleOffer({
+      kinglancerId: application.kinglancer_id,
+      kinglancerEmail: kinglancer?.email ?? undefined,
+      jobTitle: job.title,
+      jobId: application.job_id,
+    }).catch((err) => console.error("[role offer] notify failed:", err));
+    return NextResponse.json({
+      success: true,
+      method: "role",
+      jobId: application.job_id,
+      engagementId: engagement.id,
+      status: engagement.status,
+      offerStatus: "pending_acceptance",
+    });
   }
 
   try {

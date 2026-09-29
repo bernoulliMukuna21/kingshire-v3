@@ -1,3 +1,4 @@
+import { transferJobPayment as fireTransfer } from "@/lib/settlement/job-transfers";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 import type Stripe from "stripe";
@@ -147,92 +148,4 @@ export async function syncStripePayoutStatus({
  * via `source_transaction` — required in Marketplace mode to pull from the
  * specific charge rather than the platform's general available balance.
  */
-export async function fireTransfer({
-  transactionId,
-  amountPence,
-  destinationAccountId,
-  jobId,
-  paymentIntentId,
-}: {
-  transactionId: string;
-  amountPence: number;
-  destinationAccountId: string;
-  jobId: string;
-  paymentIntentId?: string;
-}): Promise<void> {
-  // Idempotency: skip if a transfer was already recorded for this transaction.
-  // Secondary safety net — Stripe's idempotency key below is the real concurrent-safe guard.
-  const db = createServiceClient();
-  const { data: existingTx, error: transactionError } = await db
-    .from("transactions")
-    .select("stripe_transfer_id, payout_method, manual_payout_reference, status")
-    .eq("id", transactionId)
-    .single();
-
-  if (transactionError || !existingTx) {
-    throw new Error("Cannot verify the transaction before transferring funds.");
-  }
-  if (
-    existingTx.manual_payout_reference ||
-    (existingTx.payout_method === "manual" && existingTx.status === "released")
-  ) {
-    throw new Error("This transaction was settled manually; Stripe transfer blocked.");
-  }
-
-  if (existingTx?.stripe_transfer_id) {
-    console.log(
-      `[fireTransfer] Transfer already exists for tx ${transactionId}, skipping`,
-    );
-    return;
-  }
-
-  // Resolve the underlying charge so we can use source_transaction.
-  // This is the correct pattern for "separate charges and transfers" in
-  // Marketplace mode — without it, Stripe draws from available balance (£0
-  // in test mode / before settlement).
-  let sourceTransaction: string | undefined;
-  if (paymentIntentId) {
-    try {
-      const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
-      const charge = pi.latest_charge;
-      if (charge) {
-        sourceTransaction = typeof charge === "string" ? charge : charge.id;
-      }
-    } catch (err) {
-      console.warn(
-        "[fireTransfer] Could not resolve charge from PaymentIntent, proceeding without source_transaction:",
-        err,
-      );
-    }
-  }
-
-  const transfer = await stripe.transfers.create(
-    {
-      amount: amountPence,
-      currency: "gbp",
-      destination: destinationAccountId,
-      ...(sourceTransaction ? { source_transaction: sourceTransaction } : {}),
-      metadata: { transaction_id: transactionId, job_id: jobId },
-    },
-    // Stripe-side idempotency: if two callers race through the pre-check above,
-    // Stripe deduplicates on this key and returns the same transfer both times.
-    { idempotencyKey: `transfer-${transactionId}` },
-  );
-
-  const { error: dbUpdateError } = await db
-    .from("transactions")
-    .update({ stripe_transfer_id: transfer.id })
-    .eq("id", transactionId);
-
-  if (dbUpdateError) {
-    // The Stripe transfer succeeded but the DB record wasn't updated.
-    // Log critically so this can be reconciled manually — do NOT swallow.
-    console.error(
-      `[fireTransfer] CRITICAL: Stripe transfer ${transfer.id} created for tx ${transactionId} but DB update failed:`,
-      dbUpdateError.message,
-    );
-    throw new Error(
-      `Transfer created in Stripe (${transfer.id}) but failed to save to DB: ${dbUpdateError.message}`,
-    );
-  }
-}
+export { transferJobPayment as fireTransfer } from "@/lib/settlement/job-transfers";

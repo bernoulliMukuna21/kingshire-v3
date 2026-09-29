@@ -1,11 +1,9 @@
+import { refundEngagementPayment } from "@/lib/settlement/refunds";
+import { settlementResponse } from "@/lib/settlement/http";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasValidAdminSession } from "@/lib/admin-auth";
-import { stripe } from "@/lib/stripe";
-import {
-  getPlacementPayment,
-  updatePlacementPaymentStatus,
-} from "@/lib/db/placement-payments";
+import { getPlacementPayment } from "@/lib/db/placement-payments";
 import { firePlacementPayout } from "@/lib/placement-payouts";
 
 export async function POST(
@@ -49,17 +47,10 @@ export async function POST(
 
   if (action === "release") {
     // Transfer the held escrow to the Kinglancer.
-    await firePlacementPayout(payment);
-    return NextResponse.json({ ok: true });
+    const result = await firePlacementPayout(payment);
+    return settlementResponse(result);
   }
 
-  // refund — return the money to the organisation.
-  if (payment.stripe_payment_intent_id) {
-    await stripe.refunds.create(
-      { payment_intent: payment.stripe_payment_intent_id },
-      { idempotencyKey: `placement-refund-${payment.id}` },
-    );
-  }
-  await updatePlacementPaymentStatus(paymentId, { status: "refunded" });
-  return NextResponse.json({ ok: true });
+  const result = await refundEngagementPayment(paymentId);
+  return settlementResponse(result);
 }

@@ -14,7 +14,7 @@ import {
   getPageRange,
   timeAgo,
 } from "@/lib/admin-dashboard";
-import { formatMoneyPrecise as formatMoney } from "@/lib/utils";
+import { jobPriceLabel } from "@/lib/jobs";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export default async function AdminDisputesPage({
@@ -30,7 +30,7 @@ export default async function AdminDisputesPage({
   const { data, count } = await serviceDb
     .from("disputes")
     .select(
-      "id, reason, created_at, status, raised_by, job:jobs!job_id(id, title, budget, client_id, kinglancer_id)",
+      "id, reason, created_at, status, raised_by, job:jobs!job_id(id, title, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, client_id, kinglancer_id)",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -88,7 +88,7 @@ export default async function AdminDisputesPage({
                   <div className="flex flex-wrap items-center gap-3 sm:justify-end">
                     {dispute.job && (
                       <span className="text-sm font-black text-gray-900">
-                        {formatMoney(dispute.job.budget)}
+                        {jobPriceLabel(dispute.job)}
                       </span>
                     )}
                     <span

@@ -18,7 +18,30 @@ export interface PushPayload {
   link?: string;
 }
 
-export const isPushConfigured = () => Boolean(vapidPublicKey && vapidPrivateKey);
+export const isPushConfigured = () =>
+  Boolean(vapidPublicKey && vapidPrivateKey);
+
+// Web Push endpoints are provided by the BROWSER, not chosen by us, but a
+// malicious/compromised client could submit an arbitrary URL as its
+// "endpoint" and get our server to make an authenticated-looking HTTP
+// request to it on every notification (SSRF). Only the push services real
+// browsers actually use are allowed.
+const TRUSTED_PUSH_HOSTS = new Set([
+  "fcm.googleapis.com", // Chrome, Edge, Opera, Android
+  "android.googleapis.com", // legacy Chrome/Android GCM endpoint
+  "updates.push.services.mozilla.com", // Firefox
+  "web.push.apple.com", // Safari (macOS 13+ / iOS 16.4+)
+]);
+
+export function isTrustedPushEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  return url.protocol === "https:" && TRUSTED_PUSH_HOSTS.has(url.hostname);
+}
 
 export interface PushSendResult {
   configured: boolean;
@@ -51,6 +74,11 @@ async function sendPushToUserWithResult(
 
   await Promise.all(
     subscriptions.map(async (sub) => {
+      if (!isTrustedPushEndpoint(sub.endpoint)) {
+        staleEndpoints.push(sub.endpoint);
+        failed.push({ endpoint: sub.endpoint, error: "Untrusted endpoint" });
+        return;
+      }
       try {
         await webpush.sendNotification(
           {

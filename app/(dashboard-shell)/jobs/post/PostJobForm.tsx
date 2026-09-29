@@ -3,14 +3,20 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
-import {
-  CURRENCY_VALIDATION_MESSAGE,
-  hasValidCurrencyPrecision,
-  normalizeCurrencyAmount,
-} from "@/lib/validation";
+import { normalizeCurrencyAmount } from "@/lib/validation";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import ScheduleTypeField from "@/components/jobs/ScheduleTypeField";
 import LocationField from "@/components/jobs/LocationField";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Avatar } from "@/components/ui/Avatar";
+import { AttachmentField } from "./AttachmentField";
+import { CategoryPicker } from "./CategoryPicker";
+import { BudgetField } from "./BudgetField";
+import {
+  validatePostJobForm,
+  buildJobPostPayload,
+  type PostJobFieldErrors,
+} from "./postJobLogic";
 
 export function FormSkeleton() {
   return (
@@ -28,10 +34,6 @@ export function FormSkeleton() {
     </div>
   );
 }
-import { Loader2, AlertCircle } from "lucide-react";
-import { JOB_CATEGORIES } from "@/lib/job-categories";
-import { Avatar } from "@/components/ui/Avatar";
-import ConfirmModal from "@/components/ConfirmModal";
 
 type PreferredKinglancer = {
   id: string;
@@ -44,18 +46,24 @@ export default function PostJobForm({
   preferredKinglancer,
   onSuccess,
   organisationId,
-  organisations,
+  organisationName,
+  attachmentOrganisationIds = [],
 }: {
   preferredKinglancer?: PreferredKinglancer | null;
   onSuccess?: () => void;
   organisationId?: string;
-  organisations?: { id: string; name: string }[];
+  organisationName?: string;
+  attachmentOrganisationIds?: string[];
 }) {
   const router = useRouter();
 
-  // "" = personal job; an org id = that organisation owns the job.
-  const [contextOrgId, setContextOrgId] = useState(organisationId ?? "");
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [attachmentError, setAttachmentError] = useState<string | null>(null);
+  const canAttach = attachmentOrganisationIds.includes(organisationId ?? "");
+
+  // Roles are org-only; a direct request to a specific Kinglancer is always a gig.
+  const canPostRole = !!organisationId && !preferredKinglancer;
+  const [postingType, setPostingType] = useState<"gig" | "role">("gig");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -74,22 +82,24 @@ export default function PostJobForm({
   );
   const [estimatedMinutes, setEstimatedMinutes] = useState("");
 
+  // Role-only fields
+  const [employmentType, setEmploymentType] = useState<
+    "permanent" | "temporary"
+  >("permanent");
+  const [roleStartsAt, setRoleStartsAt] = useState("");
+  const [roleEndsAt, setRoleEndsAt] = useState("");
+  const [payCadence, setPayCadence] = useState<"weekly" | "monthly">("monthly");
+  const [payAmount, setPayAmount] = useState("");
+  const [payNegotiable, setPayNegotiable] = useState(false);
+  const [settlementMode, setSettlementMode] = useState<"managed" | "direct">(
+    "managed",
+  );
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{
-    title?: string;
-    description?: string;
-    categories?: string;
-    budget?: string;
-    address?: string;
-    postcode?: string;
-    scheduledAt?: string;
-    endsAt?: string;
-    daysOnSite?: string;
-    workMode?: string;
-  }>({});
+  const [fieldErrors, setFieldErrors] = useState<PostJobFieldErrors>({});
 
-  const clearFieldError = (field: keyof typeof fieldErrors) =>
+  const clearFieldError = (field: keyof PostJobFieldErrors) =>
     setFieldErrors((p) => ({ ...p, [field]: undefined }));
 
   const toggleCategory = (cat: string) =>
@@ -108,180 +118,156 @@ export default function PostJobForm({
     e.preventDefault();
     setError(null);
     setFieldErrors({});
+    const isRole = canPostRole && postingType === "role";
 
-    const fe: typeof fieldErrors = {};
-    if (!title.trim()) fe.title = "Job title is required.";
-    if (!description.trim()) fe.description = "Description is required.";
-    if (categories.length === 0)
-      fe.categories = "Please select at least one category.";
-    if (!budget || totalBudget <= 0) fe.budget = "Please enter a valid budget.";
-    else if (!hasValidCurrencyPrecision(budget))
-      fe.budget = CURRENCY_VALIDATION_MESSAGE;
-    else if (totalBudget < MIN_JOB_BUDGET_GBP)
-      fe.budget = `Minimum total budget is £${MIN_JOB_BUDGET_GBP}.`;
-    else if (totalBudget > 50000)
-      fe.budget = "Maximum total budget is £50,000.";
-
-    if (!workMode) fe.workMode = "Choose where the job happens.";
-    if (workMode === "online") {
-      if (!scheduledAt) fe.scheduledAt = "Add the start date.";
-      if (!endsAt) fe.endsAt = "Add the end date.";
-      else if (
-        scheduledAt &&
-        new Date(endsAt).getTime() < new Date(scheduledAt).getTime()
-      )
-        fe.endsAt = "The end date must be after the start date.";
-    }
-    if (workMode === "in_person" || workMode === "hybrid") {
-      if (!addressLine.trim()) fe.address = "Add the street address.";
-      if (!postcode.trim()) fe.postcode = "Add the postcode.";
-    }
-    if (workMode === "in_person") {
-      if (!scheduledAt || !/T\d{2}:\d{2}/.test(scheduledAt))
-        fe.scheduledAt = "Add the start date and time.";
-      if (!endsAt || !/T\d{2}:\d{2}/.test(endsAt))
-        fe.endsAt = "Add the end date and time.";
-      else if (
-        scheduledAt &&
-        new Date(endsAt).getTime() <= new Date(scheduledAt).getTime()
-      )
-        fe.endsAt = "The end time must be after the start time.";
-    }
-    if (workMode === "hybrid") {
-      const days = Number(daysOnSite);
-      if (!Number.isInteger(days) || days < 1 || days > 6)
-        fe.daysOnSite = "Set how many days on-site per week (1–6).";
-      if (!scheduledAt) fe.scheduledAt = "Add the start date.";
-      if (!endsAt) fe.endsAt = "Add the end date.";
-      else if (
-        scheduledAt &&
-        new Date(endsAt).getTime() < new Date(scheduledAt).getTime()
-      )
-        fe.endsAt = "The end date must be after the start date.";
-    }
+    const fe = validatePostJobForm({
+      isRole,
+      title,
+      description,
+      categories,
+      budget,
+      totalBudget,
+      payNegotiable,
+      payAmount,
+      employmentType,
+      roleStartsAt,
+      roleEndsAt,
+      workMode,
+      scheduledAt,
+      endsAt,
+      addressLine,
+      postcode,
+      daysOnSite,
+    });
 
     if (Object.keys(fe).length > 0) {
       setFieldErrors(fe);
       return;
     }
 
-    // Confirm the job's owner (personal vs organisation) before posting.
-    if (organisations && organisations.length > 0) {
-      setConfirmOpen(true);
-      return;
-    }
+    if (attachmentError) return;
+
     await doPost();
   };
 
   const doPost = async () => {
     setLoading(true);
     setError(null);
+    const isRole = canPostRole && postingType === "role";
 
-    const res = await fetch("/api/jobs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        description,
-        categories,
-        budget: totalBudget,
-        rate_type: "fixed",
-        invited_kinglancer_id: preferredKinglancer?.id ?? null,
-        work_mode: workMode,
-        address_line: workMode !== "online" ? addressLine.trim() : null,
-        postcode: workMode !== "online" ? postcode.trim() : null,
-        scheduled_at: scheduledAt || null,
-        ends_at: endsAt || null,
-        days_on_site: workMode === "hybrid" ? Number(daysOnSite) : null,
-        schedule_type: workMode === "in_person" ? scheduleType : "window",
-        estimated_minutes:
-          workMode === "in_person" &&
-          scheduleType === "window" &&
-          estimatedMinutes
-            ? Number(estimatedMinutes)
-            : null,
-        organisation_id: contextOrgId || null,
-      }),
-    });
-
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setError(data.error ?? "Failed to post job. Please try again.");
-      return;
-    }
-
-    if (onSuccess) {
-      onSuccess();
-    } else {
-      router.push(
-        contextOrgId
-          ? `/dashboard/organisations/${contextOrgId}`
-          : `/dashboard/client/jobs/${data.id}`,
+    try {
+      const payload = JSON.stringify(
+        buildJobPostPayload({
+          title,
+          description,
+          categories,
+          isRole,
+          employmentType,
+          payCadence,
+          payAmount,
+          payNegotiable,
+          settlementMode,
+          roleStartsAt,
+          roleEndsAt,
+          totalBudget,
+          preferredKinglancerId: preferredKinglancer?.id,
+          scheduledAt,
+          endsAt,
+          workMode,
+          scheduleType,
+          estimatedMinutes,
+          addressLine,
+          postcode,
+          daysOnSite,
+          organisationId,
+        }),
       );
+      const form = new FormData();
+      form.set("job", payload);
+      if (canAttach && attachmentFile) form.set("attachment", attachmentFile);
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        ...(canAttach && attachmentFile
+          ? { body: form }
+          : { headers: { "Content-Type": "application/json" }, body: payload }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "Failed to post job. Please try again.");
+        return;
+      }
+
+      if (onSuccess) {
+        onSuccess();
+      } else if (isRole) {
+        router.push(`/dashboard/organisations/${organisationId}/jobs`);
+      } else {
+        router.push(
+          organisationId
+            ? `/dashboard/organisations/${organisationId}`
+            : `/dashboard/client/jobs/${data.id}`,
+        );
+      }
+    } catch {
+      setError("Unable to post your job. Check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const selectedOrg =
-    organisations?.find((org) => org.id === contextOrgId) ?? null;
+  const isRolePosting = canPostRole && postingType === "role";
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <ConfirmModal
-        isOpen={confirmOpen}
-        onClose={() => {
-          if (!loading) setConfirmOpen(false);
-        }}
-        onConfirm={doPost}
-        loading={loading}
-        error={error ?? undefined}
-        confirmLabel="Confirm & post"
-        title={
-          selectedOrg
-            ? `Post this job for ${selectedOrg.name}?`
-            : "Post this as your personal job?"
-        }
-        message={
-          selectedOrg ? (
-            <>
-              This job will belong to <strong>{selectedOrg.name}</strong>. Any
-              member of the organisation can manage it and it appears in the
-              organisation workspace — not your personal jobs.
-            </>
-          ) : (
-            <>
-              This is your <strong>personal</strong> job. Only you can manage it
-              and it appears under your personal My Jobs.
-            </>
-          )
-        }
-      />
-
       <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
         Job details
       </h3>
-      {organisations && organisations.length > 0 && (
+      <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm text-blue-900">
+        {organisationId ? (
+          <>
+            Posting for{" "}
+            <strong>{organisationName ?? "your organisation"}</strong> — any
+            member can manage it and it lives in the organisation workspace.
+          </>
+        ) : (
+          <>
+            Posting as your <strong>personal</strong> job — only you can manage
+            it.
+          </>
+        )}
+      </div>
+
+      {canPostRole && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Who is this job for? <span className="text-red-500">*</span>
+            What kind of job is this? <span className="text-red-500">*</span>
           </label>
-          <select
-            value={contextOrgId}
-            onChange={(e) => setContextOrgId(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-          >
-            <option value="">Personal — your own job</option>
-            {organisations.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name} (organisation)
-              </option>
+          <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs font-medium">
+            {(
+              [
+                { value: "gig", label: "One-off gig" },
+                { value: "role", label: "Recurring role" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setPostingType(opt.value)}
+                className={`flex-1 py-2 transition-colors ${
+                  postingType === opt.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {opt.label}
+              </button>
             ))}
-          </select>
+          </div>
           <p className="mt-1 text-xs text-slate-500">
-            {contextOrgId
-              ? "This job belongs to the organisation — any member can manage it and it lives in the organisation workspace."
-              : "This is your personal job — only you can manage it."}
+            {postingType === "role"
+              ? "An ongoing position with recurring pay — permanent or temporary."
+              : "A single paid task, escrowed for the full amount."}
           </p>
         </div>
       )}
@@ -350,11 +336,12 @@ export default function PostJobForm({
       {/* Description */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description <span className="text-red-500">*</span>
+          Job summary <span className="text-red-500">*</span>
         </label>
         <p className="mb-1.5 text-xs text-gray-400">
-          Focus on the task itself — you&apos;ll set location, timing and budget
-          below.
+          {canAttach
+            ? "A short overview is enough — attach the full job description as a document below."
+            : "Focus on the task itself — you'll set location, timing and budget below."}
         </p>
         <textarea
           value={description}
@@ -362,8 +349,8 @@ export default function PostJobForm({
             setDescription(e.target.value);
             clearFieldError("description");
           }}
-          rows={5}
-          maxLength={2000}
+          rows={4}
+          maxLength={500}
           className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all resize-none ${
             fieldErrors.description
               ? "border-red-400 focus:ring-red-300"
@@ -378,46 +365,30 @@ export default function PostJobForm({
             <span />
           )}
           <p className="text-xs text-gray-400 text-right">
-            {description.length}/2000
+            {description.length}/500
           </p>
         </div>
       </div>
 
-      {/* Category */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Category <span className="text-red-500">*</span>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {JOB_CATEGORIES.map((cat) => {
-            const selected = categories.includes(cat);
-            return (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => {
-                  toggleCategory(cat);
-                  clearFieldError("categories");
-                }}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-all cursor-pointer ${
-                  selected
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600"
-                }`}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
-        {fieldErrors.categories ? (
-          <p className="text-xs text-red-500 mt-2">{fieldErrors.categories}</p>
-        ) : categories.length > 0 ? (
-          <p className="text-xs text-gray-400 mt-2">
-            {categories.length} selected
-          </p>
-        ) : null}
-      </div>
+      {canAttach && (
+        <AttachmentField
+          organisationId={organisationId}
+          attachmentFile={attachmentFile}
+          setAttachmentFile={setAttachmentFile}
+          attachmentError={attachmentError}
+          setAttachmentError={setAttachmentError}
+          loading={loading}
+        />
+      )}
+
+      <CategoryPicker
+        categories={categories}
+        onToggle={(cat) => {
+          toggleCategory(cat);
+          clearFieldError("categories");
+        }}
+        error={fieldErrors.categories}
+      />
 
       <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
         Where &amp; when
@@ -500,7 +471,7 @@ export default function PostJobForm({
         </div>
       )}
 
-      {workMode === "in_person" && (
+      {!(canPostRole && postingType === "role") && workMode === "in_person" && (
         <ScheduleTypeField
           scheduleType={scheduleType}
           onScheduleTypeChange={setScheduleType}
@@ -509,7 +480,7 @@ export default function PostJobForm({
         />
       )}
 
-      {workMode && (
+      {!isRolePosting && workMode && (
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -562,45 +533,176 @@ export default function PostJobForm({
         </div>
       )}
 
-      <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
-        Budget
-      </h3>
-      {/* Budget */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          Total budget (£) <span className="text-red-500">*</span>
-        </label>
-        <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
-            £
-          </span>
-          <input
-            type="number"
-            min="0.01"
-            step="0.01"
-            inputMode="decimal"
-            value={budget}
-            onChange={(e) => {
-              setBudget(e.target.value);
-              clearFieldError("budget");
-            }}
-            className={`w-full pl-8 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${
-              fieldErrors.budget
-                ? "border-red-400 focus:ring-red-300"
-                : "border-gray-200 focus:ring-blue-500"
-            }`}
-            placeholder="0"
-          />
+      {isRolePosting && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Role type <span className="text-red-500">*</span>
+          </label>
+          <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs font-medium">
+            {(
+              [
+                { value: "permanent", label: "Permanent" },
+                { value: "temporary", label: "Temporary" },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setEmploymentType(opt.value)}
+                className={`flex-1 py-2 transition-colors ${
+                  employmentType === opt.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-white text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
-        {fieldErrors.budget ? (
-          <p className="text-xs text-red-500 mt-1">{fieldErrors.budget}</p>
-        ) : (
-          <p className="text-xs text-gray-400 mt-1">
-            The total price for the whole job — held in escrow once you select a
-            Kinglancer.
-          </p>
-        )}
-      </div>
+      )}
+
+      {isRolePosting && employmentType === "temporary" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              Start date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={roleStartsAt}
+              min={minDateStr}
+              onChange={(e) => {
+                setRoleStartsAt(e.target.value);
+                clearFieldError("scheduledAt");
+              }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                fieldErrors.scheduledAt
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+            />
+            {fieldErrors.scheduledAt && (
+              <p className="mt-1 text-xs text-red-500">
+                {fieldErrors.scheduledAt}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              End date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={roleEndsAt}
+              min={roleStartsAt || undefined}
+              onChange={(e) => {
+                setRoleEndsAt(e.target.value);
+                clearFieldError("endsAt");
+              }}
+              className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                fieldErrors.endsAt
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-gray-200 focus:ring-blue-500"
+              }`}
+            />
+            {fieldErrors.endsAt && (
+              <p className="mt-1 text-xs text-red-500">{fieldErrors.endsAt}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isRolePosting ? (
+        <>
+          <h3 className="border-b-2 border-gray-300 pb-1.5 text-sm font-bold text-gray-900">
+            Pay
+          </h3>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="text-sm font-medium text-gray-700">
+              Pay arrangement
+              <select
+                value={payNegotiable ? "discuss" : "set"}
+                onChange={(e) => setPayNegotiable(e.target.value === "discuss")}
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
+              >
+                <option value="set">Set recurring pay</option>
+                <option value="discuss">Discuss at interview</option>
+              </select>
+            </label>
+            {!payNegotiable && (
+              <label className="text-sm font-medium text-gray-700">
+                Pay cadence
+                <select
+                  value={payCadence}
+                  onChange={(e) =>
+                    setPayCadence(e.target.value as "weekly" | "monthly")
+                  }
+                  className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
+                >
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </label>
+            )}
+          </div>
+          {!payNegotiable && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Pay per period (£) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min={MIN_JOB_BUDGET_GBP}
+                step="0.01"
+                value={payAmount}
+                onChange={(e) => {
+                  setPayAmount(e.target.value);
+                  clearFieldError("payAmount");
+                }}
+                className={`w-full rounded-xl border px-4 py-2.5 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 ${
+                  fieldErrors.payAmount
+                    ? "border-red-400 focus:ring-red-300"
+                    : "border-gray-200 focus:ring-blue-500"
+                }`}
+              />
+              {fieldErrors.payAmount && (
+                <p className="mt-1 text-xs text-red-500">
+                  {fieldErrors.payAmount}
+                </p>
+              )}
+            </div>
+          )}
+          {!payNegotiable && (
+            <label className="block text-sm font-medium text-gray-700">
+              Payment handling
+              <select
+                value={settlementMode}
+                onChange={(e) =>
+                  setSettlementMode(e.target.value as "managed" | "direct")
+                }
+                className="mt-1.5 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"
+              >
+                <option value="managed">
+                  KingsHire-managed escrow and payout
+                </option>
+                <option value="direct">
+                  Organisation pays the Kinglancer directly
+                </option>
+              </select>
+            </label>
+          )}
+        </>
+      ) : (
+        <BudgetField
+          budget={budget}
+          onChange={(v) => {
+            setBudget(v);
+            clearFieldError("budget");
+          }}
+          error={fieldErrors.budget}
+        />
+      )}
 
       {/* Error */}
       {error && (
@@ -610,9 +712,16 @@ export default function PostJobForm({
         </div>
       )}
 
-      {/* Escrow notice */}
+      {/* Payment notice */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700">
-        {preferredKinglancer ? (
+        {isRolePosting ? (
+          <>
+            <strong>How payment works:</strong> Once you hire someone, their
+            recurring pay is either KingsHire-managed (charged and held in
+            escrow each period) or paid by your Organisation directly, depending
+            on what you choose above.
+          </>
+        ) : preferredKinglancer ? (
           <>
             <strong>How payment works:</strong> Your budget is held in escrow
             once {preferredKinglancer.fullName.split(" ")[0]} accepts your
@@ -636,10 +745,16 @@ export default function PostJobForm({
         {loading ? (
           <>
             <Loader2 size={16} className="animate-spin" />
-            {preferredKinglancer ? "Sending..." : "Posting job..."}
+            {preferredKinglancer
+              ? "Sending..."
+              : isRolePosting
+                ? "Posting role..."
+                : "Posting job..."}
           </>
         ) : preferredKinglancer ? (
           "Send Request"
+        ) : isRolePosting ? (
+          "Post role"
         ) : (
           "Post job"
         )}

@@ -158,6 +158,9 @@ create table public.reviews (
   is_published  boolean not null default false,
   published_at  timestamptz,
   created_at    timestamptz not null default now(),
+  -- The manager who actually submitted an organisation review. reviewer_id
+  -- remains the posting client so reciprocal double-blind matching still works.
+  on_behalf_of_user_id uuid references public.profiles(id),
   unique(job_id, reviewer_id)
 );
 create index if not exists idx_reviews_reviewee_published
@@ -361,21 +364,7 @@ create policy "Parties can view own transactions" on public.transactions
 -- service-role submission route).
 create policy "Published reviews are public" on public.reviews
   for select using (is_published or auth.uid() = reviewer_id);
-create policy "Users can leave a review" on public.reviews
-  for insert with check (
-    auth.uid() = reviewer_id
-    AND reviewer_id <> reviewee_id
-    AND exists (
-      select 1 from public.jobs
-      where jobs.id = reviews.job_id
-        AND jobs.status = 'approved'
-        AND (
-          (jobs.client_id = reviews.reviewer_id AND jobs.kinglancer_id = reviews.reviewee_id)
-          OR
-          (jobs.kinglancer_id = reviews.reviewer_id AND jobs.client_id = reviews.reviewee_id)
-        )
-    )
-  );
+-- Reviews are inserted through the authorized server route (migration 073).
 
 -- Disputes: only parties involved can view/create
 create policy "Parties can view disputes" on public.disputes
@@ -386,16 +375,8 @@ create policy "Parties can view disputes" on public.disputes
         AND (jobs.client_id = auth.uid() OR jobs.kinglancer_id = auth.uid())
     )
   );
-create policy "Users can raise disputes" on public.disputes
-  for insert with check (
-    auth.uid() = raised_by
-    AND exists (
-      select 1 from public.jobs
-      where jobs.id = disputes.job_id
-        AND jobs.status in ('in_progress', 'completed')
-        AND (jobs.client_id = auth.uid() OR jobs.kinglancer_id = auth.uid())
-    )
-  );
+-- Dispute insertion uses the server settlement operation (migration 074).
+revoke insert on public.disputes from anon, authenticated;
 
 -- ── NOTIFICATIONS ──────────────────────────────────────────
 create table if not exists public.notifications (
@@ -523,3 +504,32 @@ grant select, insert, update, delete on all tables in schema public to authentic
 grant usage, select on all sequences in schema public to authenticated;
 grant select, insert, update, delete on all tables in schema public to service_role;
 grant usage, select on all sequences in schema public to service_role;
+
+-- profiles has sensitive columns (email, phone, cv_url, stripe_account_id,
+-- stripe_onboarding_complete, updated_at, terms_accepted_version,
+-- terms_accepted_at) that must NOT be reachable via anon/authenticated even
+-- though the table-level grant above is broad. See migration
+-- 069_restrict_profiles_column_grants.sql for the full rationale.
+revoke select on public.profiles from anon, authenticated;
+grant select (
+  id,
+  full_name,
+  avatar_url,
+  role,
+  bio,
+  service_tags,
+  location,
+  hourly_rate,
+  rate_type,
+  tagline,
+  services,
+  rating,
+  total_reviews,
+  jobs_completed,
+  is_verified,
+  portfolio_url,
+  open_to_placements,
+  created_at
+) on public.profiles to anon, authenticated;
+
+revoke insert on public.reviews from anon, authenticated;

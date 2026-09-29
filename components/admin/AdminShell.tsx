@@ -13,10 +13,12 @@ const ADMIN_NAV_ITEMS = [
   { label: "Users", icon: "👥", href: "/admin/users" },
   { label: "Jobs", icon: "💼", href: "/admin/jobs" },
   { label: "Manual payments", icon: "🏦", href: "/admin/manual-payments" },
+  { label: "Settlement recovery", icon: "🔎", href: "/admin/settlements" },
   { label: "Disputes", icon: "🚨", href: "/admin/disputes" },
   { label: "Placements", icon: "🎓", href: "/admin/placements" },
   { label: "Verifications", icon: "✅", href: "/admin/verifications" },
   { label: "Pay disputes", icon: "⚖️", href: "/admin/placement-disputes" },
+  { label: "Role disputes", icon: "🧾", href: "/admin/role-disputes" },
 ];
 
 type Props = {

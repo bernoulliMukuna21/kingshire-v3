@@ -15,6 +15,7 @@ import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import { planForRole } from "@/lib/subscriptions/plans";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { requireTermsAccepted } from "@/lib/terms";
+import { coerceNumeric } from "@/lib/db/coerce";
 
 type DirectPayJob = {
   id: string;
@@ -66,7 +67,7 @@ export async function POST(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  const job = jobRaw as DirectPayJob;
+  const job = coerceNumeric(jobRaw as DirectPayJob, ["budget"]);
   if (!(await canManageJob(job, user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

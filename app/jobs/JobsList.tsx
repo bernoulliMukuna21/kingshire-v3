@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Stagger, StaggerItem } from "@/components/animations";
 import type { JobWithClient } from "@/lib/db/jobs";
+import { jobPriceLabel } from "@/lib/jobs";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
 import { formatDeadline } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -119,7 +120,7 @@ export default function JobsList({
                   </div>
                   <div className="flex flex-col items-end gap-1.5 shrink-0">
                     <span className="text-lg font-black text-green-600">
-                      £{Number(job.budget).toLocaleString()}
+                      {jobPriceLabel(job)}
                     </span>
                     {appliedJobIds.includes(job.id) && (
                       <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700 border border-emerald-200">

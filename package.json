@@ -12,7 +12,10 @@
     "cron:auto-release": "node scripts/run-cron.mjs /api/cron/auto-release",
     "cron:charge-placements": "node scripts/run-cron.mjs /api/cron/charge-placements",
     "cron:release-placements": "node scripts/run-cron.mjs /api/cron/release-placements",
+    "cron:charge-engagements": "node scripts/run-cron.mjs /api/cron/charge-engagements",
+    "cron:release-engagements": "node scripts/run-cron.mjs /api/cron/release-engagements",
     "cron:cleanup-abandoned-checkouts": "node scripts/run-cron.mjs /api/cron/cleanup-abandoned-checkouts",
+    "cron:close-completed-roles": "node scripts/run-cron.mjs /api/cron/close-completed-roles",
     "cron:reveal-reviews": "node scripts/run-cron.mjs /api/cron/reveal-reviews",
     "gen:types": "supabase gen types typescript --linked --schema public > lib/supabase/types.ts",
     "stripe:create-prices": "node scripts/create-subscription-prices.mjs",
@@ -36,7 +39,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "stripe": "^22.1.1",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",

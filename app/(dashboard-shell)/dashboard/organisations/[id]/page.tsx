@@ -6,6 +6,7 @@ import {
   hasOrganisationPermission,
 } from "@/lib/organisations";
 import { getOrganisationOverview } from "@/infrastructure/supabase/queries/organisation-queries";
+import { jobPriceLabel } from "@/lib/jobs";
 import { listOrganisationPlacements } from "@/lib/db/placements";
 import { placementWorkModeSummary } from "@/lib/placements";
 import { ButtonLink } from "@/components/ui/Button";
@@ -135,9 +136,7 @@ export default async function OrganisationDashboardPage({
                         {job.status.replaceAll("_", " ")}
                       </p>
                     </div>
-                    <p className="font-black">
-                      £{Number(job.budget).toFixed(2)}
-                    </p>
+                    <p className="font-black">{jobPriceLabel(job)}</p>
                   </Link>
                 ))}
               </Card>

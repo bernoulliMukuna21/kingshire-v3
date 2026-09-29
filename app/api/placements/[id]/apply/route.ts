@@ -7,6 +7,7 @@ import {
   hasAppliedToPlacement,
 } from "@/lib/db/placements";
 import { notifyPlacementApplicationReceived } from "@/lib/notifications";
+import { resolveCvPath } from "@/lib/cv-storage";
 
 export async function POST(
   request: Request,
@@ -57,17 +58,21 @@ export async function POST(
   const raw = (body as { message?: unknown }).message;
   const message = typeof raw === "string" ? raw.trim().slice(0, 2000) : "";
 
-  const rawCv = (body as { cvUrl?: unknown }).cvUrl;
-  let cvUrl: string | null = null;
-  if (typeof rawCv === "string" && rawCv.trim()) {
-    const expectedPrefix = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/placement-cvs/`;
-    if (!expectedPrefix || !rawCv.startsWith(expectedPrefix)) {
-      return NextResponse.json(
-        { error: "Invalid CV upload. Please re-attach your CV." },
-        { status: 400 },
-      );
-    }
-    cvUrl = rawCv;
+  const rawCv =
+    (body as { cvPath?: unknown }).cvPath ??
+    (body as { cvUrl?: unknown }).cvUrl;
+  if (typeof rawCv !== "string" || !rawCv.trim()) {
+    return NextResponse.json(
+      { error: "Please attach your CV to apply." },
+      { status: 400 },
+    );
+  }
+  const cvPath = resolveCvPath("placement-cvs", rawCv, user.id);
+  if (!cvPath) {
+    return NextResponse.json(
+      { error: "Invalid CV upload. Please re-attach your CV." },
+      { status: 400 },
+    );
   }
 
   // Placements are opt-in. A Kinglancer who has not enabled "Open to
@@ -94,7 +99,7 @@ export async function POST(
     placementId: id,
     kinglancerId: user.id,
     message: message || null,
-    cvUrl,
+    cvPath,
   });
 
   if (placement.created_by) {

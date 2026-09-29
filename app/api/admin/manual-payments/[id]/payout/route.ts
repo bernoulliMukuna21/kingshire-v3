@@ -45,7 +45,19 @@ export async function POST(
     );
   }
 
-  const tx = await recordManualPayout(jobId, { reference, adminId: user.id });
+  let tx;
+  try {
+    tx = await recordManualPayout(jobId, { reference, adminId: user.id });
+  } catch (error) {
+    console.error("[manual payout]", error);
+    return NextResponse.json(
+      {
+        error:
+          "Payment is no longer eligible or another settlement is in progress.",
+      },
+      { status: 409 },
+    );
+  }
   if (!tx) {
     return NextResponse.json(
       { error: "No held bank-transfer payment awaiting payout for this job." },

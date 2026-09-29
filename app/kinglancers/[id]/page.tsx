@@ -64,9 +64,6 @@ export default async function KinglancerProfilePage({
 
   if (!kinglancer) notFound();
 
-  const rawServices =
-    (kinglancer.services as Array<{ rate: number }> | null) ?? [];
-
   const reviews = await getKinglancerReviews(id);
   const experience = await getKinglancerExperience(id);
 
@@ -282,7 +279,6 @@ export default async function KinglancerProfilePage({
             </p>
             <BookingCard
               kinglancerId={kinglancer.id}
-              kinglancerFirstName={firstName}
               bookingHref={bookingHref}
             />
           </Card>

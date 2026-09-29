@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import {
   getOrCreateStripeAccount,
   createOnboardingLink,
@@ -18,7 +19,11 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   }
 
-  const { data: profile } = await supabase
+  // email/stripe_account_id/stripe_onboarding_complete are restricted from
+  // anon/authenticated (migration 069) — use the service client for this
+  // owner-scoped read.
+  const db = createServiceClient();
+  const { data: profile } = await db
     .from("profiles")
     .select(
       "email, full_name, role, stripe_account_id, stripe_onboarding_complete",
