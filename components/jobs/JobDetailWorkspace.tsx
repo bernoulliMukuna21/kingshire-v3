@@ -47,9 +47,11 @@ import PendingPaymentCard from "@/app/(dashboard-shell)/dashboard/client/jobs/[i
 import RepostJobButton from "@/app/(dashboard-shell)/dashboard/client/jobs/[id]/RepostJobButton";
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import { canManageJob } from "@/lib/organisations";
-import { getEngagementBySource } from "@/lib/db/engagements";
+import { getEngagementBySource, listEngagementCheckIns } from "@/lib/db/engagements";
 import { signCvUrls } from "@/lib/cv-storage";
 import RoleOfferSummary from "@/components/jobs/RoleOfferSummary";
+import CheckInForm from "@/components/CheckInForm";
+import CheckInFeed from "@/components/CheckInFeed";
 
 type InvitedKinglancer = {
   id: string;
@@ -146,6 +148,10 @@ export default async function JobDetailWorkspace({
     ["pending_acceptance", "pending_funding", "active"].includes(
       roleEngagement.status,
     );
+  const roleCheckIns =
+    roleEngagement && roleEngagement.status === "active"
+      ? await listEngagementCheckIns(roleEngagement.id)
+      : [];
 
   // A pending payment locks selection and editing until it clears/cancels.
   const paymentPending = !!pendingAttempt;
@@ -225,6 +231,28 @@ export default async function JobDetailWorkspace({
             recipientName={kinglancerName ?? "Selected Kinglancer"}
           />
         )}
+      {roleEngagement && roleEngagement.status === "active" && organisationId && (
+        <Card className={cardPadding}>
+          <h2 className="text-lg font-black text-slate-950">Check-ins</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Post an update on the work, or ask{" "}
+            {kinglancerName ?? "the Kinglancer"} a question.
+          </p>
+          <div className="mt-4 space-y-4">
+            <CheckInForm endpoint={`/api/jobs/${id}/role/check-ins`} />
+            <CheckInFeed
+              checkIns={roleCheckIns.map((c) => ({
+                id: c.id,
+                authorId: c.authorId,
+                authorName: c.authorName,
+                note: c.note,
+                createdAt: c.createdAt,
+              }))}
+              kinglancerId={roleEngagement.kinglancer_id}
+            />
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
