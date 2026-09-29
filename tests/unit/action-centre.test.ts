@@ -6,6 +6,8 @@ import {
   buildPlacementItems,
   buildOrgPlacementPaymentItems,
   buildOrgApplicationItems,
+  buildKinglancerRoleOfferItems,
+  buildOrgRoleOfferItems,
   type ClientActionJob,
   type KinglancerActionJob,
 } from "@/lib/action-centre";
@@ -13,6 +15,7 @@ import type { PendingReviewJob } from "@/lib/db/reviews";
 import type { KinglancerAgreement } from "@/lib/db/placements";
 import type { OrgHeldPlacementPayment } from "@/lib/db/placement-payments";
 import type { OrgPendingApplication } from "@/lib/db/placements";
+import type { KinglancerRoleOffer } from "@/lib/db/engagements";
 
 function clientJob(overrides: Partial<ClientActionJob>): ClientActionJob {
   return {
@@ -100,6 +103,70 @@ describe("buildPlacementItems", () => {
   it("ignores active/other agreement states", () => {
     expect(buildPlacementItems([agreement({ status: "active" })])).toHaveLength(
       0,
+    );
+  });
+});
+
+function roleOffer(
+  overrides: Partial<KinglancerRoleOffer>,
+): KinglancerRoleOffer {
+  return {
+    engagementId: "eng-1",
+    jobId: "job-1",
+    jobTitle: "Tesco Manager",
+    organisationName: "Prokope",
+    status: "pending_acceptance",
+    amountPerPeriod: 1800,
+    cadence: "monthly",
+    ...overrides,
+  };
+}
+
+describe("buildKinglancerRoleOfferItems", () => {
+  it("surfaces a pending role offer as an action item (offer sent, Action Centre showed 0)", () => {
+    const items = buildKinglancerRoleOfferItems([
+      roleOffer({ status: "pending_acceptance" }),
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("action");
+    expect(items[0].badge).toBe("Reply needed");
+    expect(items[0].id).toBe("eng-1:role-offer");
+  });
+
+  it("surfaces pending_funding as a waiting item, not an action", () => {
+    const items = buildKinglancerRoleOfferItems([
+      roleOffer({ status: "pending_funding" }),
+    ]);
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("waiting");
+    expect(items[0].badge).toBe("Awaiting funding");
+  });
+
+  it("ignores active/ended/cancelled engagement states", () => {
+    expect(
+      buildKinglancerRoleOfferItems([roleOffer({ status: "active" })]),
+    ).toHaveLength(0);
+  });
+});
+
+describe("buildOrgRoleOfferItems", () => {
+  it("surfaces a sent role offer as waiting on the Kinglancer, not an action", () => {
+    const items = buildOrgRoleOfferItems(
+      [
+        {
+          engagementId: "eng-1",
+          jobId: "job-1",
+          jobTitle: "Tesco Manager",
+          kinglancerName: "Ashley",
+          orgSignedAt: "2026-09-28T00:00:00Z",
+        },
+      ],
+      "org-1",
+    );
+    expect(items).toHaveLength(1);
+    expect(items[0].kind).toBe("waiting");
+    expect(items[0].href).toBe(
+      "/dashboard/organisations/org-1/jobs/job-1/offer",
     );
   });
 });

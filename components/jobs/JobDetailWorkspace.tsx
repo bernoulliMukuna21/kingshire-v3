@@ -107,28 +107,32 @@ export default async function JobDetailWorkspace({
 
   const isDirectRequest = !!job.invited_kinglancer_id;
   const statusConfig = jobStatusPill(job.status);
-  const roleEngagement = job.posting_type === "role"
-    ? await getEngagementBySource("org_role", id)
-    : null;
-  const kinglancerProfileId = job.kinglancer_id ?? job.invited_kinglancer_id ??
-    (roleEngagement?.status !== "cancelled" ? roleEngagement?.kinglancer_id : null);
+  const roleEngagement =
+    job.posting_type === "role"
+      ? await getEngagementBySource("org_role", id)
+      : null;
+  const kinglancerProfileId =
+    job.kinglancer_id ??
+    job.invited_kinglancer_id ??
+    (roleEngagement?.status !== "cancelled"
+      ? roleEngagement?.kinglancer_id
+      : null);
 
-  const [applications, kinglancerResult, pendingAttempt] =
-    await Promise.all([
-      !isDirectRequest && job.status === "open"
-        ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
-        : Promise.resolve([] as ApplicationWithKinglancer[]),
-      kinglancerProfileId
-        ? supabase
-            .from("profiles")
-            .select("id, full_name, avatar_url, phone")
-            .eq("id", kinglancerProfileId)
-            .single()
-        : Promise.resolve({ data: null }),
-      job.status === "open"
-        ? getPendingPaymentAttemptByJob(id)
-        : Promise.resolve(null),
-    ]);
+  const [applications, kinglancerResult, pendingAttempt] = await Promise.all([
+    !isDirectRequest && job.status === "open"
+      ? getApplicationsByJob(id, { useServiceRole: !!job.organisation_id })
+      : Promise.resolve([] as ApplicationWithKinglancer[]),
+    kinglancerProfileId
+      ? supabase
+          .from("profiles")
+          .select("id, full_name, avatar_url, phone")
+          .eq("id", kinglancerProfileId)
+          .single()
+      : Promise.resolve({ data: null }),
+    job.status === "open"
+      ? getPendingPaymentAttemptByJob(id)
+      : Promise.resolve(null),
+  ]);
   const cvSignedUrls = await signCvUrls(
     "job-application-cvs",
     applications.flatMap((a) => (a.cv_path ? [a.cv_path] : [])),
@@ -205,20 +209,22 @@ export default async function JobDetailWorkspace({
       />
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">{job.title}</h1>
+        <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">
+          {job.title}
+        </h1>
         <p className="mt-1 text-sm text-slate-500">Job overview</p>
       </div>
       {job.posting_type === "role" &&
         roleEngagement &&
         roleEngagement.status !== "cancelled" &&
         organisationId && (
-        <RoleOfferSummary
-          jobId={id}
-          organisationId={organisationId}
-          engagement={roleEngagement}
-          recipientName={kinglancerName ?? "Selected Kinglancer"}
-        />
-      )}
+          <RoleOfferSummary
+            jobId={id}
+            organisationId={organisationId}
+            engagement={roleEngagement}
+            recipientName={kinglancerName ?? "Selected Kinglancer"}
+          />
+        )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-5">
@@ -242,11 +248,15 @@ export default async function JobDetailWorkspace({
                 </StatusBadge>
               )}
               <StatusBadge className={statusConfig.className}>
-                {roleEngagement && roleEngagement.status !== "cancelled" ? deriveRoleOfferView(roleEngagement.status).label : statusConfig.label}
+                {roleEngagement && roleEngagement.status !== "cancelled"
+                  ? deriveRoleOfferView(roleEngagement.status).label
+                  : statusConfig.label}
               </StatusBadge>
             </div>
 
-            <h2 className="text-lg font-bold text-slate-950">Job description</h2>
+            <h2 className="text-lg font-bold text-slate-950">
+              Job description
+            </h2>
             <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
               {job.description}
             </p>
@@ -266,7 +276,12 @@ export default async function JobDetailWorkspace({
             )}
           </Card>
 
-          <JobKeyDetails job={job} showExactLocation showPay={false} className={cardPadding} />
+          <JobKeyDetails
+            job={job}
+            showExactLocation
+            showPay={false}
+            className={cardPadding}
+          />
 
           {job.status === "open" && <PendingPaymentCard jobId={id} />}
 
@@ -313,7 +328,6 @@ export default async function JobDetailWorkspace({
               />
             </Card>
           )}
-
 
           {job.status === "open" &&
             job.posting_type !== "role" &&
@@ -370,7 +384,9 @@ export default async function JobDetailWorkspace({
           {job.status === "approved" && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
-                {job.posting_type === "role" ? "Role completed" : "Job approved"}
+                {job.posting_type === "role"
+                  ? "Role completed"
+                  : "Job approved"}
               </h2>
               <p className="text-sm text-slate-500">
                 {job.posting_type === "role"
@@ -452,7 +468,9 @@ export default async function JobDetailWorkspace({
               {job.posting_type === "role" ? "Pay" : "Budget"}
             </p>
             <p className="mt-2 text-3xl font-black text-emerald-600">
-              {job.posting_type === "role" && !job.pay_negotiable ? rolePayLabel(job.pay_amount, job.pay_cadence ?? "monthly") : jobPriceLabel(job)}
+              {job.posting_type === "role" && !job.pay_negotiable
+                ? rolePayLabel(job.pay_amount, job.pay_cadence ?? "monthly")
+                : jobPriceLabel(job)}
             </p>
             {job.posting_type !== "role" && (
               <p className="mt-1 text-sm text-slate-500">
@@ -460,36 +478,38 @@ export default async function JobDetailWorkspace({
               </p>
             )}
             <div className="mt-5 space-y-3 border-t border-slate-100 pt-4">
-            {deadline && (
+              {deadline && (
+                <div className="flex items-center gap-3 text-sm text-slate-600">
+                  <Calendar size={16} className="shrink-0 text-slate-400" />
+                  <span>Deadline: {deadline}</span>
+                </div>
+              )}
               <div className="flex items-center gap-3 text-sm text-slate-600">
-                <Calendar size={16} className="shrink-0 text-slate-400" />
-                <span>Deadline: {deadline}</span>
+                <Tag size={16} className="shrink-0 text-slate-400" />
+                <span>
+                  {categories.length > 0
+                    ? categories.join(", ")
+                    : "No services tagged"}
+                </span>
               </div>
-            )}
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <Tag size={16} className="shrink-0 text-slate-400" />
-              <span>
-                {categories.length > 0
-                  ? categories.join(", ")
-                  : "No services tagged"}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-slate-600">
-              <Briefcase size={16} className="shrink-0 text-slate-400" />
-              <span>
-                Posted{" "}
-                {new Date(job.created_at).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                })}
-              </span>
-            </div>
+              <div className="flex items-center gap-3 text-sm text-slate-600">
+                <Briefcase size={16} className="shrink-0 text-slate-400" />
+                <span>
+                  Posted{" "}
+                  {new Date(job.created_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+              </div>
             </div>
           </Card>
 
           <Card className="p-5">
             <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-              {roleEngagement?.status === "pending_acceptance" ? "Offer recipient" : "Kinglancer"}
+              {roleEngagement?.status === "pending_acceptance"
+                ? "Offer recipient"
+                : "Kinglancer"}
             </p>
             {kinglancerName ? (
               <div className="mt-3 flex items-center gap-3">
@@ -501,7 +521,11 @@ export default async function JobDetailWorkspace({
                 <div>
                   <p className="font-bold text-slate-950">{kinglancerName}</p>
                   <p className="text-sm text-slate-500">
-                    {job.kinglancer_id ? "Hired" : roleEngagement ? "Offer sent" : "Invited"}
+                    {job.kinglancer_id
+                      ? "Hired"
+                      : roleEngagement
+                        ? "Offer sent"
+                        : "Invited"}
                   </p>
                   {contactRevealed && kinglancer?.phone && (
                     <a

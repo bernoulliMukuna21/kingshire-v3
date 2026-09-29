@@ -104,3 +104,97 @@ export async function markEngagementActive(id: string): Promise<void> {
     "pending_funding",
   );
 }
+
+export type KinglancerRoleOffer = {
+  engagementId: string;
+  jobId: string;
+  jobTitle: string;
+  organisationName: string | null;
+  status: EngagementStatus;
+  amountPerPeriod: number | null;
+  cadence: Cadence;
+};
+
+/** Organisation role offers/engagements awaiting the Kinglancer's response or
+ * funding — the recurring-role counterpart of `listKinglancerAgreements`
+ * (placements). `source_id` isn't a real FK (shared with placements), so job
+ * titles and organisation names are resolved in a second batched read. */
+export async function listKinglancerRoleOffers(
+  kinglancerId: string,
+): Promise<KinglancerRoleOffer[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("engagements")
+    .select(
+      "id, source_id, organisation_id, status, amount_per_period, cadence",
+    )
+    .eq("source_kind", "org_role")
+    .eq("kinglancer_id", kinglancerId)
+    .in("status", ["pending_acceptance", "pending_funding"]);
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const jobIds = [...new Set(rows.map((row) => row.source_id))];
+  const orgIds = [...new Set(rows.map((row) => row.organisation_id))];
+  const [{ data: jobs }, { data: orgs }] = await Promise.all([
+    db.from("jobs").select("id, title").in("id", jobIds),
+    db.from("organisations").select("id, name").in("id", orgIds),
+  ]);
+  const jobTitleById = new Map((jobs ?? []).map((j) => [j.id, j.title]));
+  const orgNameById = new Map((orgs ?? []).map((o) => [o.id, o.name]));
+
+  return rows.map((row) => ({
+    engagementId: row.id,
+    jobId: row.source_id,
+    jobTitle: jobTitleById.get(row.source_id) ?? "Role",
+    organisationName: orgNameById.get(row.organisation_id) ?? null,
+    status: row.status as EngagementStatus,
+    amountPerPeriod:
+      row.amount_per_period == null ? null : Number(row.amount_per_period),
+    cadence: row.cadence as Cadence,
+  }));
+}
+
+export type OrgPendingRoleOffer = {
+  engagementId: string;
+  jobId: string;
+  jobTitle: string;
+  kinglancerName: string | null;
+  orgSignedAt: string | null;
+};
+
+/** Role offers an organisation has sent that are still awaiting the
+ * Kinglancer's response — surfaced as "waiting on others", mirroring how a
+ * sent direct request shows up for the client. */
+export async function listOrgPendingRoleOffers(
+  organisationId: string,
+): Promise<OrgPendingRoleOffer[]> {
+  const db = createServiceClient();
+  const { data, error } = await db
+    .from("engagements")
+    .select("id, source_id, kinglancer_id, org_signed_at")
+    .eq("source_kind", "org_role")
+    .eq("organisation_id", organisationId)
+    .eq("status", "pending_acceptance");
+  if (error) throw error;
+  const rows = data ?? [];
+  if (rows.length === 0) return [];
+
+  const jobIds = [...new Set(rows.map((row) => row.source_id))];
+  const kinglancerIds = [...new Set(rows.map((row) => row.kinglancer_id))];
+  const [{ data: jobs }, { data: profiles }] = await Promise.all([
+    db.from("jobs").select("id, title").in("id", jobIds),
+    db.from("profiles").select("id, full_name").in("id", kinglancerIds),
+  ]);
+  const jobTitleById = new Map((jobs ?? []).map((j) => [j.id, j.title]));
+  const nameById = new Map((profiles ?? []).map((p) => [p.id, p.full_name]));
+
+  return rows.map((row) => ({
+    engagementId: row.id,
+    jobId: row.source_id,
+    jobTitle: jobTitleById.get(row.source_id) ?? "Role",
+    kinglancerName: nameById.get(row.kinglancer_id) ?? null,
+    orgSignedAt: row.org_signed_at,
+  }));
+}

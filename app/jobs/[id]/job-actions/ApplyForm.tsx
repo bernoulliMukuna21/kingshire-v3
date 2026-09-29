@@ -146,7 +146,12 @@ export function ApplyForm({
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          CV {cvRequired ? <span className="text-red-500">*</span> : <span className="font-normal text-gray-500">(optional)</span>}
+          CV{" "}
+          {cvRequired ? (
+            <span className="text-red-500">*</span>
+          ) : (
+            <span className="font-normal text-gray-500">(optional)</span>
+          )}
         </label>
         <input
           ref={fileInputRef}
@@ -164,7 +169,19 @@ export function ApplyForm({
           {uploadingCv ? "Uploading…" : cvName ? "Replace CV" : "Attach CV"}
         </button>
         {cvPath && !cvRequired && (
-          <button type="button" disabled={uploadingCv} onClick={() => { setCvPath(null); setCvName(null); setCvError(null); if (fileInputRef.current) fileInputRef.current.value = ""; }} className="ml-3 text-sm font-semibold text-gray-600 underline">Remove CV</button>
+          <button
+            type="button"
+            disabled={uploadingCv}
+            onClick={() => {
+              setCvPath(null);
+              setCvName(null);
+              setCvError(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+            className="ml-3 text-sm font-semibold text-gray-600 underline"
+          >
+            Remove CV
+          </button>
         )}
         {cvName && (
           <p className="mt-1.5 text-xs text-gray-500">

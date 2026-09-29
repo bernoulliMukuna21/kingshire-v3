@@ -1,6 +1,7 @@
 import { collectPages } from "@/lib/db/pagination";
 import { getPendingReviewJobs } from "@/lib/db/reviews";
 import { listKinglancerAgreements } from "@/lib/db/placements";
+import { listKinglancerRoleOffers } from "@/lib/db/engagements";
 import type {
   ActionCentreItem,
   ActionCentreRole,
@@ -12,6 +13,7 @@ import type {
 import {
   buildClientJobItems,
   buildKinglancerJobItems,
+  buildKinglancerRoleOfferItems,
   buildPlacementItems,
   buildReviewItems,
 } from "./mappers";
@@ -156,7 +158,20 @@ export const placementsProvider: ActionProvider = async ({ userId }) => {
   return buildPlacementItems(agreements);
 };
 
+// Organisation role offers are engagements, not `jobs.direct_request_status`
+// rows — a separate provider mirrors placementsProvider so a sent offer (or
+// one awaiting funding) surfaces the same way a placement offer does.
+export const roleOffersProvider: ActionProvider = async ({ userId }) => {
+  const offers = await listKinglancerRoleOffers(userId);
+  return buildKinglancerRoleOfferItems(offers);
+};
+
 export const PROVIDERS: Record<ActionCentreRole, ActionProvider[]> = {
   client: [clientJobsProvider, reviewsProvider],
-  kinglancer: [kinglancerJobsProvider, reviewsProvider, placementsProvider],
+  kinglancer: [
+    kinglancerJobsProvider,
+    reviewsProvider,
+    placementsProvider,
+    roleOffersProvider,
+  ],
 };

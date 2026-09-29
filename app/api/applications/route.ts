@@ -71,11 +71,15 @@ export async function POST(request: Request) {
   const rawCv = body.cv_path ?? body.cv_url;
   const hasCv = rawCv != null && rawCv !== "";
   if (!hasCv && requiresApplicationCv(job.posting_type, job.organisation_id)) {
-    return NextResponse.json({ error: "Please attach your CV to apply." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Please attach your CV to apply." },
+      { status: 400 },
+    );
   }
-  const cvPath = typeof rawCv === "string"
-    ? resolveCvPath("job-application-cvs", rawCv, user.id)
-    : null;
+  const cvPath =
+    typeof rawCv === "string"
+      ? resolveCvPath("job-application-cvs", rawCv, user.id)
+      : null;
   if (hasCv && !cvPath) {
     return NextResponse.json({ error: "Invalid CV upload." }, { status: 400 });
   }

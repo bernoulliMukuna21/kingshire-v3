@@ -4,6 +4,10 @@ import {
   type OrgPendingApplication,
 } from "@/lib/db/placements";
 import { type OrgHeldPlacementPayment } from "@/lib/db/placement-payments";
+import {
+  type KinglancerRoleOffer,
+  type OrgPendingRoleOffer,
+} from "@/lib/db/engagements";
 import { formatMoney } from "@/lib/utils";
 import { jobPriceLabel } from "@/lib/jobs";
 import {
@@ -264,6 +268,67 @@ export function buildPlacementItems(
     }
   }
   return items;
+}
+
+export function buildKinglancerRoleOfferItems(
+  offers: KinglancerRoleOffer[],
+): ActionCentreItem[] {
+  const items: ActionCentreItem[] = [];
+  for (const offer of offers) {
+    const href = `/dashboard/kinglancer/jobs/${offer.jobId}`;
+    const meta =
+      offer.amountPerPeriod != null
+        ? `£${offer.amountPerPeriod.toFixed(2)} ${offer.cadence}`
+        : undefined;
+
+    if (offer.status === "pending_acceptance") {
+      items.push({
+        id: `${offer.engagementId}:role-offer`,
+        kind: "action",
+        title: offer.jobTitle,
+        description: `${
+          offer.organisationName ?? "An organisation"
+        } offered you this role. Review the terms and accept or decline.`,
+        href,
+        icon: "request",
+        badge: "Reply needed",
+        tone: "purple",
+        meta,
+      });
+    } else if (offer.status === "pending_funding") {
+      items.push({
+        id: `${offer.engagementId}:role-funding`,
+        kind: "waiting",
+        title: offer.jobTitle,
+        description:
+          "You've accepted. Waiting for the organisation to fund the first payment period before it starts.",
+        href,
+        icon: "payment",
+        badge: "Awaiting funding",
+        tone: "slate",
+        meta,
+      });
+    }
+  }
+  return items;
+}
+
+export function buildOrgRoleOfferItems(
+  offers: OrgPendingRoleOffer[],
+  organisationId: string,
+): ActionCentreItem[] {
+  return offers.map((offer) => ({
+    id: `${offer.engagementId}:role-offer-waiting`,
+    kind: "waiting",
+    title: offer.jobTitle,
+    description: `Waiting for ${
+      offer.kinglancerName ?? "the Kinglancer"
+    } to respond to this role offer.`,
+    href: `/dashboard/organisations/${organisationId}/jobs/${offer.jobId}/offer`,
+    icon: "request",
+    badge: "Waiting",
+    tone: "slate",
+  }));
 }
 
 export function buildOrgPlacementPaymentItems(
