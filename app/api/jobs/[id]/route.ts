@@ -93,12 +93,19 @@ export async function DELETE(
     }
   }
 
-  // Delete job — ON DELETE CASCADE removes applications automatically
-  const { error } = await db.from("jobs").delete().eq("id", id);
+  // The status check and the pending-payment check must be re-verified
+  // atomically under a lock on the job row — checking here and deleting
+  // separately left a gap for a payment to start in between.
+  const { error } = await db.rpc("delete_open_job", { p_job_id: id });
   if (error)
     return NextResponse.json(
-      { error: "Failed to delete job" },
-      { status: 500 },
+      {
+        error:
+          error.message && error.message.length < 200
+            ? error.message
+            : "Failed to delete job",
+      },
+      { status: 409 },
     );
 
   revalidateTag("open-jobs", { expire: 0 });

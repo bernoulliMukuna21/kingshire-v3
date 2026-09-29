@@ -67,6 +67,23 @@ export async function POST(
       { status: 400 },
     );
   }
+
+  // Acceptance is committed before schedule creation. If that retryable
+  // effect failed on the first request, the worker must be able to submit the
+  // same action again and repair it instead of hitting the offer-state guard.
+  if (action === "accept" && engagement.status === "pending_funding") {
+    try {
+      await ensureEngagementSchedule(engagement.id, 1);
+      return NextResponse.json({ ok: true, status: engagement.status });
+    } catch (error) {
+      console.error("[role/accept] schedule retry", error);
+      return NextResponse.json(
+        { error: "Payment setup still needs attention. Please retry." },
+        { status: 503 },
+      );
+    }
+  }
+
   const { data: responded, error } = await createServiceClient().rpc(
     "respond_role_offer",
     {

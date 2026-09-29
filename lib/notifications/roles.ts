@@ -4,6 +4,33 @@ import { notify, sendEmail } from "./core";
 // Mirrors the Placement early-end notifications; roles use a `link` the
 // caller builds (workspace path differs by recipient side).
 
+export async function notifyRoleOffer({
+  kinglancerId,
+  kinglancerEmail,
+  jobTitle,
+  jobId,
+}: {
+  kinglancerId: string;
+  kinglancerEmail?: string;
+  jobTitle: string;
+  jobId: string;
+}) {
+  await notify({
+    userId: kinglancerId,
+    type: "job_awarded",
+    title: "🎉 You've been offered a role!",
+    body: `Great news — you've been offered "${jobTitle}"! Review the pay terms and accept to get started.`,
+    link: `/dashboard/kinglancer/jobs/${jobId}`,
+    email: kinglancerEmail
+      ? {
+          to: kinglancerEmail,
+          subject: `You've been offered: ${jobTitle}`,
+          ctaLabel: "Review offer →",
+        }
+      : undefined,
+  });
+}
+
 export async function notifyRoleEndProposed({
   recipientId,
   recipientEmail,

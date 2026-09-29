@@ -176,6 +176,15 @@ function nextAction({
   }
 
   if (job.status === "approved" || transaction?.status === "released") {
+    if (job.posting_type === "role") {
+      return {
+        title: "Role completed",
+        description:
+          "This role has ended. Each completed pay period keeps its own settlement status below.",
+        icon: <CheckCircle2 size={18} />,
+        action: null,
+      };
+    }
     return {
       title: "Payment released",
       description:

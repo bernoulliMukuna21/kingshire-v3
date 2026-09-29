@@ -195,12 +195,24 @@ export async function POST(
     );
   }
 
-  await updateEngagement(engagement.id, {
-    status: "ended",
-    ended_at: new Date().toISOString(),
-    end_requested_by: null,
-    end_requested_at: null,
+  // One atomic write — ending the engagement and closing its job used to be
+  // separate calls with the second one's failure silently ignored, leaving
+  // no way to repair it afterwards.
+  const { error: closeError } = await db.rpc("close_role_engagement", {
+    p_engagement_id: engagement.id,
   });
+  if (closeError) {
+    return NextResponse.json(
+      {
+        error:
+          closeError.message && closeError.message.length < 200
+            ? closeError.message
+            : "Could not end this role. Refresh and retry.",
+      },
+      { status: 409 },
+    );
+  }
+
   void notifyRoleEnded({
     recipientId: engagement.kinglancer_id,
     recipientEmail: kinglancer?.email ?? undefined,

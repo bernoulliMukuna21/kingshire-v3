@@ -21,15 +21,65 @@ export default function RoleTerminationPanel({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  if (status !== "active") return null;
+  const viewerIsKinglancer = viewerId === kinglancerId;
+
+  // pending_acceptance already has an accept/decline UI for the kinglancer —
+  // only the org needs a way to retract before the candidate responds.
+  if (status === "pending_acceptance" && viewerIsKinglancer) return null;
+  if (status !== "active" && status !== "pending_acceptance" && status !== "pending_funding")
+    return null;
 
   const hasRequest = !!endRequestedBy;
   const proposerIsKinglancer = endRequestedBy === kinglancerId;
-  const viewerIsKinglancer = viewerId === kinglancerId;
   const iAmProposer =
     hasRequest &&
     ((viewerIsKinglancer && proposerIsKinglancer) ||
       (!viewerIsKinglancer && !proposerIsKinglancer));
+
+  async function withdraw() {
+    setBusy("withdraw");
+    setError(null);
+    const response = await fetch(`/api/jobs/${jobId}/role/withdraw`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: reason || undefined }),
+    });
+    const data = await response.json().catch(() => ({}));
+    setBusy(null);
+    if (!response.ok) {
+      setError(data.error ?? "Something went wrong.");
+      return;
+    }
+    setReason("");
+    router.refresh();
+  }
+
+  if (status !== "active") {
+    return (
+      <div className="mt-4 border-t border-slate-200 pt-3">
+        {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
+        <p className="mb-2 text-xs text-slate-500">
+          No money has moved yet — withdrawing is immediate and doesn&apos;t
+          need the other party&apos;s confirmation.
+        </p>
+        <textarea
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Reason for withdrawing (optional)"
+          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          rows={2}
+        />
+        <button
+          type="button"
+          onClick={withdraw}
+          disabled={busy !== null}
+          className="mt-2 rounded-xl border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-50"
+        >
+          {busy === "withdraw" ? "Withdrawing..." : "Withdraw offer"}
+        </button>
+      </div>
+    );
+  }
 
   async function act(action: "propose" | "confirm" | "decline") {
     setBusy(action);

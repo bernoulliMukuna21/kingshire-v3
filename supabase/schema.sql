@@ -158,6 +158,9 @@ create table public.reviews (
   is_published  boolean not null default false,
   published_at  timestamptz,
   created_at    timestamptz not null default now(),
+  -- The manager who actually submitted an organisation review. reviewer_id
+  -- remains the posting client so reciprocal double-blind matching still works.
+  on_behalf_of_user_id uuid references public.profiles(id),
   unique(job_id, reviewer_id)
 );
 create index if not exists idx_reviews_reviewee_published

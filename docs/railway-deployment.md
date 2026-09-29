@@ -46,11 +46,13 @@ Railway services from the same repo and override the start command:
 
 - Auto release: `npm run cron:auto-release`
 - Cleanup abandoned checkouts: `npm run cron:cleanup-abandoned-checkouts`
+- Close completed temporary roles: `npm run cron:close-completed-roles`
 
 Recommended schedules:
 
 - Auto release: `0 9 * * 1-5`
 - Cleanup abandoned checkouts: `*/30 * * * *`
+- Close completed temporary roles: `0 8 * * *`
 
 Both cron commands call the existing protected API routes with:
 

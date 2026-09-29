@@ -16,6 +16,7 @@ vi.mock("@/lib/db/engagements", () => ({
 }));
 vi.mock("@/lib/settlement/schedules", () => ({
   ensureEngagementSchedule: state.schedule,
+  isFinalBoundedRolePeriod: async () => false,
 }));
 vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: () => ({

@@ -1,6 +1,8 @@
 import { JOB_CATEGORIES } from "@/lib/job-categories";
 import { hasValidCurrencyPrecision } from "@/lib/validation";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
+import { meetsMinimumPeriodCharge } from "@/lib/settlement/fees";
+import type { SettlementMode } from "@/lib/settlement/types";
 
 export type JobPostError = { error: string; status: number };
 
@@ -94,18 +96,18 @@ export function validateJobPostShape(input: {
         error: "Choose weekly or monthly pay, or discuss pay at interview.",
         status: 400,
       };
-    if (
-      !pay_negotiable &&
-      (!Number.isFinite(Number(pay_amount)) ||
-        Number(pay_amount) < MIN_JOB_BUDGET_GBP)
-    )
-      return {
-        error: `The recurring pay must be at least £${MIN_JOB_BUDGET_GBP} per period.`,
-        status: 400,
-      };
     if (!["managed", "direct"].includes(settlement_mode as string))
       return {
         error: "Choose how the recurring payment will be settled.",
+        status: 400,
+      };
+    if (
+      !pay_negotiable &&
+      (!Number.isFinite(Number(pay_amount)) ||
+        !meetsMinimumPeriodCharge(Number(pay_amount), settlement_mode as SettlementMode))
+    )
+      return {
+        error: `The recurring charge must be at least £${MIN_JOB_BUDGET_GBP} per period. Direct settlement only charges the facilitation fee — raise the pay amount or switch to managed settlement.`,
         status: 400,
       };
   }

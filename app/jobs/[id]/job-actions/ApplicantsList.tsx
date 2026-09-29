@@ -36,8 +36,21 @@ export function ApplicantsList({
   );
   const [bankInfo, setBankInfo] = useState<BankTransferInfo | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Pre-fill from the role's current terms — this form also covers revising
+  // pay for a second offer after the first candidate declined, not just the
+  // initial negotiable-pay case.
+  const [payAmountInput, setPayAmountInput] = useState(
+    job?.pay_amount ? String(job.pay_amount) : "",
+  );
+  const [payCadenceInput, setPayCadenceInput] = useState<
+    "weekly" | "monthly"
+  >(job?.pay_cadence === "weekly" ? "weekly" : "monthly");
+  const [settlementModeInput, setSettlementModeInput] = useState<
+    "managed" | "direct"
+  >(job?.settlement_mode === "direct" ? "direct" : "managed");
 
   const payNotSet = Boolean(isRole && job?.pay_negotiable);
+  const payFormInvalid = isRole && !(Number(payAmountInput) > 0);
 
   if (applications.length === 0) {
     return payNotSet ? (
@@ -66,6 +79,9 @@ export function ApplicantsList({
         isRole
           ? {
               action: "accept",
+              pay_amount: payAmountInput,
+              pay_cadence: payCadenceInput,
+              settlement_mode: settlementModeInput,
             }
           : { action: "accept", method: payMethod },
       ),
@@ -130,14 +146,63 @@ export function ApplicantsList({
                 : "This will move the job to payment — the selection cannot be undone."}
             </p>
             {isRole ? (
-              <p className="rounded-xl bg-slate-50 p-3 text-sm text-slate-600">
-                Offer:{" "}
-                <strong>£{Number(job?.pay_amount ?? 0).toFixed(2)}</strong>{" "}
-                {job?.pay_cadence} ·{" "}
-                {job?.settlement_mode === "managed"
-                  ? "KingsHire-managed settlement"
-                  : "Organisation pays directly"}
-              </p>
+              <div className="space-y-3 rounded-xl bg-slate-50 p-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  {payNotSet
+                    ? "Set the agreed pay to send this offer"
+                    : "Confirm or revise the agreed pay for this offer"}
+                </p>
+                <label className="block text-sm">
+                  <span className="mb-1 block font-semibold text-slate-700">
+                    Amount (£)
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={payAmountInput}
+                    onChange={(e) => setPayAmountInput(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                    placeholder="e.g. 500"
+                  />
+                </label>
+                <div className="flex gap-2">
+                  <label className="flex-1 text-sm">
+                    <span className="mb-1 block font-semibold text-slate-700">
+                      Cadence
+                    </span>
+                    <select
+                      value={payCadenceInput}
+                      onChange={(e) =>
+                        setPayCadenceInput(
+                          e.target.value as "weekly" | "monthly",
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                    >
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </label>
+                  <label className="flex-1 text-sm">
+                    <span className="mb-1 block font-semibold text-slate-700">
+                      Settlement
+                    </span>
+                    <select
+                      value={settlementModeInput}
+                      onChange={(e) =>
+                        setSettlementModeInput(
+                          e.target.value as "managed" | "direct",
+                        )
+                      }
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                    >
+                      <option value="managed">KingsHire-managed</option>
+                      <option value="direct">Pay directly</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
             ) : (
               <div className="space-y-2">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -209,6 +274,8 @@ export function ApplicantsList({
         }
         variant="success"
         loading={selectingId !== null}
+        confirmDisabled={payFormInvalid}
+        error={error ?? undefined}
       />
       <BankTransferModal
         info={bankInfo}
@@ -344,17 +411,17 @@ export function ApplicantsList({
                     <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-sm font-semibold text-slate-500">
                       Payment in progress — selection locked
                     </p>
-                  ) : payNotSet ? (
-                    <p className="w-full rounded-xl bg-slate-50 py-2.5 text-center text-sm font-semibold text-slate-500">
-                      Set a fixed pay amount to hire
-                    </p>
                   ) : (
                     <button
                       onClick={() => setPendingSelectId(app.id)}
                       disabled={selectingId !== null}
                       className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      Select this Kinglancer
+                      {isRole
+                        ? payNotSet
+                          ? "Set pay & hire"
+                          : "Confirm pay & hire"
+                        : "Select this Kinglancer"}
                     </button>
                   )}
                 </div>

@@ -77,3 +77,46 @@ export function anchoredPeriodEnd(
 ): Date {
   return periodDueDate(anchor, cadence, periodIndex + 1);
 }
+
+// Ignore a trailing part-period shorter than ~4 days rather than bill a sliver.
+const PRORATE_MIN_FRACTION = 0.15;
+
+/**
+ * Fractions of a period to bill a role bounded by an exact end date: whole
+ * periods (1) plus a prorated tail sized from the real remaining days —
+ * mirrors `placementBillingFractions` (lib/placements.ts) but computed from
+ * calendar dates instead of an approximate weeks-per-month conversion, since
+ * a role's advertised start/end are exact dates, not a duration in weeks.
+ */
+export function roleBillingFractions(
+  anchor: Date,
+  boundEnd: Date,
+  cadence: Cadence,
+): number[] {
+  const fractions: number[] = [];
+  let index = 1;
+  while (true) {
+    const start = periodDueDate(anchor, cadence, index);
+    if (start >= boundEnd) break;
+    const end = anchoredPeriodEnd(anchor, cadence, index);
+    if (end <= boundEnd) {
+      fractions.push(1);
+    } else {
+      const fullDays = (end.getTime() - start.getTime()) / 86_400_000;
+      const actualDays = (boundEnd.getTime() - start.getTime()) / 86_400_000;
+      const fraction = actualDays / fullDays;
+      // Agreed work is never dropped from billing. A sliver too small to
+      // stand alone is folded into the last full period instead of being
+      // discarded; if there is no full period to absorb it (the whole
+      // engagement is shorter than one cadence step), it is still billed —
+      // some payment is always better than a silently missed one.
+      if (fraction < PRORATE_MIN_FRACTION && fractions.length > 0) {
+        fractions[fractions.length - 1] += fraction;
+      } else {
+        fractions.push(fraction);
+      }
+    }
+    index++;
+  }
+  return fractions;
+}

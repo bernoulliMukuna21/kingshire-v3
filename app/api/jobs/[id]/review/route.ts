@@ -6,6 +6,7 @@ import { getTransactionByJob } from "@/lib/db/transactions";
 import { isReviewWindowClosed } from "@/lib/db/reviews";
 import { notifyReviewReceived } from "@/lib/notifications";
 import { captureServerEvent } from "@/lib/posthog-server";
+import { canManageJob } from "@/lib/organisations";
 
 const MAX_COMMENT_LENGTH = 2000;
 
@@ -74,7 +75,7 @@ export async function POST(
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, status, client_id, kinglancer_id, title")
+    .select("id, status, client_id, kinglancer_id, organisation_id, title")
     .eq("id", jobId)
     .single();
 
@@ -90,14 +91,39 @@ export async function POST(
   }
 
   // Caller must be a party to the job; the reviewee is the counterparty.
+  // An authorised organisation manager may submit on behalf of the posting
+  // user for an org-owned job — the review is attributed to the org, never
+  // mistaken for a personal review by the original poster.
   let revieweeId: string | null = null;
   let reviewerRole: "client" | "kinglancer" | null = null;
+  let effectiveReviewerId = user.id;
+  let submittedByUserId: string | null = null;
   if (user.id === job.client_id) {
     revieweeId = job.kinglancer_id;
     reviewerRole = "client";
   } else if (user.id === job.kinglancer_id) {
     revieweeId = job.client_id;
     reviewerRole = "kinglancer";
+  } else if (job.organisation_id) {
+    if (
+      !(await canManageJob(
+        {
+          client_id: job.client_id,
+          organisation_id: job.organisation_id,
+        },
+        user.id,
+        "manage_jobs",
+      ))
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    revieweeId = job.kinglancer_id;
+    reviewerRole = "client";
+    // Reviews have one client-side slot. Store the posting client as the
+    // reviewer so the worker's reciprocal review matches and the double-blind
+    // reveal works; retain the manager who actually submitted it separately.
+    effectiveReviewerId = job.client_id;
+    submittedByUserId = user.id;
   }
 
   if (!revieweeId || !reviewerRole) {
@@ -122,10 +148,11 @@ export async function POST(
   const serviceDb = createServiceClient();
   const { error: insertError } = await serviceDb.from("reviews").insert({
     job_id: jobId,
-    reviewer_id: user.id,
+    reviewer_id: effectiveReviewerId,
     reviewee_id: revieweeId,
     rating,
     comment,
+    on_behalf_of_user_id: submittedByUserId,
   });
 
   if (insertError) {
@@ -149,22 +176,26 @@ export async function POST(
     .from("reviews")
     .select("is_published")
     .eq("job_id", jobId)
-    .eq("reviewer_id", user.id)
+    .eq("reviewer_id", effectiveReviewerId)
     .single();
 
   const revealed = Boolean(myReview?.is_published);
 
   if (revealed) {
     // Both reviews are now public — refresh each party's reputation pages.
+    // An org manager's review is attributed to the posting user, so their
+    // reputation page is what gets refreshed, not the manager's.
+    const reviewerForReputation = effectiveReviewerId;
     const counterpartRole = reviewerRole === "client" ? "kinglancer" : "client";
-    revalidateReputation(user.id, reviewerRole);
+    revalidateReputation(reviewerForReputation, reviewerRole);
     revalidateReputation(revieweeId, counterpartRole);
 
     const { data: people } = await serviceDb
       .from("profiles")
       .select("id, email")
-      .in("id", [user.id, revieweeId]);
-    const reviewerEmail = people?.find((p) => p.id === user.id)?.email;
+      .in("id", [reviewerForReputation, revieweeId]);
+    const reviewerEmail = people?.find((p) => p.id === reviewerForReputation)
+      ?.email;
     const revieweeEmail = people?.find((p) => p.id === revieweeId)?.email;
 
     await Promise.all([
@@ -179,7 +210,7 @@ export async function POST(
         : Promise.resolve(),
       reviewerEmail
         ? notifyReviewReceived({
-            userId: user.id,
+            userId: reviewerForReputation,
             userEmail: reviewerEmail,
             role: reviewerRole,
             jobId,
@@ -196,6 +227,7 @@ export async function POST(
       job_id: jobId,
       rating,
       reviewer_role: reviewerRole,
+      submitted_by_user_id: submittedByUserId,
       revealed,
     },
   });

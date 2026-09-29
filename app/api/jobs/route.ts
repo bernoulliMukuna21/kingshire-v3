@@ -19,6 +19,8 @@ import { requireTermsAccepted } from "@/lib/terms";
 import { validateJobPostShape } from "./validateJobPostShape";
 import { resolveJobSchedule } from "./resolveJobSchedule";
 import { notifyMatchedKinglancers } from "./notifyMatchedKinglancers";
+import { roleScheduleMeetsMinimumCharge } from "@/lib/settlement/role-schedule-policy";
+import type { Cadence, SettlementMode } from "@/lib/settlement/types";
 
 export async function GET() {
   try {
@@ -266,6 +268,29 @@ export async function POST(request: Request) {
     resolvedEstimatedMinutes,
     resolvedDeadline,
   } = schedule;
+
+  if (
+    isRole &&
+    employment_type === "temporary" &&
+    !pay_negotiable &&
+    scheduledAtIso &&
+    endsAtIso &&
+    !roleScheduleMeetsMinimumCharge({
+      anchor: new Date(scheduledAtIso),
+      boundEnd: new Date(endsAtIso),
+      cadence: pay_cadence as Cadence,
+      amountPerPeriod: Number(pay_amount),
+      settlementMode: settlement_mode as SettlementMode,
+    })
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "The prorated pay for this temporary role is too small to process. Raise the pay amount or use a shorter pay cadence.",
+      },
+      { status: 400 },
+    );
+  }
 
   if (invitedKinglancerId) {
     const { data: invitedKinglancer } = await supabase

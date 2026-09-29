@@ -61,8 +61,9 @@ Use this checklist for both staging and production.
 
 - Create a Railway cron service for `npm run cron:auto-release`.
 - Create a Railway cron service for `npm run cron:cleanup-abandoned-checkouts`.
+- Create a Railway cron service for `npm run cron:close-completed-roles`.
 - Use the schedules in `docs/railway-deployment.md`.
-- Confirm both cron services use the same environment variables as the web service.
+- Confirm all cron services use the same environment variables as the web service.
 
 ## 7. Smoke Test
 

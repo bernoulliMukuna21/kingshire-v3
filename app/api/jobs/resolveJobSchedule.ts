@@ -69,9 +69,10 @@ export async function resolveJobSchedule(input: {
       return { error: "Add the role's start date.", status: 400 };
     if (!ends_at || isNaN(end.getTime()))
       return { error: "Add the role's end date.", status: 400 };
-    if (end.getTime() < start.getTime())
+    if (end.getTime() <= start.getTime())
       return {
-        error: "The end date must be after the start date.",
+        error:
+          "The end date must be after the start date — a role needs at least one day of work to be billable.",
         status: 400,
       };
     scheduledAtIso = start.toISOString();

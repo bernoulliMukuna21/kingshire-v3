@@ -50,6 +50,7 @@ import { getEngagementBySource } from "@/lib/db/engagements";
 import RoleTerminationPanel from "@/components/jobs/RoleTerminationPanel";
 import { getEngagementPayments } from "@/lib/db/engagement-payments";
 import { signCvUrls } from "@/lib/cv-storage";
+import RolePaymentActionButton from "@/components/jobs/RolePaymentActionButton";
 
 type InvitedKinglancer = {
   id: string;
@@ -175,8 +176,9 @@ export default async function JobDetailWorkspace({
   let reviewRemaining: ReturnType<typeof reviewWindowRemaining> = null;
   let reviewSettled = false;
   if (job.status === "approved") {
+    const reviewViewerId = job.organisation_id ? job.client_id : user.id;
     const [state, tx] = await Promise.all([
-      getJobReviewState(id, user.id),
+      getJobReviewState(id, reviewViewerId),
       getTransactionByJob(id),
     ]);
     reviewSettled = isJobReviewSettled({
@@ -232,9 +234,12 @@ export default async function JobDetailWorkspace({
                     <span>
                       Period {payment.period_index} · {payment.due_date}
                     </span>
-                    <span className="font-semibold capitalize">
-                      {payment.status}
-                    </span>
+                    <div>
+                      <span className="block font-semibold capitalize">{payment.status}</span>
+                      {organisationId && payment.status === "processing" && payment.stripe_payment_intent_id && (
+                        <RolePaymentActionButton organisationId={organisationId} paymentId={payment.id} />
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -414,10 +419,12 @@ export default async function JobDetailWorkspace({
           {job.status === "approved" && (
             <Card className={cardPadding}>
               <h2 className="text-lg font-black text-slate-950">
-                Job approved
+                {job.posting_type === "role" ? "Role completed" : "Job approved"}
               </h2>
               <p className="text-sm text-slate-500">
-                This job is complete and the payment release has been approved.
+                {job.posting_type === "role"
+                  ? "This role has ended. Each completed pay period keeps its own settlement status."
+                  : "This job is complete and the payment release has been approved."}
               </p>
             </Card>
           )}

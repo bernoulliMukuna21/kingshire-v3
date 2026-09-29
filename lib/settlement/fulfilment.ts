@@ -74,6 +74,13 @@ export async function fulfilEngagementPayment(
   // those through the generic role scheduler would lose their final amount.
   if (engagement.source_kind === "org_role") {
     await ensureEngagementSchedule(engagement.id, payment.period_index + 1);
+    // Bounded temporary roles are NOT auto-closed here. The advertised end
+    // date is the natural end of the work, and a role whose final instalment
+    // is collected on its first due date must not close weeks early — closure
+    // is date-based (see /api/cron/close-completed-roles), so that natural
+    // completion always sets termination_kind = 'completed' and held money
+    // releases normally, instead of being treated as early termination and
+    // moved into dispute.
   }
   const { error: finishError } = await db
     .from("engagement_payments")

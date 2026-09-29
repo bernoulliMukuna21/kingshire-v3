@@ -10,7 +10,7 @@ import {
   recordSettlementError,
   type EngagementPaymentRow,
 } from "@/lib/db/engagement-payments";
-import { anchoredPeriodEnd, releaseNoticeDays } from "./schedule";
+import { anchoredPeriodEnd, releaseNoticeDays, roleBillingFractions } from "./schedule";
 import { getOrgOwnerContact } from "@/lib/organisations";
 import { notifyEngagementReleasePending } from "@/lib/notifications";
 import type { EngagementPaymentStatus } from "./types";
@@ -206,7 +206,8 @@ async function periodEndTimestamp(
   payment: EngagementPaymentRow,
   engagement: Engagement,
 ): Promise<number> {
-  const { data: first, error } = await createServiceClient()
+  const db = createServiceClient();
+  const { data: first, error } = await db
     .from("engagement_payments")
     .select("due_date")
     .eq("engagement_id", engagement.id)
@@ -214,11 +215,38 @@ async function periodEndTimestamp(
     .single();
   if (error) throw error;
   if (!first) throw new Error("Payment schedule anchor is missing");
-  return anchoredPeriodEnd(
+  const fullCadenceEnd = anchoredPeriodEnd(
     new Date(`${first.due_date}T00:00:00.000Z`),
     engagement.cadence,
     payment.period_index,
   ).getTime();
+
+  // A bounded temporary role's final (possibly prorated) period must not
+  // wait a full cadence step to release — the role, and the work, ended on
+  // its advertised date, not a month after this period started.
+  if (engagement.source_kind === "org_role") {
+    const { data: job } = await db
+      .from("jobs")
+      .select("employment_type, scheduled_at, ends_at")
+      .eq("id", engagement.source_id)
+      .maybeSingle();
+    if (job?.employment_type === "temporary" && job.scheduled_at && job.ends_at) {
+      const fractions = roleBillingFractions(
+        new Date(job.scheduled_at),
+        new Date(job.ends_at),
+        engagement.cadence,
+      );
+      // The final period is the only one whose payout is bounded by the work
+      // end. A small prorated tail is folded INTO this period rather than
+      // billed separately, so its cadence end can fall before the work
+      // actually ended — releasing on the cadence step would pay out early.
+      // Non-final full periods keep their normal cadence release.
+      if (payment.period_index >= fractions.length) {
+        return new Date(job.ends_at).getTime();
+      }
+    }
+  }
+  return fullCadenceEnd;
 }
 
 export type ProcessReleaseResult = {
