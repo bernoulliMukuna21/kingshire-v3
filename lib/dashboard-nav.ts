@@ -26,7 +26,6 @@ const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
     icon: "💳",
     href: "/dashboard/client/transactions",
   },
-  { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
   { label: "Organisations", icon: "🏢", href: "/dashboard/organisations" },
 ];
 
@@ -50,7 +49,6 @@ const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
     icon: "🎓",
     href: "/dashboard/kinglancer/placements",
   },
-  { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
 ];
 
 const ADMIN_NAV: Omit<DashboardNavItem, "active">[] = [
