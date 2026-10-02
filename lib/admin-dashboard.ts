@@ -11,6 +11,7 @@ export const ADMIN_PAGE_SIZE = 20;
 export type AdminUser = {
   id: string;
   email: string;
+  phone: string | null;
   full_name: string | null;
   role: string | null;
   service_tags: string[] | null;
