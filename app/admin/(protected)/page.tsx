@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import AdminPanel from "@/components/admin/AdminPanel";
+import AdminUserPhone from "@/components/admin/AdminUserPhone";
 import { FadeIn, Stagger, StaggerItem } from "@/components/animations";
 import { Avatar } from "@/components/ui/Avatar";
 import { ButtonLink } from "@/components/ui/Button";
@@ -20,6 +21,7 @@ import {
   type AdminDispute,
   type AdminJob,
   type AdminUser,
+  requireAdminPage,
   roleTone,
   timeAgo,
 } from "@/lib/admin-dashboard";
@@ -30,6 +32,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
 
 export default async function AdminDashboard() {
+  await requireAdminPage();
   const serviceDb = createServiceClient();
 
   const [
@@ -66,7 +69,7 @@ export default async function AdminDashboard() {
     serviceDb
       .from("profiles")
       .select(
-        "id, email, full_name, role, service_tags, created_at, avatar_url",
+        "id, email, phone, full_name, role, service_tags, created_at, avatar_url",
       )
       .or("role.is.null,role.neq.admin")
       .order("created_at", { ascending: false })
@@ -347,6 +350,7 @@ export default async function AdminDashboard() {
                         <p className="truncate text-xs text-gray-400">
                           {profile.email}
                         </p>
+                        <AdminUserPhone phone={profile.phone} />
                       </div>
                     </div>
                     <StatusBadge

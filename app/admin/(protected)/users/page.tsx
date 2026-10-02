@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import AdminPagination from "@/components/admin/AdminPagination";
 import AdminPanel from "@/components/admin/AdminPanel";
+import AdminUserPhone from "@/components/admin/AdminUserPhone";
 import { FadeIn } from "@/components/animations";
 import { Avatar } from "@/components/ui/Avatar";
 import PageHeader from "@/components/ui/PageHeader";
@@ -11,6 +12,7 @@ import {
   type AdminUser,
   getPageNumber,
   getPageRange,
+  requireAdminPage,
   roleTone,
   timeAgo,
 } from "@/lib/admin-dashboard";
@@ -21,6 +23,7 @@ export default async function AdminUsersPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  await requireAdminPage();
   const { page: pageParam } = await searchParams;
   const page = getPageNumber(pageParam);
   const { from, to } = getPageRange(page);
@@ -29,7 +32,7 @@ export default async function AdminUsersPage({
   const { data, count } = await serviceDb
     .from("profiles")
     .select(
-      "id, email, full_name, role, service_tags, created_at, avatar_url",
+      "id, email, phone, full_name, role, service_tags, created_at, avatar_url",
       {
         count: "exact",
       },
@@ -78,6 +81,7 @@ export default async function AdminUsersPage({
                       <p className="truncate text-xs text-gray-400">
                         {profile.email}
                       </p>
+                      <AdminUserPhone phone={profile.phone} />
                       <p className="mt-1 text-xs text-gray-400">
                         Joined {timeAgo(profile.created_at)}
                       </p>
