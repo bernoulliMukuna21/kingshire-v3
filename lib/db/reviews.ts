@@ -1,3 +1,5 @@
+import { requireOrganisationPermission } from "@/lib/organisations";
+import { collectPages } from "@/lib/db/pagination";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 
@@ -135,36 +137,47 @@ export type PendingReviewJob = {
 export async function getPendingReviewJobs(
   userId: string,
   role: "client" | "kinglancer",
+  organisationId?: string,
 ): Promise<PendingReviewJob[]> {
+  if (organisationId && (role !== "client" || !(await requireOrganisationPermission(organisationId, userId, "manage_jobs")))) return [];
   const db = createServiceClient();
   const ownerColumn = role === "client" ? "client_id" : "kinglancer_id";
   const counterpartColumn = role === "client" ? "kinglancer_id" : "client_id";
 
-  const { data: jobsRaw } = await db
-    .from("jobs")
-    .select(`id, title, counterpart:profiles!${counterpartColumn}(full_name)`)
-    .eq(ownerColumn, userId)
+  let query = db.from("jobs")
+    .select(`id, title, client_id, counterpart:profiles!${counterpartColumn}(full_name)`)
     .eq("status", "approved")
-    .order("created_at", { ascending: false });
-
-  const jobs = jobsRaw ?? [];
+    .order("created_at", { ascending: false }).order("id");
+  if (organisationId) query = query.eq("organisation_id", organisationId);
+  else {
+    query = query.eq(ownerColumn, userId);
+    if (role === "client") query = query.is("organisation_id", null);
+  }
+  const jobs = await collectPages((from, to) => query.range(from, to));
   if (jobs.length === 0) return [];
-  const jobIds = jobs.map((job) => job.id);
-
-  const [txResult, reviewResult] = await Promise.all([
-    db.from("transactions").select("job_id, released_at").in("job_id", jobIds),
-    db
-      .from("reviews")
-      .select("job_id")
-      .in("job_id", jobIds)
-      .eq("reviewer_id", userId),
-  ]);
-
+  const transactions: { job_id: string; released_at: string | null }[] = [];
+  const reviews: { job_id: string; reviewer_id: string }[] = [];
+  for (let i = 0; i < jobs.length; i += 200) {
+    const jobIds = jobs.slice(i, i + 200).map(job => job.id);
+    const txQuery = db.from("transactions").select("job_id, released_at")
+      .in("job_id", jobIds).order("id");
+    const reviewQuery = db.from("reviews").select("job_id, reviewer_id")
+      .in("job_id", jobIds).order("id");
+    const [txRows, reviewRows] = await Promise.all([
+      collectPages((from, to) => txQuery.range(from, to)),
+      collectPages((from, to) => reviewQuery.range(from, to)),
+    ]);
+    transactions.push(...txRows);
+    reviews.push(...reviewRows);
+  }
+  // Organisation reviews share the original posting client's review slot,
+  // matching the review endpoint regardless of which member submitted it.
+  const reviewerByJob = new Map(jobs.map(job => [job.id, organisationId ? job.client_id : userId]));
   const releasedAtByJob = new Map(
-    (txResult.data ?? []).map((tx) => [tx.job_id, tx.released_at]),
+    transactions.map((tx) => [tx.job_id, tx.released_at]),
   );
   const reviewedJobIds = new Set(
-    (reviewResult.data ?? []).map((review) => review.job_id),
+    reviews.filter(review => review.reviewer_id === reviewerByJob.get(review.job_id)).map((review) => review.job_id),
   );
 
   return jobs

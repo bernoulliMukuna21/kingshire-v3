@@ -42,7 +42,7 @@ export const getDashboardContext = cache(async () => {
   if (profile.role === "admin") redirect("/admin");
   if (!profile.role) redirect("/onboarding");
 
-  const organisations = await getUserOrganisationSummaries(user.id, 5);
+  const organisations = await getUserOrganisationSummaries(user.id);
 
   return {
     supabase,

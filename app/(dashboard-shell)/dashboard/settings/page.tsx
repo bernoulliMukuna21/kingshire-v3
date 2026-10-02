@@ -103,7 +103,7 @@ export default async function SettingsPage() {
           Account Deletion
         </h2>
         <p className="text-slate-500 text-sm mb-5">
-          For the MVP, deletion requests are reviewed manually so payments,
+          Deletion requests are reviewed so payments,
           jobs, disputes, and required transaction records are handled
           correctly.
         </p>

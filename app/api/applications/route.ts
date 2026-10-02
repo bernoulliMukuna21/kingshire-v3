@@ -1,3 +1,4 @@
+import { requiresApplicationCv } from "@/lib/application-requirements";
 import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -62,23 +63,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const rawCv = body.cv_path ?? body.cv_url;
-  if (typeof rawCv !== "string" || !rawCv.trim()) {
-    return NextResponse.json(
-      { error: "Please attach your CV to apply." },
-      { status: 400 },
-    );
-  }
-  const cvPath = resolveCvPath("job-application-cvs", rawCv, user.id);
-  if (!cvPath) {
-    return NextResponse.json({ error: "Invalid CV upload." }, { status: 400 });
-  }
-
   // Verify the job exists and is open
   const job = await getJobById(job_id);
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
+  const rawCv = body.cv_path ?? body.cv_url;
+  const hasCv = rawCv != null && rawCv !== "";
+  if (!hasCv && requiresApplicationCv(job.posting_type, job.organisation_id)) {
+    return NextResponse.json(
+      { error: "Please attach your CV to apply." },
+      { status: 400 },
+    );
+  }
+  const cvPath =
+    typeof rawCv === "string"
+      ? resolveCvPath("job-application-cvs", rawCv, user.id)
+      : null;
+  if (hasCv && !cvPath) {
+    return NextResponse.json({ error: "Invalid CV upload." }, { status: 400 });
+  }
+
   if (job.status !== "open") {
     return NextResponse.json(
       { error: "This job is no longer accepting applications" },

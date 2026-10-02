@@ -15,7 +15,8 @@ import {
 import { ensurePaymentSchedule } from "@/lib/db/placement-payments";
 import PageHeader from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import CheckInForm from "./CheckInForm";
+import CheckInForm from "@/components/CheckInForm";
+import CheckInFeed from "@/components/CheckInFeed";
 import CompleteAgreementForm from "./CompleteAgreementForm";
 import EndEarlyPanel from "./EndEarlyPanel";
 import PayMonthButton from "./PayMonthButton";
@@ -199,34 +200,21 @@ export default async function AgreementPage({
       <section>
         <h2 className="mb-3 text-lg font-black text-slate-950">Check-ins</h2>
         <Card className="space-y-4 p-5">
-          {view.canCheckIn && <CheckInForm agreementId={agreementId} />}
-          {!checkIns.length ? (
-            <p className="text-sm text-slate-500">No check-ins yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {checkIns.map((c) => {
-                const fromKinglancer = c.author_id === agreement.kinglancer_id;
-                return (
-                  <div key={c.id} className="rounded-xl bg-slate-50 p-3">
-                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-slate-700">
-                        {c.author?.full_name ?? "Someone"}
-                        <span className="ml-1.5 rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
-                          {fromKinglancer ? "Kinglancer" : "Organisation"}
-                        </span>
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        {new Date(c.created_at).toLocaleString("en-GB")}
-                      </span>
-                    </div>
-                    <p className="whitespace-pre-wrap text-sm text-slate-700">
-                      {c.note}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
+          {view.canCheckIn && (
+            <CheckInForm
+              endpoint={`/api/placements/agreements/${agreementId}/check-ins`}
+            />
           )}
+          <CheckInFeed
+            checkIns={checkIns.map((c) => ({
+              id: c.id,
+              authorId: c.author_id,
+              authorName: c.author?.full_name ?? null,
+              note: c.note,
+              createdAt: c.created_at,
+            }))}
+            kinglancerId={agreement.kinglancer_id}
+          />
         </Card>
       </section>
 

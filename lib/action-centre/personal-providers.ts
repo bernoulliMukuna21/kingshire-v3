@@ -1,6 +1,8 @@
+import { coerceNumericList } from "@/lib/db/coerce";
 import { collectPages } from "@/lib/db/pagination";
 import { getPendingReviewJobs } from "@/lib/db/reviews";
 import { listKinglancerAgreements } from "@/lib/db/placements";
+import { listKinglancerRoleOffers } from "@/lib/db/engagements";
 import type {
   ActionCentreItem,
   ActionCentreRole,
@@ -12,6 +14,7 @@ import type {
 import {
   buildClientJobItems,
   buildKinglancerJobItems,
+  buildKinglancerRoleOfferItems,
   buildPlacementItems,
   buildReviewItems,
 } from "./mappers";
@@ -69,7 +72,7 @@ export async function fetchClientStyleJobItems(
     .order("id");
   const jobsRaw = await collectPages((from, to) => filtered.range(from, to));
 
-  const jobs = (jobsRaw ?? []) as unknown as ClientActionJob[];
+  const jobs = coerceNumericList(jobsRaw, ["budget", "pay_amount", "counter_budget"]) as unknown as ClientActionJob[];
   const jobIds = jobs.map((job) => job.id);
 
   const fundedJobIds = await getFundedJobIds(supabase, jobIds);
@@ -133,7 +136,7 @@ export const kinglancerJobsProvider: ActionProvider = async ({
     .order("id");
   const jobsRaw = await collectPages((from, to) => filtered.range(from, to));
 
-  const jobs = (jobsRaw ?? []) as unknown as KinglancerActionJob[];
+  const jobs = coerceNumericList(jobsRaw, ["budget", "pay_amount"]) as unknown as KinglancerActionJob[];
   const fundedJobIds = await getFundedJobIds(
     supabase,
     jobs.map((job) => job.id),
@@ -156,7 +159,20 @@ export const placementsProvider: ActionProvider = async ({ userId }) => {
   return buildPlacementItems(agreements);
 };
 
+// Organisation role offers are engagements, not `jobs.direct_request_status`
+// rows — a separate provider mirrors placementsProvider so a sent offer (or
+// one awaiting funding) surfaces the same way a placement offer does.
+export const roleOffersProvider: ActionProvider = async ({ userId }) => {
+  const offers = await listKinglancerRoleOffers(userId);
+  return buildKinglancerRoleOfferItems(offers);
+};
+
 export const PROVIDERS: Record<ActionCentreRole, ActionProvider[]> = {
   client: [clientJobsProvider, reviewsProvider],
-  kinglancer: [kinglancerJobsProvider, reviewsProvider, placementsProvider],
+  kinglancer: [
+    kinglancerJobsProvider,
+    reviewsProvider,
+    placementsProvider,
+    roleOffersProvider,
+  ],
 };

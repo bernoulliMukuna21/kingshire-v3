@@ -1,17 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import WorkspaceSwitcher, { type Workspace } from "@/components/WorkspaceSwitcher";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { Settings, UserRound, X } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
 import SignOutButton from "@/components/SignOutButton";
 import { getNavItems } from "@/lib/dashboard-nav";
 import { getInitials } from "@/lib/utils";
 
 type Props = {
+  organisations?: Workspace[];
   profile: {
     full_name: string | null;
     role: string | null;
@@ -19,9 +21,11 @@ type Props = {
   };
 };
 
-export default function MobileNav({ profile }: Props) {
+export default function MobileNav({ profile, organisations = [] }: Props) {
   const pathname = usePathname();
-  const navItems = getNavItems(profile.role, pathname);
+  const searchParams = useSearchParams();
+  const currentOrg = organisations.find(org => searchParams.get("workspace") === org.id || pathname === `/dashboard/organisations/${org.id}` || pathname.startsWith(`/dashboard/organisations/${org.id}/`));
+  const navItems = getNavItems(profile.role, pathname, currentOrg, searchParams.get("tab") ?? undefined);
   const [open, setOpen] = useState(false);
 
   const isKinglancer = profile.role === "kinglancer";
@@ -169,6 +173,7 @@ export default function MobileNav({ profile }: Props) {
                 </button>
               </div>
 
+              <WorkspaceSwitcher organisations={organisations} currentId={currentOrg?.id} personalHref={isKinglancer ? "/dashboard/kinglancer" : "/dashboard/client"} />
               {/* Nav items */}
               <nav className="relative flex-1 overflow-y-auto p-3 space-y-1">
                 {navItems.map((item, i) => (
@@ -201,6 +206,32 @@ export default function MobileNav({ profile }: Props) {
                   paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
                 }}
               >
+                <div className="mb-4 flex gap-2">
+                  <Link
+                    href="/dashboard/profile"
+                    onClick={close}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${
+                      pathname === "/dashboard/profile"
+                        ? "bg-white text-[#10234b]"
+                        : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white"
+                    }`}
+                  >
+                    <UserRound size={14} />
+                    My profile
+                  </Link>
+                  <Link
+                    href="/dashboard/settings"
+                    onClick={close}
+                    className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${
+                      pathname === "/dashboard/settings"
+                        ? "bg-white text-[#10234b]"
+                        : "bg-white/10 text-white/80 hover:bg-white/20 hover:text-white"
+                    }`}
+                  >
+                    <Settings size={14} />
+                    Settings
+                  </Link>
+                </div>
                 <SignOutButton className="w-full" />
               </div>
             </motion.aside>

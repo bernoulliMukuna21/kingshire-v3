@@ -1,3 +1,6 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { scopeActionCentre } from "@/lib/action-centre/view";
 import { CheckCircle2 } from "lucide-react";
 import { getDashboardContext } from "@/lib/dashboard-context";
 import {
@@ -12,24 +15,33 @@ import {
   ActionSummary,
 } from "@/components/dashboard/ActionCentre";
 
-export default async function ActionCentrePage() {
+export default async function ActionCentrePage({ searchParams }: { searchParams: Promise<{ workspace?: string }> }) {
+  const { workspace = "all" } = await searchParams;
   const { supabase, user, profile, organisations } =
     await getDashboardContext();
 
+  if (workspace !== "all" && workspace !== "personal" && !organisations.some(org => org.id === workspace)) notFound();
+
   const role: ActionCentreRole =
     profile.role === "client" ? "client" : "kinglancer";
-  const { items, actionCount, waitingCount } = await getAccountActionCentre({
+  const centre = await getAccountActionCentre({
     supabase,
     userId: user.id,
     role,
     organisations,
   });
 
+  const { items, actionCount, waitingCount } = scopeActionCentre(centre.items, workspace);
+  const scopes = [{ id: "all", name: "All workspaces" }, { id: "personal", name: "Personal workspace" }, ...organisations];
+
   const roleLabel = role === "client" ? "Client" : "Kinglancer";
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <ActionCentreHeader roleLabel={roleLabel} actionCount={actionCount} />
+      <nav aria-label="Action Centre workspace" className="flex flex-wrap gap-2">
+        {scopes.map(scope => <Link key={scope.id} href={`/dashboard/action-centre?workspace=${scope.id}`} aria-current={workspace === scope.id ? "page" : undefined} className={`rounded-xl border px-4 py-2 text-sm font-semibold ${workspace === scope.id ? "border-blue-600 bg-blue-600 text-white" : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"}`}>{scope.name}</Link>)}
+      </nav>
       <ActionSummary actionCount={actionCount} waitingCount={waitingCount} />
 
       {actionCount === 0 && waitingCount === 0 ? (

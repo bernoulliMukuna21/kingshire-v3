@@ -34,8 +34,7 @@ export default function RoleOfferSummary({
             {view.label}
           </StatusBadge>
           <h2 className="mt-3 text-xl font-black text-slate-950">
-            {view.recipientLabel}{" "}
-            {recipientName}
+            {view.recipientLabel} {recipientName}
           </h2>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-emerald-900">
             <span className="inline-flex items-center gap-1.5">
@@ -45,7 +44,8 @@ export default function RoleOfferSummary({
             {engagement.org_signed_at && (
               <span className="inline-flex items-center gap-1.5">
                 <CalendarDays size={14} />
-                Sent {new Date(engagement.org_signed_at).toLocaleDateString("en-GB")}
+                Sent{" "}
+                {new Date(engagement.org_signed_at).toLocaleDateString("en-GB")}
               </span>
             )}
           </div>

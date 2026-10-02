@@ -1,12 +1,12 @@
 import { getDashboardContext } from "@/lib/dashboard-context";
-import { ActionCentreSummaryCard } from "@/components/dashboard/ActionCentre";
+import { ActionCentreSummaryCard, ActionItemsView } from "@/components/dashboard/ActionCentre";
 import { getAccountActionCentre } from "@/lib/action-centre";
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
 
 export async function ClientActionCentreSection() {
   const { supabase, user, organisations } = await getDashboardContext();
 
-  const { actionCount, waitingCount } = await getAccountActionCentre({
+  const { items, actionCount, waitingCount } = await getAccountActionCentre({
     supabase,
     userId: user.id,
     role: "client",
@@ -14,7 +14,7 @@ export async function ClientActionCentreSection() {
   });
 
   return (
-    <div>
+    <div className="space-y-4">
       <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">
         Action Centre
       </h2>
@@ -24,6 +24,7 @@ export async function ClientActionCentreSection() {
         waitingOnLabel="the Kinglancer"
         actionDescription="Review approvals, applicants, requested changes, and escrow payments from one structured page."
       />
+      <ActionItemsView items={items.filter(item => item.kind === "action").slice(0, 3)} />
     </div>
   );
 }

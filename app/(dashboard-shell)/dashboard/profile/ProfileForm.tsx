@@ -251,7 +251,7 @@ export default function ProfileForm({ profile }: Props) {
           <div>
             <h2 className="font-black text-slate-950">Profile Photo</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Use a clear photo so clients can recognise you.
+              Use a clear photo so people you work with can recognise you.
             </p>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { scopeActionCentre } from "./view";
 import { dedupeById } from "./mappers";
 import { PROVIDERS } from "./personal-providers";
 import { collectOrgActionItems } from "./org-providers";
@@ -44,15 +45,11 @@ export async function getAccountActionCentre(ctx: {
     ),
     Promise.all(
       ctx.organisations.map(async (org) => {
-        const items = await collectOrgActionItems(org.id);
-        return items.map((item) => ({ ...item, context: org.name }));
+        const items = await collectOrgActionItems(org.id, ctx.userId);
+        return items.map((item) => ({ ...item, context: org.name, workspaceId: org.id }));
       }),
     ),
   ]);
-  const items = dedupeById([...personalResults.flat(), ...orgResults.flat()]);
-  return {
-    items,
-    actionCount: items.filter((item) => item.kind === "action").length,
-    waitingCount: items.filter((item) => item.kind === "waiting").length,
-  };
+  const items = dedupeById([...personalResults.flat().map(item => ({ ...item, context: "Personal workspace", workspaceId: null })), ...orgResults.flat()]);
+  return scopeActionCentre(items);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { requiresApplicationCv } from "@/lib/application-requirements";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -7,7 +8,16 @@ import { createClient } from "@/lib/supabase/client";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { useAsyncAction } from "@/lib/hooks/useAsyncAction";
 
-export function ApplyForm({ jobId }: { jobId: string }) {
+export function ApplyForm({
+  jobId,
+  postingType,
+  organisationId,
+}: {
+  jobId: string;
+  postingType: string;
+  organisationId: string | null;
+}) {
+  const cvRequired = requiresApplicationCv(postingType, organisationId);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [coverLetter, setCoverLetter] = useState("");
@@ -68,7 +78,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       setError("Please write at least a couple of sentences.");
       return;
     }
-    if (!cvPath) {
+    if (cvRequired && !cvPath) {
       setError("Please attach your CV to apply.");
       return;
     }
@@ -136,7 +146,12 @@ export function ApplyForm({ jobId }: { jobId: string }) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">
-          CV <span className="text-red-500">*</span>
+          CV{" "}
+          {cvRequired ? (
+            <span className="text-red-500">*</span>
+          ) : (
+            <span className="font-normal text-gray-500">(optional)</span>
+          )}
         </label>
         <input
           ref={fileInputRef}
@@ -153,6 +168,21 @@ export function ApplyForm({ jobId }: { jobId: string }) {
         >
           {uploadingCv ? "Uploading…" : cvName ? "Replace CV" : "Attach CV"}
         </button>
+        {cvPath && !cvRequired && (
+          <button
+            type="button"
+            disabled={uploadingCv}
+            onClick={() => {
+              setCvPath(null);
+              setCvName(null);
+              setCvError(null);
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+            className="ml-3 text-sm font-semibold text-gray-600 underline"
+          >
+            Remove CV
+          </button>
+        )}
         {cvName && (
           <p className="mt-1.5 text-xs text-gray-500">
             Attached: <span className="font-semibold">{cvName}</span>

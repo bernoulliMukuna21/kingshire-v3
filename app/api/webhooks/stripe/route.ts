@@ -77,6 +77,17 @@ export async function POST(request: Request) {
               : null;
           if (paymentId && piId && session.payment_status === "paid")
             await fulfillPlacementPayment(paymentId, piId);
+        } else if (session.metadata?.purpose === "engagement_payment") {
+          // Role checkout (and any future non-placement engagement) — the
+          // shared engine reconciles it the same way an off-session charge
+          // or the recovery cron would.
+          const paymentId = session.metadata.engagement_payment_id;
+          const piId =
+            typeof session.payment_intent === "string"
+              ? session.payment_intent
+              : null;
+          if (paymentId && piId && session.payment_status === "paid")
+            await reconcileEngagementPayment(paymentId, piId);
         }
         break;
       }

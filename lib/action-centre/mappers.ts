@@ -4,6 +4,10 @@ import {
   type OrgPendingApplication,
 } from "@/lib/db/placements";
 import { type OrgHeldPlacementPayment } from "@/lib/db/placement-payments";
+import {
+  type KinglancerRoleOffer,
+  type OrgPendingRoleOffer,
+} from "@/lib/db/engagements";
 import { formatMoney } from "@/lib/utils";
 import { jobPriceLabel } from "@/lib/jobs";
 import {
@@ -206,6 +210,7 @@ export function buildKinglancerJobItems(
 export function buildReviewItems(
   pending: PendingReviewJob[],
   role: ActionCentreRole,
+  organisationId?: string,
 ): ActionCentreItem[] {
   return pending.map((job) => {
     const name =
@@ -217,7 +222,9 @@ export function buildReviewItems(
       kind: "action",
       title: job.jobTitle,
       description: `This job is complete. Share your honest feedback on working with ${name}.`,
-      href: `/dashboard/${role}/jobs/${job.jobId}#leave-review`,
+      href: organisationId
+        ? `/dashboard/organisations/${organisationId}/jobs/${job.jobId}#leave-review`
+        : `/dashboard/${role}/jobs/${job.jobId}#leave-review`,
       icon: "review",
       badge: remaining?.urgent ? "Closes soon" : "Leave a review",
       tone: remaining?.urgent ? "red" : "amber",
@@ -264,6 +271,87 @@ export function buildPlacementItems(
     }
   }
   return items;
+}
+
+export function buildKinglancerRoleOfferItems(
+  offers: KinglancerRoleOffer[],
+): ActionCentreItem[] {
+  const items: ActionCentreItem[] = [];
+  for (const offer of offers) {
+    const href = `/dashboard/kinglancer/jobs/${offer.jobId}`;
+    const meta =
+      offer.amountPerPeriod != null
+        ? `£${offer.amountPerPeriod.toFixed(2)} ${offer.cadence}`
+        : undefined;
+
+    if (offer.status === "pending_acceptance") {
+      items.push({
+        id: `${offer.engagementId}:role-offer`,
+        kind: "action",
+        title: offer.jobTitle,
+        description: `${
+          offer.organisationName ?? "An organisation"
+        } offered you this role. Review the terms and accept or decline.`,
+        href,
+        icon: "request",
+        badge: "Reply needed",
+        tone: "purple",
+        meta,
+      });
+    } else if (offer.status === "pending_funding") {
+      items.push({
+        id: `${offer.engagementId}:role-funding`,
+        kind: "waiting",
+        title: offer.jobTitle,
+        description:
+          "You've accepted. Waiting for the organisation to fund the first payment period before it starts.",
+        href,
+        icon: "payment",
+        badge: "Awaiting funding",
+        tone: "slate",
+        meta,
+      });
+    }
+  }
+  return items;
+}
+
+export function buildOrgRoleOfferItems(
+  offers: OrgPendingRoleOffer[],
+  organisationId: string,
+): ActionCentreItem[] {
+  return offers.map((offer) => {
+    const href = `/dashboard/organisations/${organisationId}/jobs/${offer.jobId}/offer`;
+    // Accepted roles are never funded automatically (first-period funding
+    // is always an explicit, on-session action) — this is a real action for
+    // the org, not something to wait out.
+    if (offer.status === "pending_funding") {
+      return {
+        id: `${offer.engagementId}:role-funding-needed`,
+        kind: "action",
+        title: offer.jobTitle,
+        description: `${
+          offer.kinglancerName ?? "The Kinglancer"
+        } accepted this offer. Fund the first payment period to activate it.`,
+        href,
+        icon: "payment",
+        badge: "Fund to activate",
+        tone: "blue",
+      };
+    }
+    return {
+      id: `${offer.engagementId}:role-offer-waiting`,
+      kind: "waiting",
+      title: offer.jobTitle,
+      description: `Waiting for ${
+        offer.kinglancerName ?? "the Kinglancer"
+      } to respond to this role offer.`,
+      href,
+      icon: "request",
+      badge: "Waiting",
+      tone: "slate",
+    };
+  });
 }
 
 export function buildOrgPlacementPaymentItems(

@@ -33,6 +33,7 @@ export type ActionCentreItem = {
   meta?: string;
   /** Organisation name, when the action belongs to a workspace (not personal). */
   context?: string;
+  workspaceId?: string | null;
 };
 
 export type ActionCentre = {

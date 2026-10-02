@@ -15,7 +15,7 @@ const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
     href: "/dashboard/action-centre",
   },
   {
-    label: "My Jobs",
+    label: "Jobs",
     mobileLabel: "Jobs",
     icon: "💼",
     href: "/dashboard/client/jobs",
@@ -26,14 +26,6 @@ const CLIENT_NAV: Omit<DashboardNavItem, "active">[] = [
     icon: "💳",
     href: "/dashboard/client/transactions",
   },
-  { label: "Post a Job", mobileLabel: "Post", icon: "➕", href: "/jobs/post" },
-  {
-    label: "My Profile",
-    mobileLabel: "Profile",
-    icon: "👤",
-    href: "/dashboard/profile",
-  },
-  { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
   { label: "Organisations", icon: "🏢", href: "/dashboard/organisations" },
 ];
 
@@ -57,13 +49,6 @@ const KINGLANCER_NAV: Omit<DashboardNavItem, "active">[] = [
     icon: "🎓",
     href: "/dashboard/kinglancer/placements",
   },
-  {
-    label: "My Profile",
-    mobileLabel: "Profile",
-    icon: "👤",
-    href: "/dashboard/profile",
-  },
-  { label: "Settings", icon: "⚙️", href: "/dashboard/settings" },
 ];
 
 const ADMIN_NAV: Omit<DashboardNavItem, "active">[] = [
@@ -73,17 +58,29 @@ const ADMIN_NAV: Omit<DashboardNavItem, "active">[] = [
 export function getNavItems(
   role: "client" | "kinglancer" | string | null,
   pathname: string,
+  organisation?: { id: string; role: "owner" | "admin" | "member" },
+  tab?: string,
 ): DashboardNavItem[] {
-  const base =
-    role === "admin"
+  const orgBase = organisation ? `/dashboard/organisations/${organisation.id}` : "";
+  const base: Omit<DashboardNavItem, "active">[] = organisation ? [
+    { label: "Dashboard", icon: "⬛", href: orgBase },
+    { label: "Action Centre", icon: "⚡", href: `/dashboard/action-centre?workspace=${organisation.id}` },
+    { label: "Jobs", icon: "💼", href: `${orgBase}/jobs` },
+    { label: "Placements", icon: "🎓", href: `${orgBase}/placements` },
+    { label: "Transactions", icon: "💳", href: `${orgBase}/transactions` },
+    { label: "Team", icon: "👥", href: `${orgBase}?tab=team` },
+    ...(organisation.role !== "member" ? [{ label: "Settings", icon: "⚙️", href: `${orgBase}?tab=settings` }] : []),
+  ] : role === "admin"
       ? ADMIN_NAV
       : role === "kinglancer"
         ? KINGLANCER_NAV
         : CLIENT_NAV;
 
   const activeHref = base.reduce((best, item) => {
-    const matches =
-      pathname === item.href || pathname.startsWith(`${item.href}/`);
+    const [path, query] = item.href.split("?");
+    const targetTab = new URLSearchParams(query).get("tab");
+    const matches = (pathname === path || pathname.startsWith(`${path}/`))
+      && (!targetTab || targetTab === tab);
     if (!matches) return best;
     return item.href.length > best.length ? item.href : best;
   }, "");
