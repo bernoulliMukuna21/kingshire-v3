@@ -1,8 +1,13 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import { requireAdminPage } from "@/lib/admin-dashboard";
 
 import { getAdminQueues } from "@/lib/admin/queues";
+
+async function ActionBadge() {
+  const queues = await getAdminQueues();
+  return <>{queues.unavailable.length ? "—" : queues.actionCount}</>;
+}
 
 export default async function AdminProtectedLayout({
   children,
@@ -11,10 +16,13 @@ export default async function AdminProtectedLayout({
 }) {
   const { user } = await requireAdminPage();
 
-  const queues = await getAdminQueues();
   return (
     <AdminShell
-      actionCount={queues.unavailable.length ? null : queues.actionCount}
+      actionBadge={
+        <Suspense fallback={<span>—</span>}>
+          <ActionBadge />
+        </Suspense>
+      }
       userEmail={user.email}
     >
       {children}

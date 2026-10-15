@@ -23,3 +23,10 @@ Implements the admin audit's navigation, task aggregation and operational workfl
 ## Operational notes
 
 The schema and legacy URLs are preserved. This does not introduce a forecasting model or a full accounting ledger; projected revenue still needs a defined period and earned-revenue policy. Bank receipt evidence remains manual. Receipt matching and complete task collection currently read the relevant history per request; React cache shares those reads only within the request. A larger platform may need a reconciled reporting snapshot and database-backed queue projection, rather than truncating results. No new global cache of user authorization or cross-user browser state is introduced.
+
+
+## Follow-up: simplify finance presentation and route loading
+
+The overview banner now shows only available money, a short explanation, test-mode context where applicable, and a link to Finance. Financial metrics/definitions live in Finance Summary; reconciliation counts live under Payment issues with technical references collapsed and scroll-limited. A confirmed zero/non-positive available Stripe balance displays zero available cash even when history needs matching; unknown positive estimates and earnings remain unverified. This does not mark unmatched receipts settled or remove worker obligations.
+
+Payment history now leads with the work title and worker name, funding/payout route, worker-net amount and status, with IDs secondary. Numeric values and historical payout evidence are derived in one view helper at the read boundary. The shared admin loading UI is neutral across routes, and the action badge streams independently so its provider queries do not block People/Work content. Desktop/mobile fixture checks verified these states and no horizontal overflow. No live data changed.

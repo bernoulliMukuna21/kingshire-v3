@@ -167,3 +167,47 @@ describe("total platform earnings and invalidated bank funding", () => {
     });
   });
 });
+
+describe("confirmed zero available cash", () => {
+  it.each([0, -100])(
+    "shows zero for a confirmed %i-pence balance even when historical matching needs review",
+    (stripeAvailablePence) => {
+      const result = deriveAdminFinancials({
+        transactions: [transaction()],
+        engagementPayments: [],
+        stripeAvailablePence,
+        stripeActivity: {
+          operatingNetPence: 1000,
+          costsPence: 50,
+          customerReceiptsPence: 1050,
+          topupsPence: 0,
+          withdrawalsPence: 0,
+          needsReconciliation: true,
+        },
+      });
+      expect(result).toMatchObject({
+        estimatedWithdrawableGBP: 0,
+        platformNetProceedsGBP: null,
+        needsReconciliation: true,
+      });
+    },
+  );
+  it("does not turn a failed balance read or unknown positive estimate into zero", () => {
+    expect(
+      deriveAdminFinancials({
+        transactions: [],
+        engagementPayments: [],
+        stripeAvailablePence: null,
+        stripeActivity: null,
+      })?.estimatedWithdrawableGBP,
+    ).toBeNull();
+    expect(
+      deriveAdminFinancials({
+        transactions: [],
+        engagementPayments: [],
+        stripeAvailablePence: 100,
+        stripeActivity: null,
+      })?.estimatedWithdrawableGBP,
+    ).toBeNull();
+  });
+});

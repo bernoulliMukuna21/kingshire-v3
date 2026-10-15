@@ -101,8 +101,11 @@ export function deriveAdminFinancials(input: {
     // Paid workers are expenses, not outstanding liabilities. Do not invent a
     // reimbursement obligation from historical manual payout references. Bank
     // obligations belong to the bank pool; reserve full held Stripe payments.
-    estimatedWithdrawableGBP: available === null || input.stripeActivity === null || reconciliation
-      ? null : Math.max(0, available - stripeOwed - deferredStripeFees) / 100,
+    // A confirmed non-positive balance has no withdrawable cash even when
+    // history needs matching. Unverified positive balances stay unavailable.
+    estimatedWithdrawableGBP: available === null ? null : available <= 0 ? 0
+      : input.stripeActivity === null || reconciliation ? null
+      : Math.max(0, available - stripeOwed - deferredStripeFees) / 100,
     stripeNetProceedsGBP: !activity || reconciliation ? null
       : (activity.operatingNetPence - manualCardPaid - stripeOwed - deferredStripeFees) / 100,
     platformNetProceedsGBP: !activity || reconciliation ? null

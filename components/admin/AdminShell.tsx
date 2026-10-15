@@ -32,13 +32,15 @@ const ADMIN_NAV_ITEMS = adminNavigation;
 type Props = {
   userEmail?: string | null;
   children: ReactNode;
-  actionCount: number | null;
+  actionCount?: number | null;
+  actionBadge?: ReactNode;
 };
 
 export default function AdminShell({
   userEmail,
   children,
   actionCount,
+  actionBadge,
 }: Props) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -84,7 +86,7 @@ export default function AdminShell({
                 {item.label}
                 {item.icon === "actions" && (
                   <span className="ml-auto rounded-full bg-slate-200/20 px-2 py-0.5 text-xs">
-                    {actionCount ?? "—"}
+                    {actionBadge ?? actionCount ?? "—"}
                   </span>
                 )}
               </Link>
@@ -150,7 +152,11 @@ export default function AdminShell({
               >
                 <Icon size={15} className="mr-2 inline" />
                 {item.label}
-                {item.icon === "actions" ? ` (${actionCount ?? "—"})` : ""}
+                {item.icon === "actions" && (
+                  <span className="ml-2">
+                    ({actionBadge ?? actionCount ?? "—"})
+                  </span>
+                )}
               </Link>
             );
           })}

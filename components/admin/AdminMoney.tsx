@@ -1,93 +1,15 @@
 import Link from "next/link";
+import { ArrowUpRight, CircleAlert, Wallet } from "lucide-react";
 import type { getAdminFinances } from "@/lib/admin/finances";
 import { formatMoneyPrecise } from "@/lib/utils";
+export type AdminFinances = Awaited<ReturnType<typeof getAdminFinances>>;
 export const adminMoney = (value: number | null | undefined) =>
-  value == null ? "Unavailable" : formatMoneyPrecise(value);
-export function AdminFinanceDetails({
-  finances,
-}: {
-  finances: Awaited<ReturnType<typeof getAdminFinances>>;
-}) {
-  const { summary } = finances;
-  return (
-    <div className="space-y-4 rounded-2xl border border-slate-100 bg-white p-5">
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: "Stripe available", value: finances.availableGBP },
-          { label: "Stripe worker funds held", value: summary?.stripeOwedGBP },
-          {
-            label: "Job-fee revenue before costs",
-            value: summary?.platformFeesGBP,
-          },
-          {
-            label: "Lifetime net earnings",
-            value: summary?.platformNetProceedsGBP,
-          },
-        ].map((metric) => (
-          <div key={metric.label}>
-            <p className="text-xs text-slate-500">{metric.label}</p>
-            <p className="mt-2 text-2xl font-black tabular-nums">
-              {adminMoney(metric.value)}
-            </p>
-          </div>
-        ))}
-      </div>
-      <p className="text-xs leading-relaxed text-slate-500">
-        Stripe costs already deducted: {adminMoney(summary?.stripeCostsGBP)}.
-        Still settling: {adminMoney(finances.pendingGBP)}. Bank-funded worker
-        obligations: {adminMoney(summary?.bankOwedGBP)}. Held client fees
-        reserved: {adminMoney(summary?.deferredStripeFeesGBP)}.
-      </p>
-      <p className="text-xs leading-relaxed text-slate-500">
-        Cash includes top-ups and prior withdrawals. Revenue and earnings are
-        separate from available cash. Job-fee revenue covers released one-off
-        jobs; net earnings include Stripe subscriptions and recorded bank fees,
-        before tax and other business expenses. These figures rely on payment
-        records and are not a bank reconciliation.
-      </p>
-      {(!summary || summary.needsReconciliation) && (
-        <p role="status" className="text-sm font-semibold text-amber-800">
-          Payment records need verification. Cash estimates are unavailable.
-        </p>
-      )}
-      {finances.reconciliation && (
-        <details className="text-xs text-slate-600">
-          <summary className="cursor-pointer font-semibold">
-            Payment matching:{" "}
-            {finances.reconciliation.issues.length
-              ? "needs attention"
-              : "complete"}
-          </summary>
-          <ul className="mt-3 list-inside list-disc space-y-2">
-            {[
-              ...finances.reconciliation.issues,
-              ...finances.reconciliation.differences,
-            ].map((issue, index) => (
-              <li key={index}>{issue}</li>
-            ))}
-          </ul>
-          {!finances.reconciliation.issues.length &&
-            !finances.reconciliation.differences.length && (
-              <p className="mt-2">
-                Receipts and worker transfers match the payment records.
-              </p>
-            )}
-        </details>
-      )}
-      <Link
-        href="/admin/finance"
-        className="inline-block text-sm font-semibold text-blue-700"
-      >
-        Open finance workspace →
-      </Link>
-    </div>
-  );
-}
-export default function AdminMoney({
-  finances,
-}: {
-  finances: Awaited<ReturnType<typeof getAdminFinances>>;
-}) {
+  value == null ? "Not verified" : formatMoneyPrecise(value);
+
+/** The overview is intentionally just a balance and its destination. Finance
+ * owns the breakdown, definitions and reconciliation details. */
+export default function AdminMoney({ finances }: { finances: AdminFinances }) {
+  const amount = finances.summary?.estimatedWithdrawableGBP;
   return (
     <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white shadow-lg shadow-emerald-950/10 sm:p-9">
       <div
@@ -100,28 +22,209 @@ export default function AdminMoney({
             Platform money available
           </h1>
           {finances.testMode && (
-            <span className="rounded-full bg-amber-200 px-3 py-1 text-xs font-bold text-amber-950">
-              Test data · not real funds
+            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-emerald-100">
+              Test mode
             </span>
           )}
         </div>
-        <p className="mt-5 break-words text-5xl font-black tracking-tight tabular-nums sm:text-7xl">
-          {adminMoney(finances.summary?.estimatedWithdrawableGBP)}
-        </p>
-        <p className="mt-4 max-w-xl text-sm leading-relaxed text-emerald-100">
-          Available after setting aside held client payments.
-          <br />
-          Stripe fees already deducted are reflected in this balance.
-        </p>
-        <details className="mt-7 border-t border-white/15 pt-5">
-          <summary className="cursor-pointer text-sm font-semibold text-emerald-100">
-            View financial details
-          </summary>
-          <div className="mt-4 text-slate-950">
-            <AdminFinanceDetails finances={finances} />
-          </div>
-        </details>
+        {amount == null ? (
+          <>
+            <p className="mt-6 text-3xl font-bold tracking-tight sm:text-4xl">
+              Balance needs review
+            </p>
+            <p className="mt-4 max-w-lg text-sm text-emerald-100">
+              We can’t confirm available platform money until the payment
+              records are checked.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-5 break-words text-5xl font-black tracking-tight tabular-nums sm:text-7xl">
+              {adminMoney(amount)}
+            </p>
+            <p className="mt-4 max-w-xl text-sm text-emerald-100">
+              {amount === 0
+                ? "No settled funds are available after held payments."
+                : "After held payments. Stripe fees already deducted."}
+            </p>
+          </>
+        )}
+        <div className="mt-7 flex items-center justify-between border-t border-white/15 pt-5">
+          <span className="text-xs text-emerald-200/80">
+            {finances.testMode
+              ? "Test figures · not real funds"
+              : "Available cash, separate from lifetime earnings"}
+          </span>
+          <Link
+            href="/admin/finance"
+            className="inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm font-semibold text-white hover:bg-white/10"
+          >
+            View finance <ArrowUpRight size={16} />
+          </Link>
+        </div>
       </div>
+    </section>
+  );
+}
+
+export function AdminFinanceDetails({ finances }: { finances: AdminFinances }) {
+  const { summary } = finances;
+  const needsReview =
+    !summary ||
+    summary.needsReconciliation ||
+    summary.platformNetProceedsGBP == null;
+  return (
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-slate-100 bg-white p-6 sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-slate-500">
+              Platform money available
+            </h2>
+            <p className="mt-3 text-4xl font-black tracking-tight tabular-nums">
+              {adminMoney(summary?.estimatedWithdrawableGBP)}
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              Stripe cash after setting aside held client payments.
+            </p>
+          </div>
+          <span className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
+            <Wallet size={22} />
+          </span>
+        </div>
+        {finances.testMode && (
+          <p className="mt-4 text-xs text-slate-400">
+            Test mode · these are not real funds.
+          </p>
+        )}
+      </section>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {[
+          {
+            label: "Stripe balance",
+            value: finances.availableGBP,
+            detail: "Settled funds, after Stripe fees",
+          },
+          {
+            label: "Worker funds held",
+            value: summary?.stripeOwedGBP,
+            detail: "Stripe-funded work awaiting payout",
+          },
+          {
+            label: "Job-fee revenue",
+            value: summary?.platformFeesGBP,
+            detail: "Released one-off fees, before costs",
+          },
+        ].map((metric) => (
+          <section
+            key={metric.label}
+            className="rounded-2xl border border-slate-100 bg-white p-5"
+          >
+            <h3 className="text-xs font-semibold text-slate-500">
+              {metric.label}
+            </h3>
+            <p className="mt-2 text-2xl font-black tabular-nums">
+              {adminMoney(metric.value)}
+            </p>
+            <p className="mt-2 text-xs text-slate-400">{metric.detail}</p>
+          </section>
+        ))}
+      </div>
+      {needsReview && (
+        <Link
+          href="/admin/finance?tab=issues"
+          className="flex items-center gap-3 rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-900"
+        >
+          <CircleAlert size={18} className="shrink-0" />
+          <span>
+            Some payment records need matching. Earnings are not verified.
+          </span>
+          <ArrowUpRight size={17} className="ml-auto shrink-0" />
+        </Link>
+      )}
+      <details className="rounded-2xl border border-slate-100 bg-white p-5">
+        <summary className="cursor-pointer text-sm font-semibold">
+          More figures and definitions
+        </summary>
+        <dl className="mt-5 grid gap-5 sm:grid-cols-2">
+          {[
+            {
+              label: "Net earnings to date",
+              value: summary?.platformNetProceedsGBP,
+            },
+            {
+              label: "Stripe fees already deducted",
+              value: summary?.stripeCostsGBP,
+            },
+            { label: "Still settling", value: finances.pendingGBP },
+            {
+              label: "Bank-funded worker obligations",
+              value: summary?.bankOwedGBP,
+            },
+            {
+              label: "Held client fees reserved",
+              value: summary?.deferredStripeFeesGBP,
+            },
+          ].map((metric) => (
+            <div key={metric.label}>
+              <dt className="text-xs text-slate-500">{metric.label}</dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums">
+                {adminMoney(metric.value)}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-5 text-xs leading-relaxed text-slate-500">
+          Cash can include top-ups and is different from earnings. Net earnings
+          include subscriptions and recorded bank fees, after Stripe costs and
+          before tax or other business expenses.
+        </p>
+      </details>
+    </div>
+  );
+}
+
+export function AdminReconciliationPanel({
+  finances,
+}: {
+  finances: AdminFinances;
+}) {
+  const issues = finances.reconciliation?.issues ?? [];
+  const differences = finances.reconciliation?.differences ?? [];
+  const missing = !finances.reconciliation;
+  return (
+    <section className="rounded-2xl border border-slate-100 bg-white p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-bold">Payment matching</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {missing
+              ? "Payment matching could not be completed."
+              : issues.length
+                ? `${issues.length} records need checking before earnings can be verified.`
+                : "Receipts and transfers have been checked against payment records."}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${missing || issues.length ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-700"}`}
+        >
+          {missing || issues.length ? "Needs review" : "Checked"}
+        </span>
+      </div>
+      {(issues.length > 0 || differences.length > 0) && (
+        <details className="mt-4 border-t border-slate-100 pt-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-600">
+            Show technical matching details
+          </summary>
+          <ul className="mt-4 max-h-80 space-y-2 overflow-y-auto break-words text-xs leading-relaxed text-slate-500">
+            {[...issues, ...differences].map((message, index) => (
+              <li key={index} className="rounded-lg bg-slate-50 p-3">
+                {message}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </section>
   );
 }
