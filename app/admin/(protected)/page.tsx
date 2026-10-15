@@ -30,6 +30,9 @@ import { jobPriceLabel } from "@/lib/jobs";
 import { jobStatusPill } from "@/lib/jobs";
 import { createServiceClient } from "@/lib/supabase/service";
 import { stripe } from "@/lib/stripe";
+import { collectPages } from "@/lib/db/pagination";
+import { getAdminStripeActivity } from "@/lib/admin-stripe-financials";
+import { deriveAdminFinancials } from "@/lib/admin-financials";
 
 export default async function AdminDashboard() {
   await requireAdminPage();
@@ -43,6 +46,8 @@ export default async function AdminDashboard() {
     recentUsersResult,
     recentJobsResult,
     stripeBalanceResult,
+    engagementPayments,
+    stripeActivity,
   ] = await Promise.all([
     serviceDb
       .from("profiles")
@@ -60,11 +65,13 @@ export default async function AdminDashboard() {
       .order("created_at", { ascending: false })
       .limit(5),
 
-    serviceDb
+    collectPages((from, to) => serviceDb
       .from("transactions")
-      .select(
-        "amount, platform_fee_client, platform_fee_kinglancer, status, stripe_transfer_id",
-      ),
+      .select("amount, platform_fee_client, platform_fee_kinglancer, status, payment_method, manual_payout_reference, stripe_transfer_id, stripe_refund_id, release_outcome")
+      .order("id").range(from, to)).catch((error) => {
+        console.error("[admin financials] transactions", error);
+        return null;
+      }),
 
     serviceDb
       .from("profiles")
@@ -83,35 +90,47 @@ export default async function AdminDashboard() {
       .order("created_at", { ascending: false })
       .limit(5),
 
-    stripe.balance.retrieve().catch(() => null),
+    stripe.balance.retrieve().catch((error) => {
+      console.error("[admin financials] Stripe balance", error);
+      return null;
+    }),
+    collectPages((from, to) => serviceDb
+      .from("engagement_payments")
+      .select("worker_amount, platform_fee_client, platform_fee_kinglancer, status, stripe_transfer_id, stripe_refund_id, release_outcome")
+      .order("id").range(from, to)).catch((error) => {
+        console.error("[admin financials] engagements", error);
+        return null;
+      }),
+    getAdminStripeActivity().catch((error) => {
+      console.error("[admin financials] Stripe activity", error);
+      return null;
+    }),
   ]);
 
   const totalUsers = usersCountResult.count ?? 0;
   const jobs = jobsResult.data ?? [];
   const openDisputes = (disputesResult.data ?? []) as unknown as AdminDispute[];
-  const transactions = transactionsResult.data ?? [];
   const recentUsers = (recentUsersResult.data ?? []) as AdminUser[];
   const recentJobs = (recentJobsResult.data ?? []) as unknown as AdminJob[];
 
-  // ── Platform financials ───────────────────────────────────
-  // Money in our Stripe balance that still belongs to kinglancers: escrow
-  // (held) jobs plus released jobs whose payout transfer hasn't fired yet
-  // (kinglancer hasn't finished Stripe onboarding, so stripe_transfer_id is null).
-  const owedToKinglancers = transactions
-    .filter(
-      (t) =>
-        t.status === "held" ||
-        (t.status === "released" && !t.stripe_transfer_id),
-    )
-    .reduce((sum, t) => sum + t.amount - t.platform_fee_kinglancer, 0);
-  // Stripe balance in pence → convert to pounds
-  const stripeAvailableGBP =
-    (stripeBalanceResult?.available?.find((b) => b.currency === "gbp")
-      ?.amount ?? 0) / 100;
-  const stripePendingGBP =
-    (stripeBalanceResult?.pending?.find((b) => b.currency === "gbp")?.amount ??
-      0) / 100;
-  const safeToWithdraw = Math.max(0, stripeAvailableGBP - owedToKinglancers);
+  const stripeAvailablePence = stripeBalanceResult
+    ? (stripeBalanceResult.available.find((b) => b.currency === "gbp")?.amount ?? 0)
+    : null;
+  const stripeAvailableGBP = stripeAvailablePence === null ? null : stripeAvailablePence / 100;
+  const stripePendingGBP = (stripeBalanceResult?.pending.find((b) => b.currency === "gbp")?.amount ?? 0) / 100;
+  let financials: ReturnType<typeof deriveAdminFinancials> = null;
+  try {
+    financials = deriveAdminFinancials({
+      transactions: transactionsResult,
+      engagementPayments,
+      stripeAvailablePence,
+      stripeActivity,
+    });
+  } catch (error) {
+    console.error("[admin financials] invalid ledger", error);
+  }
+  const moneyOrUnavailable = (value: number | null | undefined) =>
+    value == null ? "Unavailable" : formatMoney(value);
 
   const activeJobsCount = jobs.filter((job) =>
     ["open", "in_progress"].includes(job.status),
@@ -119,21 +138,6 @@ export default async function AdminDashboard() {
   const completedJobsCount = jobs.filter(
     (job) => job.status === "completed",
   ).length;
-  const releasedTransactions = transactions.filter(
-    (transaction) => transaction.status === "released",
-  );
-  const totalProcessed = releasedTransactions.reduce(
-    (sum, transaction) =>
-      sum + transaction.amount + transaction.platform_fee_client,
-    0,
-  );
-  const platformRevenue = releasedTransactions.reduce(
-    (sum, transaction) =>
-      sum +
-      transaction.platform_fee_client +
-      transaction.platform_fee_kinglancer,
-    0,
-  );
 
   return (
     <>
@@ -183,9 +187,9 @@ export default async function AdminDashboard() {
                 : "bg-green-50 text-green-600",
           },
           {
-            label: "Total Processed",
-            value: totalProcessed > 0 ? formatMoney(totalProcessed) : "£0",
-            sub: `${formatMoney(platformRevenue)} platform revenue`,
+            label: "Released One-off Payments",
+            value: moneyOrUnavailable(financials?.totalProcessedGBP),
+            sub: financials ? `${formatMoney(financials.platformFeesGBP)} released one-off fees` : "Financial data unavailable",
             icon: TrendingUp,
             color: "bg-purple-50 text-purple-600",
           },
@@ -217,53 +221,57 @@ export default async function AdminDashboard() {
                 Platform Financials
               </p>
               <p className="text-xs text-slate-400">
-                Live Stripe balance — your money vs kinglancer payouts
+                Revenue, costs and funds held for workers
               </p>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
-                Stripe Available
-              </p>
-              <p className="mt-1 text-2xl font-black text-slate-950">
-                {formatMoney(stripeAvailableGBP)}
-              </p>
-              {stripePendingGBP > 0 ? (
-                <p className="mt-0.5 text-xs text-slate-400">
-                  {formatMoney(stripePendingGBP)} still settling
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-950 via-emerald-950 to-emerald-800 p-6 text-white sm:p-8">
+            <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-emerald-400/10" />
+            <div className="relative flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">
+                  Platform cash available
                 </p>
-              ) : (
-                <p className="mt-0.5 text-xs text-slate-400">
-                  Total in your Stripe account
+                <p className="mt-3 break-words text-5xl font-black tracking-tight tabular-nums sm:text-6xl" aria-live="polite">
+                  {moneyOrUnavailable(financials?.estimatedWithdrawableGBP)}
                 </p>
-              )}
-            </div>
-            <div className="rounded-xl bg-red-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-red-600">
-                To Be Paid Out
-              </p>
-              <p className="mt-1 text-2xl font-black text-slate-950">
-                {formatMoney(owedToKinglancers)}
-              </p>
-              <p className="mt-0.5 text-xs text-red-600">
-                Kinglancer payouts held (escrow + unclaimed). Not yours.
-              </p>
-            </div>
-            <div className="rounded-xl bg-emerald-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
-                Safe to Withdraw
-              </p>
-              <p className="mt-1 text-2xl font-black text-emerald-700">
-                {formatMoney(safeToWithdraw)}
-              </p>
-              <p className="mt-0.5 text-xs text-emerald-600">
-                Your earnings — safe to take out.
-              </p>
+                <p className="mt-3 max-w-lg text-sm leading-relaxed text-emerald-100">
+                  After reserving held client payments. Stripe fees already deducted are reflected in this balance.
+                </p>
+              </div>
+              <div className="shrink-0 rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-sm">
+                <p className="font-semibold text-white">Current cash position</p>
+                <p className="mt-1 text-xs text-emerald-100">Updated when this page loads</p>
+              </div>
             </div>
           </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { label: "Stripe available", value: stripeAvailableGBP,
+                detail: stripePendingGBP > 0 ? `${formatMoney(stripePendingGBP)} still settling` : "Settled Stripe balance" },
+              { label: "Worker funds held", value: financials?.stripeOwedGBP,
+                detail: "Stripe-funded work awaiting payout" },
+              { label: "Job-fee revenue", value: financials?.platformFeesGBP,
+                detail: "Released job fees before costs; excludes subscriptions" },
+              { label: "Lifetime net earnings", value: financials?.platformNetProceedsGBP,
+                detail: "Includes subscriptions; after Stripe costs, before tax and other expenses" },
+            ].map((metric) => (
+              <div key={metric.label} className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="text-xs font-semibold text-slate-500">{metric.label}</p>
+                <p className="mt-2 text-2xl font-black tabular-nums text-slate-950">{moneyOrUnavailable(metric.value)}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">{metric.detail}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-xs text-slate-500">
+            Recorded Stripe costs, lifetime: <strong>{moneyOrUnavailable(financials?.stripeCostsGBP)}</strong>. These have already been deducted from Stripe cash.
+          </p>
           <p className="mt-3 text-xs text-slate-400">
-            Stripe Available = To Be Paid Out + Safe to Withdraw
+            {financials
+              ? `${financials.bankOwedGBP > 0 ? `${formatMoney(financials.bankOwedGBP)} additional unpaid worker funds are recorded as bank-funded; check against bank records.` : "No outstanding bank-funded worker payouts."} Stripe reserves include ${formatMoney(financials.deferredStripeFeesGBP)} in held fees. Completed manual payouts are not outstanding debts.`
+              : "Payment records could not be verified. Financial estimates unavailable."}
+            {" "}Net proceeds are before tax and other business expenses. Cash after reserves is not profit or a guarantee of safe withdrawal; pending funds, top-ups and earlier withdrawals affect the balance.
+            {financials?.needsReconciliation && " A settlement or Stripe movement needs reconciliation; estimates are unavailable."}
           </p>
         </Card>
       </FadeIn>
