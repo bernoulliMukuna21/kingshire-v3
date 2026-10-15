@@ -1,3 +1,6 @@
+import { coerceNumericList } from "@/lib/db/coerce";
+import { getAdminDb } from "@/lib/admin/access";
+import { collectPages } from "@/lib/db/pagination";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
 import type { EngagementPaymentStatus } from "@/lib/settlement/types";
@@ -84,14 +87,21 @@ export async function getHeldEngagementPaymentsForOrganisation(
 export async function getDisputedEngagementPayments(): Promise<
   EngagementPaymentRow[]
 > {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("engagement_payments")
-    .select("*")
-    .eq("status", "disputed")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
-  return data ?? [];
+  const db = await getAdminDb();
+  const data = await collectPages((from, to) =>
+    db
+      .from("engagement_payments")
+      .select("*")
+      .eq("status", "disputed")
+      .order("created_at", { ascending: true })
+      .order("id")
+      .range(from, to),
+  );
+  return coerceNumericList(data, [
+    "worker_amount",
+    "platform_fee_client",
+    "platform_fee_kinglancer",
+  ]);
 }
 
 export async function createEngagementPayment(

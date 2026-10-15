@@ -101,7 +101,7 @@ export async function getPlacementPayment(
   if (!payment) return null;
   const engagementsById = await getEngagementsByIds([payment.engagement_id]);
   const engagement = engagementsById.get(payment.engagement_id);
-  if (!engagement) return null;
+  if (!engagement || engagement.source_kind !== "placement") return null;
   return coerceNumeric(
     toPlacementPayment(payment, engagement.source_id),
     NUMERIC,

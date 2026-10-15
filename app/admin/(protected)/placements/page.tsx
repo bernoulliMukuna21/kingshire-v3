@@ -1,3 +1,4 @@
+import { getAdminDb } from "@/lib/admin/access";
 import { listPlacementsForReview } from "@/lib/db/placements";
 import {
   displayPlacementCompensation,
@@ -18,6 +19,7 @@ function formatDate(value: string | null) {
 }
 
 export default async function AdminPlacementsPage() {
+  await getAdminDb();
   const placements = await listPlacementsForReview();
 
   return (
@@ -41,7 +43,7 @@ export default async function AdminPlacementsPage() {
               .filter(Boolean)
               .join(" → ");
             return (
-              <Card key={p.id} className="p-5">
+              <Card id={p.id} key={p.id} className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-lg font-black text-slate-950">

@@ -5,6 +5,7 @@ type Props = {
   page: number;
   total: number;
   pageSize: number;
+  params?: Record<string, string>;
 };
 
 export default function AdminPagination({
@@ -12,6 +13,7 @@ export default function AdminPagination({
   page,
   total,
   pageSize,
+  params,
 }: Props) {
   return (
     <Pagination
@@ -19,6 +21,7 @@ export default function AdminPagination({
       page={page}
       total={total}
       pageSize={pageSize}
+      params={params}
     />
   );
 }

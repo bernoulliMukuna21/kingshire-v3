@@ -51,6 +51,7 @@ export default async function SettlementRecoveryPage() {
           const view = deriveRecoveryView(row);
           return (
             <section
+              id={row.id}
               key={`${ledger}-${row.id}`}
               className="rounded-xl border bg-white p-5"
             >
@@ -83,7 +84,11 @@ export default async function SettlementRecoveryPage() {
       </p>
       {!holds.length && <p>No settlement holds.</p>}
       {holds.map((hold) => (
-        <section key={hold.id} className="rounded-xl border bg-white p-5">
+        <section
+          id={hold.id}
+          key={hold.id}
+          className="rounded-xl border bg-white p-5"
+        >
           <p className="break-all">Engagement: {hold.id}</p>
           <RecoveryActions id={hold.id} />
         </section>

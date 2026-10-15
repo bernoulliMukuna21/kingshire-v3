@@ -21,15 +21,19 @@ import { createServiceClient } from "@/lib/supabase/service";
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; role?: string }>;
 }) {
   await requireAdminPage();
-  const { page: pageParam } = await searchParams;
+  const { page: pageParam, q: rawQ = "", role = "" } = await searchParams;
+  const q = rawQ
+    .slice(0, 100)
+    .replace(/[%_,()]/g, " ")
+    .trim();
   const page = getPageNumber(pageParam);
   const { from, to } = getPageRange(page);
   const serviceDb = createServiceClient();
 
-  const { data, count } = await serviceDb
+  let query = serviceDb
     .from("profiles")
     .select(
       "id, email, phone, full_name, role, service_tags, created_at, avatar_url",
@@ -37,7 +41,10 @@ export default async function AdminUsersPage({
         count: "exact",
       },
     )
-    .or("role.is.null,role.neq.admin")
+    .or("role.is.null,role.neq.admin");
+  if (q) query = query.ilike("full_name", `%${q}%`);
+  if (["client", "kinglancer"].includes(role)) query = query.eq("role", role);
+  const { data, count, error } = await query
     .order("created_at", { ascending: false })
     .range(from, to);
 
@@ -48,11 +55,41 @@ export default async function AdminUsersPage({
       <FadeIn className="mb-8">
         <PageHeader
           eyebrow="Admin"
-          title="Users"
+          title="People"
           description="Marketplace users only. Admin profiles are intentionally excluded from this operational list."
         />
       </FadeIn>
 
+      <form method="get" className="mb-5 flex flex-wrap gap-3">
+        <input
+          aria-label="Search people"
+          name="q"
+          defaultValue={q}
+          placeholder="Search by name"
+          className="rounded-xl border border-slate-200 px-4 py-2 text-sm"
+        />
+        <select
+          aria-label="Filter user role"
+          name="role"
+          defaultValue={role}
+          className="rounded-xl border border-slate-200 px-4 py-2 text-sm"
+        >
+          <option value="">All roles</option>
+          <option value="client">Clients</option>
+          <option value="kinglancer">Kinglancers</option>
+        </select>
+        <button className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+          Apply
+        </button>
+      </form>
+      {error && (
+        <p
+          role="status"
+          className="mb-4 rounded-xl bg-amber-50 p-4 text-amber-800"
+        >
+          People unavailable. Refresh to try again.
+        </p>
+      )}
       <FadeIn>
         <AdminPanel
           title="All Marketplace Users"
@@ -60,7 +97,11 @@ export default async function AdminUsersPage({
           count={count ?? 0}
         >
           {users.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-gray-400">No users found.</p>
+            <p className="px-6 py-8 text-sm text-gray-400">
+              {error
+                ? "User records could not be loaded."
+                : "No users match these filters."}
+            </p>
           ) : (
             <div className="divide-y divide-gray-50">
               {users.map((profile) => (
@@ -109,6 +150,7 @@ export default async function AdminUsersPage({
           )}
           <AdminPagination
             basePath="/admin/users"
+            params={{ q, role }}
             page={page}
             total={count ?? 0}
             pageSize={ADMIN_PAGE_SIZE}

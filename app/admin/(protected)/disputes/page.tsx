@@ -1,126 +1,176 @@
-export const dynamic = "force-dynamic";
-
 import Link from "next/link";
-import { Eye } from "lucide-react";
-import AdminPagination from "@/components/admin/AdminPagination";
-import AdminPanel from "@/components/admin/AdminPanel";
-import { FadeIn } from "@/components/animations";
-import PageHeader from "@/components/ui/PageHeader";
+import { getAdminQueues } from "@/lib/admin/queues";
+import AdminTabs from "@/components/admin/AdminTabs";
+import { AdminQueueWarning } from "@/components/admin/AdminTasks";
 import DisputeActions from "./DisputeActions";
-import {
-  ADMIN_PAGE_SIZE,
-  type AdminDispute,
-  getPageNumber,
-  getPageRange,
-  timeAgo,
-} from "@/lib/admin-dashboard";
-import { jobPriceLabel } from "@/lib/jobs";
-import { createServiceClient } from "@/lib/supabase/service";
-
-export default async function AdminDisputesPage({
+import RoleDisputeActions from "../role-disputes/RoleDisputeActions";
+import PlacementDisputeActions from "../placement-disputes/AdminDisputeActions";
+import { adminMoney } from "@/components/admin/AdminMoney";
+import { coerceNumericList } from "@/lib/db/coerce";
+export default async function AdminDisputes({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ type?: string }>;
 }) {
-  const { page: pageParam } = await searchParams;
-  const page = getPageNumber(pageParam);
-  const { from, to } = getPageRange(page);
-  const serviceDb = createServiceClient();
-
-  const { data, count } = await serviceDb
-    .from("disputes")
-    .select(
-      "id, reason, created_at, status, raised_by, job:jobs!job_id(id, title, budget, posting_type, pay_negotiable, pay_amount, pay_cadence, client_id, kinglancer_id)",
-      { count: "exact" },
-    )
-    .order("created_at", { ascending: false })
-    .range(from, to);
-
-  const disputes = (data ?? []) as unknown as AdminDispute[];
-
+  const queues = await getAdminQueues();
+  const { type = "all" } = await searchParams;
+  const selected = ["jobs", "roles", "placements"].includes(type)
+    ? type
+    : "all";
+  const jobDisputes =
+    selected === "all" || selected === "jobs" ? queues.disputes : [];
+  const periods = coerceNumericList(
+    queues.periods.filter((row) => row.status === "disputed"),
+    ["worker_amount"],
+  ).filter(
+    (row) =>
+      selected === "all" ||
+      (queues.engagementById.get(row.engagement_id)?.source_kind === "org_role"
+        ? selected === "roles"
+        : selected === "placements"),
+  );
+  const paymentsByJob = new Map(
+    coerceNumericList(queues.payments, ["amount"]).map((row) => [
+      row.job_id,
+      row,
+    ]),
+  );
   return (
-    <>
-      <FadeIn className="mb-8">
-        <PageHeader
-          eyebrow="Admin"
-          title="Disputes"
-          description="Review disputed jobs and use the linked job page for context."
-        />
-      </FadeIn>
-
-      <FadeIn>
-        <AdminPanel
-          title="All Disputes"
-          description="Newest disputes first."
-          count={count ?? 0}
-          tone="red"
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-black">Disputes</h1>
+          <p className="mt-2 text-sm text-slate-500">
+            Open cases across jobs, organisation roles and placements.
+          </p>
+        </div>
+        <Link
+          href="/admin/action-centre?category=disputes"
+          className="text-sm font-semibold text-blue-700"
         >
-          {disputes.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-gray-400">
-              No disputes found.
+          Action centre →
+        </Link>
+      </div>
+      <Link
+        href="/admin/disputes/history"
+        className="inline-block text-sm text-blue-700"
+      >
+        One-off case history →
+      </Link>
+      <AdminQueueWarning unavailable={queues.unavailable} />
+      <AdminTabs
+        selected={selected}
+        tabs={[
+          { label: "All cases", value: "all" },
+          { label: "Jobs", value: "jobs" },
+          { label: "Role payments", value: "roles" },
+          { label: "Placement payments", value: "placements" },
+        ].map((tab) => ({ ...tab, href: `/admin/disputes?type=${tab.value}` }))}
+      />
+      {!jobDisputes.length && !periods.length && (
+        <p className="rounded-xl bg-white p-6 text-sm text-slate-500">
+          {queues.unavailable.length
+            ? "Cases may be unavailable. Check the queue warning."
+            : "No open cases match this filter."}
+        </p>
+      )}
+      {jobDisputes.map((row) => {
+        const payment = paymentsByJob.get(row.job_id);
+        return (
+          <section
+            id={row.id}
+            key={row.id}
+            className="scroll-mt-6 rounded-2xl border border-slate-100 bg-white p-5"
+          >
+            <p className="text-xs text-slate-500">Job dispute</p>
+            <h2 className="mt-2 font-bold">
+              {queues.jobById.get(row.job_id)?.title ?? "Job"}
+            </h2>
+            <p className="my-3 whitespace-pre-wrap text-sm text-slate-600">
+              {row.reason}
             </p>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {disputes.map((dispute) => (
-                <div
-                  key={dispute.id}
-                  className="grid gap-4 px-5 py-4 transition-colors hover:bg-gray-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:px-6"
+            <Link
+              href={`/jobs/${row.job_id}`}
+              className="text-sm text-blue-700"
+            >
+              View job context →
+            </Link>
+            <div className="mt-4">
+              {payment &&
+              !payment.release_attempt_id &&
+              !payment.stripe_transfer_id &&
+              !payment.manual_payout_reference ? (
+                <DisputeActions disputeId={row.id} jobBudget={payment.amount} />
+              ) : (
+                <Link
+                  href="/admin/finance?tab=issues"
+                  className="text-sm text-amber-800"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-gray-900">
-                      {dispute.job?.title ?? "Unknown job"}
-                    </p>
-                    <p className="mt-1 line-clamp-2 text-sm text-gray-500">
-                      {dispute.reason}
-                    </p>
-                    <p className="mt-2 text-xs text-gray-400">
-                      Raised {timeAgo(dispute.created_at)}
-                    </p>
-                    {dispute.status === "open" && dispute.job && (
-                      <div className="mt-3">
-                        <DisputeActions
-                          disputeId={dispute.id}
-                          jobBudget={dispute.job.budget}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 sm:justify-end">
-                    {dispute.job && (
-                      <span className="text-sm font-black text-gray-900">
-                        {jobPriceLabel(dispute.job)}
-                      </span>
-                    )}
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-bold capitalize ring-1 ${
-                        dispute.status === "open"
-                          ? "bg-red-50 text-red-700 ring-red-100"
-                          : "bg-green-50 text-green-700 ring-green-100"
-                      }`}
-                    >
-                      {dispute.status}
-                    </span>
-                    {dispute.job && (
-                      <Link
-                        href={`/jobs/${dispute.job.id}`}
-                        className="inline-flex items-center gap-1.5 text-sm font-bold text-blue-600 hover:underline"
-                      >
-                        <Eye size={14} /> View job
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  Verify payment status before resolving this case →
+                </Link>
+              )}
             </div>
-          )}
-          <AdminPagination
-            basePath="/admin/disputes"
-            page={page}
-            total={count ?? 0}
-            pageSize={ADMIN_PAGE_SIZE}
-          />
-        </AdminPanel>
-      </FadeIn>
-    </>
+          </section>
+        );
+      })}
+      {periods.map((row) => {
+        const engagement = queues.engagementById.get(row.engagement_id);
+        const role = engagement?.source_kind === "org_role";
+        return (
+          <section
+            id={row.id}
+            key={row.id}
+            className="scroll-mt-6 rounded-2xl border border-slate-100 bg-white p-5"
+          >
+            <p className="text-xs text-slate-500">
+              {role ? "Role" : "Placement"} payment dispute · Period{" "}
+              {row.period_index}
+            </p>
+            <h2 className="mt-2 font-bold">
+              {role
+                ? (queues.jobById.get(engagement!.source_id)?.title ??
+                  "Organisation role")
+                : "Placement payment"}{" "}
+              · {adminMoney(row.worker_amount)}
+            </h2>
+            <p className="my-3 whitespace-pre-wrap text-sm text-slate-600">
+              {row.dispute_reason ?? "No reason recorded."}
+            </p>
+            {engagement && (
+              <Link
+                href={
+                  role
+                    ? `/jobs/${engagement.source_id}`
+                    : `/dashboard/placements/agreements/${engagement.source_id}`
+                }
+                className="text-sm text-blue-700"
+              >
+                View work context →
+              </Link>
+            )}
+            <div className="mt-4">
+              {row.release_attempt_id ? (
+                <Link
+                  href={`/admin/settlements#${row.id}`}
+                  className="text-sm text-amber-800"
+                >
+                  Reconcile the existing settlement first →
+                </Link>
+              ) : engagement ? (
+                role ? (
+                  <RoleDisputeActions paymentId={row.id} />
+                ) : (
+                  <PlacementDisputeActions paymentId={row.id} />
+                )
+              ) : (
+                <p className="text-sm text-amber-800">
+                  Work context unavailable. Resolution is disabled.
+                </p>
+              )}
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }

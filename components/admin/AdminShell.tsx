@@ -8,26 +8,40 @@ import SignOutButton from "@/components/SignOutButton";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 
-const ADMIN_NAV_ITEMS = [
-  { label: "Overview", icon: "📊", href: "/admin" },
-  { label: "Users", icon: "👥", href: "/admin/users" },
-  { label: "Jobs", icon: "💼", href: "/admin/jobs" },
-  { label: "Manual payments", icon: "🏦", href: "/admin/manual-payments" },
-  { label: "Settlement recovery", icon: "🔎", href: "/admin/settlements" },
-  { label: "Disputes", icon: "🚨", href: "/admin/disputes" },
-  { label: "Placements", icon: "🎓", href: "/admin/placements" },
-  { label: "Verifications", icon: "✅", href: "/admin/verifications" },
-  { label: "Pay disputes", icon: "⚖️", href: "/admin/placement-disputes" },
-  { label: "Role disputes", icon: "🧾", href: "/admin/role-disputes" },
-];
+import {
+  LayoutDashboard,
+  Inbox,
+  Wallet,
+  Users,
+  Briefcase,
+  ClipboardCheck,
+  Menu,
+} from "lucide-react";
+import { useState } from "react";
+import { adminNavigation, adminSection } from "@/lib/admin/navigation";
+const icons = {
+  overview: LayoutDashboard,
+  actions: Inbox,
+  finance: Wallet,
+  people: Users,
+  work: Briefcase,
+  reviews: ClipboardCheck,
+};
+const ADMIN_NAV_ITEMS = adminNavigation;
 
 type Props = {
   userEmail?: string | null;
   children: ReactNode;
+  actionCount: number | null;
 };
 
-export default function AdminShell({ userEmail, children }: Props) {
+export default function AdminShell({
+  userEmail,
+  children,
+  actionCount,
+}: Props) {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#eef6ff_0,#f8fafc_34%,#f1f5f9_100%)] text-slate-900">
@@ -52,14 +66,13 @@ export default function AdminShell({ userEmail, children }: Props) {
 
         <nav className="relative flex-1 space-y-1.5 p-4">
           {ADMIN_NAV_ITEMS.map((item) => {
-            const active =
-              item.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(item.href);
+            const active = adminSection(pathname) === item.href;
+            const Icon = icons[item.icon];
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-all",
                   active
@@ -67,8 +80,13 @@ export default function AdminShell({ userEmail, children }: Props) {
                     : "text-white/55 hover:bg-white/10 hover:text-white",
                 )}
               >
-                <span className="text-lg leading-none">{item.icon}</span>
+                <Icon size={19} aria-hidden="true" />
                 {item.label}
+                {item.icon === "actions" && (
+                  <span className="ml-auto rounded-full bg-slate-200/20 px-2 py-0.5 text-xs">
+                    {actionCount ?? "—"}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -100,18 +118,29 @@ export default function AdminShell({ userEmail, children }: Props) {
               priority
             />
           </Link>
-          <SignOutButton className="px-4 py-2 text-xs" />
+          <button
+            aria-label="Toggle admin navigation"
+            aria-expanded={menuOpen}
+            aria-controls="admin-mobile-navigation"
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="rounded-lg p-2 text-white"
+          >
+            <Menu size={22} />
+          </button>
         </div>
-        <div className="flex gap-2 overflow-x-auto border-t border-white/10 px-4 py-2">
+        <div
+          id="admin-mobile-navigation"
+          className={`${menuOpen ? "grid" : "hidden"} grid-cols-2 gap-2 border-t border-white/10 p-4`}
+        >
           {ADMIN_NAV_ITEMS.map((item) => {
-            const active =
-              item.href === "/admin"
-                ? pathname === "/admin"
-                : pathname.startsWith(item.href);
+            const active = adminSection(pathname) === item.href;
+            const Icon = icons[item.icon];
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
+                onClick={() => setMenuOpen(false)}
                 className={cn(
                   "shrink-0 rounded-full px-3 py-1.5 text-xs font-bold",
                   active
@@ -119,10 +148,15 @@ export default function AdminShell({ userEmail, children }: Props) {
                     : "bg-white/10 text-white/70",
                 )}
               >
+                <Icon size={15} className="mr-2 inline" />
                 {item.label}
+                {item.icon === "actions" ? ` (${actionCount ?? "—"})` : ""}
               </Link>
             );
           })}
+          <div className="col-span-2 pt-2">
+            <SignOutButton className="w-full" />
+          </div>
         </div>
       </div>
 

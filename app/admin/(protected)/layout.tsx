@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import AdminShell from "@/components/admin/AdminShell";
 import { requireAdminPage } from "@/lib/admin-dashboard";
 
+import { getAdminQueues } from "@/lib/admin/queues";
+
 export default async function AdminProtectedLayout({
   children,
 }: {
@@ -9,5 +11,13 @@ export default async function AdminProtectedLayout({
 }) {
   const { user } = await requireAdminPage();
 
-  return <AdminShell userEmail={user.email}>{children}</AdminShell>;
+  const queues = await getAdminQueues();
+  return (
+    <AdminShell
+      actionCount={queues.unavailable.length ? null : queues.actionCount}
+      userEmail={user.email}
+    >
+      {children}
+    </AdminShell>
+  );
 }
