@@ -12,6 +12,22 @@ export function jobAlertHeadline(jobTitle: string, priceLabel: string): string {
   return `${jobTitle} — ${priceLabel}`;
 }
 
+/** A one-off gig whose price isn't fixed up front: the Kinglancer assesses the
+ * work, then quotes or agrees the price with the organisation, which is set and
+ * escrowed at selection. Negotiable gigs carry `pay_negotiable` + a 0 budget
+ * until that agreed amount lands. */
+export function isGigPriceToBeAgreed(job: {
+  posting_type: string | null;
+  budget: number | string | null;
+  pay_negotiable: boolean | null;
+}): boolean {
+  return (
+    job.posting_type !== "role" &&
+    !!job.pay_negotiable &&
+    !(Number(job.budget) > 0)
+  );
+}
+
 /** Single source for a job's price label — a one-off gig's budget has one job
  * (£X); an org role's `budget` is always 0 and never the right thing to show,
  * it's paid recurring pay (negotiable or £X/period) instead. */
@@ -26,6 +42,7 @@ export function jobPriceLabel(job: {
     if (job.pay_negotiable) return "Discussed at interview";
     return `£${Number(job.pay_amount).toLocaleString()}/${job.pay_cadence}`;
   }
+  if (isGigPriceToBeAgreed(job)) return "Price to be agreed";
   return `£${Number(job.budget).toLocaleString()}`;
 }
 

@@ -22,11 +22,13 @@ export default function EditJobForm({
   initialData,
   categories,
   hasApplicants,
+  priceToBeAgreed = false,
 }: {
   jobId: string;
   initialData: InitialData;
   categories: string[];
   hasApplicants: boolean;
+  priceToBeAgreed?: boolean;
 }) {
   const router = useRouter();
 
@@ -55,7 +57,7 @@ export default function EditJobForm({
     e.preventDefault();
     setError(null);
 
-    if (!hasValidCurrencyPrecision(budget)) {
+    if (!priceToBeAgreed && !hasValidCurrencyPrecision(budget)) {
       setError(CURRENCY_VALIDATION_MESSAGE);
       return;
     }
@@ -167,7 +169,17 @@ export default function EditJobForm({
           <label className="block text-sm font-bold text-slate-900">
             Budget (£)
           </label>
-          {hasApplicants ? (
+          {priceToBeAgreed ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
+              <p className="text-sm font-bold text-slate-900">
+                Price to be agreed
+              </p>
+              <p className="mt-0.5 text-xs text-slate-500">
+                Each applicant sets their own quote — there&apos;s no budget to
+                edit.
+              </p>
+            </div>
+          ) : hasApplicants ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5">
               <p className="text-sm font-bold text-slate-900">£{budget}</p>
               <p className="mt-0.5 text-xs text-slate-500">
@@ -197,7 +209,7 @@ export default function EditJobForm({
             onChange={(e) =>
               setRateType(e.target.value as "fixed" | "per_hour" | "per_day")
             }
-            disabled={hasApplicants}
+            disabled={hasApplicants || priceToBeAgreed}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50 disabled:text-slate-400"
           >
             <option value="fixed">Fixed price</option>

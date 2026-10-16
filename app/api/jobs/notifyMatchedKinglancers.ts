@@ -1,6 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
-import { jobAlertHeadline } from "@/lib/jobs";
-import { formatMoney } from "@/lib/utils";
+import { jobAlertHeadline, jobPriceLabel } from "@/lib/jobs";
 import { emailJobAlert } from "@/lib/notifications";
 import { sendPushToUser } from "@/lib/push";
 
@@ -9,9 +8,16 @@ import { sendPushToUser } from "@/lib/push";
  * response never waits on either. Matching another user's email is a
  * privileged, cross-user read, so this always uses the service client. */
 export async function notifyMatchedKinglancers(
-  job: { id: string; title: string },
+  job: {
+    id: string;
+    title: string;
+    posting_type: string | null;
+    budget: number | string;
+    pay_negotiable: boolean | null;
+    pay_amount: number | string | null;
+    pay_cadence: string | null;
+  },
   invitedKinglancerId: string | null,
-  normalizedBudget: number,
 ): Promise<void> {
   const db = createServiceClient();
   const { data: kinglancers } = invitedKinglancerId
@@ -29,7 +35,7 @@ export async function notifyMatchedKinglancers(
 
   if (!kinglancers?.length) return;
 
-  const priceLabel = formatMoney(normalizedBudget);
+  const priceLabel = jobPriceLabel(job);
   const headline = jobAlertHeadline(job.title, priceLabel);
   const alertTitle = invitedKinglancerId
     ? `Direct request: ${headline}`

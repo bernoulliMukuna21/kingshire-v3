@@ -3,6 +3,7 @@ import { getDashboardContext } from "@/lib/dashboard-context";
 import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import { JOB_CATEGORIES } from "@/lib/job-categories";
+import { isGigPriceToBeAgreed } from "@/lib/jobs";
 import DashboardBackLink from "@/components/dashboard/DashboardBackLink";
 import EditJobForm from "./EditJobForm";
 import { canManageJob } from "@/lib/organisations";
@@ -59,6 +60,7 @@ export default async function EditJobPage({
         <EditJobForm
           jobId={id}
           hasApplicants={hasApplicants}
+          priceToBeAgreed={isGigPriceToBeAgreed(job)}
           initialData={{
             title: job.title,
             description: job.description,

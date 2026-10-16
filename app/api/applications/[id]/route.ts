@@ -244,6 +244,38 @@ export async function PATCH(
       );
     }
 
+    // "Price to be agreed" gig: the escrow amount is the selected applicant's
+    // own quote (locked — gig selection is an instant hire with no Kinglancer
+    // acceptance step, so the org can't fund a different figure). Persist it as
+    // the job budget on first selection so escrow, fees and display agree. A
+    // retry of the same applicant finds budget already set and skips.
+    if (job.pay_negotiable && !(Number(job.budget) > 0)) {
+      const agreed = normalizeCurrencyAmount(Number(application.proposed_rate));
+      if (
+        !Number.isFinite(agreed) ||
+        agreed < MIN_JOB_BUDGET_GBP ||
+        agreed > 50000
+      )
+        return NextResponse.json(
+          {
+            error: "This applicant hasn't submitted a valid quote for this job.",
+          },
+          { status: 400 },
+        );
+      const { error: budgetError } = await createServiceClient()
+        .from("jobs")
+        .update({ budget: agreed })
+        .eq("id", application.job_id)
+        .eq("status", "open");
+      if (budgetError) {
+        return NextResponse.json(
+          { error: "Could not set the agreed price. Please try again." },
+          { status: 500 },
+        );
+      }
+      job.budget = agreed;
+    }
+
     // Bank transfer (manual): no Stripe. Record a pending attempt and return our
     // bank details + reference; an admin confirms funds received later.
     if (method === "bank_transfer") {

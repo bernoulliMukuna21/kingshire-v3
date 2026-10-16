@@ -49,6 +49,11 @@ export function ApplicantsList({
     "managed" | "direct"
   >(job?.settlement_mode === "direct" ? "direct" : "managed");
 
+  // A "price to be agreed" gig: each applicant quotes on application and the
+  // selection escrows exactly that quote (locked — no editing, since gig
+  // selection is an instant hire with no Kinglancer acceptance step).
+  const isNegotiableGig = !isRole && Boolean(job?.pay_negotiable);
+
   const payNotSet = Boolean(isRole && job?.pay_negotiable);
   const payFormInvalid = isRole && !(Number(payAmountInput) > 0);
 
@@ -83,7 +88,10 @@ export function ApplicantsList({
               pay_cadence: payCadenceInput,
               settlement_mode: settlementModeInput,
             }
-          : { action: "accept", method: payMethod },
+          : {
+              action: "accept",
+              method: payMethod,
+            },
       ),
     });
 
@@ -205,6 +213,19 @@ export function ApplicantsList({
               </div>
             ) : (
               <div className="space-y-2">
+                {isNegotiableGig && (
+                  <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                    You&apos;re hiring at their quote of{" "}
+                    <strong>
+                      £
+                      {Number(pendingApp?.proposed_rate ?? 0).toLocaleString(
+                        "en-GB",
+                      )}
+                    </strong>
+                    . This amount is held in escrow and released when you
+                    approve the completed work.
+                  </div>
+                )}
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                   How would you like to pay?
                 </p>
@@ -274,7 +295,10 @@ export function ApplicantsList({
         }
         variant="success"
         loading={selectingId !== null}
-        confirmDisabled={payFormInvalid}
+        confirmDisabled={
+          payFormInvalid ||
+          (isNegotiableGig && !(Number(pendingApp?.proposed_rate) > 0))
+        }
         error={error ?? undefined}
       />
       <BankTransferModal
@@ -344,6 +368,12 @@ export function ApplicantsList({
                     {k.full_name}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {isNegotiableGig && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                        Quoted £
+                        {Number(app.proposed_rate ?? 0).toLocaleString("en-GB")}
+                      </span>
+                    )}
                     {k.location && (
                       <span className="text-xs text-gray-400">
                         {k.location}

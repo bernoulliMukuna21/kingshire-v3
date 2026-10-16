@@ -12,6 +12,12 @@ import { hasEntitlement } from "@/lib/subscriptions";
 import { notifyNewApplication } from "@/lib/notifications";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { resolveCvPath } from "@/lib/cv-storage";
+import { isGigPriceToBeAgreed } from "@/lib/jobs";
+import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
+import {
+  hasValidCurrencyPrecision,
+  normalizeCurrencyAmount,
+} from "@/lib/validation";
 import { getOrgOwnerContact } from "@/lib/organisations";
 
 export async function POST(request: Request) {
@@ -99,9 +105,10 @@ export async function POST(request: Request) {
 
   // Small jobs are subscriber-only to apply to (direct requests are exempt —
   // they're handled above). Roles have no "budget" (recurring pay instead),
-  // so the small-job gate never applies to them.
+  // and "price to be agreed" gigs have no budget yet, so neither is gated.
   if (
     job.posting_type !== "role" &&
+    !job.pay_negotiable &&
     jobRequiresSubscriptionToApply(job.budget) &&
     !(await hasEntitlement(user.id, "kinglancer", "applyToSmallJobs"))
   ) {
@@ -121,6 +128,29 @@ export async function POST(request: Request) {
       { error: "You have already applied to this job" },
       { status: 409 },
     );
+  }
+
+  // "Price to be agreed" gigs require the Kinglancer's quote on application;
+  // selecting them later escrows exactly that amount (no off-platform number).
+  let proposedRate: number | null = null;
+  if (isGigPriceToBeAgreed(job)) {
+    const raw = body.proposed_rate;
+    const amount = normalizeCurrencyAmount(Number(raw));
+    if (
+      raw == null ||
+      raw === "" ||
+      !Number.isFinite(amount) ||
+      !hasValidCurrencyPrecision(String(raw)) ||
+      amount < MIN_JOB_BUDGET_GBP ||
+      amount > 50000
+    )
+      return NextResponse.json(
+        {
+          error: `Enter your quote between £${MIN_JOB_BUDGET_GBP} and £50,000.`,
+        },
+        { status: 400 },
+      );
+    proposedRate = amount;
   }
 
   // Fetch whoever should be notified: the org owner for an org-owned job
@@ -143,6 +173,7 @@ export async function POST(request: Request) {
       kinglancer_id: user.id,
       cover_letter: cover_letter.trim(),
       cv_path: cvPath,
+      proposed_rate: proposedRate,
     });
 
     // Notify the client — fire-and-forget, never blocks the response

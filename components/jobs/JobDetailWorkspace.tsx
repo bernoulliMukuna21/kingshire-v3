@@ -14,7 +14,7 @@ import { getApplicationsByJob } from "@/lib/db/applications";
 import type { ApplicationWithKinglancer } from "@/lib/db/applications";
 import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
-import { jobStatusPill, jobPriceLabel } from "@/lib/jobs";
+import { jobStatusPill, jobPriceLabel, isGigPriceToBeAgreed } from "@/lib/jobs";
 import { getJobPaymentPolicy } from "@/lib/payments/policy";
 import type {
   RateType,
@@ -500,7 +500,7 @@ export default async function JobDetailWorkspace({
                 ? rolePayLabel(job.pay_amount, job.pay_cadence ?? "monthly")
                 : jobPriceLabel(job)}
             </p>
-            {job.posting_type !== "role" && (
+            {job.posting_type !== "role" && !isGigPriceToBeAgreed(job) && (
               <p className="mt-1 text-sm text-slate-500">
                 {formatRateType(job.rate_type)}
               </p>
