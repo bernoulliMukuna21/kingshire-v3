@@ -734,7 +734,7 @@ export default function PostJobForm({
               </div>
               <p className="mt-1 text-xs text-slate-500">
                 {gigPriceToBeAgreed
-                  ? "The Kinglancer assesses the work first, then quotes or agrees a price with you. You set that agreed amount when you select them, and it's held in escrow."
+                  ? "Applicants assess the work and submit their own quote. You pick who you want — their quote is held in escrow when you select them."
                   : "Set one total upfront, held in escrow for the whole job."}
               </p>
             </div>
@@ -771,10 +771,10 @@ export default function PostJobForm({
           </>
         ) : canGigNegotiate && gigPriceToBeAgreed ? (
           <>
-            <strong>How payment works:</strong> No budget is charged now. When
-            the Kinglancer has assessed the job and you&apos;ve agreed a price,
-            you enter that amount as you select them — it&apos;s then held in
-            escrow and released only when you approve the completed work.
+            <strong>How payment works:</strong> No budget is charged now.
+            Applicants submit their quote when they apply; when you select one,
+            their quoted amount is held in escrow and released only when you
+            approve the completed work.
           </>
         ) : preferredKinglancer ? (
           <>

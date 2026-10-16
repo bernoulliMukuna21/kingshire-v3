@@ -12,15 +12,18 @@ export function ApplyForm({
   jobId,
   postingType,
   organisationId,
+  priceToBeAgreed = false,
 }: {
   jobId: string;
   postingType: string;
   organisationId: string | null;
+  priceToBeAgreed?: boolean;
 }) {
   const cvRequired = requiresApplicationCv(postingType, organisationId);
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [coverLetter, setCoverLetter] = useState("");
+  const [quote, setQuote] = useState("");
   const [cvPath, setCvPath] = useState<string | null>(null);
   const [cvName, setCvName] = useState<string | null>(null);
   const [uploadingCv, setUploadingCv] = useState(false);
@@ -78,6 +81,10 @@ export function ApplyForm({
       setError("Please write at least a couple of sentences.");
       return;
     }
+    if (priceToBeAgreed && !(Number(quote) > 0)) {
+      setError("Enter your quote for this job.");
+      return;
+    }
     if (cvRequired && !cvPath) {
       setError("Please attach your CV to apply.");
       return;
@@ -91,6 +98,7 @@ export function ApplyForm({
           job_id: jobId,
           cover_letter: coverLetter,
           cv_path: cvPath,
+          ...(priceToBeAgreed ? { proposed_rate: quote } : {}),
         }),
       });
 
@@ -143,6 +151,28 @@ export function ApplyForm({
           {coverLetter.length}/1000
         </p>
       </div>
+
+      {priceToBeAgreed && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+            Your quote (£) <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={quote}
+            onChange={(e) => setQuote(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition-all"
+            placeholder="e.g. 150"
+          />
+          <p className="mt-1 text-xs text-gray-400">
+            The price you&apos;d charge for this job. If you&apos;re selected,
+            this amount is held in escrow — so quote the figure you&apos;re happy
+            to do the work for.
+          </p>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1.5">

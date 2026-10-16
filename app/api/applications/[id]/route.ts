@@ -244,12 +244,13 @@ export async function PATCH(
       );
     }
 
-    // "Price to be agreed" gig: the organisation sets the agreed amount when it
-    // selects an applicant. Persist it as the job budget on first selection so
-    // escrow, fees and display all read a single source of truth. A retry of
-    // the same applicant finds budget already set and skips (idempotent).
+    // "Price to be agreed" gig: the escrow amount is the selected applicant's
+    // own quote (locked — gig selection is an instant hire with no Kinglancer
+    // acceptance step, so the org can't fund a different figure). Persist it as
+    // the job budget on first selection so escrow, fees and display agree. A
+    // retry of the same applicant finds budget already set and skips.
     if (job.pay_negotiable && !(Number(job.budget) > 0)) {
-      const agreed = normalizeCurrencyAmount(Number(body.agreed_budget));
+      const agreed = normalizeCurrencyAmount(Number(application.proposed_rate));
       if (
         !Number.isFinite(agreed) ||
         agreed < MIN_JOB_BUDGET_GBP ||
@@ -257,7 +258,7 @@ export async function PATCH(
       )
         return NextResponse.json(
           {
-            error: `Enter an agreed price between £${MIN_JOB_BUDGET_GBP} and £50,000.`,
+            error: "This applicant hasn't submitted a valid quote for this job.",
           },
           { status: 400 },
         );

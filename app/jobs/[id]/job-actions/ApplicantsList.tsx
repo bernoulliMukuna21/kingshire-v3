@@ -49,11 +49,10 @@ export function ApplicantsList({
     "managed" | "direct"
   >(job?.settlement_mode === "direct" ? "direct" : "managed");
 
-  // A "price to be agreed" gig: the org enters the agreed amount here, which is
-  // escrowed on selection (mirrors how a role captures negotiable pay).
+  // A "price to be agreed" gig: each applicant quotes on application and the
+  // selection escrows exactly that quote (locked — no editing, since gig
+  // selection is an instant hire with no Kinglancer acceptance step).
   const isNegotiableGig = !isRole && Boolean(job?.pay_negotiable);
-  const [gigBudgetInput, setGigBudgetInput] = useState("");
-  const gigPriceInvalid = isNegotiableGig && !(Number(gigBudgetInput) > 0);
 
   const payNotSet = Boolean(isRole && job?.pay_negotiable);
   const payFormInvalid = isRole && !(Number(payAmountInput) > 0);
@@ -92,7 +91,6 @@ export function ApplicantsList({
           : {
               action: "accept",
               method: payMethod,
-              ...(isNegotiableGig ? { agreed_budget: gigBudgetInput } : {}),
             },
       ),
     });
@@ -216,26 +214,16 @@ export function ApplicantsList({
             ) : (
               <div className="space-y-2">
                 {isNegotiableGig && (
-                  <div className="space-y-2 rounded-xl bg-slate-50 p-3">
-                    <label className="block text-sm">
-                      <span className="mb-1 block font-bold uppercase tracking-wide text-xs text-slate-500">
-                        Agreed price (£)
-                      </span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={gigBudgetInput}
-                        onChange={(e) => setGigBudgetInput(e.target.value)}
-                        className="w-full rounded-lg border border-slate-200 px-3 py-2"
-                        placeholder="e.g. 150"
-                      />
-                    </label>
-                    <p className="text-xs text-slate-500">
-                      Enter the price you&apos;ve agreed after the Kinglancer
-                      assessed the work. This amount is held in escrow and
-                      released when you approve the completed job.
-                    </p>
+                  <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
+                    You&apos;re hiring at their quote of{" "}
+                    <strong>
+                      £
+                      {Number(pendingApp?.proposed_rate ?? 0).toLocaleString(
+                        "en-GB",
+                      )}
+                    </strong>
+                    . This amount is held in escrow and released when you
+                    approve the completed work.
                   </div>
                 )}
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -307,7 +295,10 @@ export function ApplicantsList({
         }
         variant="success"
         loading={selectingId !== null}
-        confirmDisabled={payFormInvalid || gigPriceInvalid}
+        confirmDisabled={
+          payFormInvalid ||
+          (isNegotiableGig && !(Number(pendingApp?.proposed_rate) > 0))
+        }
         error={error ?? undefined}
       />
       <BankTransferModal
@@ -377,6 +368,12 @@ export function ApplicantsList({
                     {k.full_name}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {isNegotiableGig && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                        Quoted £
+                        {Number(app.proposed_rate ?? 0).toLocaleString("en-GB")}
+                      </span>
+                    )}
                     {k.location && (
                       <span className="text-xs text-gray-400">
                         {k.location}

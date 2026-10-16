@@ -359,6 +359,7 @@ export default async function JobDetailPage({
                     jobId={id}
                     postingType={job.posting_type}
                     organisationId={job.organisation_id}
+                    priceToBeAgreed={isGigPriceToBeAgreed(job)}
                   />
                 </div>
               ) : profile?.role === "client" ? (
@@ -411,13 +412,12 @@ export default async function JobDetailPage({
                       Price to be agreed
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      Quote or agree a price after assessing the work — held in
-                      escrow on selection
+                      You set your own quote — held in escrow when the
+                      organisation selects you
                     </p>
                     {canApply && (
                       <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
-                        Assess the job, then agree a price with the
-                        organisation.
+                        Assess the job, then enter your quote when you apply.
                       </p>
                     )}
                   </>
