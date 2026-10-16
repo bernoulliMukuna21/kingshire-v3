@@ -1,9 +1,11 @@
+import { getAdminDb } from "@/lib/admin/access";
 import { listDisputedPlacementPayments } from "@/lib/db/placement-payments";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import AdminDisputeActions from "./AdminDisputeActions";
 
 export default async function AdminPlacementDisputesPage() {
+  await getAdminDb();
   const disputes = await listDisputedPlacementPayments();
 
   return (

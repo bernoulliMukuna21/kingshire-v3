@@ -1,3 +1,6 @@
+import { coerceNumericList } from "@/lib/db/coerce";
+import { getAdminDb } from "@/lib/admin/access";
+import { collectPages } from "@/lib/db/pagination";
 import { ApplicantSelectionConflictError } from "@/lib/db/applications";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
@@ -197,19 +200,22 @@ export type ManualFundsQueueItem = {
 export async function getPendingManualAttempts(): Promise<
   ManualFundsQueueItem[]
 > {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("payment_attempts")
-    .select(
-      `id, job_id, amount, platform_fee_client, created_at, client_marked_paid_at,
+  const db = await getAdminDb();
+  const data = await collectPages((from, to) =>
+    db
+      .from("payment_attempts")
+      .select(
+        `id, job_id, amount, platform_fee_client, created_at, client_marked_paid_at,
        job:jobs!job_id(title, organisation_id),
        client:profiles!client_id(full_name),
        worker:profiles!kinglancer_id(full_name)`,
-    )
-    .eq("method", "bank_transfer")
-    .eq("status", "pending")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
+      )
+      .eq("method", "bank_transfer")
+      .eq("status", "pending")
+      .order("created_at", { ascending: true })
+      .order("id")
+      .range(from, to),
+  );
 
   type Row = {
     id: string;
@@ -223,7 +229,10 @@ export async function getPendingManualAttempts(): Promise<
     worker: { full_name: string | null } | null;
   };
 
-  return ((data ?? []) as unknown as Row[]).map((r) => ({
+  return coerceNumericList((data ?? []) as unknown as Row[], [
+    "amount",
+    "platform_fee_client",
+  ]).map((r) => ({
     id: r.id,
     jobId: r.job_id,
     jobTitle: r.job?.title ?? "Job",

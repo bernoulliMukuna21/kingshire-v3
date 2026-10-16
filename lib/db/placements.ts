@@ -1,3 +1,5 @@
+import { getAdminDb } from "@/lib/admin/access";
+import { collectPages } from "@/lib/db/pagination";
 import { resolveCvPath } from "@/lib/cv-storage";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
@@ -780,15 +782,18 @@ export type ExperienceRecordForReview = ExperienceRecordRow & {
 export async function listExperienceRecordsForReview(): Promise<
   ExperienceRecordForReview[]
 > {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("experience_records")
-    .select(
-      "*, organisation:organisations(name), kinglancer:profiles!kinglancer_id(full_name)",
-    )
-    .eq("verification_status", "pending")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
+  const db = await getAdminDb();
+  const data = await collectPages((from, to) =>
+    db
+      .from("experience_records")
+      .select(
+        "*, organisation:organisations(name), kinglancer:profiles!kinglancer_id(full_name)",
+      )
+      .eq("verification_status", "pending")
+      .order("created_at", { ascending: true })
+      .order("id")
+      .range(from, to),
+  );
   return (data ?? []) as unknown as ExperienceRecordForReview[];
 }
 
@@ -855,13 +860,16 @@ export type PlacementForReview = Placement & {
 };
 
 export async function listPlacementsForReview(): Promise<PlacementForReview[]> {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("placements")
-    .select("*, organisation:organisations(name)")
-    .eq("status", "pending_review")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
+  const db = await getAdminDb();
+  const data = await collectPages((from, to) =>
+    db
+      .from("placements")
+      .select("*, organisation:organisations(name)")
+      .eq("status", "pending_review")
+      .order("created_at", { ascending: true })
+      .order("id")
+      .range(from, to),
+  );
   return (data ?? []) as unknown as PlacementForReview[];
 }
 

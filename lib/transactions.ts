@@ -2,6 +2,10 @@ export type TransactionStatusPill = { label: string; className: string };
 
 // Single source of truth for a job escrow transaction status → pill.
 const TRANSACTION_PILLS: Record<string, TransactionStatusPill> = {
+  due: { label: "Due", className: "bg-slate-100 text-slate-600" },
+  processing: { label: "Processing", className: "bg-blue-50 text-blue-700" },
+  failed: { label: "Failed", className: "bg-red-50 text-red-700" },
+  cancelled: { label: "Cancelled", className: "bg-slate-100 text-slate-600" },
   pending: {
     label: "Awaiting payment",
     className: "bg-slate-100 text-slate-600",

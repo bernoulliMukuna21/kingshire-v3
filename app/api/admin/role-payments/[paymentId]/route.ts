@@ -3,6 +3,7 @@ import { settlementResponse } from "@/lib/settlement/http";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasValidAdminSession } from "@/lib/admin-auth";
+import { getEngagement } from "@/lib/db/engagements";
 import { getEngagementPayment } from "@/lib/db/engagement-payments";
 import { releaseEngagementPayment } from "@/lib/settlement/payouts";
 
@@ -41,6 +42,12 @@ export async function POST(
   if (!payment) {
     return NextResponse.json({ error: "Payment not found." }, { status: 404 });
   }
+  const engagement = await getEngagement(payment.engagement_id);
+  if (engagement?.source_kind !== "org_role")
+    return NextResponse.json(
+      { error: "Not an organisation role payment." },
+      { status: 409 },
+    );
   if (payment.status !== "disputed") {
     return NextResponse.json(
       { error: "This payment is not under dispute." },

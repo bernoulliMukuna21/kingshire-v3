@@ -1,10 +1,13 @@
+import { getAdminDb } from "@/lib/admin/access";
+import { collectPages } from "@/lib/db/pagination";
 import {
   reserveJobSettlement,
   finishJobSettlement,
 } from "@/lib/settlement/job-transfers";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/lib/supabase/types";
-import { coerceNumeric } from "@/lib/db/coerce";
+import { deriveAdminPayoutView } from "@/lib/admin/action-view";
+import { coerceNumeric, coerceNumericList } from "@/lib/db/coerce";
 
 type TransactionRow = Database["public"]["Tables"]["transactions"]["Row"];
 
@@ -88,19 +91,31 @@ export type ManualPayoutQueueItem = {
  * Each item carries the worker's payout link (where the admin sends the money).
  */
 export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
-  const db = createServiceClient();
-  const { data, error } = await db
-    .from("transactions")
-    .select(
-      `job_id, kinglancer_id, amount, platform_fee_kinglancer, created_at,
+  const db = await getAdminDb();
+  const data = await collectPages((from, to) =>
+    db
+      .from("transactions")
+      .select(
+        `job_id, kinglancer_id, amount, platform_fee_kinglancer, created_at, status, payment_method, payout_method, stripe_transfer_id, stripe_refund_id, manual_payout_reference, release_attempt_id,
        job:jobs!job_id(title, status, organisation_id),
        worker:profiles!kinglancer_id(full_name, email)`,
-    )
-    .eq("status", "held")
-    .order("created_at", { ascending: true });
-  if (error) throw error;
+      )
+      .eq("status", "held")
+      .order("created_at", { ascending: true })
+      .order("id")
+      .range(from, to),
+  );
 
-  type Row = {
+  type Row = Pick<
+    TransactionRow,
+    | "status"
+    | "payment_method"
+    | "payout_method"
+    | "stripe_transfer_id"
+    | "stripe_refund_id"
+    | "manual_payout_reference"
+    | "release_attempt_id"
+  > & {
     job_id: string;
     kinglancer_id: string;
     amount: number | string;
@@ -114,8 +129,11 @@ export async function getManualPayoutQueue(): Promise<ManualPayoutQueueItem[]> {
     worker: { full_name: string | null; email: string | null } | null;
   };
 
-  const items = ((data ?? []) as unknown as Row[])
-    .filter((r) => r.job?.status === "approved")
+  const items = coerceNumericList((data ?? []) as unknown as Row[], [
+    "amount",
+    "platform_fee_kinglancer",
+  ])
+    .filter((r) => deriveAdminPayoutView(r, r.job?.status ?? "").manual)
     .map((r) => ({
       jobId: r.job_id,
       jobTitle: r.job?.title ?? "Job",

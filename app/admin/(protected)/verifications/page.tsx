@@ -1,9 +1,11 @@
+import { getAdminDb } from "@/lib/admin/access";
 import { listExperienceRecordsForReview } from "@/lib/db/placements";
 import { Card } from "@/components/ui/Card";
 import EmptyState from "@/components/ui/EmptyState";
 import AdminVerificationActions from "./AdminVerificationActions";
 
 export default async function AdminVerificationsPage() {
+  await getAdminDb();
   const records = await listExperienceRecordsForReview();
 
   return (
@@ -26,7 +28,7 @@ export default async function AdminVerificationsPage() {
       ) : (
         <div className="space-y-4">
           {records.map((r) => (
-            <Card key={r.id} className="p-5">
+            <Card id={r.id} key={r.id} className="p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-lg font-black text-slate-950">{r.title}</p>

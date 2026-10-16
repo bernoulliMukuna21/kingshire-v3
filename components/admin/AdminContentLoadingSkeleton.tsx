@@ -1,49 +1,39 @@
 import { LoadingBlock } from "@/components/ui/LoadingSkeleton";
-
+/** Shared by every admin route: keep neutral so navigation never flashes
+ * an unrelated overview/finance banner while another section loads. */
 export default function AdminContentLoadingSkeleton() {
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white bg-white/80 p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50 backdrop-blur">
-        <div className="mb-3 h-3 w-20 rounded-full bg-blue-100" />
-        <LoadingBlock className="h-10 max-w-sm bg-slate-200/80" />
-        <LoadingBlock className="mt-4 h-4 max-w-xl bg-slate-200/70" />
-      </section>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {[0, 1, 2, 3].map((item) => (
+    <div
+      className="space-y-6"
+      aria-label="Loading admin workspace"
+      role="status"
+    >
+      <div className="space-y-3">
+        <LoadingBlock className="h-7 w-36 bg-slate-200" />
+        <LoadingBlock className="h-3 max-w-sm bg-slate-100" />
+      </div>
+      <div className="flex gap-3">
+        <LoadingBlock className="h-10 w-48 bg-slate-100" />
+        <LoadingBlock className="h-10 w-24 bg-slate-100" />
+      </div>
+      <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
+        <div className="border-b border-slate-100 bg-slate-50 p-5">
+          <LoadingBlock className="h-3 w-32 bg-slate-200" />
+        </div>
+        {[0, 1, 2, 3].map((key) => (
           <div
-            key={item}
-            className="rounded-[1.5rem] border border-white bg-white/90 p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50"
+            key={key}
+            className="flex items-center justify-between gap-5 border-b border-slate-100 p-5"
           >
-            <LoadingBlock className="mb-4 h-10 w-10 rounded-xl bg-slate-200/80" />
-            <LoadingBlock className="h-8 w-16 bg-slate-200/80" />
-            <LoadingBlock className="mt-3 h-3 w-24 bg-slate-200/70" />
-            <LoadingBlock className="mt-2 h-3 w-32 bg-slate-200/60" />
+            <div className="w-2/3 space-y-3">
+              <LoadingBlock className="h-4 max-w-xs bg-slate-200" />
+              <LoadingBlock className="h-3 max-w-sm bg-slate-100" />
+            </div>
+            <LoadingBlock className="h-6 w-20 bg-slate-100" />
           </div>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        {[0, 1, 2].map((panel) => (
-          <section
-            key={panel}
-            className="overflow-hidden rounded-[1.5rem] border border-white bg-white/90 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200/50"
-          >
-            <div className="border-b border-gray-50 px-5 py-4 sm:px-6">
-              <LoadingBlock className="h-4 w-32 bg-slate-200/80" />
-              <LoadingBlock className="mt-2 h-3 w-44 bg-slate-200/60" />
-            </div>
-            <div className="divide-y divide-gray-50">
-              {[0, 1, 2].map((row) => (
-                <div key={row} className="px-5 py-4 sm:px-6">
-                  <LoadingBlock className="h-4 w-3/4 bg-slate-200/80" />
-                  <LoadingBlock className="mt-2 h-3 w-1/2 bg-slate-200/60" />
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
+      </section>
+      <span className="sr-only">Loading…</span>
     </div>
   );
 }
