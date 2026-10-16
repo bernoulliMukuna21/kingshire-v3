@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { getJobById } from "@/lib/db/jobs";
 import { getPendingPaymentAttemptByJob } from "@/lib/db/payment-attempts";
 import type { RateType } from "@/lib/jobs";
+import { isGigPriceToBeAgreed } from "@/lib/jobs";
 import { MIN_JOB_BUDGET_GBP } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -156,6 +157,10 @@ export async function PATCH(
     .neq("status", "rejected");
 
   const hasApplicants = (applicantCount ?? 0) > 0;
+  // A "price to be agreed" gig has no budget of its own — the price comes from
+  // each applicant's quote — so its budget is locked the same way as once
+  // applicants exist (never validated or overwritten on edit).
+  const budgetLocked = hasApplicants || isGigPriceToBeAgreed(job);
 
   const body = await request.json();
   const { title, description, categories, budget, rate_type, deadline } = body;
@@ -175,8 +180,8 @@ export async function PATCH(
       { error: "Description must be between 10 and 500 characters." },
       { status: 400 },
     );
-  // Only validate + apply budget/rate changes when there are no applicants
-  if (!hasApplicants) {
+  // Only validate + apply budget/rate changes when the budget isn't locked
+  if (!budgetLocked) {
     if (
       !Number.isFinite(budgetNum) ||
       !hasValidCurrencyPrecision(budget) ||
@@ -235,8 +240,8 @@ export async function PATCH(
     deadline: deadline || null,
   };
 
-  // Only update budget + rate_type when no one has applied
-  if (!hasApplicants) {
+  // Only update budget + rate_type when the budget isn't locked
+  if (!budgetLocked) {
     updatePayload.budget = normalizedBudget;
     updatePayload.rate_type = resolvedRateType as
       | "fixed"
@@ -258,5 +263,5 @@ export async function PATCH(
 
   revalidateTag("open-jobs", { expire: 0 });
 
-  return NextResponse.json({ updated: true, budgetLocked: hasApplicants });
+  return NextResponse.json({ updated: true, budgetLocked });
 }
