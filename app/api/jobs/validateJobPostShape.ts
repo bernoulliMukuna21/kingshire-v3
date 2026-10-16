@@ -42,11 +42,15 @@ export function validateJobPostShape(input: {
     deadline,
   } = input;
 
+  // Org one-off gigs may be posted "price to be agreed" — no budget up front;
+  // the agreed amount is captured and escrowed at selection.
+  const gigPriceToBeAgreed = !isRole && !!organisationId && !!pay_negotiable;
+
   if (
     !titleStr ||
     !descStr ||
     !(categories as unknown[] | undefined)?.length ||
-    (!isRole && !budget)
+    (!isRole && !gigPriceToBeAgreed && !budget)
   )
     return { error: "Missing required fields", status: 400 };
   if (titleStr.length < 3 || titleStr.length > 120)
@@ -60,10 +64,12 @@ export function validateJobPostShape(input: {
       status: 400,
     };
   if (
-    (!isRole && !Number.isFinite(budgetNum)) ||
-    (!isRole && !hasValidCurrencyPrecision(String(budget))) ||
-    (!isRole && normalizedBudget < MIN_JOB_BUDGET_GBP) ||
-    (!isRole && normalizedBudget > 50000)
+    !isRole &&
+    !gigPriceToBeAgreed &&
+    (!Number.isFinite(budgetNum) ||
+      !hasValidCurrencyPrecision(String(budget)) ||
+      normalizedBudget < MIN_JOB_BUDGET_GBP ||
+      normalizedBudget > 50000)
   )
     return {
       error: `Budget must be between £${MIN_JOB_BUDGET_GBP} and £50,000 with up to 2 decimals.`,

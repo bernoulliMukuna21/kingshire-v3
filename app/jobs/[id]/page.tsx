@@ -4,7 +4,7 @@ import { Calendar, Briefcase, Tag, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import BackButton from "./BackButton";
 import { getJobById } from "@/lib/db/jobs";
-import { jobStatusPill, canSeeExactLocation } from "@/lib/jobs";
+import { jobStatusPill, canSeeExactLocation, isGigPriceToBeAgreed } from "@/lib/jobs";
 import JobKeyDetails from "@/components/jobs/JobKeyDetails";
 import {
   getJobPaymentPolicy,
@@ -134,10 +134,12 @@ export default async function JobDetailPage({
 
   // Small jobs are subscriber-only to apply to. Roles have no "budget" (pay is
   // recurring, negotiable or not) so the small-job gate never applies to them.
+  // A "price to be agreed" gig has no budget yet either, so it's exempt too.
   const applyNeedsSubscription =
     !!canApply &&
     !!profile &&
     job.posting_type !== "role" &&
+    !job.pay_negotiable &&
     jobRequiresSubscriptionToApply(job.budget) &&
     !(await hasEntitlement(profile.id, "kinglancer", "applyToSmallJobs"));
 
@@ -403,18 +405,38 @@ export default async function JobDetailPage({
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
                   Budget
                 </p>
-                <p className="text-3xl font-black text-green-600">
-                  £{Number(job.budget).toLocaleString()}
-                  <span className="text-base font-medium text-gray-500 ml-1">
-                    {budgetSuffix}
-                  </span>
-                </p>
-                <p className="text-xs text-gray-400 mt-1">{budgetNote}</p>
-                {canApply && (
-                  <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
-                    By applying you agree to complete this work for the budget
-                    stated above.
-                  </p>
+                {isGigPriceToBeAgreed(job) ? (
+                  <>
+                    <p className="text-2xl font-black text-green-600">
+                      Price to be agreed
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Quote or agree a price after assessing the work — held in
+                      escrow on selection
+                    </p>
+                    {canApply && (
+                      <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
+                        Assess the job, then agree a price with the
+                        organisation.
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <p className="text-3xl font-black text-green-600">
+                      £{Number(job.budget).toLocaleString()}
+                      <span className="text-base font-medium text-gray-500 ml-1">
+                        {budgetSuffix}
+                      </span>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">{budgetNote}</p>
+                    {canApply && (
+                      <p className="text-xs text-gray-400 mt-3 border-t border-gray-50 pt-3">
+                        By applying you agree to complete this work for the
+                        budget stated above.
+                      </p>
+                    )}
+                  </>
                 )}
               </>
             )}

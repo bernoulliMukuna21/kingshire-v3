@@ -99,9 +99,10 @@ export async function POST(request: Request) {
 
   // Small jobs are subscriber-only to apply to (direct requests are exempt —
   // they're handled above). Roles have no "budget" (recurring pay instead),
-  // so the small-job gate never applies to them.
+  // and "price to be agreed" gigs have no budget yet, so neither is gated.
   if (
     job.posting_type !== "role" &&
+    !job.pay_negotiable &&
     jobRequiresSubscriptionToApply(job.budget) &&
     !(await hasEntitlement(user.id, "kinglancer", "applyToSmallJobs"))
   ) {

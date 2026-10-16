@@ -69,6 +69,13 @@ export default function PostJobForm({
   const [description, setDescription] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [budget, setBudget] = useState("");
+  // Org one-off gigs can be posted "price to be agreed": the Kinglancer assesses
+  // the work, then quotes or agrees the price on-site. The amount is captured
+  // and escrowed when an applicant is selected. Direct requests negotiate via
+  // counter-offers instead, so they keep a fixed budget.
+  const [gigPriceToBeAgreed, setGigPriceToBeAgreed] = useState(false);
+  const canGigNegotiate =
+    !!organisationId && !preferredKinglancer && postingType === "gig";
   const [workMode, setWorkMode] = useState<
     "online" | "in_person" | "hybrid" | ""
   >("");
@@ -119,9 +126,11 @@ export default function PostJobForm({
     setError(null);
     setFieldErrors({});
     const isRole = canPostRole && postingType === "role";
+    const priceToBeAgreed = canGigNegotiate && gigPriceToBeAgreed;
 
     const fe = validatePostJobForm({
       isRole,
+      gigPriceToBeAgreed: priceToBeAgreed,
       title,
       description,
       categories,
@@ -154,6 +163,7 @@ export default function PostJobForm({
     setLoading(true);
     setError(null);
     const isRole = canPostRole && postingType === "role";
+    const priceToBeAgreed = canGigNegotiate && gigPriceToBeAgreed;
 
     try {
       const payload = JSON.stringify(
@@ -162,6 +172,7 @@ export default function PostJobForm({
           description,
           categories,
           isRole,
+          gigPriceToBeAgreed: priceToBeAgreed,
           employmentType,
           payCadence,
           payAmount,
@@ -694,14 +705,51 @@ export default function PostJobForm({
           )}
         </>
       ) : (
-        <BudgetField
-          budget={budget}
-          onChange={(v) => {
-            setBudget(v);
-            clearFieldError("budget");
-          }}
-          error={fieldErrors.budget}
-        />
+        <>
+          {canGigNegotiate && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                How is the price set? <span className="text-red-500">*</span>
+              </label>
+              <div className="flex overflow-hidden rounded-lg border border-gray-200 text-xs font-medium">
+                {(
+                  [
+                    { value: false, label: "Set a fixed budget" },
+                    { value: true, label: "Price to be agreed" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={String(opt.value)}
+                    type="button"
+                    onClick={() => setGigPriceToBeAgreed(opt.value)}
+                    className={`flex-1 py-2 transition-colors ${
+                      gigPriceToBeAgreed === opt.value
+                        ? "bg-blue-600 text-white"
+                        : "bg-white text-gray-500 hover:bg-gray-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {gigPriceToBeAgreed
+                  ? "The Kinglancer assesses the work first, then quotes or agrees a price with you. You set that agreed amount when you select them, and it's held in escrow."
+                  : "Set one total upfront, held in escrow for the whole job."}
+              </p>
+            </div>
+          )}
+          {canGigNegotiate && gigPriceToBeAgreed ? null : (
+            <BudgetField
+              budget={budget}
+              onChange={(v) => {
+                setBudget(v);
+                clearFieldError("budget");
+              }}
+              error={fieldErrors.budget}
+            />
+          )}
+        </>
       )}
 
       {/* Error */}
@@ -720,6 +768,13 @@ export default function PostJobForm({
             recurring pay is either KingsHire-managed (charged and held in
             escrow each period) or paid by your Organisation directly, depending
             on what you choose above.
+          </>
+        ) : canGigNegotiate && gigPriceToBeAgreed ? (
+          <>
+            <strong>How payment works:</strong> No budget is charged now. When
+            the Kinglancer has assessed the job and you&apos;ve agreed a price,
+            you enter that amount as you select them — it&apos;s then held in
+            escrow and released only when you approve the completed work.
           </>
         ) : preferredKinglancer ? (
           <>

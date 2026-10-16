@@ -244,6 +244,37 @@ export async function PATCH(
       );
     }
 
+    // "Price to be agreed" gig: the organisation sets the agreed amount when it
+    // selects an applicant. Persist it as the job budget on first selection so
+    // escrow, fees and display all read a single source of truth. A retry of
+    // the same applicant finds budget already set and skips (idempotent).
+    if (job.pay_negotiable && !(Number(job.budget) > 0)) {
+      const agreed = normalizeCurrencyAmount(Number(body.agreed_budget));
+      if (
+        !Number.isFinite(agreed) ||
+        agreed < MIN_JOB_BUDGET_GBP ||
+        agreed > 50000
+      )
+        return NextResponse.json(
+          {
+            error: `Enter an agreed price between £${MIN_JOB_BUDGET_GBP} and £50,000.`,
+          },
+          { status: 400 },
+        );
+      const { error: budgetError } = await createServiceClient()
+        .from("jobs")
+        .update({ budget: agreed })
+        .eq("id", application.job_id)
+        .eq("status", "open");
+      if (budgetError) {
+        return NextResponse.json(
+          { error: "Could not set the agreed price. Please try again." },
+          { status: 500 },
+        );
+      }
+      job.budget = agreed;
+    }
+
     // Bank transfer (manual): no Stripe. Record a pending attempt and return our
     // bank details + reference; an admin confirms funds received later.
     if (method === "bank_transfer") {

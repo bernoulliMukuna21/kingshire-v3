@@ -26,6 +26,7 @@ export type WorkMode = "online" | "in_person" | "hybrid" | "";
  * out of the component so it's testable without rendering a form. */
 export function validatePostJobForm(input: {
   isRole: boolean;
+  gigPriceToBeAgreed: boolean;
   title: string;
   description: string;
   categories: string[];
@@ -45,6 +46,7 @@ export function validatePostJobForm(input: {
 }): PostJobFieldErrors {
   const {
     isRole,
+    gigPriceToBeAgreed,
     title,
     description,
     categories,
@@ -69,7 +71,7 @@ export function validatePostJobForm(input: {
   if (categories.length === 0)
     fe.categories = "Please select at least one category.";
 
-  if (!isRole) {
+  if (!isRole && !gigPriceToBeAgreed) {
     if (!budget || totalBudget <= 0)
       fe.budget = "Please enter a valid budget.";
     else if (!hasValidCurrencyPrecision(budget))
@@ -78,7 +80,7 @@ export function validatePostJobForm(input: {
       fe.budget = `Minimum total budget is £${MIN_JOB_BUDGET_GBP}.`;
     else if (totalBudget > 50000)
       fe.budget = "Maximum total budget is £50,000.";
-  } else {
+  } else if (isRole) {
     if (!payNegotiable) {
       const amount = Number(payAmount);
       if (!Number.isFinite(amount) || amount < MIN_JOB_BUDGET_GBP)
@@ -145,6 +147,7 @@ export function buildJobPostPayload(input: {
   description: string;
   categories: string[];
   isRole: boolean;
+  gigPriceToBeAgreed: boolean;
   employmentType: "permanent" | "temporary";
   payCadence: "weekly" | "monthly";
   payAmount: string;
@@ -169,6 +172,7 @@ export function buildJobPostPayload(input: {
     description,
     categories,
     isRole,
+    gigPriceToBeAgreed,
     employmentType,
     payCadence,
     payAmount,
@@ -205,7 +209,8 @@ export function buildJobPostPayload(input: {
           ends_at: employmentType === "temporary" ? roleEndsAt : null,
         }
       : {
-          budget: totalBudget,
+          budget: gigPriceToBeAgreed ? 0 : totalBudget,
+          pay_negotiable: gigPriceToBeAgreed,
           rate_type: "fixed",
           invited_kinglancer_id: preferredKinglancerId ?? null,
           scheduled_at: scheduledAt || null,

@@ -202,6 +202,9 @@ export async function POST(request: Request) {
   const titleStr = (title ?? "").trim();
   const descStr = (description ?? "").trim();
   const isRole = posting_type === "role";
+  // An org one-off gig posted "price to be agreed": no budget up front, the
+  // agreed amount is captured and escrowed when an applicant is selected.
+  const gigNegotiable = !isRole && !!organisationId && !!pay_negotiable;
   const budgetNum = Number(budget);
   const normalizedBudget = normalizeCurrencyAmount(budgetNum);
 
@@ -346,7 +349,7 @@ export async function POST(request: Request) {
         title: titleStr,
         description: descStr,
         categories,
-        budget: isRole ? 0 : normalizedBudget,
+        budget: isRole || gigNegotiable ? 0 : normalizedBudget,
         rate_type: resolvedRateType,
         work_mode: resolvedWorkMode,
         location: resolvedArea,
@@ -367,7 +370,7 @@ export async function POST(request: Request) {
         employment_type: isRole ? employment_type : null,
         pay_cadence: isRole ? pay_cadence : null,
         pay_amount: isRole && !pay_negotiable ? Number(pay_amount) : null,
-        pay_negotiable: isRole ? !!pay_negotiable : false,
+        pay_negotiable: isRole ? !!pay_negotiable : gigNegotiable,
         settlement_mode: isRole ? settlement_mode : null,
       },
       { useServiceRole: !!organisationId },

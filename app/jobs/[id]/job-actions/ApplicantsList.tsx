@@ -49,6 +49,12 @@ export function ApplicantsList({
     "managed" | "direct"
   >(job?.settlement_mode === "direct" ? "direct" : "managed");
 
+  // A "price to be agreed" gig: the org enters the agreed amount here, which is
+  // escrowed on selection (mirrors how a role captures negotiable pay).
+  const isNegotiableGig = !isRole && Boolean(job?.pay_negotiable);
+  const [gigBudgetInput, setGigBudgetInput] = useState("");
+  const gigPriceInvalid = isNegotiableGig && !(Number(gigBudgetInput) > 0);
+
   const payNotSet = Boolean(isRole && job?.pay_negotiable);
   const payFormInvalid = isRole && !(Number(payAmountInput) > 0);
 
@@ -83,7 +89,11 @@ export function ApplicantsList({
               pay_cadence: payCadenceInput,
               settlement_mode: settlementModeInput,
             }
-          : { action: "accept", method: payMethod },
+          : {
+              action: "accept",
+              method: payMethod,
+              ...(isNegotiableGig ? { agreed_budget: gigBudgetInput } : {}),
+            },
       ),
     });
 
@@ -205,6 +215,29 @@ export function ApplicantsList({
               </div>
             ) : (
               <div className="space-y-2">
+                {isNegotiableGig && (
+                  <div className="space-y-2 rounded-xl bg-slate-50 p-3">
+                    <label className="block text-sm">
+                      <span className="mb-1 block font-bold uppercase tracking-wide text-xs text-slate-500">
+                        Agreed price (£)
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={gigBudgetInput}
+                        onChange={(e) => setGigBudgetInput(e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2"
+                        placeholder="e.g. 150"
+                      />
+                    </label>
+                    <p className="text-xs text-slate-500">
+                      Enter the price you&apos;ve agreed after the Kinglancer
+                      assessed the work. This amount is held in escrow and
+                      released when you approve the completed job.
+                    </p>
+                  </div>
+                )}
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
                   How would you like to pay?
                 </p>
@@ -274,7 +307,7 @@ export function ApplicantsList({
         }
         variant="success"
         loading={selectingId !== null}
-        confirmDisabled={payFormInvalid}
+        confirmDisabled={payFormInvalid || gigPriceInvalid}
         error={error ?? undefined}
       />
       <BankTransferModal
