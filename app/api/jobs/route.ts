@@ -378,7 +378,7 @@ export async function POST(request: Request) {
 
     jobCreated = true;
 
-    await notifyMatchedKinglancers(job, invitedKinglancerId, normalizedBudget);
+    await notifyMatchedKinglancers(job, invitedKinglancerId);
 
     if (!invitedKinglancerId) {
       revalidateTag("open-jobs", "max");
