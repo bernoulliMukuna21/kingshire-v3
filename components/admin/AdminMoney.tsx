@@ -85,7 +85,8 @@ export function AdminFinanceDetails({ finances }: { finances: AdminFinances }) {
               {adminMoney(summary?.estimatedWithdrawableGBP)}
             </p>
             <p className="mt-2 text-sm text-slate-500">
-              Stripe cash after setting aside held client payments.
+              Money left in Stripe after setting aside payments still held for
+              clients and workers. Stripe fees already deducted.
             </p>
           </div>
           <span className="rounded-xl bg-emerald-50 p-3 text-emerald-700">
@@ -98,22 +99,17 @@ export function AdminFinanceDetails({ finances }: { finances: AdminFinances }) {
           </p>
         )}
       </section>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {[
           {
-            label: "Stripe balance",
-            value: finances.availableGBP,
-            detail: "Settled funds, after Stripe fees",
+            label: "Earned to date",
+            value: summary?.platformNetProceedsGBP,
+            detail: "After Stripe fees, before tax and other business costs",
           },
           {
-            label: "Worker funds held",
+            label: "Still to pay workers",
             value: summary?.stripeOwedGBP,
-            detail: "Stripe-funded work awaiting payout",
-          },
-          {
-            label: "Job-fee revenue",
-            value: summary?.platformFeesGBP,
-            detail: "Released one-off fees, before costs",
+            detail: "Worker payments set aside in Stripe",
           },
         ].map((metric) => (
           <section
@@ -137,49 +133,26 @@ export function AdminFinanceDetails({ finances }: { finances: AdminFinances }) {
         >
           <CircleAlert size={18} className="shrink-0" />
           <span>
-            Some payment records need matching. Earnings are not verified.
+            We need to check some payment records before confirming earnings.
           </span>
           <ArrowUpRight size={17} className="ml-auto shrink-0" />
         </Link>
       )}
-      <details className="rounded-2xl border border-slate-100 bg-white p-5">
-        <summary className="cursor-pointer text-sm font-semibold">
-          More figures and definitions
-        </summary>
-        <dl className="mt-5 grid gap-5 sm:grid-cols-2">
-          {[
-            {
-              label: "Net earnings to date",
-              value: summary?.platformNetProceedsGBP,
-            },
-            {
-              label: "Stripe fees already deducted",
-              value: summary?.stripeCostsGBP,
-            },
-            { label: "Still settling", value: finances.pendingGBP },
-            {
-              label: "Bank-funded worker obligations",
-              value: summary?.bankOwedGBP,
-            },
-            {
-              label: "Held client fees reserved",
-              value: summary?.deferredStripeFeesGBP,
-            },
-          ].map((metric) => (
-            <div key={metric.label}>
-              <dt className="text-xs text-slate-500">{metric.label}</dt>
-              <dd className="mt-1 text-lg font-bold tabular-nums">
-                {adminMoney(metric.value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-        <p className="mt-5 text-xs leading-relaxed text-slate-500">
-          Cash can include top-ups and is different from earnings. Net earnings
-          include subscriptions and recorded bank fees, after Stripe costs and
-          before tax or other business expenses.
+      {(summary?.bankOwedGBP ?? 0) > 0 && (
+        <Link
+          href="/admin/finance?tab=payouts"
+          className="block rounded-xl bg-slate-50 p-4 text-sm text-slate-600"
+        >
+          Another {adminMoney(summary?.bankOwedGBP)} is recorded for workers
+          outside Stripe. Review these under Payouts →
+        </Link>
+      )}
+      {(finances.pendingGBP ?? 0) > 0 && (
+        <p className="px-1 text-sm text-slate-500">
+          Another {adminMoney(finances.pendingGBP)} is on its way from Stripe.
+          It is not included in the available money yet.
         </p>
-      </details>
+      )}
     </div>
   );
 }
@@ -196,13 +169,13 @@ export function AdminReconciliationPanel({
     <section className="rounded-2xl border border-slate-100 bg-white p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="font-bold">Payment matching</h2>
+          <h2 className="font-bold">Are the figures up to date?</h2>
           <p className="mt-1 text-sm text-slate-500">
             {missing
-              ? "Payment matching could not be completed."
+              ? "We couldn’t check the records against Stripe. Try refreshing this page."
               : issues.length
-                ? `${issues.length} records need checking before earnings can be verified.`
-                : "Receipts and transfers have been checked against payment records."}
+                ? "Some Stripe payments do not match our records yet. Support needs to check them before we can confirm earnings. This does not mean a customer or worker is owed money."
+                : "The payment records have been checked against Stripe."}
           </p>
         </div>
         <span
@@ -214,7 +187,7 @@ export function AdminReconciliationPanel({
       {(issues.length > 0 || differences.length > 0) && (
         <details className="mt-4 border-t border-slate-100 pt-4">
           <summary className="cursor-pointer text-sm font-semibold text-slate-600">
-            Show technical matching details
+            Details for support
           </summary>
           <ul className="mt-4 max-h-80 space-y-2 overflow-y-auto break-words text-xs leading-relaxed text-slate-500">
             {[...issues, ...differences].map((message, index) => (

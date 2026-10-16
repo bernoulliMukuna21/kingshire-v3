@@ -49,8 +49,13 @@ export default function RecoveryActions({
   const disabled = busy || reason.trim().length < 10;
   return (
     <div className="mt-4 space-y-3">
+      <p className="text-xs text-slate-500">
+        For support staff: check Stripe first. Sending a saved request or
+        restarting payments can move money. Allowing another attempt clears the
+        stopped attempt; it does not send money immediately.
+      </p>
       <label className="block text-sm">
-        Reason for recovery
+        What did you check?
         <input
           className="mt-1 block w-full rounded border p-2"
           value={reason}
@@ -77,7 +82,7 @@ export default function RecoveryActions({
             onClick={() => submit("resume")}
             className="rounded border px-3 py-2 disabled:opacity-40"
           >
-            Resume settlement
+            Restart ongoing payments
           </button>
         )}
         {canReset && (
@@ -86,7 +91,7 @@ export default function RecoveryActions({
             onClick={() => submit("reset")}
             className="rounded border px-3 py-2 disabled:opacity-40"
           >
-            Reset unsuccessful attempt
+            Allow this payment to be tried again
           </button>
         )}
         {canRetry && (
@@ -95,7 +100,7 @@ export default function RecoveryActions({
             onClick={() => submit("retry")}
             className="rounded border px-3 py-2 disabled:opacity-40"
           >
-            Retry saved Stripe request
+            Send the saved payment request again
           </button>
         )}
         {ledger && (
@@ -106,7 +111,7 @@ export default function RecoveryActions({
             onClick={() => submit("reconcile")}
             className="rounded border px-3 py-2 disabled:opacity-40"
           >
-            Verify and record existing outcome
+            Check Stripe and save the result
           </button>
         )}
       </div>
