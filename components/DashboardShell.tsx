@@ -1,5 +1,6 @@
 "use client";
 
+import HelpLinks from "@/components/support/HelpLinks";
 import WorkspaceSwitcher from "@/components/WorkspaceSwitcher";
 import Link from "next/link";
 import Image from "next/image";
@@ -143,6 +144,7 @@ export default function DashboardShell({ profile, organisations, children }: Pro
               Settings
             </Link>
           </div>
+          <HelpLinks />
           <SignOutButton className="w-full" />
         </div>
       </div>

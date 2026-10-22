@@ -5,6 +5,7 @@ export const adminNavigation = [
   { label: "People", href: "/admin/users", icon: "people" },
   { label: "Work", href: "/admin/jobs", icon: "work" },
   { label: "Reviews", href: "/admin/reviews", icon: "reviews" },
+  { label: "Enquiries", href: "/admin/support", icon: "support" },
 ] as const;
 export function adminSection(pathname: string) {
   if (

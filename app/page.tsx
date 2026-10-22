@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import OrganisationDemo from "@/components/home/OrganisationDemo";
 import HeroSection from "@/components/home/HeroSection";
 import HowItWorks from "@/components/home/HowItWorks";
 import TrustSection from "@/components/home/TrustSection";
@@ -61,6 +62,7 @@ export default async function HomePage() {
         ]}
       />
       <HowItWorks />
+      <OrganisationDemo />
       <TrustSection />
       <TopKinglancers />
       <CtaBanner />

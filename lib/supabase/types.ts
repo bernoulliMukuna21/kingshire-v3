@@ -113,6 +113,45 @@ export type Database = {
           },
         ]
       }
+      engagement_check_ins: {
+        Row: {
+          author_id: string
+          created_at: string
+          engagement_id: string
+          id: string
+          note: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          engagement_id: string
+          id?: string
+          note: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          engagement_id?: string
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_check_ins_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "engagement_check_ins_engagement_id_fkey"
+            columns: ["engagement_id"]
+            isOneToOne: false
+            referencedRelation: "engagements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engagement_payments: {
         Row: {
           attempt_customer_id: string | null
@@ -1726,6 +1765,54 @@ export type Database = {
           },
         ]
       }
+      support_enquiries: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          inbox_email_claimed_at: string | null
+          message: string
+          name: string
+          organisation: string
+          reference: string
+          sender_hash: string
+          source_path: string
+          status: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string
+          id: string
+          inbox_email_claimed_at?: string | null
+          message: string
+          name?: string
+          organisation?: string
+          reference?: string
+          sender_hash: string
+          source_path?: string
+          status?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          inbox_email_claimed_at?: string | null
+          message?: string
+          name?: string
+          organisation?: string
+          reference?: string
+          sender_hash?: string
+          source_path?: string
+          status?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -2268,6 +2355,20 @@ export type Database = {
           review_id: string
           reviewee_id: string
         }[]
+      }
+      submit_support_enquiry: {
+        Args: {
+          p_email: string
+          p_id: string
+          p_message: string
+          p_name: string
+          p_organisation: string
+          p_reference: string
+          p_sender_hash: string
+          p_source_path: string
+          p_topic: string
+        }
+        Returns: string
       }
       transfer_organisation_ownership: {
         Args: {

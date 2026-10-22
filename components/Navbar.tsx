@@ -11,6 +11,7 @@ import { ButtonLink } from "@/components/ui/Button";
 
 const navLinks = [
   { label: "How it works", href: "/#how-it-works" },
+  { label: "Get help", href: "/contact" },
   { label: "Browse Jobs", href: "/jobs" },
   { label: "Placements", href: "/placements" },
   { label: "Kinglancers", href: "/kinglancers" },
@@ -19,6 +20,7 @@ const navLinks = [
 
 const clientNavLinks = [
   { label: "How it works", href: "/#how-it-works" },
+  { label: "Get help", href: "/contact" },
   { label: "Post a Job", href: "/jobs/post" },
   { label: "Placements", href: "/placements" },
   { label: "Kinglancers", href: "/kinglancers" },
@@ -28,6 +30,7 @@ const clientNavLinks = [
 // Kinglancers don't run Organisations, so that link is hidden for them.
 const kinglancerNavLinks = [
   { label: "How it works", href: "/#how-it-works" },
+  { label: "Get help", href: "/contact" },
   { label: "Browse Jobs", href: "/jobs" },
   { label: "Placements", href: "/placements" },
   { label: "Kinglancers", href: "/kinglancers" },
@@ -91,7 +94,7 @@ export default function Navbar({
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden lg:flex items-center gap-5">
           {visibleNavLinks.map((link) => (
             <Link
               key={link.label}
@@ -106,7 +109,7 @@ export default function Navbar({
         </nav>
 
         {/* CTA buttons */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           {authReady &&
             (isLoggedIn ? (
               <>
@@ -136,8 +139,10 @@ export default function Navbar({
 
         {/* Mobile menu button */}
         <button
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={menuOpen}
           onClick={() => setMenuOpen(!menuOpen)}
-          className={`md:hidden p-2 rounded-lg transition-colors ${isSolid ? "text-gray-700" : "text-white"}`}
+          className={`lg:hidden p-2 rounded-lg transition-colors ${isSolid ? "text-gray-700" : "text-white"}`}
         >
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
@@ -150,7 +155,7 @@ export default function Navbar({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-b border-gray-100 px-6 pb-4"
+            className="lg:hidden bg-white border-b border-gray-100 px-6 pb-4"
           >
             <nav className="flex flex-col gap-1 pt-2">
               {visibleNavLinks.map((link) => (
