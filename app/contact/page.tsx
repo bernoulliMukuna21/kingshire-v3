@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   ArrowUpRight,
   Building2,
@@ -9,8 +8,12 @@ import {
   Wallet,
 } from "lucide-react";
 import PublicShell from "@/components/ui/PublicShell";
+import {
+  FeedbackButton,
+  FeedbackEntry,
+} from "@/components/support/FeedbackProvider";
 import ContactForm from "@/components/support/ContactForm";
-import { FEEDBACK_URL, SUPPORT_EMAIL } from "@/lib/contact";
+import { SUPPORT_EMAIL } from "@/lib/contact";
 import {
   contactHref,
   contactSource,
@@ -51,7 +54,6 @@ export default async function ContactPage({
   searchParams: Promise<{ topic?: string; from?: string; reference?: string }>;
 }) {
   const params = await searchParams;
-  if (params.topic === "feedback") redirect(FEEDBACK_URL);
   const topic =
     enquiryTopics.find((value) => value === params.topic) ?? "account";
   const sourcePath = contactSource(params.from);
@@ -73,30 +75,42 @@ export default async function ContactPage({
         <div className="mt-10 grid items-start gap-8 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <nav aria-label="Contact options" className="space-y-3">
-              {options.map(({ topic: value, icon: Icon, description }) => (
-                <Link
-                  key={value}
-                  href={contactHref(value, sourcePath)}
-                  aria-current={topic === value ? "page" : undefined}
-                  className={`flex items-start gap-4 rounded-2xl border p-5 transition ${topic === value ? "border-blue-200 bg-blue-50 ring-1 ring-blue-100" : "border-slate-100 bg-white hover:border-blue-200"}`}
-                >
-                  <span className="rounded-xl bg-white p-2.5 text-blue-600">
-                    <Icon size={21} />
-                  </span>
-                  <span>
-                    <span className="font-bold text-slate-900">
-                      {deriveEnquiryView(value).label}
+              {options.map(({ topic: value, icon: Icon, description }) => {
+                const className = `flex w-full items-start gap-4 rounded-2xl border p-5 text-left transition ${topic === value ? "border-blue-200 bg-blue-50 ring-1 ring-blue-100" : "border-slate-100 bg-white hover:border-blue-200"}`;
+                const content = (
+                  <>
+                    <span className="rounded-xl bg-white p-2.5 text-blue-600">
+                      <Icon size={21} />
                     </span>
-                    <span className="mt-1 block text-sm leading-6 text-slate-500">
-                      {description}
+                    <span>
+                      <span className="font-bold text-slate-900">
+                        {deriveEnquiryView(value).label}
+                      </span>
+                      <span className="mt-1 block text-sm leading-6 text-slate-500">
+                        {description}
+                      </span>
                     </span>
-                  </span>
-                  <ArrowUpRight
-                    size={18}
-                    className="ml-auto shrink-0 text-slate-400"
-                  />
-                </Link>
-              ))}
+                    <ArrowUpRight
+                      size={18}
+                      className="ml-auto shrink-0 text-slate-400"
+                    />
+                  </>
+                );
+                return value === "feedback" ? (
+                  <FeedbackButton key={value} className={className}>
+                    {content}
+                  </FeedbackButton>
+                ) : (
+                  <Link
+                    key={value}
+                    href={contactHref(value, sourcePath)}
+                    aria-current={topic === value ? "page" : undefined}
+                    className={className}
+                  >
+                    {content}
+                  </Link>
+                );
+              })}
             </nav>
             <div className="mt-6 px-2 text-sm leading-6 text-slate-500">
               <p>Prefer to write to us directly?</p>
@@ -108,12 +122,16 @@ export default async function ContactPage({
               </a>
             </div>
           </div>
-          <ContactForm
-            key={topic}
-            topic={topic}
-            sourcePath={sourcePath}
-            reference={params.reference?.slice(0, 120)}
-          />
+          {topic === "feedback" ? (
+            <FeedbackEntry />
+          ) : (
+            <ContactForm
+              key={topic}
+              topic={topic}
+              sourcePath={sourcePath}
+              reference={params.reference?.slice(0, 120)}
+            />
+          )}
         </div>
       </div>
     </PublicShell>

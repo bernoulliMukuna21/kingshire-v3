@@ -1,7 +1,7 @@
 export function formatMilestoneCount(count: number) {
   if (count < 10) return String(count);
   if (count < 100) return `${Math.floor(count / 10) * 10}+`;
-  if (count < 1000) return `${Math.floor(count / 100) * 100}+`;
+  if (count < 1000) return `${Math.floor(count / 10) * 10}+`;
 
   const thousands = Math.floor(count / 100) / 10;
   const formatted =

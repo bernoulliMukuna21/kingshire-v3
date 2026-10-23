@@ -48,7 +48,7 @@ export default function PrivacyPage() {
                 </li>
                 <li>Usage data and device information for analytics</li>
                 <li>Support messages and demo requests you submit, including your reply email and the page you came from</li>
-                <li>Feedback you choose to submit through our linked Tally form. Tally hosts this form; we do not automatically send it your account details or page history.</li>
+                <li>Feedback you choose to submit through our Tally feedback popup. Tally hosts this form; we do not automatically send it your account details or page history.</li>
               </ul>
             </section>
 

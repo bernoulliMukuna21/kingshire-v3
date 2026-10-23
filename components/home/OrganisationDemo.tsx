@@ -1,6 +1,11 @@
+"use client";
 import Link from "next/link";
+import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
+import { homeAudience, showOrganisationDemo } from "@/lib/home-news";
 import { ArrowRight, Check, Play } from "lucide-react";
 export default function OrganisationDemo() {
+  const auth = usePublicAuth();
+  if (!showOrganisationDemo(homeAudience(auth))) return null;
   return (
     <section className="bg-slate-50 px-6 py-16 sm:py-24">
       <div className="mx-auto grid max-w-6xl items-center gap-10 rounded-3xl bg-[#10234b] p-7 text-white sm:p-12 lg:grid-cols-[1.1fr_0.9fr]">

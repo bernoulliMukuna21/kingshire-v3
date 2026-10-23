@@ -69,13 +69,15 @@ describe("customer enquiries", () => {
     expect(href.searchParams.get("topic")).toBe("payment");
     expect(href.toString()).not.toContain("hidden");
   });
-  it("sends feedback to Tally without forwarding identity or page context", () => {
+  it("keeps the fallback feedback route local without forwarding identity or page context", () => {
     const href = contactHref(
       "feedback",
       "/dashboard/client/jobs/123?email=private@example.com",
     );
-    expect(href).toBe("https://tally.so/r/GexYZL");
-    expect(new URL(href).search).toBe("");
+    expect(href).toBe("/contact?topic=feedback");
+    expect(
+      new URL(href, "https://kingshire.uk").searchParams.get("from"),
+    ).toBeNull();
     expect(deriveEnquiryView("feedback").prompt).toBe(
       "How has your experience with KingsHire been?",
     );

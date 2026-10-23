@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { FEEDBACK_URL } from "@/lib/contact";
 import { isValidEmailAddress, normalizeEmail } from "@/lib/validation";
 
 export const enquiryTopics = [
@@ -62,7 +61,7 @@ export function contactSource(value: unknown): string {
   return value.split(/[?#]/)[0].slice(0, 300);
 }
 export function contactHref(topic: EnquiryTopic = "account", source = "") {
-  if (topic === "feedback") return FEEDBACK_URL;
+  if (topic === "feedback") return "/contact?topic=feedback";
   const query = new URLSearchParams({ topic });
   const safe = contactSource(source);
   if (safe) query.set("from", safe);

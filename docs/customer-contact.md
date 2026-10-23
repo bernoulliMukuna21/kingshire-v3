@@ -5,8 +5,11 @@ The public contact page is `/contact`. It works without an account:
 - `/contact?topic=account`: account and general help.
 - `/contact?topic=payment`: job/payment help, with an optional reference.
 - `/contact?topic=demo`: request a walkthrough; this does not book a time automatically.
-- Feedback links open the published Tally form at `https://tally.so/r/GexYZL`.
-  Old `/contact?topic=feedback` links redirect there.
+- Feedback buttons open the published Tally form in a native in-page dialog.
+  The floating launcher is dismissible for the current tab session. Footer,
+  dashboard and contact-page buttons can reopen it after dismissal.
+  Old `/contact?topic=feedback` links now show a local popup launcher; they do
+  not redirect off the platform.
 
 Navbar, footer and desktop/mobile dashboards link here. Dashboard links include
 only the current pathname, never its query string. Changing contact topics keeps
@@ -45,7 +48,13 @@ limits inside a rolled-back transaction.
 
 Feedback is collected in the owner’s Tally workspace, separately from the native
 support/demo inbox. There is no Tally webhook or response synchronisation, and
-no Tally script is loaded on KingsHire pages. To receive alerts for feedback,
+the Tally iframe is created only after an explicit click. No Tally widget script
+is loaded on KingsHire pages. The iframe uses `referrerPolicy="no-referrer"` and
+only fixed display options: account identity, page path and query parameters
+are never added. Closing the native dialog restores keyboard focus and scroll
+position. The native dialog traps focus. Escape works on the popup controls; keyboard
+users inside the cross-origin form can Shift+Tab back to the always-visible
+close button. Key events inside Tally’s document do not bubble to KingsHire. To receive alerts for feedback,
 enable self email notifications in the Tally form’s settings. The native feedback
 schema remains compatible with older requests and existing inbox records, but
 all customer-facing feedback routes now use Tally.
@@ -63,3 +72,26 @@ receipts settle their net amount is reserved until release. Approved, unpaid
 worker shares remain reserved. There is no extra deduction of processing fees
 and no hard-coded or artificially non-decreasing balance. Actual Stripe charges,
 refunds and company withdrawals can still change company money.
+
+## Homepage audience and community news
+
+`getHomepageProgress` supplies both the hero counters and the news bar. User
+counts exclude admins; the completed-job achievement uses the same public
+`profiles.jobs_completed` fact shown on Kinglancer profiles. Placement stories
+use `listPublicPlacements`, so draft/private opportunities are not announced.
+Internships are identified by the word "internship" in a public placement title;
+there is no separate internship entity in the current schema. Missing or zero
+milestones are omitted. Facts are cached for one hour; audience selection is
+client-side and is never part of the shared cache.
+
+`homeAudience` is the single audience decision. Demo invitations are shown only
+after authentication resolves, for visitors and personal clients. Organisation
+membership is checked through the signed-in cookie client under RLS. Kinglancers
+see opportunities first, clients see community hiring achievements, and existing
+organisation members get team-workspace updates. Existing organisations do not
+receive the setup/demo invitation.
+
+The moving news strip pauses on hover or keyboard focus, has a pause control,
+and becomes a manually scrollable static strip under reduced-motion settings.
+Duplicated animation content is hidden from assistive technology and excluded
+from keyboard tab order; visible repeated links remain clickable.

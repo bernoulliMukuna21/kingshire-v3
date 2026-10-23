@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
-import { FEEDBACK_URL, SUPPORT_EMAIL } from "@/lib/contact";
+import { SUPPORT_EMAIL } from "@/lib/contact";
+
+import { FeedbackButton } from "@/components/support/FeedbackProvider";
 
 export default function Footer() {
   return (
@@ -22,7 +24,7 @@ export default function Footer() {
           </p>
           <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm font-semibold text-white/65 sm:justify-end">
             <Link href="/contact" className="transition-colors hover:text-white">Get help</Link>
-            <Link href={FEEDBACK_URL} className="transition-colors hover:text-white">Give feedback</Link>
+            <FeedbackButton className="transition-colors hover:text-white">Give feedback</FeedbackButton>
             <Link href="/contact?topic=demo" className="transition-colors hover:text-white">Request a demo</Link>
             <Link
               href="/privacy"

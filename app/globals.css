@@ -100,3 +100,15 @@ html {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* Community news: pause on interaction and honour reduced motion. */
+@keyframes communityNewsScroll { to { transform: translateX(-50%); } }
+.news-track { animation: communityNewsScroll 45s linear infinite; }
+.news-window:hover .news-track { animation-play-state: paused !important; }
+.news-window:has(a:focus-visible) { overflow-x: auto; }
+.news-window:has(a:focus-visible) .news-track { animation: none; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .news-window { overflow-x: auto; }
+  .news-track { animation: none; transform: none; }
+  .news-copy { display: none; }
+}

@@ -1,62 +1,82 @@
+"use client";
 import Link from "next/link";
-import type { ReactNode } from "react";
-
-type PublicityTone = "celebration" | "success" | "information";
-
-const toneClasses: Record<PublicityTone, string> = {
-  celebration:
-    "border-fuchsia-300/20 bg-linear-to-r from-violet-700 via-purple-600 to-fuchsia-600",
-  success:
-    "border-emerald-300/20 bg-linear-to-r from-emerald-700 to-green-600",
-  information:
-    "border-blue-300/20 bg-linear-to-r from-blue-700 to-cyan-600",
-};
-
-const ctaToneClasses: Record<PublicityTone, string> = {
-  celebration: "text-purple-700 hover:bg-purple-50",
-  success: "text-emerald-700 hover:bg-emerald-50",
-  information: "text-blue-700 hover:bg-blue-50",
-};
-
-type PublicityBannerProps = {
-  title: string;
-  message: string;
-  ctaLabel: string;
-  ctaHref: string;
-  icon?: ReactNode;
-  tone?: PublicityTone;
-};
-
+import { Pause, Play, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
+import {
+  deriveHomeNews,
+  homeAudience,
+  type HomeProgress,
+} from "@/lib/home-news";
 export default function PublicityBanner({
-  title,
-  message,
-  ctaLabel,
-  ctaHref,
-  icon,
-  tone = "information",
-}: PublicityBannerProps) {
+  progress,
+}: {
+  progress: HomeProgress;
+}) {
+  const auth = usePublicAuth();
+  const [paused, setPaused] = useState(false);
+  const stories = deriveHomeNews(progress, homeAudience(auth));
+  if (!stories.length)
+    return (
+      <div aria-hidden="true" className="relative z-20 h-12 bg-purple-700/60" />
+    );
   return (
     <aside
-      aria-label={title}
-      className={`relative z-20 border-b text-white ${toneClasses[tone]}`}
+      aria-label="KingsHire community news"
+      className="relative z-20 flex min-h-12 items-center gap-3 border-b border-white/15 bg-linear-to-r from-violet-700 via-purple-600 to-fuchsia-600 px-3 text-white sm:px-6"
     >
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-2.5 text-sm sm:px-6">
-        {icon && (
-          <span className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 sm:flex">
-            {icon}
-          </span>
-        )}
-        <p className="min-w-0 flex-1">
-          <strong>{title}</strong>{" "}
-          <span className="text-white/80">{message}</span>
-        </p>
-        <Link
-          href={ctaHref}
-          className={`shrink-0 rounded-full bg-white px-3 py-1.5 font-bold transition ${ctaToneClasses[tone]}`}
-        >
-          {ctaLabel}
-        </Link>
+      <div className="flex shrink-0 items-center gap-2 text-xs font-bold uppercase tracking-wider">
+        <Sparkles size={17} aria-hidden="true" />
+        <span className="hidden sm:inline">Worth celebrating</span>
       </div>
+      <div
+        className="news-window min-w-0 flex-1 overflow-hidden"
+        role="region"
+        aria-label="Community milestones"
+      >
+        <div
+          className="news-track flex w-max"
+          style={{
+            animationPlayState: paused ? "paused" : "running",
+            animationDuration: `${Math.max(30, stories.reduce((total, story) => total + story.text.length, 0) / 7)}s`,
+          }}
+        >
+          {[false, true].map((duplicate) => (
+            <div
+              key={String(duplicate)}
+              aria-hidden={duplicate || undefined}
+              className={`flex shrink-0 items-center gap-10 py-3 pr-10 ${duplicate ? "news-copy" : ""}`}
+            >
+              {stories.map((story) => (
+                <Link
+                  key={story.id}
+                  href={story.href}
+                  tabIndex={duplicate ? -1 : undefined}
+                  aria-label={`${story.text} ${story.linkLabel}`}
+                  className="inline-flex items-center gap-3 whitespace-nowrap rounded text-sm font-medium text-white/95 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-white"
+                >
+                  <span aria-hidden="true" className="text-fuchsia-200">
+                    ✦
+                  </span>
+                  {story.text}
+                  <span className="text-xs font-bold underline underline-offset-4">
+                    {story.linkLabel} →
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setPaused((value) => !value)}
+        aria-label={paused ? "Play community news" : "Pause community news"}
+        aria-pressed={paused}
+        className="flex min-h-10 min-w-10 shrink-0 items-center justify-center rounded-full bg-white/15 p-2 hover:bg-white/25"
+      >
+        {paused ? <Play size={15} /> : <Pause size={15} />}
+      </button>
     </aside>
   );
 }

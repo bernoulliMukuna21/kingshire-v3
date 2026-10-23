@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { FeedbackButton } from "./FeedbackProvider";
 import { usePathname } from "next/navigation";
 import { CircleHelp, MessageSquare } from "lucide-react";
 import { contactHref } from "@/lib/support/view";
@@ -25,14 +26,13 @@ export default function HelpLinks({
         </span>
       </Link>
       {!compact && (
-        <Link
+        <FeedbackButton
           onClick={onNavigate}
-          href={contactHref("feedback", pathname)}
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/20"
         >
           <MessageSquare size={15} />
           Feedback
-        </Link>
+        </FeedbackButton>
       )}
     </div>
   );
