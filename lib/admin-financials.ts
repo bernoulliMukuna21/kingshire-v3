@@ -1,6 +1,7 @@
 import { coerceNumericList } from "@/lib/db/coerce";
 
 type Settlement = {
+  id?: string;
   status: string;
   stripe_transfer_id: string | null;
   stripe_refund_id: string | null;
@@ -34,12 +35,20 @@ function unsettled(payment: Settlement): boolean {
     !payment.stripe_transfer_id;
 }
 
+export type StripeFunding = {
+  paymentId: string;
+  ledger: "transactions" | "engagement_payments";
+  netPence: number;
+  status: "pending" | "available";
+};
+
 /** Complete ledger reads only. Worker liabilities, earnings and cash are distinct. */
 export function deriveAdminFinancials(input: {
   transactions: AdminTransaction[] | null;
   engagementPayments: AdminEngagementPayment[] | null;
   stripeAvailablePence: number | null;
   stripeActivity?: StripeActivity | null;
+  stripeFunding?: StripeFunding[] | null;
 }) {
   if (input.transactions === null || input.engagementPayments === null) return null;
   const transactions = coerceNumericList(input.transactions, [
@@ -55,6 +64,48 @@ export function deriveAdminFinancials(input: {
   let manualCardPaid = 0;
   let deferredStripeFees = 0;
   let bankFees = 0;
+  let settledReserve = 0;
+  let fundingComplete = input.stripeFunding !== null;
+  const funding = new Map<string, StripeFunding>();
+  for (const receipt of input.stripeFunding ?? []) {
+    const key = `${receipt.ledger}:${receipt.paymentId}`;
+    if (
+      funding.has(key) ||
+      !Number.isSafeInteger(receipt.netPence) ||
+      receipt.netPence < 0 ||
+      !["pending", "available"].includes(receipt.status)
+    ) throw new Error("Invalid Stripe funding allocation");
+    funding.set(key, receipt);
+  }
+  function reserveSettledFunds(
+    row: Settlement,
+    ledger: StripeFunding["ledger"],
+    grossHeld: number,
+    workerOwed: number,
+  ) {
+    // Legacy callers without funding facts retain the conservative estimate.
+    // The live dashboard supplies the actual receipt's net and settlement state.
+    if (input.stripeFunding === undefined) {
+      settledReserve += ["held", "disputed"].includes(row.status)
+        ? grossHeld : workerOwed;
+      return;
+    }
+    const receipt = row.id ? funding.get(`${ledger}:${row.id}`) : undefined;
+    if (!receipt) {
+      fundingComplete = false;
+      return;
+    }
+    if (receipt.netPence > grossHeld)
+      throw new Error("Stripe funding exceeds held payment");
+    const shortfall = Math.max(0, workerOwed - receipt.netPence);
+    if (["held", "disputed"].includes(row.status)) {
+      settledReserve += (receipt.status === "available" ? receipt.netPence : 0) + shortfall;
+    } else {
+      // A released payment reserves the worker's share. Pending receipts fund
+      // that obligation separately; only a shortfall uses settled company cash.
+      settledReserve += receipt.status === "available" ? workerOwed : shortfall;
+    }
+  }
   for (const row of transactions) {
     const gross = pence(row.amount);
     const clientFee = pence(row.platform_fee_client);
@@ -71,8 +122,10 @@ export function deriveAdminFinancials(input: {
       deferredStripeFees += clientFee + workerFee;
     if (!unsettled(row) || row.manual_payout_reference) continue;
     if (row.payment_method === "bank_transfer") bankOwed += gross - workerFee;
-    else if (row.payment_method === "card") stripeOwed += gross - workerFee;
-    else throw new Error("Unknown funding method");
+    else if (row.payment_method === "card") {
+      stripeOwed += gross - workerFee;
+      reserveSettledFunds(row, "transactions", gross + clientFee, gross - workerFee);
+    } else throw new Error("Unknown funding method");
   }
   for (const row of engagements) {
     const gross = pence(row.worker_amount);
@@ -81,9 +134,16 @@ export function deriveAdminFinancials(input: {
     // Direct engagements collect fees only, with no platform worker liability.
     if (["held", "disputed"].includes(row.status) && !row.stripe_transfer_id)
       deferredStripeFees += clientFee + workerFee;
-    if (gross === 0) continue;
+    if (gross === 0) {
+      if (["held", "disputed"].includes(row.status) && !row.stripe_transfer_id)
+        reserveSettledFunds(row, "engagement_payments", clientFee + workerFee, 0);
+      continue;
+    }
     if (workerFee > gross) throw new Error("Worker fee exceeds payment");
-    if (unsettled(row)) stripeOwed += gross - workerFee;
+    if (unsettled(row)) {
+      stripeOwed += gross - workerFee;
+      reserveSettledFunds(row, "engagement_payments", gross + clientFee, gross - workerFee);
+    }
   }
   const needsReconciliation = [...transactions, ...engagements].some(row =>
     ["reserved", "dispatched", "confirmed", "pending"].includes(row.release_outcome ?? "") ||
@@ -98,14 +158,13 @@ export function deriveAdminFinancials(input: {
     owedGBP: (stripeOwed + bankOwed) / 100,
     stripeOwedGBP: stripeOwed / 100,
     bankOwedGBP: bankOwed / 100,
-    // Paid workers are expenses, not outstanding liabilities. Do not invent a
-    // reimbursement obligation from historical manual payout references. Bank
-    // obligations belong to the bank pool; reserve full held Stripe payments.
-    // A confirmed non-positive balance has no withdrawable cash even when
-    // history needs matching. Unverified positive balances stay unavailable.
+    // Reserve only the net held receipts that are actually in the available
+    // Stripe pool. Pending client money must not reduce existing company cash.
+    // Processing fees have already reduced those receipts; do not deduct them
+    // again from company cash. Confirmed zero stays zero if matching is incomplete.
     estimatedWithdrawableGBP: available === null ? null : available <= 0 ? 0
-      : input.stripeActivity === null || reconciliation ? null
-      : Math.max(0, available - stripeOwed - deferredStripeFees) / 100,
+      : input.stripeActivity === null || reconciliation || !fundingComplete ? null
+      : Math.max(0, available - settledReserve) / 100,
     stripeNetProceedsGBP: !activity || reconciliation ? null
       : (activity.operatingNetPence - manualCardPaid - stripeOwed - deferredStripeFees) / 100,
     platformNetProceedsGBP: !activity || reconciliation ? null

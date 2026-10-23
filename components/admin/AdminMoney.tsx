@@ -102,9 +102,9 @@ export function AdminFinanceDetails({ finances }: { finances: AdminFinances }) {
       <div className="grid gap-4">
         {[
           {
-            label: "Still to pay workers",
+            label: "Held for workers",
             value: summary?.stripeOwedGBP,
-            detail: "Worker payments set aside in Stripe",
+            detail: "Money allocated to workers, including work in progress",
           },
         ].map((metric) => (
           <section

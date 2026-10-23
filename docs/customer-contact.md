@@ -57,5 +57,9 @@ by email; it does not claim to book a slot.
 
 The admin overview and finance summary foreground available platform money after
 reserving held payments. The competing "Earned to date" card has been removed.
-Underlying earnings and cash calculations are unchanged; there is no extra Stripe
-fee deduction and no hard-coded balance.
+Cash reservations use each matching Stripe receipt’s net amount and settlement
+state. Pending job receipts are separate from settled company cash; when those
+receipts settle their net amount is reserved until release. Approved, unpaid
+worker shares remain reserved. There is no extra deduction of processing fees
+and no hard-coded or artificially non-decreasing balance. Actual Stripe charges,
+refunds and company withdrawals can still change company money.
