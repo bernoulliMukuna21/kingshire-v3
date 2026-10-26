@@ -14,9 +14,9 @@ import {
   CheckCircle,
   ChevronRight,
   LayoutDashboard,
-  PartyPopper,
 } from "lucide-react";
 import { usePublicAuth } from "@/components/auth/PublicAuthProvider";
+import type { HomeProgress } from "@/lib/home-news";
 import PublicityBanner from "@/components/home/PublicityBanner";
 
 const floatingAvatars = [
@@ -87,7 +87,7 @@ type HeroStat = {
   label: string;
 };
 
-export default function HeroSection({ stats }: { stats: HeroStat[] }) {
+export default function HeroSection({ stats, progress }: { stats: HeroStat[]; progress: HomeProgress }) {
   const heroRef = useRef<HTMLElement>(null);
   const prefersReducedMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
@@ -116,14 +116,7 @@ export default function HeroSection({ stats }: { stats: HeroStat[] }) {
       ref={heroRef}
       className="relative min-h-screen overflow-hidden bg-[#10234b] pt-16"
     >
-      <PublicityBanner
-        tone="celebration"
-        icon={<PartyPopper size={17} aria-hidden="true" />}
-        title="Something new to celebrate: Organisation workspaces."
-        message="Create your Organisation, invite your team and publish jobs together."
-        ctaLabel="Discover"
-        ctaHref="/organisation"
-      />
+      <PublicityBanner progress={progress} />
 
       <motion.div
         style={{ y: heroY }}

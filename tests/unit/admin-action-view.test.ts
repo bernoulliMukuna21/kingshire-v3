@@ -79,7 +79,7 @@ describe("admin payout eligibility", () => {
     expect(deriveAdminPayoutView(payment, "completed").eligible).toBe(false));
 });
 describe("admin navigation", () => {
-  it("has six task-oriented destinations", () =>
+  it("includes the customer enquiry inbox", () =>
     expect(adminNavigation.map((row) => row.label)).toEqual([
       "Overview",
       "Action centre",
@@ -87,6 +87,7 @@ describe("admin navigation", () => {
       "People",
       "Work",
       "Reviews",
+      "Enquiries",
     ]));
   it.each([
     ["/admin/role-disputes", "/admin/action-centre"],

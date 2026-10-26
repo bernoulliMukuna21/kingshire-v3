@@ -45,7 +45,7 @@ export default function AdminMoney({ finances }: { finances: AdminFinances }) {
             <p className="mt-4 max-w-xl text-sm text-emerald-100">
               {amount === 0
                 ? "No settled funds are available after held payments."
-                : "After held payments. Stripe fees already deducted."}
+                : "Money available to KingsHire after setting aside client and worker payments. Stripe fees already deducted."}
             </p>
           </>
         )}
@@ -53,7 +53,7 @@ export default function AdminMoney({ finances }: { finances: AdminFinances }) {
           <span className="text-xs text-emerald-200/80">
             {finances.testMode
               ? "Test figures · not real funds"
-              : "Available cash, separate from lifetime earnings"}
+              : "Your platform money in Stripe"}
           </span>
           <Link
             href="/admin/finance"
@@ -99,17 +99,12 @@ export function AdminFinanceDetails({ finances }: { finances: AdminFinances }) {
           </p>
         )}
       </section>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4">
         {[
           {
-            label: "Earned to date",
-            value: summary?.platformNetProceedsGBP,
-            detail: "After Stripe fees, before tax and other business costs",
-          },
-          {
-            label: "Still to pay workers",
+            label: "Held for workers",
             value: summary?.stripeOwedGBP,
-            detail: "Worker payments set aside in Stripe",
+            detail: "Money allocated to workers, including work in progress",
           },
         ].map((metric) => (
           <section
@@ -133,7 +128,7 @@ export function AdminFinanceDetails({ finances }: { finances: AdminFinances }) {
         >
           <CircleAlert size={18} className="shrink-0" />
           <span>
-            We need to check some payment records before confirming earnings.
+            Some payment records need checking. View payment issues for details.
           </span>
           <ArrowUpRight size={17} className="ml-auto shrink-0" />
         </Link>

@@ -47,6 +47,8 @@ export default function PrivacyPage() {
                   card details)
                 </li>
                 <li>Usage data and device information for analytics</li>
+                <li>Support messages and demo requests you submit, including your reply email and the page you came from</li>
+                <li>Feedback you choose to submit through our Tally feedback popup. Tally hosts this form; we do not automatically send it your account details or page history.</li>
               </ul>
             </section>
 
@@ -63,6 +65,7 @@ export default function PrivacyPage() {
                   Send transactional emails (account confirmations, job updates)
                 </li>
                 <li>Investigate disputes and enforce our Terms of Service</li>
+                <li>Reply to your enquiries, arrange demos and improve KingsHire using your feedback. Anonymous feedback does not require your name or email.</li>
                 <li>Improve the platform and user experience</li>
               </ul>
             </section>

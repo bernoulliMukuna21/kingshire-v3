@@ -1,5 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
+import { SUPPORT_EMAIL } from "@/lib/contact";
+
+import { FeedbackButton } from "@/components/support/FeedbackProvider";
 
 export default function Footer() {
   return (
@@ -19,7 +22,10 @@ export default function Footer() {
           <p className="text-sm text-white/45">
             © 2026 KingsHire. Community-first platform.
           </p>
-          <div className="flex justify-center gap-5 text-sm font-semibold text-white/65 sm:justify-end">
+          <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm font-semibold text-white/65 sm:justify-end">
+            <Link href="/contact" className="transition-colors hover:text-white">Get help</Link>
+            <FeedbackButton className="transition-colors hover:text-white">Give feedback</FeedbackButton>
+            <Link href="/contact?topic=demo" className="transition-colors hover:text-white">Request a demo</Link>
             <Link
               href="/privacy"
               className="transition-colors hover:text-white"
@@ -30,6 +36,7 @@ export default function Footer() {
               Terms
             </Link>
           </div>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="inline-block break-all text-sm text-white/75 hover:text-white">{SUPPORT_EMAIL}</a>
         </div>
       </div>
     </footer>

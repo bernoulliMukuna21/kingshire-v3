@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import HelpLinks from "@/components/support/HelpLinks";
 import WorkspaceSwitcher, { type Workspace } from "@/components/WorkspaceSwitcher";
 import Link from "next/link";
 import Image from "next/image";
@@ -75,6 +76,7 @@ export default function MobileNav({ profile, organisations = [] }: Props) {
         </Link>
 
         <div className="flex items-center gap-3">
+          <HelpLinks compact />
           <NotificationBell />
 
           {/* Avatar / drawer trigger */}
@@ -199,6 +201,7 @@ export default function MobileNav({ profile, organisations = [] }: Props) {
                 ))}
               </nav>
 
+              <div className="px-4 pb-4"><HelpLinks onNavigate={close} /></div>
               {/* Footer */}
               <div
                 className="relative border-t border-white/10 p-4"

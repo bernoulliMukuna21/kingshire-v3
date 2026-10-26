@@ -16,6 +16,7 @@ import {
   Briefcase,
   ClipboardCheck,
   Menu,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
 import { adminNavigation, adminSection } from "@/lib/admin/navigation";
@@ -26,6 +27,7 @@ const icons = {
   people: Users,
   work: Briefcase,
   reviews: ClipboardCheck,
+  support: MessageSquare,
 };
 const ADMIN_NAV_ITEMS = adminNavigation;
 

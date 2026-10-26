@@ -5,7 +5,10 @@ import { stripe } from "@/lib/stripe";
 import { getAdminStripeActivity } from "@/lib/admin-stripe-financials";
 import { coerceNumericList } from "@/lib/db/coerce";
 import { reconcileAdminFunding } from "./reconciliation";
-import { deriveAdminFinancials } from "@/lib/admin-financials";
+import {
+  deriveAdminFinancials,
+  type StripeFunding,
+} from "@/lib/admin-financials";
 
 async function collectStripe<T>(rows: AsyncIterable<T>) {
   const result: T[] = [];
@@ -50,10 +53,16 @@ export const getAdminFinances = cache(async () => {
     (balance ? 0 : null);
   let summary: ReturnType<typeof deriveAdminFinancials> = null;
   let reconciliation: ReturnType<typeof reconcileAdminFunding> | null = null;
+  let stripeFunding: StripeFunding[] | null = null;
   try {
     if (transactions && engagementPayments && stripeActivity) {
       const [charges, transfers, invoicePayments] = await Promise.all([
-        collectStripe(stripe.charges.list({ limit: 100 })),
+        collectStripe(
+          stripe.charges.list({
+            limit: 100,
+            expand: ["data.balance_transaction"],
+          }),
+        ),
         collectStripe(stripe.transfers.list({ limit: 100 })),
         collectStripe(
           stripe.invoicePayments.list({
@@ -73,6 +82,44 @@ export const getAdminFinances = cache(async () => {
         "platform_fee_client",
         "platform_fee_kinglancer",
       ]);
+      const receiptsByIntent = new Map(
+        charges
+          .filter((row) => row.paid)
+          .map((row) => [
+            typeof row.payment_intent === "string"
+              ? row.payment_intent
+              : row.payment_intent?.id,
+            row.balance_transaction,
+          ]),
+      );
+      function fundingFor(
+        row: { id: string; stripe_payment_intent_id: string | null },
+        ledger: StripeFunding["ledger"],
+      ): StripeFunding[] {
+        const receipt = receiptsByIntent.get(
+          row.stripe_payment_intent_id ?? "",
+        );
+        if (
+          !receipt ||
+          typeof receipt === "string" ||
+          (receipt.status !== "pending" && receipt.status !== "available")
+        )
+          return [];
+        return [
+          {
+            paymentId: row.id,
+            ledger,
+            netPence: receipt.net,
+            status: receipt.status,
+          },
+        ];
+      }
+      stripeFunding = [
+        ...oneOff
+          .filter((row) => row.payment_method === "card")
+          .flatMap((row) => fundingFor(row, "transactions")),
+        ...recurring.flatMap((row) => fundingFor(row, "engagement_payments")),
+      ];
       reconciliation = reconcileAdminFunding({
         ledger: [
           ...oneOff
@@ -167,6 +214,7 @@ export const getAdminFinances = cache(async () => {
       engagementPayments,
       stripeAvailablePence: availablePence,
       stripeActivity,
+      stripeFunding,
     });
   } catch (error) {
     console.error("[admin finances] invalid ledger", error);

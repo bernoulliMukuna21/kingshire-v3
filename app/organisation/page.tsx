@@ -71,7 +71,8 @@ export default async function OrganisationPage() {
               A shared KingsHire workspace for companies, charities, churches,
               non-profits, community groups and public bodies.
             </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/contact?topic=demo" className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-7 py-4 font-bold text-blue-700 hover:bg-blue-100">Request a demo <ArrowRight size={18} /></Link>
               {hasOrganisation ? (
                 <>
                   <Link
