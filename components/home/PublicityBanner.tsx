@@ -18,12 +18,12 @@ export default function PublicityBanner({
   const stories = deriveHomeNews(progress, homeAudience(auth));
   if (!stories.length)
     return (
-      <div aria-hidden="true" className="relative z-20 h-12 bg-blue-700/60" />
+      <div aria-hidden="true" className="relative z-20 h-12 bg-fuchsia-600/60" />
     );
   return (
     <aside
       aria-label="KingsHire community news"
-      className="relative z-20 flex min-h-12 items-center gap-3 border-b border-white/15 bg-linear-to-r from-blue-700 via-indigo-600 to-cyan-500 px-3 text-white sm:px-6"
+      className="relative z-20 flex min-h-12 items-center gap-3 border-b border-white/15 bg-linear-to-r from-pink-600 via-fuchsia-600 to-rose-500 px-3 text-white sm:px-6"
     >
       <div className="flex shrink-0 items-center gap-2 text-xs font-bold uppercase tracking-wider">
         <Sparkles size={17} aria-hidden="true" />
@@ -55,7 +55,7 @@ export default function PublicityBanner({
                   aria-label={`${story.text} ${story.linkLabel}`}
                   className="inline-flex items-center gap-3 whitespace-nowrap rounded text-sm font-medium text-white/95 outline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-white"
                 >
-                  <span aria-hidden="true" className="text-cyan-200">
+                  <span aria-hidden="true" className="text-pink-100">
                     ✦
                   </span>
                   {story.text}
